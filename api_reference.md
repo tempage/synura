@@ -1,0 +1,199 @@
+# Synura API Reference
+
+This document details the JavaScript API available to Synura extensions.
+
+## Global Objects
+
+### `synura`
+The core object for interacting with the Synura application.
+
+#### Methods
+
+-   **`synura.open(viewPath, data, [context], [callback])`**
+    -   Opens a new view. Optionally connects to the view if `callback` is provided.
+    -   **Arguments**:
+        -   `viewPath` (String): The type of view to open (e.g., `'/views/list'`, `'/views/post'`).
+        -   `data` (Object): Configuration for the view, containing `styles` and `models`.
+        -   `context` (Object, Optional): Arbitrary data passed back in events (useful for tracking state). Can be omitted if only 3 arguments are passed and the 3rd is the callback.
+        -   `callback` (Function, Optional): Called when an event occurs. Receives an `event` object. If provided, `synura.connect` is called automatically.
+    -   **Returns**: An object `{ success: boolean, viewId: number, viewName: string, error?: string }`.
+
+-   **`synura.update(viewId, data)`**
+    -   Updates an existing view.
+    -   **Arguments**:
+        -   `viewId` (Number): The ID of the view to update.
+        -   `data` (Object): New `styles` or `models` to merge.
+    -   **Returns**: An object `{ success: boolean, viewId: number, viewName: string, error?: string }`.
+
+-   **`synura.connect(viewId, context, callback)`**
+    -   Listens for events from a view.
+    -   **Arguments**:
+        -   `viewId` (Number): The ID of the view.
+        -   `context` (Object): Arbitrary data passed back in events (useful for tracking state).
+        -   `callback` (Function): Called when an event occurs. Receives an `event` object.
+    -   **Returns**: An object `{ success: boolean, viewId: number, error?: string }`.
+    -   **Note**: Only one callback can be active per view. Calling `connect` again will overwrite the previous callback.
+
+-   **`synura.close(viewId)`**
+    -   Closes a specific view.
+    -   **Arguments**:
+        -   `viewId` (Number): The ID of the view to close.
+    -   **Returns**: An object `{ success: boolean, viewId: number, viewName: string, error?: string }`.
+
+-   `synura.parse(type, element)`: Parses a DOM element into a structured object based on the specified type.
+    - `type`: A string specifying the parsing logic (e.g., `'post'`).
+    - `element`: The DOM element to parse.
+    - **Returns**: An array of objects representing the parsed content (e.g., `[{type: 'text', value: '...'}, {type: 'image', value: '...'}]`).
+
+### `fetch(url, options)`
+A custom **synchronous** HTTP client (unlike Web API, it does **not** return a Promise).
+-   **Options**:
+    -   `method`: `'GET'` | `'POST'`
+    -   `headers`: Object `{ "Key": "Value" }`
+    -   `body`: String
+    -   `onProgress`: **Synura Custom Option**. Function `(current, total) => { ... }`. Called during download. `current` and `total` are in bytes. `total` is -1 if unknown (e.g., chunked encoding).
+-   **Returns**: A `Response` object with:
+    -   `text()`: Returns response body as string.
+    -   `json()`: Returns response body as JSON object.
+    -   `dom(mimeType)`: **Synura Custom Function**. Returns a parsed DOM document (only `'text/html'` supported).
+
+### `console`
+-   `console.log(...args)`: Logs messages to the debug console (and logcat on Android).
+
+### `localStorage`
+Persistent key-value storage backed by a database.
+-   **`localStorage.setItem(key, value)`**
+    -   Saves a key-value pair. **Both must be strings** (like Web API).
+-   **`localStorage.getItem(key)`**
+    -   Returns the value (string) for the key, or `null` if not found.
+-   **`localStorage.removeItem(key)`**
+    -   Removes the item with the specified key.
+-   **`localStorage.clear()`**
+    -   Removes all items.
+
+### `sessionStorage`
+Transient, in-memory key-value storage (LRU cache).
+-   **`sessionStorage.setItem(key, value)`**
+    -   Saves a key-value pair. **Value can be any JavaScript type** (unlike Web API).
+-   **`sessionStorage.getItem(key)`**
+    -   Returns the value for the key, or `null` if not found.
+-   **`sessionStorage.removeItem(key)`**
+    -   Removes the item with the specified key.
+-   **`sessionStorage.clear()`**
+    -   Removes all items.
+
+#### Storage Example
+```javascript
+// Local Storage (Persistent, Strings only)
+localStorage.setItem("token", "12345");
+const token = localStorage.getItem("token"); // "12345"
+
+// Session Storage (Transient, Any type)
+sessionStorage.setItem("cache", { lastPage: 1, items: [] });
+const cache = sessionStorage.getItem("cache"); // Object
+```
+
+---
+
+## View Types
+
+Views are opened via `synura.open('/views/<type>', data)`.
+
+### 1. List View (`/views/list`)
+Displays a list of items (articles, posts, etc.).
+
+**Styles:**
+-   `title` (String): App bar title.
+-   `layout` (String): `'list'` (default), `'card'`, `'gallery'`.
+-   `pagination` (Boolean): Enable infinite scrolling (triggers `SCROLL_TO_END` event).
+-   `menu` (Boolean): Show menu button.
+
+**Models:**
+-   `contents`: `{ details: [ItemObject, ...] }`
+    -   **ItemObject**:
+        -   `title` (String)
+        -   `link` (String): ID or URL for the item.
+        -   `author` (String)
+        -   `date` (String)
+        -   `mediaUrl` (String): URL for image/video thumbnail.
+        -   `mediaType` (String): `'image'` or `'video'`.
+        -   `viewCount`, `likeCount`, `commentCount` (Number)
+-   `menus`: `{ details: ["Menu Item 1", "Menu Item 2"] }`
+-   `append`: `{ details: [...] }` (Use with `synura.update` to add items).
+
+### 2. Post View (`/views/post`)
+Displays a detailed post with content and comments.
+
+**Styles:**
+-   `title` (String)
+
+**Models:**
+-   `title`, `author`, `date`, `avatar` (Message Objects: `{ message: "..." }`)
+-   `content`: `{ details: [ContentBlock, ...] }`
+    -   **ContentBlock**: `{ type: 'text'|'image'|'video'|'link', value: "..." }`
+-   `comments`: `{ details: [CommentObject, ...] }`
+    -   **CommentObject**:
+        -   `author`, `date`, `content` (Parsed content), `avatar`.
+        -   `level` (Number): Indentation level for nested comments.
+
+### 3. Chat View (`/views/chat`)
+A chat interface.
+
+**Models:**
+-   `append`: `{ details: [ChatMessage, ...] }`
+    -   **ChatMessage**: `{ user: "Name", message: "Text", time: "ISO String" }`
+
+### 4. Settings View (`/views/settings`)
+A form for user configuration.
+
+**Models:**
+-   `body`: `{ details: [InputObject, ...] }`
+    -   **InputObject**:
+        -   `type`: `'string'`, `'number'`, `'boolean'`.
+        -   `name`: Key for the input.
+        -   `label`: Display label.
+        -   `value`: Default value.
+        -   `format`: `'password'` (for strings).
+-   `buttons`: `{ details: ['submit', 'reset'] }`
+
+### 5. Editor View (`/views/editor`)
+A text/content editor.
+
+> [!WARNING]
+> The attachment file feature is currently experimental. Do not use it.
+
+### 6. Browser View (`/views/browser`)
+Opens an in-app browser.
+-   **Models**: `url: { message: "https://..." }`
+
+---
+
+## Dialog Types
+
+Dialogs are opened via `synura.open('/dialogs/<type>', data)`.
+
+### Input Dialog (`/dialogs/input`)
+A modal dialog for collecting user input. Same structure as `settings` view.
+
+---
+
+## Events
+
+Handle events in the `synura.connect` callback, or the optional callback passed to `synura.open`.
+
+### Event Structure
+```javascript
+{
+    eventId: "CLICK" | "LOAD" | "REFRESH" | "SCROLL_TO_END" | "MENU_CLICK" | "SUBMIT",
+    context: { ... }, // The context object passed to connect()
+    data: { ... }     // Event-specific data
+}
+```
+
+### Common Events
+-   **`LOAD` / `REFRESH`**: Triggered when the view loads or user pulls to refresh.
+-   **`CLICK`**: User clicked an item. `data` contains the item object (e.g., `{ link: "...", index: 0 }`).
+-   **`SCROLL_TO_END`**: User scrolled to the bottom (List View). Fetch next page here.
+-   **`MENU_CLICK`**: User clicked a menu item. `data.menu` contains the menu text.
+-   **`AUTHOR_CLICK`**: User clicked the author. `data` contains `author` and optionally `link`.
+-   **`SUBMIT`**: User submitted a form (Settings/Dialog). `data` contains form values.
