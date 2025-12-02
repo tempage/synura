@@ -83,6 +83,7 @@ Displays a detailed post with content and comments.
 **Styles:**
 *   `title` (string): App bar title.
 *   `authorClickable` (bool): If true, author avatar/name is clickable.
+*   `appbar` (object/string): Customizes the app bar (e.g. 'query').
 
 **Models:**
 *   `author`, `date`, `avatar`, `memo`: Strings (in `message` field).
@@ -107,6 +108,10 @@ Displays a detailed post with content and comments.
 
 Displays a chat interface.
 
+**Styles:**
+*   `menu` (bool): If true, shows a menu button.
+*   `appbar` (object/string): Customizes the app bar (e.g. 'query').
+
 **Models:**
 *   `append`: List of new messages.
     *   `details`: Array of objects (or JSON strings).
@@ -118,6 +123,7 @@ Displays a web page within the app.
 
 **Styles:**
 *   `title` (string): App bar title.
+*   `appbar` (object/string): Customizes the app bar (e.g. 'query').
 
 **Models:**
 *   `url`: The URL to load (in `message` field).
@@ -134,6 +140,7 @@ Displays text content formatted using Markdown.
 **Styles:**
 *   `title` (string): App bar title.
 *   `menu` (bool): If true, shows a menu button (requires `models.menus`).
+*   `appbar` (object/string): Customizes the app bar (e.g. 'query').
 
 **Models:**
 *   `content`: The markdown string to render (in `message` field).

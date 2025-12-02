@@ -11,6 +11,7 @@ The `styles` object controls the appearance of the view.
 | Key | Type | Description |
 | :--- | :--- | :--- |
 | `menu` | `boolean` | If `true`, enables the options menu in the app bar. |
+| `appbar` | `object` or `string` | Customizes the app bar. See [List View](list.md#styles) for details. |
 
 ## Models
 The `models` object contains the chat data.

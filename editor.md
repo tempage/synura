@@ -12,6 +12,7 @@ The `styles` object controls the behavior of the editor.
 | :--- | :--- | :--- |
 | `acceptableFileType` | `string` | Comma-separated list of allowed file types: `'image'`, `'video'`, or `'any'`. |
 | `max` | `number` | Maximum number of files that can be attached. Default is 1. |
+| `appbar` | `object` or `string` | Customizes the app bar. See [List View](list.md#styles) for details. |
 
 ## Models
 The editor view manages its own internal state for text and attachments. Initial content population is not currently supported via models.

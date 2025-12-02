@@ -11,6 +11,7 @@ The `styles` object controls the appearance and behavior of the view.
 | Key | Type | Description |
 | :--- | :--- | :--- |
 | `title` | `string` | The title displayed in the app bar. |
+| `appbar` | `object` or `string` | Customizes the app bar. See [List View](list.md#styles) for details. |
 | `menu` | `boolean` | If `true`, enables the options menu in the app bar. |
 | `authorClickable` | `boolean` | If `true`, enables the author click event. |
 

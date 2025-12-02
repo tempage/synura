@@ -12,6 +12,7 @@ The `styles` object controls the appearance and behavior of the view.
 | :--- | :--- | :--- |
 | `title` | `string` | The title displayed in the app bar. |
 | `menu` | `boolean` | If `true`, enables the options menu in the app bar. |
+| `appbar` | `object` or `string` | Customizes the app bar. See [List View](list.md#styles) for details. |
 
 ## Models
 The `models` object contains the data to be displayed.

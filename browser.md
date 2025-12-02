@@ -11,6 +11,7 @@ The `styles` object controls the appearance of the view.
 | Key | Type | Description |
 | :--- | :--- | :--- |
 | `title` | `string` | The title displayed in the app bar. |
+| `appbar` | `object` or `string` | Customizes the app bar. See [List View](list.md#styles) for details. |
 
 ## Models
 The `models` object contains the URL to load.

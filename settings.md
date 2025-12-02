@@ -12,6 +12,7 @@ The `styles` object controls the appearance of the view.
 | :--- | :--- | :--- |
 | `title` | `string` | The title displayed in the app bar. |
 | `message` | `string` | An optional description or message displayed at the top of the form. |
+| `appbar` | `object` or `string` | Customizes the app bar. See [List View](list.md#styles) for details. |
 
 ## Models
 The `models` object contains the form definition.

@@ -1354,37 +1354,50 @@
             }
         };
         
-        const submitBtn = document.createElement('button');
-        submitBtn.className = 'synura-btn';
-        submitBtn.style.flex = '1';
-        submitBtn.innerText = "Submit";
-        submitBtn.onclick = () => {
-             triggerEvent(view, 'SUBMIT', {
-                 content: textarea.value,
-                 attachment_paths: attachments.join(',')
-             });
-        };
-        
         controls.appendChild(attachBtn);
-        controls.appendChild(submitBtn);
         
         wrapper.appendChild(controls);
         container.appendChild(wrapper);
 
-        // Override Back Button for CLOSE event
-        setTimeout(() => {
-            const appbar = view.el.querySelector('.synura-appbar');
-            if (appbar) {
-                const backBtn = appbar.querySelector('.back-btn');
-                if (backBtn) {
-                     backBtn.onclick = (e) => {
-                         e.stopPropagation();
-                         triggerEvent(view, 'CLOSE', {});
-                         window.synura.close(view.id); 
-                     };
-                }
+        // Update AppBar with Editor Actions (Check/Submit and Close)
+        const appbar = view.el.querySelector('.synura-appbar');
+        if (appbar) {
+            const actionsDiv = appbar.querySelector('.actions') || document.createElement('div');
+            if (!appbar.querySelector('.actions')) {
+                actionsDiv.className = 'actions';
+                actionsDiv.style.marginLeft = 'auto';
+                appbar.appendChild(actionsDiv);
             }
-        }, 0);
+
+            // Submit (Check)
+            const submitAction = document.createElement('span');
+            submitAction.className = 'action-icon';
+            submitAction.innerText = '✓';
+            submitAction.title = 'Submit';
+            submitAction.onclick = () => {
+                 triggerEvent(view, 'SUBMIT', {
+                     content: textarea.value,
+                     attachment_paths: attachments.join(',')
+                 });
+            };
+            actionsDiv.appendChild(submitAction);
+
+            // Close (X) - Overrides default back if present or adds new
+            // Note: Native Editor has Close icon. 
+            const closeAction = document.createElement('span');
+            closeAction.className = 'action-icon';
+            closeAction.innerText = '✕';
+            closeAction.title = 'Close';
+            closeAction.onclick = () => {
+                 triggerEvent(view, 'CLOSE', {});
+                 window.synura.close(view.id); 
+            };
+            actionsDiv.appendChild(closeAction);
+            
+            // Hide default back button if it exists, as Editor usually is modal-like
+            const backBtn = appbar.querySelector('.back-btn');
+            if(backBtn) backBtn.style.display = 'none';
+        }
     }
 
     function renderMarkdown(container, models, styles, view) {
