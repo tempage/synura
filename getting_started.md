@@ -143,10 +143,29 @@ const SYNURA = {
 };
 ```
 
-When a user enters `yourdomain.com` or `https://yourdomain.com`, Synura will automatically fetch `https://yourdomain.com/synura.js`, verify the domain match, and install the extension. If no protocol is provided, `https://` is used by default.
+    When a user enters `yourdomain.com` or `https://yourdomain.com`, Synura will automatically fetch `https://yourdomain.com/synura.js`, verify the domain match, and install the extension. If no protocol is provided, `https://` is used by default.
+
+## DOM API Support
+
+### CSS Selectors
+
+The internal DOM engine supports the following CSS selectors for `querySelector` and `querySelectorAll`:
+
+*   **Tag Name**: Selects elements by tag name (e.g., `div`, `a`).
+*   **Class**: Selects elements by class name (e.g., `.content`, `.active`).
+*   **ID**: Selects elements by ID (e.g., `#main`).
+*   **Attributes**: Selects elements by attribute presence or value (e.g., `[href]`, `[data-type="post"]`).
+*   **Compound**: Combines tag, class, and ID (e.g., `div.content`, `a#link.active`).
+*   **Descendant**: Selects nested elements (e.g., `div p` selects all `<p>` inside `<div>`).
+*   **Direct Child**: Selects direct children (e.g., `ul > li`).
+
+### Element Methods
+
+In addition to `querySelector` and `querySelectorAll`, the `Element` object supports:
+
+*   **`getAttribute(name)`**: Returns the value of the specified attribute. Returns an empty string if the attribute does not exist.
 
 ## Your First Extension: Hello World
-
 Let's create a simple extension that displays a list with a single item.
 
 1.  Create a file named `hello_world.js`.
