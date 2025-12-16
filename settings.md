@@ -47,16 +47,12 @@ synura.open('/views/settings', {
         message: "Please update your profile."
     },
     models: {
-        body: {
-            details: [
-                { type: 'string', name: 'username', label: 'Username', value: 'user123' },
-                { type: 'string', name: 'password', label: 'Password', format: 'password' },
-                { type: 'boolean', name: 'notifications', label: 'Enable Notifications', value: true }
-            ]
-        },
-        buttons: {
-            details: ['Save', 'Cancel', 'Apply']
-        }
+        body: [
+            { type: 'string', name: 'username', label: 'Username', value: 'user123' },
+            { type: 'string', name: 'password', label: 'Password', format: 'password' },
+            { type: 'boolean', name: 'notifications', label: 'Enable Notifications', value: true }
+        ],
+        buttons: ['Save', 'Cancel', 'Apply']
     }
 });
 

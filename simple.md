@@ -27,8 +27,8 @@ This view does not emit any specific events other than standard navigation event
 ```javascript
 synura.open('/views/simple', {
     models: {
-        title: { message: "Hello World" },
-        content: { message: "This is a simple view." }
+        title: "Hello World",
+        content: "This is a simple view."
     }
 });
 ```

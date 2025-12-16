@@ -31,11 +31,11 @@ The `models` object contains the data to be displayed.
 | `likeCount` | `number` | Number of likes. |
 | `dislikeCount` | `number` | Number of dislikes. |
 | `menus` | `list<string>` | List of menu items to show if `menu` style is true. |
-| `content` | `object` | Contains the main content of the post. See below. |
+| `content` | `value` | Contains the main content of the post (string or list of content items). See below. |
 | `comments` | `object` | Contains the list of comments. See below. |
 
 ### Content Object
-The `content` object has a `details` field which is a list of content items. Each item is an object with a `type` and other properties.
+The `content` object has a `details` field which is a list of content items. Each item is an object with a `type` and other properties, or a simple string.
 
 | Type | Field | Description |
 | :--- | :--- | :--- |
@@ -47,14 +47,12 @@ The `content` object has a `details` field which is a list of content items. Eac
 You can automatically generate the `details` array from a DOM element using the `synura.parse('post', element)` API.
 
 ```json
-"content": {
-  "details": [
-    { "type": "text", "value": "Some text content" },
-    { "type": "image", "value": "https://example.com/image.jpg" },
-    { "type": "video", "value": "https://example.com/video.mp4" },
-    { "type": "link", "value": "Click here", "link": "https://example.com" }
-  ]
-}
+"content": [
+  { "type": "text", "value": "Some text content" },
+  { "type": "image", "value": "https://example.com/image.jpg" },
+  { "type": "video", "value": "https://example.com/video.mp4" },
+  { "type": "link", "value": "Click here", "link": "https://example.com" }
+]
 ```
 
 ### Comments Object
@@ -68,26 +66,24 @@ The `comments` object has a `details` field which is a list of comment objects.
 | `memo` | `string` | Additional info about the commenter. |
 | `date` | `string` | Date string. |
 | `content` | `value` | Comment content (string or list of content items). |
-| `likeCount` | `string` | Number of likes. |
-| `dislikeCount` | `string` | Number of dislikes. |
+| `likeCount` | `number` | Number of likes. |
+| `dislikeCount` | `number` | Number of dislikes. |
 | `level` | `number` | Nesting level (0 for root, 1 for reply, etc.). |
 
 ```json
-"comments": {
-  "details": [
-    {
-      "link": "https://example.com/comment/1",
-      "author": "Commenter Name",
-      "avatar": "https://example.com/avatar.jpg",
-      "memo": "Additional info about the commenter",
-      "date": "2023-10-27",
-      "content": "This is a comment.", // Can be string or list of content items
-      "likeCount": "10",
-      "dislikeCount": "0",
-      "level": 0 // Nesting level (0 for root, 1 for reply, etc.)
-    }
-  ]
-}
+"comments": [
+  {
+    "link": "https://example.com/comment/1",
+    "author": "Commenter Name",
+    "avatar": "https://example.com/avatar.jpg",
+    "memo": "Additional info about the commenter",
+    "date": "2023-10-27",
+    "content": "This is a comment.", // Can be string or list of content items
+    "likeCount": 10,
+    "dislikeCount": 0,
+    "level": 0 // Nesting level (0 for root, 1 for reply, etc.)
+  }
+]
 ```
 
 ## Events
@@ -111,11 +107,10 @@ synura.open('/views/post', {
     models: {
         link: "https://example.com/post/1",
         author: "Author Name",
-        content: {
-            details: [
-                { type: "text", "value": "Hello World" }
-            ]
-        }
+        content: [
+            "Simple text content",
+            { type: "image", value: "https://example.com/image.jpg" }
+        ]
     }
 });
 ```

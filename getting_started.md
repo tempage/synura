@@ -96,7 +96,13 @@ const SYNURA = {
                 // to populate the 'models' (e.g., title, content) for the post view.
                 // Simply passing the URL is not enough.
                 // Refer to 'api_reference.md' and 'post.md' for details.
-                synura.open("/views/post", { url: url });
+                synura.open("/views/post", { 
+                    models: {
+                        link: url, // Simplified syntax: string maps to message
+                        // author: "Author Name",
+                        // ... other models
+                    }
+                });
                 return true; // Handled
             }
             return false; // Not handled, open in browser
@@ -186,15 +192,13 @@ var SYNURA = {
                     title: "Hello World Extension"
                 },
                 models: {
-                    contents: {
-                        details: [
-                            {
-                                title: "Welcome to Synura!",
-                                author: "Me",
-                                date: new Date().toLocaleDateString()
-                            }
-                        ]
-                    }
+                    contents: [
+                        {
+                            title: "Welcome to Synura!",
+                            author: "Me",
+                            date: new Date().toLocaleDateString()
+                        }
+                    ]
                 }
             });
         }

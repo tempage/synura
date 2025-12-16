@@ -45,18 +45,16 @@ The view sends the following events to the extension:
 synura.open('/views/chat', {
     styles: { menu: true },
     models: {
-        menus: { details: ["Clear Chat"] }
+        menus: ["Clear Chat"]
     }
 });
 
 // Append a message
 synura.update(viewId, {
     models: {
-        append: {
-            details: [
-                { user: "Bot", message: "Hello! How can I help you?" }
-            ]
-        }
+        append: [
+            { user: "Bot", message: "Hello! How can I help you?" }
+        ]
     }
 });
 ```

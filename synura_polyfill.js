@@ -653,17 +653,17 @@
         
         // Center Content
         if (isQuery) {
-             inner += `<input type="text" class="synura-appbar-query" placeholder="${escapeHtml(queryHint || queryLabel)}" value="${view._queryValue || ''}" style="flex:1; background:#333; border:none; padding:8px 12px; color:#fff; border-radius:4px; margin:0 12px; font-size:14px; outline:none;">`;
+             inner += `<input type="text" class="synura-appbar-query" placeholder="${escapeHtml(queryHint || queryLabel)}" value="${view._queryValue || ''}" style="flex:1; min-width:0; background:#333; border:none; padding:8px 12px; color:#fff; border-radius:4px; margin:0 12px; font-size:14px; outline:none;">`;
         } else {
-             inner += `<span class="title">${escapeHtml(titleText)}</span>`;
+             inner += `<span class="title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(titleText)}</span>`;
         }
         
         // Right Actions
         let actions = '';
         if (isQuery) actions += `<span class="action-icon search-btn">🔍</span>`;
-        if (styles.menu === true || String(styles.menu) === 'true') actions += `<span class="action-icon menu-btn">⋮</span>`;
+        if (isQuery || styles.menu === true || String(styles.menu) === 'true') actions += `<span class="action-icon menu-btn">⋮</span>`;
         
-        inner += `<div class="actions" style="margin-left:auto">${actions}</div>`;
+        inner += `<div class="actions" style="margin-left:auto; display:flex; flex-shrink:0;">${actions}</div>`;
         
         appbar.innerHTML = inner;
         
@@ -1013,11 +1013,29 @@
         scrollContainer.appendChild(header);
 
         // Content Blocks
-        // In Post View, 'content' model details are JSON strings
-        const blocks = (models.content?.details || []).map(d => typeof d === 'string' ? JSON.parse(d) : d);
+        // In Post View, 'content' model details are JSON strings, or raw strings
+        const blocks = (models.content?.details || []).map(d => {
+            if (typeof d === 'string') {
+                try {
+                    const parsed = JSON.parse(d);
+                    return parsed; 
+                } catch (e) {
+                    return d;
+                }
+            }
+            return d;
+        });
 
         blocks.forEach(block => {
             const el = document.createElement('div');
+            
+            if (typeof block === 'string') {
+                el.className = 'synura-block synura-block-text';
+                el.innerText = block;
+                scrollContainer.appendChild(el);
+                return;
+            }
+
             el.className = `synura-block synura-block-${block.type}`;
 
             if (block.type === 'text') {
@@ -1559,6 +1577,49 @@
     // --- 3. Synura Implementation ---
     let _viewIdCounter = 1;
 
+    function inferModel(value) {
+        if (value === null || value === undefined) return {};
+        if (typeof value === 'string') return { message: value };
+        if (typeof value === 'number') return { value: value, code: Math.floor(value) };
+        if (Array.isArray(value)) return { details: value };
+        
+        // If it's an object, check if it's strictly the {message/code/details/value} wrapper
+        if (typeof value === 'object') {
+            const keys = Object.keys(value);
+            let isWrapper = false;
+            let hasAlien = false;
+
+            for (const key of keys) {
+                if (key === 'code' || key === 'message' || key === 'details' || key === 'value') {
+                    isWrapper = true;
+                } else {
+                    hasAlien = true;
+                }
+            }
+
+            if (isWrapper && !hasAlien) {
+                return value;
+            }
+
+            // Fallback: stringify generic objects
+            try {
+                return { message: JSON.stringify(value) };
+            } catch (e) {
+                return { message: String(value) };
+            }
+        }
+        return { message: String(value) };
+    }
+
+    function processModels(models) {
+        if (!models) return {};
+        const processed = {};
+        for (const key in models) {
+            processed[key] = inferModel(models[key]);
+        }
+        return processed;
+    }
+
     window.synura = {
         isPolyfill: true,
         open: (viewPath, data, context, callback) => {
@@ -1569,6 +1630,11 @@
             if (!data) {
                 console.warn("%c[Synura] Warning: data object is missing, using empty object", "color: yellow");
                 data = {};
+            }
+
+            // Apply type inference to models
+            if (data.models) {
+                data.models = processModels(data.models);
             }
 
             const viewId = _viewIdCounter++;
@@ -1592,6 +1658,11 @@
         update: (viewId, data) => {
             const view = views[viewId];
             if (view) {
+                // Apply type inference to models in update data
+                if (data.models) {
+                    data.models = processModels(data.models);
+                }
+
                 console.groupCollapsed(`%c[Synura] UPDATE View ${viewId}`, "color: blue");
                 console.log("Diff:", data);
                 console.groupEnd();
@@ -1609,18 +1680,25 @@
                     if (data.models.append) {
                         if (view.path === '/views/chat') {
                             if (!view.data.models.append) view.data.models.append = { details: [] };
-                            view.data.models.append.details.push(...data.models.append.details);
+                            // inferModel ensures 'details' exists if passed as array, but let's be safe
+                            const newDetails = data.models.append.details || [];
+                            view.data.models.append.details.push(...newDetails);
                         } else if (view.path === '/views/list') {
                             if (!view.data.models.contents) view.data.models.contents = { details: [] };
-                            view.data.models.contents.details.push(...data.models.append.details);
+                            const newDetails = data.models.append.details || [];
+                            view.data.models.contents.details.push(...newDetails);
                         }
                     }
 
                     // Overwrite other models
-                    ['contents', 'content', 'comments', 'body', 'buttons', 'menus',
-                        'author', 'date', 'avatar', 'memo', 'link', 'title', 'url'].forEach(key => {
-                            if (data.models[key]) view.data.models[key] = data.models[key];
-                        });
+                    for (const key in data.models) {
+                         // Skip append as it's handled above, or merge it?
+                         // The original code merged everything. But 'append' is special action.
+                         // Let's keep overwriting other keys.
+                         if (key !== 'append') {
+                             view.data.models[key] = data.models[key];
+                         }
+                    }
                 }
 
                 renderView(view);
@@ -1726,10 +1804,13 @@
         }
 
         get textContent() { return this._node.textContent; }
+        get innerText() { return this._node.innerText; }
         get tagName() { return this._node.tagName; }
         get className() { return this._node.className; }
+        get classList() { return this._node.classList; }
         get id() { return this._node.id; }
         get nodeType() { return this._node.nodeType; }
+        get dataset() { return this._node.dataset; }
 
         get childNodes() {
             const nodes = Array.from(this._node.childNodes).map(n => new StrictDOMElement(n));
@@ -1747,8 +1828,17 @@
             return child ? new StrictDOMElement(child) : null;
         }
 
+        get nextSibling() {
+            let sibling = this._node.nextElementSibling;
+            return sibling ? new StrictDOMElement(sibling) : null;
+        }
+
         getAttribute(name) {
             return this._node.getAttribute(name);
+        }
+
+        hasAttribute(name) {
+            return this._node.hasAttribute(name);
         }
 
         remove() {
@@ -1764,6 +1854,10 @@
             const nodes = Array.from(this._node.querySelectorAll(selector)).map(n => new StrictDOMElement(n));
             nodes.forEach = Array.prototype.forEach;
             return nodes;
+        }
+
+        cloneNode(deep) {
+            return new StrictDOMElement(this._node.cloneNode(deep));
         }
     }
 

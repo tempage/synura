@@ -86,9 +86,9 @@ Displays a detailed post with content and comments.
 *   `appbar` (object/string): Customizes the app bar (e.g. 'query').
 
 **Models:**
-*   `author`, `date`, `avatar`, `memo`: Strings (in `message` field).
-*   `link`: String (in `message` field).
-*   `viewCount`, `likeCount`, `dislikeCount`: Numbers (in `code` field).
+*   `author`, `date`, `avatar`, `memo`: Strings.
+*   `link`: String.
+*   `viewCount`, `likeCount`, `dislikeCount`: Numbers.
 *   `content`: List of content blocks.
     *   `details`: Array of JSON strings. Each block: `{ type: "text"|"image"|"video"|"link", value: "..." }`.
 *   `comments`: List of comments.
@@ -126,7 +126,7 @@ Displays a web page within the app.
 *   `appbar` (object/string): Customizes the app bar (e.g. 'query').
 
 **Models:**
-*   `url`: The URL to load (in `message` field).
+*   `url`: The URL to load (string).
 
 **Events:**
 *   `SUBMIT`: Triggered when the user clicks the checkmark button.
@@ -143,17 +143,17 @@ Displays text content formatted using Markdown.
 *   `appbar` (object/string): Customizes the app bar (e.g. 'query').
 
 **Models:**
-*   `content`: The markdown string to render (in `message` field).
-    *   *Alternative*: `body` model (in `message` field).
+*   `content`: The markdown string to render.
+    *   *Alternative*: `body` model.
 *   `menus`: List of app bar menu items (strings).
 
 ## Strict DOM Environment
 
 The Synura runtime uses a custom, lightweight HTML parser, not a full browser engine. The polyfill enforces these limitations:
 
-*   **Supported Properties**: `textContent`, `tagName`, `className`, `id`, `nodeType`, `childNodes`, `firstChild`, `lastChild`.
-*   **Supported Methods**: `getAttribute(name)`, `querySelector(selector)`, `querySelectorAll(selector)`, `remove()`.
-*   **NOT Supported**: `innerHTML`, `outerHTML`, `parentElement`, `nextSibling`, `previousSibling`, `style`, `addEventListener`, etc.
+*   **Supported Properties**: `textContent`, `innerText`, `tagName`, `className`, `classList`, `dataset`, `id`, `nodeType`, `childNodes`, `firstChild`, `lastChild`, `nextSibling`.
+*   **Supported Methods**: `getAttribute(name)`, `hasAttribute(name)`, `querySelector(selector)`, `querySelectorAll(selector)`, `remove()`, `cloneNode(deep)`.
+*   **NOT Supported**: `innerHTML`, `outerHTML`, `parentElement`, `previousSibling`, `style`, `addEventListener`, etc.
 
 > [!IMPORTANT]
 > If your code works in the browser but fails in the app, you are likely using an unsupported DOM property. The polyfill will now throw an error or return undefined for these properties to help you catch this early.

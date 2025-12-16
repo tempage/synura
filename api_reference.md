@@ -57,6 +57,40 @@ A custom **synchronous** HTTP client (unlike Web API, it does **not** return a P
     -   `json()`: Returns response body as JSON object.
     -   `dom(mimeType)`: **Synura Custom Function**. Returns a parsed DOM document (only `'text/html'` supported).
 
+### DOM API
+Objects returned by `response.dom()` or `document.querySelector` provide a subset of the standard DOM API.
+
+#### `Element`
+-   **Properties**:
+    -   `tagName` (String): The tag name (upper case).
+    -   `id` (String): The element's ID.
+    -   `className` (String): The class attribute.
+    -   `classList` (DOMTokenList):
+        -   `add(className)`: Adds a class.
+        -   `remove(className)`: Removes a class.
+        -   `toggle(className)`: Toggles a class.
+        -   `contains(className)`: Checks if a class exists.
+    -   `dataset` (DOMStringMap):
+        -   Read/Write data attributes (e.g. `el.dataset.foo` maps to `data-foo`).
+    -   `textContent` (String): The text content of the element and its descendants.
+    -   `innerText` (String): The rendered text content of the element and its descendants.
+    -   `childNodes` (NodeList): List of child nodes.
+    -   `firstChild`, `lastChild` (Element): First/Last child element.
+    -   `nextSibling` (Element): Next sibling element.
+    -   `nodeType` (Number): `1` (Element) or `3` (Text).
+
+-   **Methods**:
+    -   `getAttribute(name)`: Returns attribute value or empty string.
+    -   `hasAttribute(name)`: Returns `true` if the attribute exists, `false` otherwise.
+    -   `querySelector(selector)`: Returns the first matching child element.
+    -   `querySelectorAll(selector)`: Returns a NodeList of matching child elements.
+    -   `remove()`: Removes the element from its parent.
+    -   `cloneNode(deep)`: Returns a clone of the node. If `deep` is true, the descendants are also cloned.
+
+#### `Document` (from `dom()`)
+-   `querySelector(selector)`
+-   `querySelectorAll(selector)`
+
 ### `console`
 -   `console.log(...args)`: Logs messages to the debug console (and logcat on Android).
 
@@ -95,6 +129,38 @@ const cache = sessionStorage.getItem("cache"); // Object
 
 ---
 
+## Synura Models
+
+Data passed to views via the `models` object follows a specific structure used by the Synura protocol.
+
+### Canonical Structure
+The native model object consists of four optional fields:
+-   **`message`** (String): Text content or JSON-serialized data.
+-   **`code`** (Integer): Numeric data (counts, IDs, etc.).
+-   **`value`** (Double): Decimal numeric data (ratings, percentages, etc.).
+-   **`details`** (Array): A list of items (used for lists, comments, content blocks).
+
+```json
+{
+  "message": "Hello World",
+  "code": 123,
+  "value": 123.45,
+  "details": [...]
+}
+```
+
+### Shorthands & Type Inference
+To simplify development, you can pass standard JavaScript types, and Synura will automatically map them to the canonical structure:
+
+| JavaScript Type | Maps To | Example |
+| :--- | :--- | :--- |
+| **String** | `{ message: "..." }` | `title: "Hello"` |
+| **Number** | `{ value: 123.45, code: 123 }` | `rating: 4.5` |
+| **Array** | `{ details: [...] }` | `contents: [item1, item2]` |
+| **Generic Object** | `{ message: JSON.stringify(...) }` | `user: { name: "Bob", id: 1 }` |
+
+> **Important:** If you pass an object that contains keys *other than* `message`, `code`, `value`, or `details` (e.g., `{ message: "Hello", user: "Bob" }`), it will be treated as a **Generic Object** and the entire object will be JSON-stringified into the `message` field. To use the explicit wrapper format, the object must *only* contain the allowed keys.
+
 ## View Types
 
 Views are opened via `synura.open('/views/<type>', data)`.
@@ -109,7 +175,7 @@ Displays a list of items (articles, posts, etc.).
 -   `menu` (Boolean): Show menu button.
 
 **Models:**
--   `contents`: `{ details: [ItemObject, ...] }`
+-   `contents`: `[ItemObject, ...]` (Array mapping to `details`)
     -   **ItemObject**:
         -   `title` (String)
         -   `link` (String): ID or URL for the item.
@@ -118,8 +184,8 @@ Displays a list of items (articles, posts, etc.).
         -   `mediaUrl` (String): URL for image/video thumbnail.
         -   `mediaType` (String): `'image'` or `'video'`.
         -   `viewCount`, `likeCount`, `commentCount` (Number)
--   `menus`: `{ details: ["Menu Item 1", "Menu Item 2"] }`
--   `append`: `{ details: [...] }` (Use with `synura.update` to add items).
+-   `menus`: `["Menu Item 1", "Menu Item 2"]` (Array of Strings)
+-   `append`: `[...]` (Use with `synura.update` to add items).
 
 ### 2. Post View (`/views/post`)
 Displays a detailed post with content and comments.
@@ -128,10 +194,10 @@ Displays a detailed post with content and comments.
 -   `title` (String)
 
 **Models:**
--   `title`, `author`, `date`, `avatar` (Message Objects: `{ message: "..." }`)
--   `content`: `{ details: [ContentBlock, ...] }`
+-   `title`, `author`, `date`, `avatar` (Strings mapping to `message`)
+-   `content`: `[ContentBlock, ...]` (Array mapping to `details`)
     -   **ContentBlock**: `{ type: 'text'|'image'|'video'|'link', value: "..." }`
--   `comments`: `{ details: [CommentObject, ...] }`
+-   `comments`: `[CommentObject, ...]` (Array mapping to `details`)
     -   **CommentObject**:
         -   `author`, `date`, `content` (Parsed content), `avatar`.
         -   `level` (Number): Indentation level for nested comments.
@@ -140,21 +206,21 @@ Displays a detailed post with content and comments.
 A chat interface.
 
 **Models:**
--   `append`: `{ details: [ChatMessage, ...] }`
+-   `append`: `[ChatMessage, ...]`
     -   **ChatMessage**: `{ user: "Name", message: "Text", time: "ISO String" }`
 
 ### 4. Settings View (`/views/settings`)
 A form for user configuration.
 
 **Models:**
--   `body`: `{ details: [InputObject, ...] }`
+-   `body`: `[InputObject, ...]`
     -   **InputObject**:
         -   `type`: `'string'`, `'number'`, `'boolean'`.
         -   `name`: Key for the input.
         -   `label`: Display label.
         -   `value`: Default value.
         -   `format`: `'password'` (for strings).
--   `buttons`: `{ details: ['submit', 'reset'] }`
+-   `buttons`: `['submit', 'reset']` (Array of Strings)
 
 ### 5. Editor View (`/views/editor`)
 A text/content editor.
@@ -164,7 +230,7 @@ A text/content editor.
 
 ### 6. Browser View (`/views/browser`)
 Opens an in-app browser.
--   **Models**: `url: { message: "https://..." }`
+-   **Models**: `url: "https://..."` (String)
 
 ---
 

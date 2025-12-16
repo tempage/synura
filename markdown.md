@@ -40,8 +40,7 @@ synura.open('/views/markdown', {
         title: "Markdown Document"
     },
     models: {
-        content: { message: "# Hello, Markdown! 
- This is a markdown document." }
+        content: "# Hello, Markdown! \n This is a markdown document."
     }
 });
 ```

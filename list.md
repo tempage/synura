@@ -81,16 +81,14 @@ synura.open('/views/list', {
         pagination: true
     },
     models: {
-        contents: {
-            details: [
-                {
-                    link: "https://example.com/1",
-                    title: "First Item",
-                    author: "User A",
-                    viewCount: 100
-                }
-            ]
-        }
+        contents: [
+            {
+                link: "https://example.com/1",
+                title: "First Item",
+                author: "User A",
+                viewCount: 100
+            }
+        ]
     }
 });
 ```

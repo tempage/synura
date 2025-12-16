@@ -36,7 +36,7 @@ synura.open('/views/browser', {
         title: "Login Page"
     },
     models: {
-        url: { message: "https://example.com/login" }
+        url: "https://example.com/login"
     }
 });
 ```
