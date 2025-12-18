@@ -22,7 +22,7 @@ The view sends the following events to the extension:
 
 | Event ID | Description | Data |
 | :--- | :--- | :--- |
-| `SUBMIT` | Triggered when the user taps the checkmark button. | `content`: The text content. `attachment_paths`: Comma-separated list of local file paths. |
+| `SUBMIT` | Triggered when the user taps the checkmark button. | `title`: The title text. `content`: The text content. `attachment_paths`: Comma-separated list of local file paths. |
 | `CLOSE` | Triggered when the user taps the close button. | None |
 
 ## Example Usage

@@ -1433,6 +1433,14 @@
         wrapper.style.height = '100%';
         wrapper.style.padding = '16px';
         
+        // Title Input
+        const titleInput = document.createElement('input');
+        titleInput.className = 'synura-input-field';
+        titleInput.style.marginBottom = '16px';
+        titleInput.style.fontFamily = 'inherit';
+        titleInput.placeholder = "Title (Optional)";
+        wrapper.appendChild(titleInput);
+        
         // Text Area
         const textarea = document.createElement('textarea');
         textarea.className = 'synura-input-field';
@@ -1529,6 +1537,7 @@
             submitAction.title = 'Submit';
             submitAction.onclick = () => {
                  triggerEvent(view, 'SUBMIT', {
+                     title: titleInput.value,
                      content: textarea.value,
                      attachment_paths: attachments.join(',')
                  });
