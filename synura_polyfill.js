@@ -984,13 +984,13 @@
                     if (newIndexStr !== null) {
                         const newIndex = parseInt(newIndexStr, 10);
                         if (!isNaN(newIndex)) {
-                            const eventData = {
-                                title: item.title,
-                                index: newIndex
-                            };
-                            if (layout === 'card' || layout === 'gallery') {
-                                eventData.link = item.link;
-                            }
+                            // Always pass all item data
+                            const eventData = { ...item };
+                            eventData._newIndex = newIndex;
+                            
+                            // Ensure title is present if it was a simple string item
+                            if(!eventData.title && typeof item === 'string') eventData.title = item;
+
                             triggerEvent(view, 'REORDER', eventData);
                         }
                     }
