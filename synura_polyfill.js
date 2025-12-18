@@ -77,8 +77,9 @@
             background: #121212;
             display: flex;
             flex-direction: column;
-            animation: slideIn 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+            animation: slideIn 0.25s cubic-bezier(0.25, 1, 0.5, 1) forwards;
             z-index: 0; /* Create stacking context */
+            pointer-events: auto;
         }
         @keyframes slideIn {
             from { transform: translateX(100%); }
@@ -112,6 +113,8 @@
             flex: 1;
             padding: 0;
             overflow-y: auto;
+            position: relative;
+            z-index: 1;
         }
         
         /* List View */
@@ -661,7 +664,10 @@
         // Right Actions
         let actions = '';
         if (isQuery) actions += `<span class="action-icon search-btn">🔍</span>`;
-        if (isQuery || styles.menu === true || String(styles.menu) === 'true') actions += `<span class="action-icon menu-btn">⋮</span>`;
+        
+        // Check for menus existence
+        const hasMenus = data.models?.menus?.details && data.models.menus.details.length > 0;
+        if (isQuery || hasMenus) actions += `<span class="action-icon menu-btn">⋮</span>`;
         
         inner += `<div class="actions" style="margin-left:auto; display:flex; flex-shrink:0;">${actions}</div>`;
         
@@ -812,10 +818,15 @@
 
             // Stats string
             const stats = [];
-            if (item.viewCount) stats.push(`👁 ${escapeHtml(item.viewCount)}`);
-            if (item.likeCount) stats.push(`👍 ${escapeHtml(item.likeCount)}`);
-            if (item.commentCount) stats.push(`💬 ${escapeHtml(item.commentCount)}`);
-            const statsHtml = stats.length ? `<div class="synura-item-stats">${stats.join(' ')}</div>` : '';
+            if (item.viewCount && item.viewCount !== '') stats.push(`👁 ${escapeHtml(item.viewCount)}`);
+            if (item.likeCount && item.likeCount !== '') stats.push(`👍 ${escapeHtml(item.likeCount)}`);
+            if (item.commentCount && item.commentCount !== '') stats.push(`💬 ${escapeHtml(item.commentCount)}`);
+            
+            const statsHtml = stats.length > 0 ? `
+                <div class="card-stats">
+                    ${stats.join('<span style="margin: 0 4px; color: #ccc;">|</span>')}
+                </div>
+            ` : '';
 
             // Badges
             const badges = [];
@@ -921,11 +932,19 @@
                 }
             }
 
-            el.onclick = () => triggerEvent(view, 'CLICK', {
-                index,
-                link: item.link,
-                title: item.title
-            });
+            el.onclick = () => {
+                // Always pass all item data
+                // We clone item to avoid mutating original model if we modify eventData
+                const eventData = { ...item };
+
+                // Always add _index
+                eventData._index = index;
+                
+                // Ensure title is present (though it should be in item)
+                if(!eventData.title && typeof item === 'string') eventData.title = item;
+                
+                triggerEvent(view, 'CLICK', eventData);
+            };
 
             // Reorder Simulation
             if (isReorderable) {
@@ -973,6 +992,9 @@
         const scrollContainer = document.createElement('div');
         scrollContainer.className = 'synura-post-container';
 
+        const hotThreshold = styles?.hotThreshold;
+        const coldThreshold = styles?.coldThreshold;
+
         // Header
         const header = document.createElement('div');
         header.className = 'synura-post-header';
@@ -982,6 +1004,14 @@
         const date = models.date?.message || '';
         const avatar = models.avatar?.message || '';
         const memo = models.memo?.message || '';
+        const viewCount = models.viewCount?.message || '';
+        const likeCount = models.likeCount?.message || '';
+        const dislikeCount = models.dislikeCount?.message || '';
+
+        const stats = [];
+        if (viewCount) stats.push(`👁 ${escapeHtml(viewCount)}`);
+        if (likeCount) stats.push(`👍 ${escapeHtml(likeCount)}`);
+        if (dislikeCount) stats.push(`👎 ${escapeHtml(dislikeCount)}`);
 
         header.innerHTML = `
             <div class="synura-post-title">${escapeHtml(title)}</div>
@@ -989,7 +1019,10 @@
                 ${avatar ? `<img class="synura-avatar" src="${avatar}">` : '<div class="synura-avatar"></div>'}
                 <div>
                     <div class="synura-author-name" style="color:#fff; font-weight:500">${escapeHtml(author)}</div>
-                    <div style="font-size:11px">${escapeHtml(date)} ${memo ? '• ' + escapeHtml(memo) : ''}</div>
+                    <div style="font-size:11px">
+                        ${escapeHtml(date)} ${memo ? '• ' + escapeHtml(memo) : ''}
+                        ${stats.length > 0 ? '• ' + stats.join(' ') : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -1066,6 +1099,25 @@
                 el.style.paddingLeft = (c.level > 0 ? 12 : 0) + 'px';
                 if (c.level > 0) el.style.borderLeft = '2px solid #333';
 
+                // Hot/Cold Logic for Comments
+                const hotCount = c.hotCount;
+                const coldCount = c.coldCount;
+                
+                if (hotThreshold && hotCount) {
+                    const opacity = hotCount > hotThreshold ? 1 : (hotCount / hotThreshold);
+                    if (opacity > 0) {
+                        const color = `rgba(249, 38, 114, ${opacity})`;
+                        el.style.borderLeft = `5px solid ${color}`;
+                    }
+                }
+                if (coldThreshold && coldCount) {
+                    const opacity = coldCount > coldThreshold ? 1 : (coldCount / coldThreshold);
+                    if (opacity > 0) {
+                        const color = `rgba(102, 217, 239, ${opacity})`;
+                        el.style.borderRight = `5px solid ${color}`;
+                    }
+                }
+
                 let contentHtml = '';
                 if (Array.isArray(c.content)) {
                     // Comment content is a list of blocks
@@ -1077,11 +1129,19 @@
                     contentHtml = c.content || '';
                 }
 
+                const likeCount = (c.likeCount !== undefined && c.likeCount !== null) ? String(c.likeCount) : '';
+                const dislikeCount = (c.dislikeCount !== undefined && c.dislikeCount !== null) ? String(c.dislikeCount) : '';
+                
+                const commentStats = [];
+                if (likeCount !== '') commentStats.push(`👍 ${escapeHtml(likeCount)}`);
+                if (dislikeCount !== '') commentStats.push(`👎 ${escapeHtml(dislikeCount)}`);
+
                 el.innerHTML = `
                     <div class="synura-comment-header">
                         ${c.avatar ? `<img class="synura-avatar" src="${c.avatar}" style="width:20px;height:20px;border-radius:50%">` : ''}
                         <span class="synura-author-name" style="color:#fff;font-weight:500">${escapeHtml(c.author || 'Unknown')}</span>
                         <span>${escapeHtml(c.date)}</span>
+                        ${commentStats.length > 0 ? `<span style="margin-left:8px; color:#777">${commentStats.join(' ')}</span>` : ''}
                     </div>
                     <div class="synura-comment-content">${contentHtml}</div>
                 `;
@@ -1117,6 +1177,39 @@
         loadMoreBtn.style.cssText = "width:100%; padding:12px; background:#333; color:#fff; border:none; margin-top:24px; cursor:pointer;";
         loadMoreBtn.onclick = () => triggerEvent(view, 'SCROLL_TO_END', {});
         scrollContainer.appendChild(loadMoreBtn);
+
+        // Buttons
+        const buttons = (models.buttons?.details || []).map(d => {
+            if (typeof d === 'string') {
+                try {
+                    return JSON.parse(d);
+                } catch (e) {
+                    return d;
+                }
+            }
+            return d;
+        });
+        if (buttons.length > 0) {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.display = 'flex';
+            buttonContainer.style.justifyContent = 'space-evenly';
+            buttonContainer.style.marginTop = '24px';
+            buttonContainer.style.marginBottom = '24px';
+
+            buttons.forEach(btnText => {
+                // If btnText is string, use it. If object (from protobuf wrapper), verify.
+                const label = typeof btnText === 'string' ? btnText : (btnText.value || String(btnText));
+                
+                const btn = document.createElement('button');
+                btn.className = 'synura-btn';
+                btn.innerText = label;
+                btn.style.width = 'auto';
+                btn.style.minWidth = '100px';
+                btn.onclick = () => triggerEvent(view, 'SUBMIT', { button: label });
+                buttonContainer.appendChild(btn);
+            });
+            scrollContainer.appendChild(buttonContainer);
+        }
 
         container.appendChild(scrollContainer);
     }

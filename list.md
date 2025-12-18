@@ -29,9 +29,9 @@ The `models` object contains the data to be displayed.
 
 | Key | Type | Description |
 | :--- | :--- | :--- |
-| `contents` | `object` | Initial list of items. Contains a `details` list. |
-| `append` | `object` | List of items to append to the existing list. Used for pagination. |
-| `menus` | `list<string>` | List of menu items to show if `menu` style is true. |
+| `contents` | `list` | A list of items to display. See [Content Item](#content-item) below. |
+| `menus` | `list<string>` | List of menu items to show in the app bar. |
+| `append` | `list` | A list of items to append to the existing list (useful for pagination). |
 
 ### Item Models
 Items in `contents.details` or `append.details` can be either `CardItemModel` or `SimpleListItemModel`.
@@ -45,12 +45,15 @@ Used when `layout` is `'card'` or `'gallery'`.
 | `title` | `string` | Main title of the item. |
 | `author` | `string` | Author name. |
 | `date` | `string` | Date string. |
-| `viewCount` | `number` | Number of views. |
-| `likeCount` | `number` | Number of likes. |
-| `commentCount` | `number` | Number of comments. |
+| `viewCount` | `string` | View count (displayed as text). Empty to hide. |
+| `likeCount` | `string` | Like count (displayed as text). Empty to hide. |
+| `commentCount` | `string` | Comment count (displayed as text). Empty to hide. |
+| `dislikeCount` | `string` | Dislike count (displayed as text). Empty to hide. |
 | `mediaUrl` | `string` | URL of the thumbnail or media. |
 | `mediaType` | `string` | `'image'` or `'video'`. |
 | `types` | `list<string>` | Tags like `'hot'`, `'image'`, `'video'`, `'link'`. |
+| `hotCount` | `int` | Hot threshold count (for highlighting). |
+| `coldCount` | `int` | Cold threshold count (for highlighting). |
 
 #### SimpleListItemModel
 Used when `layout` is NOT `'card'` or `'gallery'`.
@@ -58,6 +61,7 @@ Used when `layout` is NOT `'card'` or `'gallery'`.
 | Key | Type | Description |
 | :--- | :--- | :--- |
 | `title` | `string` | The text to display. |
+| `...` | `any` | Any other keys provided in the object will be passed back in the `CLICK` event. |
 
 ## Events
 The view sends the following events to the extension:
@@ -66,7 +70,7 @@ The view sends the following events to the extension:
 | :--- | :--- | :--- |
 | `REFRESH` | Triggered when the user pulls to refresh. | None |
 | `SCROLL_TO_END` | Triggered when the user scrolls to the bottom (if `pagination` is true). | None |
-| `CLICK` | Triggered when an item is tapped. | `link`: Item link (Card). `title`: Item title. `index`: Item index (Simple). |
+| `CLICK` | Triggered when an item is tapped. | `link`: Item link (Card). `title`: Item title. `_index`: Item index. All properties of the item object are included in the event data. |
 | `MENU_CLICK` | Triggered when a menu item is selected. | `menu`: The selected menu string. |
 | `REORDER` | Triggered when an item is reordered. | `title`: Item title. `index`: New index. `link`: Item link (Card). |
 | `AUTHOR_CLICK` | Triggered when the author is clicked. | `link`: Item link. `author`: Author name. |

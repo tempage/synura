@@ -12,8 +12,9 @@ The `styles` object controls the appearance and behavior of the view.
 | :--- | :--- | :--- |
 | `title` | `string` | The title displayed in the app bar. |
 | `appbar` | `object` or `string` | Customizes the app bar. See [List View](list.md#styles) for details. |
-| `menu` | `boolean` | If `true`, enables the options menu in the app bar. |
 | `authorClickable` | `boolean` | If `true`, enables the author click event. |
+| `hotThreshold` | `number` | The threshold for displaying the "hot" (left) border. |
+| `coldThreshold` | `number` | The threshold for displaying the "cold" (right) border. |
 
 ## Models
 The `models` object contains the data to be displayed.
@@ -27,10 +28,11 @@ The `models` object contains the data to be displayed.
 | `memo` | `string` | Additional info displayed next to the author. |
 | `avatar` | `string` | URL of the author's avatar image. |
 | `date` | `string` | The date or time string of the post. |
-| `viewCount` | `number` | Number of views. |
-| `likeCount` | `number` | Number of likes. |
-| `dislikeCount` | `number` | Number of dislikes. |
-| `menus` | `list<string>` | List of menu items to show if `menu` style is true. |
+| `viewCount` | `string` | View count (displayed as text). Empty to hide. |
+| `likeCount` | `string` | Like count (displayed as text). Empty to hide. |
+| `dislikeCount` | `string` | Dislike count (displayed as text). Empty to hide. |
+| `menus` | `list<string>` | List of menu items to show in the app bar. |
+| `buttons` | `list<string>` | List of buttons to show at the bottom of the post. |
 | `content` | `value` | Contains the main content of the post (string or list of content items). See below. |
 | `comments` | `object` | Contains the list of comments. See below. |
 
@@ -66,8 +68,8 @@ The `comments` object has a `details` field which is a list of comment objects.
 | `memo` | `string` | Additional info about the commenter. |
 | `date` | `string` | Date string. |
 | `content` | `value` | Comment content (string or list of content items). |
-| `likeCount` | `number` | Number of likes. |
-| `dislikeCount` | `number` | Number of dislikes. |
+| `likeCount` | `string` | Like count (displayed as text). Empty to hide. |
+| `dislikeCount` | `string` | Dislike count (displayed as text). Empty to hide. |
 | `level` | `number` | Nesting level (0 for root, 1 for reply, etc.). |
 
 ```json
@@ -79,8 +81,8 @@ The `comments` object has a `details` field which is a list of comment objects.
     "memo": "Additional info about the commenter",
     "date": "2023-10-27",
     "content": "This is a comment.", // Can be string or list of content items
-    "likeCount": 10,
-    "dislikeCount": 0,
+    "likeCount": "10",
+    "dislikeCount": "0",
     "level": 0 // Nesting level (0 for root, 1 for reply, etc.)
   }
 ]
@@ -101,8 +103,7 @@ The view sends the following events to the extension:
 ```javascript
 synura.open('/views/post', {
     styles: {
-        title: "Post Title",
-        menu: true
+        title: "Post Title"
     },
     models: {
         link: "https://example.com/post/1",
@@ -110,7 +111,8 @@ synura.open('/views/post', {
         content: [
             "Simple text content",
             { type: "image", value: "https://example.com/image.jpg" }
-        ]
+        ],
+        buttons: ["Like", "Share"]
     }
 });
 ```

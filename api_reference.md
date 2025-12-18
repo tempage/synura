@@ -183,7 +183,7 @@ Displays a list of items (articles, posts, etc.).
         -   `date` (String)
         -   `mediaUrl` (String): URL for image/video thumbnail.
         -   `mediaType` (String): `'image'` or `'video'`.
-        -   `viewCount`, `likeCount`, `commentCount` (Number)
+        -   `viewCount`, `likeCount`, `commentCount` (String)
 -   `menus`: `["Menu Item 1", "Menu Item 2"]` (Array of Strings)
 -   `append`: `[...]` (Use with `synura.update` to add items).
 

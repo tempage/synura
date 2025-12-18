@@ -89,8 +89,8 @@ const handler = {
             models: {
                 author: { message: "John Doe" },
                 date: { message: "2023-10-27 10:00 AM" },
-                viewCount: { code: 1234 },
-                likeCount: { code: 56 },
+                viewCount: { message: "1234" },
+                likeCount: { message: "56" },
                 content: {
                     details: [
                         { type: "text", "value": "This is an example post content." },
