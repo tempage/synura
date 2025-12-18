@@ -263,3 +263,10 @@ Handle events in the `synura.connect` callback, or the optional callback passed 
 -   **`MENU_CLICK`**: User clicked a menu item. `data.menu` contains the menu text.
 -   **`AUTHOR_CLICK`**: User clicked the author. `data` contains `author` and optionally `link`.
 -   **`SUBMIT`**: User submitted a form (Settings/Dialog). `data` contains form values.
+
+---
+
+## System Limitations
+
+### Extension Size
+-   **Maximum Script Size**: 128KB (131,072 bytes). Extensions exceeding this size will fail to install.

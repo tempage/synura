@@ -31,7 +31,7 @@ var SYNURA = {
     version: 0.1, // Required
     description: "A simple hello world extension.", // Optional
     domain: "example.com", // Optional: Domain for the extension
-    icon: "https://example.com/favicon.ico", // Optional: Icon for the extension
+    icon: "emoji:📖", // Optional: Icon for the extension (or https://example.com/favicon.ico)
     bypass: "firefox", // Optional: Browser identity
     
     // Entry Point
@@ -51,7 +51,7 @@ var SYNURA = {
 ```
 
 -   **domain**: The `fetch` API can only fetch data from this domain.
--   **icon**: The icon must be hosted on the same `domain`. If omitted, `https://<domain>/favicon.ico` is used by default.
+-   **icon**: The icon must be a URL. It can be an HTTP(S) URL to an image (hosted on the same `domain`) or an Emoji URL (e.g., `emoji:📖`). If omitted, `https://<domain>/favicon.ico` is used by default.
 
 ### The `main` Object
 

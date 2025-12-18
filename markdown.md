@@ -30,6 +30,7 @@ The view sends the following events to the extension:
 | `REFRESH` | Triggered when the user pulls to refresh. | None |
 | `SCROLL_TO_END` | Triggered when the user scrolls to the bottom. | None |
 | `MENU_CLICK` | Triggered when a menu item is selected. | `menu`: The selected menu string. |
+| `CLICK` | Triggered when a link is clicked. | `link`: The URL of the clicked link. |
 
 ## Example Usage
 

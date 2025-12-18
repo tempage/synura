@@ -834,6 +834,16 @@
             if (item.types && Array.isArray(item.types)) badges.push(...item.types);
             const badgesHtml = badges.map(b => `<span class="synura-badge">${escapeHtml(b)}</span>`).join(' ');
 
+            // Helper for Image/Emoji
+            const renderImageOrEmoji = (url, className, style) => {
+                if (!url) return '';
+                if (url.startsWith('emoji:')) {
+                    const emoji = url.substring(6);
+                    return `<div class="${className}" style="${style}; display:flex; align-items:center; justify-content:center; background:#333; font-size:24px;">${escapeHtml(emoji)}</div>`;
+                }
+                return `<img class="${className}" src="${url}" style="${style}">`;
+            };
+
             // Hot/Cold Logic
             let borderLeft = '0 solid transparent';
             let borderRight = '0 solid transparent';
@@ -858,8 +868,16 @@
                     menuHtml = `<div class="synura-card-menu-btn">⋮</div>`;
                 }
 
+                const mediaHtml = hasMedia && item.mediaUrl 
+                    ? renderImageOrEmoji(item.mediaUrl, '', 'width:100%; aspect-ratio:16/9; object-fit:cover;') 
+                    : (hasMedia ? '<div style="height:100px;background:#333"></div>' : '');
+
+                const avatarHtml = item.avatar 
+                    ? renderImageOrEmoji(item.avatar, 'synura-avatar', 'width:16px;height:16px;border-radius:50%;margin-right:4px;font-size:12px;') 
+                    : '';
+
                 el.innerHTML = `
-                    ${hasMedia && item.mediaUrl ? `<img src="${item.mediaUrl}">` : (hasMedia ? '<div style="height:100px;background:#333"></div>' : '')}
+                    ${mediaHtml}
                     ${menuHtml}
                     ${layout !== 'gallery' ? `
                     <div class="synura-card-content">
@@ -868,7 +886,7 @@
                             ${badgesHtml}
                         </div>
                         <div class="synura-item-meta">
-                            ${item.avatar ? `<img class="synura-avatar" src="${item.avatar}" style="width:16px;height:16px;border-radius:50%;margin-right:4px">` : ''}
+                            ${avatarHtml}
                             <span class="author-name">${escapeHtml(item.author)}</span>
                             <span style="margin-left:auto">${escapeHtml(item.date)}</span>
                         </div>
@@ -896,13 +914,21 @@
                 el.style.borderLeft = borderLeft;
                 el.style.borderRight = borderRight;
 
+                const mediaHtml = hasMedia && item.mediaUrl 
+                    ? renderImageOrEmoji(item.mediaUrl, '', 'width:80px;height:80px;object-fit:cover;border-radius:8px;')
+                    : '';
+                
+                const avatarHtml = item.avatar 
+                    ? renderImageOrEmoji(item.avatar, 'synura-avatar', 'width:16px;height:16px;border-radius:50%;margin-right:4px;font-size:12px;') 
+                    : '';
+
                 el.innerHTML = `
-                    ${hasMedia && item.mediaUrl ? `<img src="${item.mediaUrl}">` : ''}
+                    ${mediaHtml}
                     <div class="synura-list-item-content">
                         <div class="synura-item-title">${escapeHtml(item.title)}</div>
                         <div class="synura-item-meta">
                             ${badgesHtml}
-                            ${item.avatar ? `<img class="synura-avatar" src="${item.avatar}" style="width:16px;height:16px;border-radius:50%;margin-right:4px">` : ''}
+                            ${avatarHtml}
                             ${item.author ? `<span class="author-name">${escapeHtml(item.author)}</span> • ` : ''}
                             <span>${escapeHtml(item.date)}</span>
                         </div>
@@ -1013,10 +1039,20 @@
         if (likeCount) stats.push(`👍 ${escapeHtml(likeCount)}`);
         if (dislikeCount) stats.push(`👎 ${escapeHtml(dislikeCount)}`);
 
+        // Helper for Avatar
+        const renderAvatar = (url) => {
+             if (!url) return '<div class="synura-avatar"></div>';
+             if (url.startsWith('emoji:')) {
+                 const emoji = url.substring(6);
+                 return `<div class="synura-avatar" style="display:flex;align-items:center;justify-content:center;font-size:20px;background:#444;">${escapeHtml(emoji)}</div>`;
+             }
+             return `<img class="synura-avatar" src="${url}">`;
+        };
+
         header.innerHTML = `
             <div class="synura-post-title">${escapeHtml(title)}</div>
             <div class="synura-post-meta">
-                ${avatar ? `<img class="synura-avatar" src="${avatar}">` : '<div class="synura-avatar"></div>'}
+                ${renderAvatar(avatar)}
                 <div>
                     <div class="synura-author-name" style="color:#fff; font-weight:500">${escapeHtml(author)}</div>
                     <div style="font-size:11px">
@@ -1136,9 +1172,15 @@
                 if (likeCount !== '') commentStats.push(`👍 ${escapeHtml(likeCount)}`);
                 if (dislikeCount !== '') commentStats.push(`👎 ${escapeHtml(dislikeCount)}`);
 
+                const commentAvatarHtml = c.avatar 
+                    ? (c.avatar.startsWith('emoji:') 
+                        ? `<div class="synura-avatar" style="width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;background:#444;">${c.avatar.substring(6)}</div>`
+                        : `<img class="synura-avatar" src="${c.avatar}" style="width:20px;height:20px;border-radius:50%">`)
+                    : '';
+
                 el.innerHTML = `
                     <div class="synura-comment-header">
-                        ${c.avatar ? `<img class="synura-avatar" src="${c.avatar}" style="width:20px;height:20px;border-radius:50%">` : ''}
+                        ${commentAvatarHtml}
                         <span class="synura-author-name" style="color:#fff;font-weight:500">${escapeHtml(c.author || 'Unknown')}</span>
                         <span>${escapeHtml(c.date)}</span>
                         ${commentStats.length > 0 ? `<span style="margin-left:8px; color:#777">${commentStats.join(' ')}</span>` : ''}
@@ -1547,7 +1589,7 @@
              if(href) {
                  a.onclick = (e) => {
                      e.preventDefault();
-                     triggerEvent(view, 'LINK_CLICK', { url: href });
+                     triggerEvent(view, 'CLICK', { link: href });
                  };
              }
         });
