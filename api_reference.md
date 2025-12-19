@@ -53,6 +53,9 @@ A custom **synchronous** HTTP client (unlike Web API, it does **not** return a P
     -   `body`: String
     -   `onProgress`: **Synura Custom Option**. Function `(current, total) => { ... }`. Called during download. `current` and `total` are in bytes. `total` is -1 if unknown (e.g., chunked encoding).
 -   **Returns**: A `Response` object with:
+    -   `status`: (Number) The HTTP status code (e.g., 200, 404).
+    -   `statusText`: (String) The status message corresponding to the status code (e.g., "OK", "Not Found").
+    -   `ok`: (Boolean) `true` if the status code is in the range 200-299.
     -   `text()`: Returns response body as string.
     -   `json()`: Returns response body as JSON object.
     -   `dom(mimeType)`: **Synura Custom Function**. Returns a parsed DOM document (only `'text/html'` supported).

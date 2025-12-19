@@ -184,7 +184,12 @@ Synura ignores CORS (Cross-Origin Resource Sharing). Browsers enforce it.
 ### 5. Bypass Options
 The `bypass` option in `fetch` (e.g., `chrome/windows`) is **ignored** by the polyfill because browsers cannot impersonate other browsers via JS. The polyfill will log a warning if you use it.
 
-### 6. Markdown Polyfill Limitations
+### 6. Cookie Headers
+The `Cookie` header is a "forbidden header name" in browsers. `XMLHttpRequest` will silently ignore attempts to set it via `setRequestHeader()`.
+*   **Impact**: Authenticated requests using `headers: { Cookie: "..." }` will **not work** in the polyfill, even though they work correctly in the real Synura app (Go backend).
+*   **Workaround**: For testing authenticated flows, you must be **logged into the target website** in your browser first. The browser will automatically include its own cookies for same-origin requests.
+
+### 7. Markdown Polyfill Limitations
 The polyfill uses a lightweight, Regex-based Markdown parser to simulate the native view.
 *   **No Nested Lists**: Only single-level lists are supported visually.
 *   **Basic Syntax Highlighting**: Supports simple **JavaScript** and **Python** highlighting. Other languages render as plain text.
