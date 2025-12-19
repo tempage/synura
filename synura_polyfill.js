@@ -614,29 +614,29 @@
 
         const styles = data.styles || {};
         const titleText = styles.title || path.split('/').pop();
-        
+
         // Appbar Style (Query Support)
         let isQuery = false;
         let queryLabel = 'Search';
         let queryHint = '';
-        
+
         const appbarStyle = styles.appbar;
         if (appbarStyle) {
-             if (appbarStyle === 'query') {
-                 isQuery = true;
-                 if (data.models?.query?.details?.[0]) {
-                     let det = data.models.query.details[0];
-                     if (typeof det === 'string') try { det = JSON.parse(det); } catch(e){}
-                     if (det) {
+            if (appbarStyle === 'query') {
+                isQuery = true;
+                if (data.models?.query?.details?.[0]) {
+                    let det = data.models.query.details[0];
+                    if (typeof det === 'string') try { det = JSON.parse(det); } catch (e) { }
+                    if (det) {
                         queryLabel = det.label || 'Search';
                         queryHint = det.hint || '';
-                     }
-                 }
-             } else if (typeof appbarStyle === 'object' && appbarStyle.type === 'query') {
-                 isQuery = true;
-                 queryLabel = appbarStyle.label || 'Search';
-                 queryHint = appbarStyle.hint || '';
-             }
+                    }
+                }
+            } else if (typeof appbarStyle === 'object' && appbarStyle.type === 'query') {
+                isQuery = true;
+                queryLabel = appbarStyle.label || 'Search';
+                queryHint = appbarStyle.hint || '';
+            }
         }
 
         // Check if we should have a back button
@@ -644,68 +644,68 @@
         // (Simplification: standard synura behavior usually has back button for pushed views)
         const existingBack = appbar.querySelector('.back-btn');
         let hasBack = existingBack !== null;
-        if (appbar.innerHTML === '' && Object.keys(views).length > 1) { 
+        if (appbar.innerHTML === '' && Object.keys(views).length > 1) {
             // Note: views object includes THIS view if called after insertion. 
             // If called from createView, 'views' might not contain it yet or might contain others.
             // Let's rely on the caller passing 'hasBack' intent or just check view count.
-            hasBack = true; 
+            hasBack = true;
         }
 
         let inner = '';
         if (hasBack) inner += `<span class="back-btn">←</span>`;
-        
+
         // Center Content
         if (isQuery) {
-             inner += `<input type="text" class="synura-appbar-query" placeholder="${escapeHtml(queryHint || queryLabel)}" value="${view._queryValue || ''}" style="flex:1; min-width:0; background:#333; border:none; padding:8px 12px; color:#fff; border-radius:4px; margin:0 12px; font-size:14px; outline:none;">`;
+            inner += `<input type="text" class="synura-appbar-query" placeholder="${escapeHtml(queryHint || queryLabel)}" value="${view._queryValue || ''}" style="flex:1; min-width:0; background:#333; border:none; padding:8px 12px; color:#fff; border-radius:4px; margin:0 12px; font-size:14px; outline:none;">`;
         } else {
-             inner += `<span class="title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(titleText)}</span>`;
+            inner += `<span class="title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(titleText)}</span>`;
         }
-        
+
         // Right Actions
         let actions = '';
         if (isQuery) actions += `<span class="action-icon search-btn">🔍</span>`;
-        
+
         // Check for menus existence
         const hasMenus = data.models?.menus?.details && data.models.menus.details.length > 0;
         if (isQuery || hasMenus) actions += `<span class="action-icon menu-btn">⋮</span>`;
-        
+
         inner += `<div class="actions" style="margin-left:auto; display:flex; flex-shrink:0;">${actions}</div>`;
-        
+
         appbar.innerHTML = inner;
-        
+
         // Re-bind Events
         if (hasBack) {
             const bb = appbar.querySelector('.back-btn');
-            if(bb) bb.onclick = () => window.synura.close(id);
+            if (bb) bb.onclick = () => window.synura.close(id);
         }
-        
+
         if (isQuery) {
             const input = appbar.querySelector('input');
             input.oninput = (e) => view._queryValue = e.target.value;
-            input.onkeypress = (e) => { if(e.key === 'Enter') triggerEvent(view, 'QUERY', { query: input.value }); };
+            input.onkeypress = (e) => { if (e.key === 'Enter') triggerEvent(view, 'QUERY', { query: input.value }); };
             const sBtn = appbar.querySelector('.search-btn');
-            if(sBtn) sBtn.onclick = () => triggerEvent(view, 'QUERY', { query: input.value });
+            if (sBtn) sBtn.onclick = () => triggerEvent(view, 'QUERY', { query: input.value });
         }
-        
+
         const mBtn = appbar.querySelector('.menu-btn');
         if (mBtn) {
             mBtn.onclick = () => {
                 const menus = (data.models?.menus?.details || []).map(m => {
-                    if(typeof m === 'string') {
-                         try {
-                             const parsed = JSON.parse(m);
-                             return parsed.value || parsed;
-                         } catch(e) { return m; }
+                    if (typeof m === 'string') {
+                        try {
+                            const parsed = JSON.parse(m);
+                            return parsed.value || parsed;
+                        } catch (e) { return m; }
                     }
-                    return m.value || m; 
+                    return m.value || m;
                 });
                 // Flatten potential objects to strings for prompt
                 const menuStrings = menus.map(m => (typeof m === 'object' ? JSON.stringify(m) : String(m)));
-                
+
                 if (menuStrings.length > 0) {
                     console.log("%c[Synura] Available Menus:", "color: cyan", menuStrings);
                     showSelectionDialog("Select Menu Action", menuStrings, (choice) => {
-                         triggerEvent(view, 'MENU_CLICK', { menu: choice });
+                        triggerEvent(view, 'MENU_CLICK', { menu: choice });
                     });
                 } else {
                     alert("No menu items available.");
@@ -742,7 +742,7 @@
 
     function renderView(view) {
         const { path, data, contentEl } = view;
-        
+
         updateAppBar(view); // Ensure appbar is up to date with styles
 
         const models = data.models || {};
@@ -821,7 +821,7 @@
             if (item.viewCount && item.viewCount !== '') stats.push(`👁 ${escapeHtml(item.viewCount)}`);
             if (item.likeCount && item.likeCount !== '') stats.push(`👍 ${escapeHtml(item.likeCount)}`);
             if (item.commentCount && item.commentCount !== '') stats.push(`💬 ${escapeHtml(item.commentCount)}`);
-            
+
             const statsHtml = stats.length > 0 ? `
                 <div class="card-stats">
                     ${stats.join('<span style="margin: 0 4px; color: #ccc;">|</span>')}
@@ -868,12 +868,12 @@
                     menuHtml = `<div class="synura-card-menu-btn">⋮</div>`;
                 }
 
-                const mediaHtml = hasMedia && item.mediaUrl 
-                    ? renderImageOrEmoji(item.mediaUrl, '', 'width:100%; aspect-ratio:16/9; object-fit:cover;') 
+                const mediaHtml = hasMedia && item.mediaUrl
+                    ? renderImageOrEmoji(item.mediaUrl, '', 'width:100%; aspect-ratio:16/9; object-fit:cover;')
                     : (hasMedia ? '<div style="height:100px;background:#333"></div>' : '');
 
-                const avatarHtml = item.avatar 
-                    ? renderImageOrEmoji(item.avatar, 'synura-avatar', 'width:16px;height:16px;border-radius:50%;margin-right:4px;font-size:12px;') 
+                const avatarHtml = item.avatar
+                    ? renderImageOrEmoji(item.avatar, 'synura-avatar', 'width:16px;height:16px;border-radius:50%;margin-right:4px;font-size:12px;')
                     : '';
 
                 el.innerHTML = `
@@ -914,12 +914,12 @@
                 el.style.borderLeft = borderLeft;
                 el.style.borderRight = borderRight;
 
-                const mediaHtml = hasMedia && item.mediaUrl 
+                const mediaHtml = hasMedia && item.mediaUrl
                     ? renderImageOrEmoji(item.mediaUrl, '', 'width:80px;height:80px;object-fit:cover;border-radius:8px;')
                     : '';
-                
-                const avatarHtml = item.avatar 
-                    ? renderImageOrEmoji(item.avatar, 'synura-avatar', 'width:16px;height:16px;border-radius:50%;margin-right:4px;font-size:12px;') 
+
+                const avatarHtml = item.avatar
+                    ? renderImageOrEmoji(item.avatar, 'synura-avatar', 'width:16px;height:16px;border-radius:50%;margin-right:4px;font-size:12px;')
                     : '';
 
                 el.innerHTML = `
@@ -950,7 +950,7 @@
                     authorEl.style.textDecoration = 'underline';
                     authorEl.onclick = handler;
                 }
-                
+
                 const avatarEl = el.querySelector('.synura-avatar');
                 if (avatarEl) {
                     avatarEl.style.cursor = 'pointer';
@@ -965,10 +965,10 @@
 
                 // Always add _index
                 eventData._index = index;
-                
+
                 // Ensure title is present (though it should be in item)
-                if(!eventData.title && typeof item === 'string') eventData.title = item;
-                
+                if (!eventData.title && typeof item === 'string') eventData.title = item;
+
                 triggerEvent(view, 'CLICK', eventData);
             };
 
@@ -987,9 +987,9 @@
                             // Always pass all item data
                             const eventData = { ...item };
                             eventData._newIndex = newIndex;
-                            
+
                             // Ensure title is present if it was a simple string item
-                            if(!eventData.title && typeof item === 'string') eventData.title = item;
+                            if (!eventData.title && typeof item === 'string') eventData.title = item;
 
                             triggerEvent(view, 'REORDER', eventData);
                         }
@@ -1041,12 +1041,12 @@
 
         // Helper for Avatar
         const renderAvatar = (url) => {
-             if (!url) return '<div class="synura-avatar"></div>';
-             if (url.startsWith('emoji:')) {
-                 const emoji = url.substring(6);
-                 return `<div class="synura-avatar" style="display:flex;align-items:center;justify-content:center;font-size:20px;background:#444;">${escapeHtml(emoji)}</div>`;
-             }
-             return `<img class="synura-avatar" src="${url}">`;
+            if (!url) return '<div class="synura-avatar"></div>';
+            if (url.startsWith('emoji:')) {
+                const emoji = url.substring(6);
+                return `<div class="synura-avatar" style="display:flex;align-items:center;justify-content:center;font-size:20px;background:#444;">${escapeHtml(emoji)}</div>`;
+            }
+            return `<img class="synura-avatar" src="${url}">`;
         };
 
         header.innerHTML = `
@@ -1065,7 +1065,7 @@
 
         if (styles?.authorClickable) {
             const handler = () => triggerEvent(view, 'AUTHOR_CLICK', { author, link: models.link?.message });
-            
+
             const avatarEl = header.querySelector('.synura-avatar');
             if (avatarEl) {
                 avatarEl.style.cursor = 'pointer';
@@ -1087,7 +1087,7 @@
             if (typeof d === 'string') {
                 try {
                     const parsed = JSON.parse(d);
-                    return parsed; 
+                    return parsed;
                 } catch (e) {
                     return d;
                 }
@@ -1097,7 +1097,7 @@
 
         blocks.forEach(block => {
             const el = document.createElement('div');
-            
+
             if (typeof block === 'string') {
                 el.className = 'synura-block synura-block-text';
                 el.innerText = block;
@@ -1138,7 +1138,7 @@
                 // Hot/Cold Logic for Comments
                 const hotCount = c.hotCount;
                 const coldCount = c.coldCount;
-                
+
                 if (hotThreshold && hotCount) {
                     const opacity = hotCount > hotThreshold ? 1 : (hotCount / hotThreshold);
                     if (opacity > 0) {
@@ -1167,13 +1167,13 @@
 
                 const likeCount = (c.likeCount !== undefined && c.likeCount !== null) ? String(c.likeCount) : '';
                 const dislikeCount = (c.dislikeCount !== undefined && c.dislikeCount !== null) ? String(c.dislikeCount) : '';
-                
+
                 const commentStats = [];
                 if (likeCount !== '') commentStats.push(`👍 ${escapeHtml(likeCount)}`);
                 if (dislikeCount !== '') commentStats.push(`👎 ${escapeHtml(dislikeCount)}`);
 
-                const commentAvatarHtml = c.avatar 
-                    ? (c.avatar.startsWith('emoji:') 
+                const commentAvatarHtml = c.avatar
+                    ? (c.avatar.startsWith('emoji:')
                         ? `<div class="synura-avatar" style="width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;background:#444;">${c.avatar.substring(6)}</div>`
                         : `<img class="synura-avatar" src="${c.avatar}" style="width:20px;height:20px;border-radius:50%">`)
                     : '';
@@ -1189,23 +1189,23 @@
                 `;
 
                 if (styles?.authorClickable) {
-                     const handler = (e) => {
-                         e.stopPropagation(); // Prevent bubbling if needed
-                         triggerEvent(view, 'AUTHOR_CLICK', { author: c.author, link: c.link });
-                     };
+                    const handler = (e) => {
+                        e.stopPropagation(); // Prevent bubbling if needed
+                        triggerEvent(view, 'AUTHOR_CLICK', { author: c.author, link: c.link });
+                    };
 
-                     const avatarEl = el.querySelector('.synura-avatar');
-                     if (avatarEl) {
-                         avatarEl.style.cursor = 'pointer';
-                         avatarEl.onclick = handler;
-                     }
+                    const avatarEl = el.querySelector('.synura-avatar');
+                    if (avatarEl) {
+                        avatarEl.style.cursor = 'pointer';
+                        avatarEl.onclick = handler;
+                    }
 
-                     const nameEl = el.querySelector('.synura-author-name');
-                     if (nameEl) {
-                         nameEl.style.cursor = 'pointer';
-                         nameEl.style.textDecoration = 'underline';
-                         nameEl.onclick = handler;
-                     }
+                    const nameEl = el.querySelector('.synura-author-name');
+                    if (nameEl) {
+                        nameEl.style.cursor = 'pointer';
+                        nameEl.style.textDecoration = 'underline';
+                        nameEl.onclick = handler;
+                    }
                 }
 
                 section.appendChild(el);
@@ -1241,7 +1241,7 @@
             buttons.forEach(btnText => {
                 // If btnText is string, use it. If object (from protobuf wrapper), verify.
                 const label = typeof btnText === 'string' ? btnText : (btnText.value || String(btnText));
-                
+
                 const btn = document.createElement('button');
                 btn.className = 'synura-btn';
                 btn.innerText = label;
@@ -1426,13 +1426,13 @@
     function renderEditor(container, models, styles, view) {
         const acceptable = styles?.acceptableFileType || 'any'; // 'image', 'video', 'any'
         const maxFiles = parseInt(styles?.max || 1, 10);
-        
+
         const wrapper = document.createElement('div');
         wrapper.style.display = 'flex';
         wrapper.style.flexDirection = 'column';
         wrapper.style.height = '100%';
         wrapper.style.padding = '16px';
-        
+
         // Title Input
         const titleInput = document.createElement('input');
         titleInput.className = 'synura-input-field';
@@ -1440,7 +1440,7 @@
         titleInput.style.fontFamily = 'inherit';
         titleInput.placeholder = "Title (Optional)";
         wrapper.appendChild(titleInput);
-        
+
         // Text Area
         const textarea = document.createElement('textarea');
         textarea.className = 'synura-input-field';
@@ -1449,15 +1449,15 @@
         textarea.style.marginBottom = '16px';
         textarea.style.fontFamily = 'inherit';
         textarea.placeholder = "Type something...";
-        
+
         wrapper.appendChild(textarea);
-        
+
         // Attachments Area
         const attachmentsContainer = document.createElement('div');
         attachmentsContainer.style.marginBottom = '16px';
-        
+
         const attachments = [];
-        
+
         function updateAttachments() {
             attachmentsContainer.innerHTML = '';
             attachments.forEach((path, idx) => {
@@ -1471,11 +1471,11 @@
                 chip.style.marginTop = '4px';
                 chip.style.fontSize = '12px';
                 chip.style.color = '#e0e0e0';
-                
+
                 const text = document.createElement('span');
                 text.innerText = path.split('/').pop();
                 chip.appendChild(text);
-                
+
                 const remove = document.createElement('span');
                 remove.innerText = ' ×';
                 remove.style.cursor = 'pointer';
@@ -1486,18 +1486,18 @@
                     updateAttachments();
                 };
                 chip.appendChild(remove);
-                
+
                 attachmentsContainer.appendChild(chip);
             });
         }
-        
+
         wrapper.appendChild(attachmentsContainer);
-        
+
         // Controls
         const controls = document.createElement('div');
         controls.style.display = 'flex';
         controls.style.gap = '12px';
-        
+
         const attachBtn = document.createElement('button');
         attachBtn.className = 'synura-btn';
         attachBtn.style.flex = '1';
@@ -1514,9 +1514,9 @@
                 updateAttachments();
             }
         };
-        
+
         controls.appendChild(attachBtn);
-        
+
         wrapper.appendChild(controls);
         container.appendChild(wrapper);
 
@@ -1536,11 +1536,11 @@
             submitAction.innerText = '✓';
             submitAction.title = 'Submit';
             submitAction.onclick = () => {
-                 triggerEvent(view, 'SUBMIT', {
-                     title: titleInput.value,
-                     content: textarea.value,
-                     attachment_paths: attachments.join(',')
-                 });
+                triggerEvent(view, 'SUBMIT', {
+                    title: titleInput.value,
+                    content: textarea.value,
+                    attachment_paths: attachments.join(',')
+                });
             };
             actionsDiv.appendChild(submitAction);
 
@@ -1551,24 +1551,24 @@
             closeAction.innerText = '✕';
             closeAction.title = 'Close';
             closeAction.onclick = () => {
-                 triggerEvent(view, 'CLOSE', {});
-                 window.synura.close(view.id); 
+                triggerEvent(view, 'CLOSE', {});
+                window.synura.close(view.id);
             };
             actionsDiv.appendChild(closeAction);
-            
+
             // Hide default back button if it exists, as Editor usually is modal-like
             const backBtn = appbar.querySelector('.back-btn');
-            if(backBtn) backBtn.style.display = 'none';
+            if (backBtn) backBtn.style.display = 'none';
         }
     }
 
     function renderMarkdown(container, models, styles, view) {
         const content = models.content?.message || models.body?.message || '';
-        
+
         const wrapper = document.createElement('div');
         wrapper.style.padding = '16px';
         wrapper.className = 'synura-markdown-body';
-        
+
         // Basic styling for markdown content
         const style = document.createElement('style');
         style.innerHTML = `
@@ -1588,28 +1588,28 @@
             .synura-markdown-body hr { height: 0.25em; padding: 0; margin: 24px 0; background-color: #30363d; border: 0; }
         `;
         container.appendChild(style);
-        
+
         wrapper.innerHTML = parseMarkdown(content);
-        
+
         // Handle links
         const links = wrapper.querySelectorAll('a');
         links.forEach(a => {
-             const href = a.getAttribute('href');
-             if(href) {
-                 a.onclick = (e) => {
-                     e.preventDefault();
-                     triggerEvent(view, 'CLICK', { link: href });
-                 };
-             }
+            const href = a.getAttribute('href');
+            if (href) {
+                a.onclick = (e) => {
+                    e.preventDefault();
+                    triggerEvent(view, 'CLICK', { link: href });
+                };
+            }
         });
-        
+
         container.appendChild(wrapper);
     }
 
     function highlightCode(code, lang) {
         if (!lang) return code;
         const l = lang.toLowerCase();
-        
+
         if (l === 'js' || l === 'javascript') {
             return code.replace(
                 /(\/\/.*$|\/\*[\s\S]*?\*\/)|(['"`](?:\\.|[^\\\n\r])*?['"`])|\b(const|let|var|function|return|if|else|for|while|class|new|this|import|export|async|await|try|catch|console|window|document)\b|(=>)|\b(\d+)\b/gm,
@@ -1650,7 +1650,7 @@
         html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
             return `<pre><code class="language-${lang}">${highlightCode(code, lang)}</code></pre>`;
         });
-        
+
         // Inline code (`)
         html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
 
@@ -1674,13 +1674,16 @@
         html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
 
         // Italic
+        // Use \* based italic only (asterisk)
         html = html.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
-        html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+        // For underscore-based italic, require word boundaries to avoid matching inside URLs/hrefs
+        // This requires underscore to be preceded and followed by whitespace or start/end of string
+        html = html.replace(/(^|[\s>])_([^_]+)_(?=[\s<.,;:!?)]|$)/gm, '$1<em>$2</em>');
 
         // Unordered Lists (handling simple single-level lists)
         // We use a temporary placeholder for list items to avoid mixing with * italic
         html = html.replace(/^\s*[\-\*] (.*)/gm, '<li class="md-li">$1</li>');
-        
+
         // Wrap consecutive lis in ul (Basic approach)
         // Note: proper regex list wrapping is hard, this is a rough approximation
         // We'll just let them be lis and wrap the whole block if we could, 
@@ -1694,13 +1697,13 @@
         // Newlines to BR (but not inside pre/code if we could help it, but simple regex hits all)
         // A better way: Split by blocks? 
         // For this simple version: Double newline -> P, Single -> BR
-        
+
         // Paragraphs (double newline)
-        html = html.replace(/\n\n/g, '<p></p>'); 
+        html = html.replace(/\n\n/g, '<p></p>');
         // Note: The above simple replacements might break HTML structure if not careful.
         // A truly robust one requires tokenization.
         // Let's stick to a very simple line-based approach for the "rest":
-        
+
         html = html.replace(/\n/g, '<br>');
 
         return html;
@@ -1726,7 +1729,7 @@
         if (typeof value === 'string') return { message: value };
         if (typeof value === 'number') return { value: value, code: Math.floor(value) };
         if (Array.isArray(value)) return { details: value };
-        
+
         // If it's an object, check if it's strictly the {message/code/details/value} wrapper
         if (typeof value === 'object') {
             const keys = Object.keys(value);
@@ -1836,12 +1839,12 @@
 
                     // Overwrite other models
                     for (const key in data.models) {
-                         // Skip append as it's handled above, or merge it?
-                         // The original code merged everything. But 'append' is special action.
-                         // Let's keep overwriting other keys.
-                         if (key !== 'append') {
-                             view.data.models[key] = data.models[key];
-                         }
+                        // Skip append as it's handled above, or merge it?
+                        // The original code merged everything. But 'append' is special action.
+                        // Let's keep overwriting other keys.
+                        if (key !== 'append') {
+                            view.data.models[key] = data.models[key];
+                        }
                     }
                 }
 
@@ -1891,10 +1894,10 @@
     function showSelectionDialog(title, options, callback) {
         const overlay = document.createElement('div');
         overlay.id = 'synura-modal-overlay';
-        
+
         const modal = document.createElement('div');
         modal.id = 'synura-modal';
-        
+
         const titleEl = document.createElement('div');
         titleEl.className = 'synura-modal-title';
         titleEl.innerText = title;
@@ -1902,7 +1905,7 @@
 
         const list = document.createElement('div');
         list.className = 'synura-modal-list';
-        
+
         options.forEach(opt => {
             const btn = document.createElement('div');
             btn.className = 'synura-modal-option';
@@ -1923,7 +1926,7 @@
 
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
-        
+
         // Close on outside click
         overlay.onclick = (e) => {
             if (e.target === overlay) overlay.remove();

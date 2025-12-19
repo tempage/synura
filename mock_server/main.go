@@ -141,16 +141,19 @@ func main() {
 	}
 	log.Println("")
 	log.Println("--- Example Extensions (Copy URLs) ---")
-	log.Println("  http://localhost:8080/examples/hello_world.js")
-	log.Println("  http://localhost:8080/examples/simple.js")
-	log.Println("  http://localhost:8080/examples/list.js")
-	log.Println("  http://localhost:8080/examples/post.js")
-	log.Println("  http://localhost:8080/examples/browser.js")
-	log.Println("  http://localhost:8080/examples/chat.js")
-	log.Println("  http://localhost:8080/examples/editor.js")
-	log.Println("  http://localhost:8080/examples/markdown.js")
-	log.Println("  http://localhost:8080/examples/settings.js")
-	log.Println("  http://localhost:8080/examples/wikipedia_featured.js")
+	examplesPath, err := filepath.Abs("../examples")
+	if err == nil {
+		entries, err := os.ReadDir(examplesPath)
+		if err == nil {
+			for _, entry := range entries {
+				if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".js") {
+					log.Printf("  http://localhost:8080/examples/%s", entry.Name())
+				}
+			}
+		} else {
+			log.Printf("  (Could not read examples directory: %v)", err)
+		}
+	}
 	log.Println("")
 	log.Println("===========================================")
 
