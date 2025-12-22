@@ -8,7 +8,8 @@ const SYNURA = {
 
 const handler = {
     home: function () {
-        const result = synura.open('/views/markdown', {
+        const result = synura.open({
+            view: '/views/markdown',
             styles: {
                 title: "Markdown Example"
             },

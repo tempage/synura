@@ -8,7 +8,8 @@ const SYNURA = {
 
 const _handler = {
     home: function () {
-        const result = synura.open('/views/simple', {
+        const result = synura.open({
+            view: '/views/simple',
             styles: {
                 title: "Welcome"
             },

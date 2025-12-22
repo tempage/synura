@@ -12,7 +12,8 @@ let currentPage = 1;
 const handler = {
     home: function () {
         currentPage = 1;
-        const result = synura.open('/views/list', {
+        const result = synura.open({
+            view: '/views/list',
             styles: {
                 title: "Paginated List",
                 layout: "card",
@@ -64,7 +65,9 @@ const handler = {
         } else if (event.eventId === "CLICK") {
             console.log("Item clicked:", event.data.link);
             // Open post view here (see post_view.js example)
-            synura.open('/views/post', {
+            // Open post view here (see post_view.js example)
+            synura.open({
+                view: '/views/post',
                 styles: { title: event.data.title },
                 models: {
                     content: {

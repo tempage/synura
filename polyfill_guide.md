@@ -28,6 +28,27 @@ This works by "mocking" the Synura API (`synura.open`, `fetch`, etc.) so your sc
 *   **Strict DOM Emulation**: The `response.dom()` method returns a wrapper that **strictly enforces** the limited DOM API available in the Synura runtime. This prevents you from accidentally using browser-only features (like `innerHTML` or `parentElement`) that would crash your extension in the real app.
 *   **DOM Parsing**: Includes a JavaScript port of Synura's `parse('post', ...)` logic, so you can see exactly how your content will be structured (text blocks, images, videos).
 
+## Router Architecture Testing
+
+The polyfill simulates the **Router Pattern** used by the Synura AI engine.
+
+### Testing `router(url)`
+Since `router(url)` is designed to be a pure function called by the system (not just user clicks), you should test it in isolation:
+
+1.  Define your `handler.router` function.
+2.  Manually call it in the console:
+    ```javascript
+    const route = handler.router("https://example.com/article");
+    console.log(route); // Check your models
+    ```
+3.  Simulate the system opening the view:
+    ```javascript
+    synura.open(route); // Passes the returned object directly
+    ```
+
+### Simulated State Sharing
+In the real app, `router` runs in a background thread and shares `sessionStorage` with the main thread. In the polyfill, everything runs in the main thread, but `sessionStorage` behavior is emulated to help you verify that your data persistence logic works correctly.
+
 ## View Reference
 
 ### 1. List View (`/views/list`)

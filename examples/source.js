@@ -31,7 +31,8 @@ if __name__ == "__main__":
     main()
 `;
 
-        const result = synura.open('/views/source', {
+        const result = synura.open({
+            view: '/views/source',
             styles: {
                 title: "fibonacci.py",
                 language: "python",

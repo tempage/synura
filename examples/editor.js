@@ -9,7 +9,8 @@ const SYNURA = {
 
 const handler = {
     home: function () {
-        const result = synura.open('/views/editor', {
+        const result = synura.open({
+            view: '/views/editor',
             styles: {
                 acceptableFileType: "image",
                 max: 5

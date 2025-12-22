@@ -14,7 +14,8 @@ const handler = {
         var context = {
             link: "example-post-id"
         };
-        const result = synura.open('/views/post', {
+        const result = synura.open({
+            view: '/views/post',
             styles: {
                 title: "Loading...",
                 menu: true,

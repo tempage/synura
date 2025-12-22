@@ -9,13 +9,15 @@ The core object for interacting with the Synura application.
 
 #### Methods
 
--   **`synura.open(viewPath, data, [context], [callback])`**
+-   **`synura.open(options, [context], [callback])`**
     -   Opens a new view. Optionally connects to the view if `callback` is provided.
     -   **Arguments**:
-        -   `viewPath` (String): The type of view to open (e.g., `'/views/list'`, `'/views/post'`).
-        -   `data` (Object): Configuration for the view, containing `styles` and `models`.
-        -   `context` (Object, Optional): Arbitrary data passed back in events (useful for tracking state). Can be omitted if only 3 arguments are passed and the 3rd is the callback.
-        -   `callback` (Function, Optional): Called when an event occurs. Receives an `event` object. If provided, `synura.connect` is called automatically.
+        -   `options` (Object): Configuration for the view.
+            -   `view` (String): The type of view to open (e.g., `'/views/list'`).
+            -   `styles` (Object): Styles configuration.
+            -   `models` (Object): Models data.
+        -   `context` (Object, Optional): Arbitrary data passed back in events. Can be omitted if only 2 arguments are passed and the 2nd is the callback.
+        -   `callback` (Function, Optional): Called when an event occurs. If provided, `synura.connect` is called automatically.
     -   **Returns**: An object `{ success: boolean, viewId: number, viewName: string, error?: string }`.
 
 -   **`synura.update(viewId, data)`**
@@ -166,7 +168,7 @@ To simplify development, you can pass standard JavaScript types, and Synura will
 
 ## View Types
 
-Views are opened via `synura.open('/views/<type>', data)`.
+Views are opened via `synura.open({ view: '/views/<type>', models: ..., styles: ... })`.
 
 ### 1. List View (`/views/list`)
 Displays a list of items (articles, posts, etc.).
@@ -239,10 +241,24 @@ Opens an in-app browser.
 
 ## Dialog Types
 
-Dialogs are opened via `synura.open('/dialogs/<type>', data)`.
+Dialogs are opened via `synura.open('/dialogs/<type>', data)`. Unlike views, dialogs appear as modal overlays and do not navigate away from the current screen.
 
 ### Input Dialog (`/dialogs/input`)
-A modal dialog for collecting user input. Same structure as `settings` view.
+A modal dialog for collecting user input with text fields, number inputs, and toggle switches. Supports custom buttons and an optional close button.
+
+**Styles:** `title`, `message`, `close` (boolean)
+**Models:** `body` (array of input fields), `buttons` (array of button labels)
+**Events:** `SUBMIT`, `CLOSE`
+
+See [Input Dialog Documentation](input_dialog.md) for full details and examples.
+
+### Confirmation Dialog (`/dialogs/confirmation`)
+A simple modal dialog for displaying messages and getting user acknowledgment. Shows a title, optional message, and an "OK" button.
+
+**Styles:** `title`, `message`
+**Events:** `SUBMIT`
+
+See [Confirmation Dialog Documentation](confirmation_dialog.md) for full details and examples.
 
 ---
 
@@ -273,3 +289,70 @@ Handle events in the `synura.connect` callback, or the optional callback passed 
 
 ### Extension Size
 -   **Maximum Script Size**: 128KB (131,072 bytes). Extensions exceeding this size will fail to install.
+
+---
+
+## Router Pattern & State Management
+
+Synura uses a **passive router** architecture to enable content pre-fetching and instant navigation.
+
+### 1. Router Handler (`router(url)`)
+Instead of handling `open` directly in a click listener, extensions should export a `router(url)` function. This function is **pure** and returns the view data.
+
+```javascript
+const handler = {
+    // Pure function: Returns data, does NOT call synura.open()
+    router: function(url) {
+        const doc = fetch(url).dom();
+        return {
+            view: '/views/post',
+            models: { title: doc.querySelector('h1').text, ... },
+            styles: { ... }
+        };
+    },
+    ...
+};
+```
+
+### 2. Threading Model
+*   **View Handlers**: `onViewEvent` runs in the main UI thread context.
+*   **Router**: `router(url)` runs in a **process pool** (background threads) to allow parallel pre-fetching.
+    *   **Implication**: `router` cannot access the active `view` state directly.
+
+### 3. State Sharing (`sessionStorage`)
+To share state (like cookies or auth tokens) between the interactive View Handlers and the background Router:
+
+1.  **Write**: Logic in `onViewEvent` saves tokens to `sessionStorage`.
+2.  **Read**: `router` reads tokens from `sessionStorage` to make authenticated requests.
+
+```javascript
+// Shared state (e.g., auth token) is synced automatically across threads
+const token = sessionStorage.getItem('auth_token');
+const response = fetch(url, { headers: { 'Authorization': token } });
+```
+
+### 4. Automatic Caching
+When `router(url)` is called by the system (e.g., for pre-fetching), the returned view data object is **automatically stored** in `sessionStorage` using the `url` as the key.
+
+This means your View Handler can check `sessionStorage.getItem(url)` to instantly retrieve the pre-fetched result without calling `router()` again.
+
+### 5. Freshness (TTL) Strategy
+To ensure content freshness when using cached router data, you should:
+
+1.  **Add Timestamp**: Include a `timestamp` field in the object returned by `router(url)`.
+2.  **Check TTL**: In your View Handler, check if the cached item is older than your desired TTL (Time To Live).
+3.  **Invalidate**: If expired, use `sessionStorage.removeItem(url)` and re-fetch.
+
+```javascript
+// Example: 60-second TTL
+const cached = sessionStorage.getItem(url);
+if (cached) {
+    const age = Date.now() - cached.timestamp;
+    if (age < 60000) {
+        return cached; // Valid
+    }
+    sessionStorage.removeItem(url); // Expired
+}
+return router(url); // Re-fetch
+```
+

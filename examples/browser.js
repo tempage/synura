@@ -8,7 +8,8 @@ const SYNURA = {
 
 const handler = {
     home: function () {
-        const result = synura.open('/views/browser', {
+        const result = synura.open({
+            view: '/views/browser',
             styles: {
                 title: "Google"
             },

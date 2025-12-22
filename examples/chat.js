@@ -8,7 +8,8 @@ const SYNURA = {
 
 const handler = {
     home: function () {
-        const result = synura.open('/views/chat', {
+        const result = synura.open({
+            view: '/views/chat',
             styles: { menu: true },
             models: {
                 menus: { details: ["Help", "Exit"] }

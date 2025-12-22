@@ -42,7 +42,8 @@ const handler = {
         };
 
         // 4. Open the List View
-        const result = synura.open('/views/list', {
+        const result = synura.open({
+            view: '/views/list',
             styles: {
                 title: "Wikipedia Featured",
                 layout: "card"
@@ -68,7 +69,8 @@ const handler = {
             const article = event.data;
             if (article.link) {
                 // Open link in browser view
-                synura.open('/views/browser', {
+                synura.open({
+                    view: '/views/browser',
                     models: { url: { message: article.link } }
                 });
             }

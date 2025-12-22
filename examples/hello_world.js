@@ -8,7 +8,8 @@ const SYNURA = {
 
 const handler = {
     home: function () {
-        synura.open('/views/list', {
+        synura.open({
+            view: '/views/list',
             styles: {
                 title: "Hello World Extension",
                 layout: "card"

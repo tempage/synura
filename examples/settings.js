@@ -15,7 +15,8 @@ const initialFormFields = [
 
 const handler = {
     home: function () {
-        const result = synura.open('/views/settings', {
+        const result = synura.open({
+            view: '/views/settings',
             styles: {
                 title: "Configuration",
                 message: "Configure your extension settings below."
@@ -40,7 +41,7 @@ const handler = {
         if (event.eventId === "SUBMIT") {
             const button = event.data.button;
             console.log(`'${button}' button clicked.`);
-            
+
             switch (button) {
                 case 'Save':
                     // Here you would typically save the settings from event.data
@@ -58,7 +59,7 @@ const handler = {
                     // The extension is responsible for resetting the values to their initial state.
                     synura.update(event.viewId, {
                         models: {
-                             body: {
+                            body: {
                                 details: initialFormFields
                             },
                             snackbar: { message: "Settings have been reset." }
@@ -66,8 +67,8 @@ const handler = {
                     });
                     break;
                 case 'Cancel':
-                     console.log("Settings cancelled.");
-                     synura.close(event.viewId);
+                    console.log("Settings cancelled.");
+                    synura.close(event.viewId);
                     break;
                 case 'Dialog':
                     console.log("Opening dialog to edit settings...");
@@ -81,7 +82,8 @@ const handler = {
                         return field;
                     });
 
-                    const dialogResult = synura.open('/dialogs/input', {
+                    const dialogResult = synura.open({
+                        view: '/dialogs/input',
                         styles: {
                             title: 'Edit Settings',
                             close: true,

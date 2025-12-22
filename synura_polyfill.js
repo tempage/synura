@@ -579,7 +579,9 @@
         if (_capturedBookmark) {
             console.log("%c[Synura] Restoring Bookmark...", "color: magenta");
             // Open view with captured data
-            const result = synura.open(_capturedBookmark.path, {
+            // Open view with captured data
+            const result = synura.open({
+                view: _capturedBookmark.path,
                 models: _capturedBookmark.models,
                 styles: _capturedBookmark.styles
             }, _capturedBookmark.context);
@@ -758,6 +760,8 @@
             renderBrowser(contentEl, models, data.styles, view);
         } else if (path === '/views/settings' || path === '/dialogs/input') {
             renderForm(contentEl, models, view);
+        } else if (path === '/dialogs/confirmation') {
+            renderConfirmation(contentEl, data.styles, view);
         } else if (path === '/views/editor') {
             renderEditor(contentEl, models, data.styles, view);
         } else if (path === '/views/markdown') {
@@ -776,6 +780,7 @@
         const layout = styles?.layout || 'list'; // 'list', 'card', 'gallery'
         const hasPagination = styles?.pagination === true || String(styles?.pagination) === 'true';
         const authorClickable = styles?.authorClickable === true || String(styles?.authorClickable) === 'true';
+        const categoryClickable = styles?.categoryClickable === true || String(styles?.categoryClickable) === 'true';
         const hasMedia = styles?.media === true || String(styles?.media) === 'true';
         const isReorderable = styles?.reorderable === true || String(styles?.reorderable) === 'true';
 
@@ -829,10 +834,13 @@
             ` : '';
 
             // Badges
-            const badges = [];
-            if (item.category) badges.push(item.category);
-            if (item.types && Array.isArray(item.types)) badges.push(...item.types);
-            const badgesHtml = badges.map(b => `<span class="synura-badge">${escapeHtml(b)}</span>`).join(' ');
+            let badgesHtml = '';
+            if (item.category) {
+                badgesHtml += `<span class="synura-badge synura-badge-category">${escapeHtml(item.category)}</span> `;
+            }
+            if (item.types && Array.isArray(item.types)) {
+                badgesHtml += item.types.map(b => `<span class="synura-badge">${escapeHtml(b)}</span>`).join(' ');
+            }
 
             // Helper for Image/Emoji
             const renderImageOrEmoji = (url, className, style) => {
@@ -937,6 +945,19 @@
                 `;
             }
 
+            // Category Click
+            if (categoryClickable && item.category) {
+                const catBadge = el.querySelector('.synura-badge-category');
+                if (catBadge) {
+                    catBadge.style.cursor = 'pointer';
+                    catBadge.style.textDecoration = 'underline';
+                    catBadge.onclick = (e) => {
+                        e.stopPropagation();
+                        triggerEvent(view, 'CATEGORY_CLICK', { link: item.link, category: item.category });
+                    };
+                }
+            }
+
             // Author Click
             if (authorClickable && item.author) {
                 const handler = (e) => {
@@ -1027,6 +1048,7 @@
 
         const title = styles?.title || 'No Title';
         const author = models.author?.message || '';
+        const category = models.category?.message || '';
         const date = models.date?.message || '';
         const avatar = models.avatar?.message || '';
         const memo = models.memo?.message || '';
@@ -1049,8 +1071,16 @@
             return `<img class="synura-avatar" src="${url}">`;
         };
 
+        let categoryHtml = '';
+        if (category) {
+            categoryHtml = `<span class="synura-badge synura-badge-category" style="margin-right:8px; vertical-align:middle; align-self:center;">${escapeHtml(category)}</span>`;
+        }
+
         header.innerHTML = `
-            <div class="synura-post-title">${escapeHtml(title)}</div>
+            <div style="display:flex; margin-bottom:12px">
+                ${categoryHtml}
+                <div class="synura-post-title" style="margin-bottom:0; flex:1">${escapeHtml(title)}</div>
+            </div>
             <div class="synura-post-meta">
                 ${renderAvatar(avatar)}
                 <div>
@@ -1062,6 +1092,15 @@
                 </div>
             </div>
         `;
+
+        if (styles?.categoryClickable === true || String(styles?.categoryClickable) === 'true') {
+            const catBadge = header.querySelector('.synura-badge-category');
+            if (catBadge) {
+                catBadge.style.cursor = 'pointer';
+                catBadge.style.textDecoration = 'underline';
+                catBadge.onclick = () => triggerEvent(view, 'CATEGORY_CLICK', { category, link: models.link?.message });
+            }
+        }
 
         if (styles?.authorClickable) {
             const handler = () => triggerEvent(view, 'AUTHOR_CLICK', { author, link: models.link?.message });
@@ -1423,6 +1462,44 @@
         container.appendChild(formContainer);
     }
 
+    function renderConfirmation(container, styles, view) {
+        const title = styles?.title || 'Confirmation';
+        const message = styles?.message || '';
+
+        const wrapper = document.createElement('div');
+        wrapper.style.padding = '24px';
+        wrapper.style.display = 'flex';
+        wrapper.style.flexDirection = 'column';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.justifyContent = 'center';
+        wrapper.style.height = '100%';
+        wrapper.style.textAlign = 'center';
+
+        const titleEl = document.createElement('h3');
+        titleEl.style.marginBottom = '16px';
+        titleEl.style.color = '#fff';
+        titleEl.innerText = title;
+        wrapper.appendChild(titleEl);
+
+        if (message) {
+            const msgEl = document.createElement('p');
+            msgEl.style.marginBottom = '24px';
+            msgEl.style.color = '#ccc';
+            msgEl.style.whiteSpace = 'pre-wrap';
+            msgEl.innerText = message;
+            wrapper.appendChild(msgEl);
+        }
+
+        const okBtn = document.createElement('button');
+        okBtn.className = 'synura-btn';
+        okBtn.innerText = 'OK';
+        okBtn.style.minWidth = '100px';
+        okBtn.onclick = () => triggerEvent(view, 'SUBMIT', {});
+        wrapper.appendChild(okBtn);
+
+        container.appendChild(wrapper);
+    }
+
     function renderEditor(container, models, styles, view) {
         const acceptable = styles?.acceptableFileType || 'any'; // 'image', 'video', 'any'
         const maxFiles = parseInt(styles?.max || 1, 10);
@@ -1604,6 +1681,19 @@
         });
 
         container.appendChild(wrapper);
+
+        // Handle anchor scrolling
+        const anchor = models.anchor?.message || models.anchor;
+        if (anchor) {
+            setTimeout(() => {
+                const target = wrapper.querySelector(`#${anchor}`);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    console.warn(`[Synura] Anchor '#${anchor}' not found in document.`);
+                }
+            }, 100);
+        }
     }
 
     function highlightCode(code, lang) {
@@ -1654,11 +1744,12 @@
         // Inline code (`)
         html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
 
-        // Headers
-        html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
-        html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
-        html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
-        html = html.replace(/^#### (.*$)/gm, '<h4>$1</h4>');
+        // Headers - add IDs for anchor navigation
+        const generateId = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        html = html.replace(/^# (.*$)/gm, (match, p1) => `<h1 id="${generateId(p1)}">${p1}</h1>`);
+        html = html.replace(/^## (.*$)/gm, (match, p1) => `<h2 id="${generateId(p1)}">${p1}</h2>`);
+        html = html.replace(/^### (.*$)/gm, (match, p1) => `<h3 id="${generateId(p1)}">${p1}</h3>`);
+        html = html.replace(/^#### (.*$)/gm, (match, p1) => `<h4 id="${generateId(p1)}">${p1}</h4>`);
 
         // Blockquotes
         html = html.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>');
@@ -1769,19 +1860,30 @@
 
     window.synura = {
         isPolyfill: true,
-        open: (viewPath, data, context, callback) => {
+        open: (options, context, callback) => {
+            if (!options || typeof options !== 'object') {
+                console.error("%c[Synura] Error: first argument must be an object { view: '...' }", "color: red");
+                return { success: false, error: "Invalid argument" };
+            }
+
+            const viewPath = options.view || options.viewName;
             if (!viewPath) {
-                console.error("%c[Synura] Error: viewPath is required", "color: red");
-                return { success: false, error: "viewPath is required" };
+                console.error("%c[Synura] Error: options.view is required", "color: red");
+                return { success: false, error: "view is required" };
             }
-            if (!data) {
-                console.warn("%c[Synura] Warning: data object is missing, using empty object", "color: yellow");
-                data = {};
-            }
+
+            // options is data
+            let data = options;
 
             // Apply type inference to models
             if (data.models) {
                 data.models = processModels(data.models);
+            }
+
+            // Handle optional arguments (context/callback)
+            if (typeof context === 'function') {
+                callback = context;
+                context = undefined;
             }
 
             const viewId = _viewIdCounter++;

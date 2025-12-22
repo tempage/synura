@@ -13,6 +13,7 @@ The `styles` object controls the appearance and behavior of the view.
 | `title` | `string` | The title displayed in the app bar. |
 | `appbar` | `object` or `string` | Customizes the app bar. See [List View](list.md#styles) for details. |
 | `authorClickable` | `boolean` | If `true`, enables the author click event. |
+| `categoryClickable` | `boolean` | If `true`, enables the category click event. |
 | `hotThreshold` | `number` | The threshold for displaying the "hot" (left) border. |
 | `coldThreshold` | `number` | The threshold for displaying the "cold" (right) border. |
 
@@ -24,6 +25,7 @@ The `models` object contains the data to be displayed.
 | Key | Type | Description |
 | :--- | :--- | :--- |
 | `link` | `string` | The unique identifier or URL for the post. |
+| `category` | `string` | Category name displayed as a badge. |
 | `author` | `string` | The name of the post author. |
 | `memo` | `string` | Additional info displayed next to the author. |
 | `avatar` | `string` | URL of the author's avatar image. |
@@ -97,6 +99,7 @@ The view sends the following events to the extension:
 | `SCROLL_TO_END` | Triggered when the user scrolls to the bottom. | None |
 | `MENU_CLICK` | Triggered when a menu item is selected. | `menu`: The selected menu string. `link`: The post link. |
 | `AUTHOR_CLICK` | Triggered when the author is clicked. | `link`: The post link. `author`: The author name. |
+| `CATEGORY_CLICK` | Triggered when the category is clicked. | `link`: The post link. `category`: The category name. |
 
 ## Example Usage
 

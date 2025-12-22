@@ -30,6 +30,23 @@ The app bar has several icons:
 
 If the screen is too narrow, these options will be collapsed into a three-dot menu on the right.
 
+### AI Button (`✨`)
+Tap the **AI button** in the app bar to open the **AI Menu Dialog**. This gives you on-demand AI-powered features for the current view:
+
+*   **Summary**: Get a quick AI-generated summary of the content on screen.
+*   **Translate**: Translate the content to your target language (configured in AI Settings).
+*   **Custom Prompt**: Enter your own instructions for the AI to analyze the content.
+*   **Share to External AI**: Export the current view's content to external AI apps like ChatGPT or Gemini on your device.
+*   **Cache Toggle**: Control whether to use cached AI results or force a fresh analysis.
+
+For detailed AI configuration, go to **Settings > AI Settings** where you can:
+*   Configure your preferred AI provider (Gemini, OpenAI, DeepSeek, Claude).
+*   Set source and target languages for translation.
+*   Choose analysis depth and profile (Summary, Explain, Simplify, Fact Check, Critique, Insight).
+*   Adjust summary length preferences.
+*   View token usage statistics.
+*   Manage API keys for each provider.
+
 ### Bookmarks
 The bookmarks screen shows all your saved views.
 
