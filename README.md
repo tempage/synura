@@ -1,5 +1,7 @@
 # Welcome to Synura!
 
+> **A new way to experience the web.**
+
 ## What is Synura?
 Synura is a versatile application that lets you browse content from various sources using powerful mini-apps called "extensions". Think of it as a browser, but instead of websites, you use extensions to get content in a clean, native-app format.
 
@@ -19,16 +21,24 @@ The main screen of the app is where you manage your runtimes. The top bar (app b
 
 ### The App Bar
 
-The app bar has several icons:
+The app bar has several icons that help you navigate and manage your content. Some icons have **hidden shortcuts** accessed by a long press:
 
-*   **`+` (Add)**: Tap this to open a new runtime. You can pick an installed extension or enter a website domain to install a new one.
-*   **Dropdown Menu (center)**: This shows the currently active runtime. Tap it to see a list of all your open runtimes and switch between them. You can also swipe left or right on the dropdown to quickly switch.
-*   **`X` (Close)**: This closes the current runtime.
-*   **`☆` (Add Bookmark)**: Tap this to save the current view to your bookmarks.
-*   **`🔖` (Bookmarks)**: This takes you to your list of saved bookmarks.
-*   **`⚙️` (Settings)**: This opens the settings screen, where you can customize Synura.
+*   **`+` (Add)**:
+    *   **Tap**: Open a new runtime. You can pick an installed extension or enter a website domain/URL to install a new one.
+    *   **Long Press**: Open the **Extension Management** screen to view details about your installed extensions.
+*   **Dropdown Menu (center)**: Displays the currently active runtime. Tap to switch between open runtimes, or swipe left/right on the dropdown to cycle through them.
+*   **`X` (Close)**: Closes the current runtime.
+*   **`↻` (Update)**: *Visible only in Developer Mode.* Updates the current extension from its source.
+*   **`✨` (AI)**:
+    *   **Tap**: Open the **AI Menu** for quick actions (Summary, Translate, etc.).
+    *   **Long Press**: Open **AI Settings** to configure providers and preferences.
+*   **`☆` (Add Bookmark)**:
+    *   **Tap**: Save the current view to your bookmarks.
+    *   **Long Press**: Go directly to your **Bookmarks** list.
+*   **`🔖` (Bookmarks)**: View your list of saved bookmarks.
+*   **`⚙️` (Settings)**: Open the main settings screen.
 
-If the screen is too narrow, these options will be collapsed into a three-dot menu on the right.
+If the screen is too narrow, some options may move into a three-dot menu.
 
 ### AI Button (`✨`)
 Tap the **AI button** in the app bar to open the **AI Menu Dialog**. This gives you on-demand AI-powered features for the current view:
@@ -42,7 +52,7 @@ Tap the **AI button** in the app bar to open the **AI Menu Dialog**. This gives 
 For detailed AI configuration, go to **Settings > AI Settings** where you can:
 *   Configure your preferred AI provider (Gemini, OpenAI, DeepSeek, Claude).
 *   Set source and target languages for translation.
-*   Choose analysis depth and profile (Summary, Explain, Simplify, Fact Check, Critique, Insight).
+*   Choose analysis search range (Deep is only in List View) and profile (Summary, Explain, Simplify, Fact Check, Critique, Insight).
 *   Adjust summary length preferences.
 *   View token usage statistics.
 *   Manage API keys for each provider.

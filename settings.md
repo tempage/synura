@@ -42,34 +42,41 @@ The view sends a `SUBMIT` event to the extension when any button is pressed.
 
 ```javascript
 synura.open('/views/settings', {
-    styles: {
-        title: "User Settings",
-        message: "Please update your profile."
-    },
-    models: {
-        body: [
-            { type: 'string', name: 'username', label: 'Username', value: 'user123' },
-            { type: 'string', name: 'password', label: 'Password', format: 'password' },
-            { type: 'boolean', name: 'notifications', label: 'Enable Notifications', value: true }
-        ],
-        buttons: ['Save', 'Cancel', 'Apply']
-    }
+  styles: {
+    title: "User Settings",
+    message: "Please update your profile."
+  },
+  models: {
+    body: [{
+      type: 'string',
+      name: 'username',
+      label: 'Username',
+      value: 'user123'
+    }, {
+      type: 'string',
+      name: 'password',
+      label: 'Password',
+      format: 'password'
+    }, {
+      type: 'boolean',
+      name: 'notifications',
+      label: 'Enable Notifications',
+      value: true
+    }],
+    buttons: ['Save', 'Cancel', 'Apply']
+  }
 });
 
-// In your event handler:
 function onViewEvent(event) {
-    if (event.eventId === 'SUBMIT') {
-        switch (event.data.button) {
-            case 'Save':
-                // handle save
-                break;
-            case 'Cancel':
-                // handle cancel
-                break;
-            case 'Apply':
-                // handle apply
-                break;
-        }
+  if (event.eventId === 'SUBMIT') {
+    switch (event.data.button) {
+      case 'Save':
+        break;
+      case 'Cancel':
+        break;
+      case 'Apply':
+        break;
     }
+  }
 }
 ```

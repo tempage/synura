@@ -28,6 +28,48 @@ This works by "mocking" the Synura API (`synura.open`, `fetch`, etc.) so your sc
 *   **Strict DOM Emulation**: The `response.dom()` method returns a wrapper that **strictly enforces** the limited DOM API available in the Synura runtime. This prevents you from accidentally using browser-only features (like `innerHTML` or `parentElement`) that would crash your extension in the real app.
 *   **DOM Parsing**: Includes a JavaScript port of Synura's `parse('post', ...)` logic, so you can see exactly how your content will be structured (text blocks, images, videos).
 
+## Debug Mode
+
+The emulator header includes a **Debug Mode** checkbox. When enabled, it adds `debugger` breakpoints at the start of key handler methods, allowing you to step through your extension code using Chrome/Firefox DevTools.
+
+### How to Use
+1.  Enable the **Debug Mode** checkbox in the emulator header.
+2.  Open your browser's DevTools (`F12` > **Sources** tab).
+3.  Interact with your extension (e.g., click the 🏠 Home button or tap an item).
+4.  Execution will pause at the start of the handler method, letting you inspect variables and step through code.
+
+### Handler Detection Logs
+When the polyfill loads, it watches for your extension's `SYNURA.main` object. Paste your extension code into the browser console within **30 seconds** of loading the polyfill. You can monitor the detection process in the **Synura Logs** panel (📝 button), not the browser console:
+
+```
+[10:37:40] [Synura] Detection attempt 1: SYNURA=false, main=false, wrapped=false
+[10:37:40] [Synura] Detection attempt 2: SYNURA=false, main=false, wrapped=false
+[10:38:06] [Synura] Wrapped handler.router() for debugging
+[10:38:06] [Synura] Wrapped handler.home() for debugging
+[10:38:06] [Synura] Wrapped handler.onViewEvent() for debugging
+[10:38:06] [Synura] Handler detected and wrapped for debugging
+```
+
+Once you see **"Handler detected and wrapped"**, the debug breakpoints are active.
+
+### Wrapped Methods
+The following `handler` methods are automatically wrapped for debugging:
+*   `home()` – Entry point when the Home button is clicked.
+*   `router(url)` – Called when navigating to a URL.
+*   `resume(viewId, context)` – Called when restoring a bookmarked view.
+*   `deeplink(url)` – Called when a deep link is triggered.
+*   `onViewEvent(viewId, event)` – Called when any UI event occurs (clicks, menu selections, etc.).
+
+> [!IMPORTANT]
+> For debugging to work on internal handler calls (like `router()` called from within `openPost()`), your extension code must call methods via `SYNURA.main` instead of the local `handler` variable. Example:
+> ```javascript
+> // ❌ This won't trigger the debugger:
+> const routeData = handler.router(link);
+>
+> // ✅ This will trigger the debugger:
+> const routeData = SYNURA.main.router(link);
+> ```
+
 ## Router Architecture Testing
 
 The polyfill simulates the **Router Pattern** used by the Synura AI engine.
@@ -37,14 +79,14 @@ Since `router(url)` is designed to be a pure function called by the system (not 
 
 1.  Define your `handler.router` function.
 2.  Manually call it in the console:
-    ```javascript
-    const route = handler.router("https://example.com/article");
-    console.log(route); // Check your models
-    ```
+```javascript
+const route = handler.router("https://example.com/article");
+console.log(route);
+```
 3.  Simulate the system opening the view:
-    ```javascript
-    synura.open(route); // Passes the returned object directly
-    ```
+```javascript
+synura.open(route);
+```
 
 ### Simulated State Sharing
 In the real app, `router` runs in a background thread and shares `sessionStorage` with the main thread. In the polyfill, everything runs in the main thread, but `sessionStorage` behavior is emulated to help you verify that your data persistence logic works correctly.
@@ -78,20 +120,16 @@ Displays a list of items.
   link: "https://...",
   author: "Author Name",
   date: "2023-10-27",
-  mediaUrl: "https://...", // Image URL
-  
-  // Optional Fields
+  mediaUrl: "https://...",
   memo: "Short description",
   avatar: "https://...",
   category: "Category Name",
-  types: ["Tag1", "Tag2"], // Badges
-  menus: ["Share", "Report"], // Item-specific menu options
-  
-  // Stats (Numbers)
-  viewCount: 100,
-  likeCount: 50,
-  commentCount: 10,
-  dislikeCount: 0,
+  types: ["Tag1", "Tag2"],
+  menus: ["Share", "Report"],
+  viewCount: "100",
+  likeCount: "50",
+  commentCount: "10",
+  dislikeCount: "0",
   hotCount: 0,
   coldCount: 0
 }
@@ -109,21 +147,21 @@ Displays a detailed post with content and comments.
 **Models:**
 *   `author`, `date`, `avatar`, `memo`: Strings.
 *   `link`: String.
-*   `viewCount`, `likeCount`, `dislikeCount`: Numbers.
+*   `viewCount`, `likeCount`, `dislikeCount`: Strings.
 *   `content`: List of content blocks.
     *   `details`: Array of JSON strings. Each block: `{ type: "text"|"image"|"video"|"link", value: "..." }`.
 *   `comments`: List of comments.
     *   `details`: Array of JSON strings.
     *   Comment object:
-        ```javascript
-        {
-          author: "User",
-          date: "1h ago",
-          content: "Comment text", // or array of blocks
-          avatar: "https://...",
-          level: 0 // Nesting level
-        }
-        ```
+```javascript
+{
+  author: "User",
+  date: "1h ago",
+  content: "Comment text",
+  avatar: "https://...",
+  level: 0
+}
+```
 
 ### 3. Chat View (`/views/chat`)
 
@@ -134,9 +172,10 @@ Displays a chat interface.
 *   `appbar` (object/string): Customizes the app bar (e.g. 'query').
 
 **Models:**
-*   `append`: List of new messages.
-    *   `details`: Array of objects (or JSON strings).
-    *   Message object: `{ user: "Me"|"Other", message: "Hello", time: "..." }`.
+*   `append`: List of new messages (array of objects).
+    *   Message object: `{ user: "Me"|"Other", message: "Hello", time: "...", format: "text"|"markdown" }`.
+    *   `format`: Optional. Set to `"markdown"` or `"md"` to render the message as markdown. Defaults to plain text.
+*   `menus`: List of app bar menu items (strings).
 
 ### 4. Browser View (`/views/browser`)
 
@@ -167,6 +206,24 @@ Displays text content formatted using Markdown.
 *   `content`: The markdown string to render.
     *   *Alternative*: `body` model.
 *   `menus`: List of app bar menu items (strings).
+
+### 6. Source View (`/views/source`)
+
+Displays syntax-highlighted source code with line numbers.
+
+**Styles:**
+*   `title` (string): App bar title. Default: "Source".
+*   `language` (string): Language for syntax highlighting (e.g., `html`, `javascript`, `python`). Auto-detected if empty.
+*   `lineNumbers` (bool): Show line numbers. Default: `true`.
+*   `wordWrap` (bool): Wrap long lines. Default: `false`.
+
+**Models:**
+*   `content`: The source code string to display.
+
+**Features:**
+*   Copy to clipboard button in app bar.
+*   Syntax highlighting for JavaScript, Python, and HTML/XML.
+*   Scrollable with optional word wrap.
 
 ## Strict DOM Environment
 

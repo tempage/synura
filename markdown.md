@@ -36,12 +36,12 @@ The view sends the following events to the extension:
 
 ```javascript
 synura.open('/views/markdown', {
-    styles: {
-        title: "Markdown Document"
-    },
-    models: {
-        content: "# Hello, Markdown! \n This is a markdown document."
-    }
+  styles: {
+    title: "Markdown Document"
+  },
+  models: {
+    content: "# Hello, Markdown! \n This is a markdown document."
+  }
 });
 ```
 

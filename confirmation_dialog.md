@@ -28,31 +28,32 @@ The dialog sends events to the extension when the user interacts with it.
 ### Basic Confirmation
 
 ```javascript
-const result = synura.open('/dialogs/confirmation', {
-    styles: {
-        title: "Success",
-        message: "Your changes have been saved successfully."
-    }
+const result = synura.open({
+  view: '/dialogs/confirmation',
+  styles: {
+    title: "Success",
+    message: "Your changes have been saved successfully."
+  }
 }, function(event) {
-    if (event.eventId === 'SUBMIT') {
-        synura.close(result.viewId);
-    }
+  if (event.eventId === 'SUBMIT') {
+    synura.close(result.viewId);
+  }
 });
 ```
 
 ### Error Notification
 
 ```javascript
-synura.open('/dialogs/confirmation', {
-    styles: {
-        title: "Error",
-        message: "Failed to load content. Please check your connection and try again."
-    }
+synura.open({
+  view: '/dialogs/confirmation',
+  styles: {
+    title: "Error",
+    message: "Failed to load content. Please check your connection and try again."
+  }
 }, function(event) {
-    if (event.eventId === 'SUBMIT') {
-        // User acknowledged the error
-        synura.close(event.viewId);
-    }
+  if (event.eventId === 'SUBMIT') {
+    synura.close(event.viewId);
+  }
 });
 ```
 
@@ -60,18 +61,18 @@ synura.open('/dialogs/confirmation', {
 
 ```javascript
 function deleteItem(itemId) {
-    const result = synura.open('/dialogs/confirmation', {
-        styles: {
-            title: "Delete Item",
-            message: "This action cannot be undone. The item will be permanently deleted."
-        }
-    }, function(event) {
-        if (event.eventId === 'SUBMIT') {
-            // User confirmed, proceed with deletion
-            performDelete(itemId);
-            synura.close(result.viewId);
-        }
-    });
+  const result = synura.open({
+    view: '/dialogs/confirmation',
+    styles: {
+      title: "Delete Item",
+      message: "This action cannot be undone. The item will be permanently deleted."
+    }
+  }, function(event) {
+    if (event.eventId === 'SUBMIT') {
+      performDelete(itemId);
+      synura.close(result.viewId);
+    }
+  });
 }
 ```
 

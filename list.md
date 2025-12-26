@@ -85,21 +85,19 @@ The view sends the following events to the extension:
 
 ```javascript
 synura.open('/views/list', {
-    styles: {
-        title: "My List",
-        layout: "card",
-        pagination: true
-    },
-    models: {
-        contents: [
-            {
-                link: "https://example.com/1",
-                title: "First Item",
-                author: "User A",
-                viewCount: 100
-            }
-        ]
-    }
+  styles: {
+    title: "My List",
+    layout: "card",
+    pagination: true
+  },
+  models: {
+    contents: [{
+      link: "https://example.com/1",
+      title: "First Item",
+      author: "User A",
+      viewCount: "100"
+    }]
+  }
 });
 ```
 
@@ -107,18 +105,14 @@ synura.open('/views/list', {
 To use a query appbar that emits `QUERY` events:
 ```javascript
 const view = synura.open('/views/list', {
-    styles: {
-        appbar: 'query'
-    },
-    models: {
-        // ...
-    }
+  styles: {
+    appbar: 'query'
+  },
+  models: {}
 });
-
 synura.connect(view.viewId, {}, (event) => {
-    if (event.eventId === 'QUERY') {
-        console.log('Search query:', event.data.query);
-        // Handle the search query
-    }
+  if (event.eventId === 'QUERY') {
+    console.log('Search query:', event.data.query);
+  }
 });
 ```

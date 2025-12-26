@@ -29,9 +29,9 @@ The view sends the following events to the extension:
 
 ```javascript
 synura.open('/views/editor', {
-    styles: {
-        acceptableFileType: "image,video",
-        max: 3
-    }
+  styles: {
+    acceptableFileType: "image,video",
+    max: 3
+  }
 });
 ```

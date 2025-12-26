@@ -105,17 +105,17 @@ The view sends the following events to the extension:
 
 ```javascript
 synura.open('/views/post', {
-    styles: {
-        title: "Post Title"
-    },
-    models: {
-        link: "https://example.com/post/1",
-        author: "Author Name",
-        content: [
-            "Simple text content",
-            { type: "image", value: "https://example.com/image.jpg" }
-        ],
-        buttons: ["Like", "Share"]
-    }
+  styles: {
+    title: "Post Title"
+  },
+  models: {
+    link: "https://example.com/post/1",
+    author: "Author Name",
+    content: ["Simple text content", {
+      type: "image",
+      value: "https://example.com/image.jpg"
+    }],
+    buttons: ["Like", "Share"]
+  }
 });
 ```

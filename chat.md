@@ -17,15 +17,16 @@ The `styles` object controls the appearance of the view.
 The `models` object contains the chat data.
 
 ### Append
-The `append` model is used to add new messages to the chat. It contains a `details` list of message objects.
+The `append` model is used to add new messages to the chat. It can be an array of message objects or a single message object.
 
 #### Message Object
 
 | Key | Type | Description |
 | :--- | :--- | :--- |
 | `user` | `string` | The name of the sender. Use `'Me'` for the current user to align messages to the right. |
-| `message` | `string` | The message content. |
+| `message` | `string` | The message content. Supports plain text or markdown depending on `format`. |
 | `time` | `string` | Optional timestamp string. Defaults to current time if omitted. |
+| `format` | `string` | Optional. Set to `"markdown"` or `"md"` to render the message as markdown. Defaults to plain text. |
 
 ### Menus
 The `menus` model contains a list of menu items to show if `menu` style is true.
@@ -40,21 +41,36 @@ The view sends the following events to the extension:
 
 ## Example Usage
 
+### Basic Chat
 ```javascript
-// Open the chat view
-synura.open('/views/chat', {
-    styles: { menu: true },
-    models: {
-        menus: ["Clear Chat"]
-    }
+synura.open({
+  view: '/views/chat',
+  styles: {
+    menu: true
+  },
+  models: {
+    menus: ["Clear Chat", "Exit"]
+  }
 });
-
-// Append a message
 synura.update(viewId, {
-    models: {
-        append: [
-            { user: "Bot", message: "Hello! How can I help you?" }
-        ]
-    }
+  models: {
+    append: [{
+      user: "Bot",
+      message: "Hello! How can I help you?"
+    }]
+  }
+});
+```
+
+### Markdown Messages
+```javascript
+synura.update(viewId, {
+  models: {
+    append: [{
+      user: "System",
+      message: "# Welcome\n**Bold text** and `inline code`\n\n- List item 1\n- List item 2",
+      format: "markdown"
+    }]
+  }
 });
 ```

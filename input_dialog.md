@@ -50,53 +50,68 @@ The dialog sends events to the extension when the user interacts with it.
 ### Basic Input Dialog
 
 ```javascript
-const result = synura.open('/dialogs/input', {
-    styles: {
-        title: "Login",
-        message: "Please enter your credentials."
-    },
-    models: {
-        body: [
-            { type: 'string', name: 'username', label: 'Username' },
-            { type: 'string', name: 'password', label: 'Password', format: 'password' }
-        ],
-        buttons: ['Login', 'Cancel']
-    }
+const result = synura.open({
+  view: '/dialogs/input',
+  styles: {
+    title: "Login",
+    message: "Please enter your credentials."
+  },
+  models: {
+    body: [{
+      type: 'string',
+      name: 'username',
+      label: 'Username'
+    }, {
+      type: 'string',
+      name: 'password',
+      label: 'Password',
+      format: 'password'
+    }],
+    buttons: ['Login', 'Cancel']
+  }
 }, function(event) {
-    if (event.eventId === 'SUBMIT') {
-        if (event.data.button === 'Login') {
-            console.log('Username:', event.data.username);
-            console.log('Password:', event.data.password);
-            synura.close(result.viewId);
-        } else if (event.data.button === 'Cancel') {
-            synura.close(result.viewId);
-        }
+  if (event.eventId === 'SUBMIT') {
+    if (event.data.button === 'Login') {
+      console.log('Username:', event.data.username);
+      console.log('Password:', event.data.password);
+      synura.close(result.viewId);
+    } else if (event.data.button === 'Cancel') {
+      synura.close(result.viewId);
     }
+  }
 });
 ```
 
 ### Dialog with Close Button
 
 ```javascript
-synura.open('/dialogs/input', {
-    styles: {
-        title: "Settings",
-        close: true
-    },
-    models: {
-        body: [
-            { type: 'number', name: 'pageSize', label: 'Items per page', value: 20 },
-            { type: 'boolean', name: 'darkMode', label: 'Dark Mode', value: false }
-        ],
-        buttons: ['Apply']
-    }
+synura.open({
+  view: '/dialogs/input',
+  styles: {
+    title: "Settings",
+    close: true
+  },
+  models: {
+    body: [{
+      type: 'number',
+      name: 'pageSize',
+      label: 'Items per page',
+      value: 20
+    }, {
+      type: 'boolean',
+      name: 'darkMode',
+      label: 'Dark Mode',
+      value: false
+    }],
+    buttons: ['Apply']
+  }
 }, function(event) {
-    if (event.eventId === 'SUBMIT') {
-        console.log('Page size:', event.data.pageSize);
-        console.log('Dark mode:', event.data.darkMode);
-    } else if (event.eventId === 'CLOSE') {
-        console.log('Dialog closed without saving');
-    }
+  if (event.eventId === 'SUBMIT') {
+    console.log('Page size:', event.data.pageSize);
+    console.log('Dark mode:', event.data.darkMode);
+  } else if (event.eventId === 'CLOSE') {
+    console.log('Dialog closed without saving');
+  }
 });
 ```
 

@@ -32,11 +32,11 @@ The view sends the following events to the extension:
 
 ```javascript
 synura.open('/views/browser', {
-    styles: {
-        title: "Login Page"
-    },
-    models: {
-        url: "https://example.com/login"
-    }
+  styles: {
+    title: "Login Page"
+  },
+  models: {
+    url: "https://example.com/login"
+  }
 });
 ```

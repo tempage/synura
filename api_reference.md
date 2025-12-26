@@ -123,13 +123,13 @@ Transient, in-memory key-value storage (LRU cache).
 
 #### Storage Example
 ```javascript
-// Local Storage (Persistent, Strings only)
 localStorage.setItem("token", "12345");
-const token = localStorage.getItem("token"); // "12345"
-
-// Session Storage (Transient, Any type)
-sessionStorage.setItem("cache", { lastPage: 1, items: [] });
-const cache = sessionStorage.getItem("cache"); // Object
+const token = localStorage.getItem("token");
+sessionStorage.setItem("cache", {
+  lastPage: 1,
+  items: []
+});
+const cache = sessionStorage.getItem("cache");
 ```
 
 ---
@@ -170,95 +170,24 @@ To simplify development, you can pass standard JavaScript types, and Synura will
 
 Views are opened via `synura.open({ view: '/views/<type>', models: ..., styles: ... })`.
 
-### 1. List View (`/views/list`)
-Displays a list of items (articles, posts, etc.).
-
-**Styles:**
--   `title` (String): App bar title.
--   `layout` (String): `'list'` (default), `'card'`, `'gallery'`.
--   `pagination` (Boolean): Enable infinite scrolling (triggers `SCROLL_TO_END` event).
--   `menu` (Boolean): Show menu button.
-
-**Models:**
--   `contents`: `[ItemObject, ...]` (Array mapping to `details`)
-    -   **ItemObject**:
-        -   `title` (String)
-        -   `link` (String): ID or URL for the item.
-        -   `author` (String)
-        -   `date` (String)
-        -   `mediaUrl` (String): URL for image/video thumbnail.
-        -   `mediaType` (String): `'image'` or `'video'`.
-        -   `viewCount`, `likeCount`, `commentCount` (String)
--   `menus`: `["Menu Item 1", "Menu Item 2"]` (Array of Strings)
--   `append`: `[...]` (Use with `synura.update` to add items).
-
-### 2. Post View (`/views/post`)
-Displays a detailed post with content and comments.
-
-**Styles:**
--   `title` (String)
-
-**Models:**
--   `title`, `author`, `date`, `avatar` (Strings mapping to `message`)
--   `content`: `[ContentBlock, ...]` (Array mapping to `details`)
-    -   **ContentBlock**: `{ type: 'text'|'image'|'video'|'link', value: "..." }`
--   `comments`: `[CommentObject, ...]` (Array mapping to `details`)
-    -   **CommentObject**:
-        -   `author`, `date`, `content` (Parsed content), `avatar`.
-        -   `level` (Number): Indentation level for nested comments.
-
-### 3. Chat View (`/views/chat`)
-A chat interface.
-
-**Models:**
--   `append`: `[ChatMessage, ...]`
-    -   **ChatMessage**: `{ user: "Name", message: "Text", time: "ISO String" }`
-
-### 4. Settings View (`/views/settings`)
-A form for user configuration.
-
-**Models:**
--   `body`: `[InputObject, ...]`
-    -   **InputObject**:
-        -   `type`: `'string'`, `'number'`, `'boolean'`.
-        -   `name`: Key for the input.
-        -   `label`: Display label.
-        -   `value`: Default value.
-        -   `format`: `'password'` (for strings).
--   `buttons`: `['submit', 'reset']` (Array of Strings)
-
-### 5. Editor View (`/views/editor`)
-A text/content editor.
-
-> [!WARNING]
-> The attachment file feature is currently experimental. Do not use it.
-
-### 6. Browser View (`/views/browser`)
-Opens an in-app browser.
--   **Models**: `url: "https://..."` (String)
+-   **[List View](list.md)** (`/views/list`): Lists, grids, galleries.
+-   **[Post View](post.md)** (`/views/post`): Articles, posts, comments.
+-   **[Chat View](chat.md)** (`/views/chat`): Messaging interface.
+-   **[Settings View](settings.md)** (`/views/settings`): Forms and configuration.
+-   **[Editor View](editor.md)** (`/views/editor`): Text editor with attachments.
+-   **[Browser View](browser.md)** (`/views/browser`): In-app web browser.
+-   **[Simple View](simple.md)** (`/views/simple`): Basic text display.
+-   **[Markdown View](markdown.md)** (`/views/markdown`): Markdown rendering.
+-   **[Source View](source.md)** (`/views/source`): Code viewer with syntax highlighting.
 
 ---
 
 ## Dialog Types
 
-Dialogs are opened via `synura.open('/dialogs/<type>', data)`. Unlike views, dialogs appear as modal overlays and do not navigate away from the current screen.
+Dialogs are opened via `synura.open({ view: '/dialogs/<type>', ... })`. Unlike views, dialogs appear as modal overlays and do not navigate away from the current screen.
 
-### Input Dialog (`/dialogs/input`)
-A modal dialog for collecting user input with text fields, number inputs, and toggle switches. Supports custom buttons and an optional close button.
-
-**Styles:** `title`, `message`, `close` (boolean)
-**Models:** `body` (array of input fields), `buttons` (array of button labels)
-**Events:** `SUBMIT`, `CLOSE`
-
-See [Input Dialog Documentation](input_dialog.md) for full details and examples.
-
-### Confirmation Dialog (`/dialogs/confirmation`)
-A simple modal dialog for displaying messages and getting user acknowledgment. Shows a title, optional message, and an "OK" button.
-
-**Styles:** `title`, `message`
-**Events:** `SUBMIT`
-
-See [Confirmation Dialog Documentation](confirmation_dialog.md) for full details and examples.
+-   **[Input Dialog](input_dialog.md)** (`/dialogs/input`): Modal form input.
+-   **[Confirmation Dialog](confirmation_dialog.md)** (`/dialogs/confirmation`): Simple alert/confirm.
 
 ---
 
@@ -269,9 +198,13 @@ Handle events in the `synura.connect` callback, or the optional callback passed 
 ### Event Structure
 ```javascript
 {
-    eventId: "CLICK" | "LOAD" | "REFRESH" | "SCROLL_TO_END" | "MENU_CLICK" | "SUBMIT",
-    context: { ... }, // The context object passed to connect()
-    data: { ... }     // Event-specific data
+  eventId: "CLICK" | "LOAD" | "REFRESH" | "SCROLL_TO_END" | "MENU_CLICK" | "SUBMIT",
+  context: {
+    ...
+  },
+  data: {
+    ...
+  }
 }
 ```
 
@@ -296,63 +229,9 @@ Handle events in the `synura.connect` callback, or the optional callback passed 
 
 Synura uses a **passive router** architecture to enable content pre-fetching and instant navigation.
 
-### 1. Router Handler (`router(url)`)
-Instead of handling `open` directly in a click listener, extensions should export a `router(url)` function. This function is **pure** and returns the view data.
-
-```javascript
-const handler = {
-    // Pure function: Returns data, does NOT call synura.open()
-    router: function(url) {
-        const doc = fetch(url).dom();
-        return {
-            view: '/views/post',
-            models: { title: doc.querySelector('h1').text, ... },
-            styles: { ... }
-        };
-    },
-    ...
-};
-```
-
-### 2. Threading Model
-*   **View Handlers**: `onViewEvent` runs in the main UI thread context.
-*   **Router**: `router(url)` runs in a **process pool** (background threads) to allow parallel pre-fetching.
-    *   **Implication**: `router` cannot access the active `view` state directly.
-
-### 3. State Sharing (`sessionStorage`)
-To share state (like cookies or auth tokens) between the interactive View Handlers and the background Router:
-
-1.  **Write**: Logic in `onViewEvent` saves tokens to `sessionStorage`.
-2.  **Read**: `router` reads tokens from `sessionStorage` to make authenticated requests.
-
-```javascript
-// Shared state (e.g., auth token) is synced automatically across threads
-const token = sessionStorage.getItem('auth_token');
-const response = fetch(url, { headers: { 'Authorization': token } });
-```
-
-### 4. Automatic Caching
-When `router(url)` is called by the system (e.g., for pre-fetching), the returned view data object is **automatically stored** in `sessionStorage` using the `url` as the key.
-
-This means your View Handler can check `sessionStorage.getItem(url)` to instantly retrieve the pre-fetched result without calling `router()` again.
-
-### 5. Freshness (TTL) Strategy
-To ensure content freshness when using cached router data, you should:
-
-1.  **Add Timestamp**: Include a `timestamp` field in the object returned by `router(url)`.
-2.  **Check TTL**: In your View Handler, check if the cached item is older than your desired TTL (Time To Live).
-3.  **Invalidate**: If expired, use `sessionStorage.removeItem(url)` and re-fetch.
-
-```javascript
-// Example: 60-second TTL
-const cached = sessionStorage.getItem(url);
-if (cached) {
-    const age = Date.now() - cached.timestamp;
-    if (age < 60000) {
-        return cached; // Valid
-    }
-    sessionStorage.removeItem(url); // Expired
-}
-return router(url); // Re-fetch
-```
+See **[Router Pattern](router.md)** for full documentation on:
+-   **Router Handler (`router(url)`)**
+-   **Threading Model**
+-   **State Sharing**
+-   **Caching Strategy**
 

@@ -1,13 +1,20 @@
 /**
- * Synura Visual Polyfill for Browser Console Testing
+ * Synura Visual Polyfill - Browser Console Testing
+ * See polyfill_guide.md for full documentation.
  * 
- * WARNING: SELF-XSS RISK
- * This tool mocks the Synura environment by rendering content directly into the DOM.
- * DO NOT paste code here unless you wrote it or trust the source.
- * Malicious code pasted here could compromise your security.
- * 
- * Copy and paste this entire script into the Chrome/Firefox DevTools console.
- * It mocks the Synura API and renders a visual emulator overlay on the page.
+ * Index
+ * -----
+ * 0. SessionStorage .... _sessionStorageShim
+ * 1. CSS ............... <style> for emulator UI
+ * 2. Log Overlay ....... captureLog, toggleLogOverlay, appendLogEntry
+ * 3. UI Manager ........ getHandler, wrapHandlerForDebug, control handlers
+ * 4. View System ....... createView, updateAppBar, renderView, triggerEvent
+ *    Renderers: renderList, renderPost, renderChat, renderBrowser,
+ *               renderForm, renderConfirmation, renderEditor,
+ *               renderMarkdown, renderSource
+ * 5. Synura API ........ synura.open/update/connect/close/parse
+ * 6. Helpers ........... escapeHtml, StrictDOMElement, domToDetails,
+ *                        highlightCode, parseMarkdown, fetch polyfill
  */
 
 (function () {
@@ -19,6 +26,31 @@
 
     console.log("%c[Synura Polyfill] Initializing Visual Emulator...", "color: #00bcd4; font-weight: bold; font-size: 12px;");
 
+    // --- 0. SessionStorage Shim (object storage) ---
+    const _sessionMemoryStore = {};
+    const _sessionStorageShim = {
+        setItem: (k, v) => _sessionMemoryStore[k] = v,
+        getItem: (k) => _sessionMemoryStore[k],
+        removeItem: (k) => delete _sessionMemoryStore[k],
+        clear: () => { for (const k in _sessionMemoryStore) delete _sessionMemoryStore[k]; },
+        get length() { return Object.keys(_sessionMemoryStore).length; },
+        key: (i) => Object.keys(_sessionMemoryStore)[i]
+    };
+
+    // Override sessionStorage
+    try {
+        Object.defineProperty(window, 'sessionStorage', {
+            value: _sessionStorageShim,
+            writable: true,
+            configurable: true
+        });
+        console.log("%c[Synura Polyfill] SessionStorage shim active (object storage enabled)", "color: #0f0");
+    } catch (e) {
+        // Fallback: use global shim
+        console.warn("%c[Synura Polyfill] Could not override window.sessionStorage, using global shim", "color: orange");
+        window._synuraSessionStorage = _sessionStorageShim;
+    }
+
     // --- 1. CSS Styles ---
     const css = `
         #synura-root {
@@ -27,6 +59,8 @@
             right: 20px;
             width: 375px;
             height: 750px; /* iPhone SE-ish size */
+            min-width: 280px;
+            min-height: 400px;
             background: #121212; /* Dark theme background */
             color: #e0e0e0;
             font-family: Roboto, sans-serif;
@@ -37,6 +71,7 @@
             flex-direction: column;
             overflow: hidden;
             border: 1px solid #333;
+            resize: both;
         }
         #synura-header {
             padding: 12px 16px;
@@ -47,6 +82,7 @@
             align-items: center;
             -webkit-user-select: none;
             user-select: none;
+            cursor: move;
         }
         #synura-title {
             font-weight: bold;
@@ -201,7 +237,7 @@
         .synura-comment-content { font-size: 14px; color: #e0e0e0; }
         
         /* Chat View */
-        .synura-chat-list { padding: 16px; display: flex; flex-direction: column-reverse; min-height: 100%; }
+        .synura-chat-list { padding: 16px; display: flex; flex-direction: column; min-height: 100%; }
         .synura-chat-msg { margin-bottom: 12px; display: flex; flex-direction: column; max-width: 80%; }
         .synura-chat-msg.me { align-self: flex-end; align-items: flex-end; }
         .synura-chat-msg.other { align-self: flex-start; align-items: flex-start; }
@@ -222,6 +258,16 @@
             border-bottom-left-radius: 4px;
         }
         .synura-chat-user { font-size: 11px; color: #888; margin-bottom: 4px; margin-left: 4px; }
+        /* Markdown in chat bubbles */
+        .synura-chat-bubble h1, .synura-chat-bubble h2, .synura-chat-bubble h3 { margin: 8px 0 4px 0; font-size: 1.1em; }
+        .synura-chat-bubble p { margin: 4px 0; }
+        .synura-chat-bubble ul, .synura-chat-bubble ol { margin: 4px 0; padding-left: 1.5em; }
+        .synura-chat-bubble li { margin: 2px 0; }
+        .synura-chat-bubble code { background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px; font-size: 0.9em; }
+        .synura-chat-bubble pre { background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; margin: 8px 0; overflow-x: auto; }
+        .synura-chat-bubble table { border-collapse: collapse; margin: 8px 0; font-size: 0.9em; }
+        .synura-chat-bubble th, .synura-chat-bubble td { border: 1px solid rgba(255,255,255,0.2); padding: 4px 8px; }
+        .synura-chat-bubble th { background: rgba(0,0,0,0.3); }
         .synura-chat-input-area {
             padding: 12px;
             background: #1f1f1f;
@@ -444,7 +490,10 @@
     root.id = 'synura-root';
     root.innerHTML = `
         <div id="synura-header">
-            <span id="synura-title">Synura Emulator</span>
+            <div style="display:flex; flex-direction:column;">
+                <span id="synura-title">Synura Emulator</span>
+                <label title="Enable debugger breakpoints" style="cursor:pointer; display:flex; align-items:center; font-size:12px; color:#aaa; margin-top:4px;"><input type="checkbox" id="synura-debug-toggle" style="margin-right:6px; width:14px; height:14px;">Debug Mode</label>
+            </div>
             <div id="synura-controls">
             <button id="synura-home" title="Home">🏠</button>
             <button id="synura-deeplink" title="Deep Link">🔗</button>
@@ -463,32 +512,51 @@
 
     document.getElementById('synura-close').onclick = () => root.remove();
 
-    // Reset Extension (instead of page reload)
+    // Drag functionality for main window
+    const mainHeader = document.getElementById('synura-header');
+    let isRootDragging = false;
+    let rootStartX, rootStartY, rootInitialLeft, rootInitialTop;
+
+    mainHeader.onmousedown = (e) => {
+        // Don't drag if clicking on buttons or input
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') return;
+        isRootDragging = true;
+        rootStartX = e.clientX;
+        rootStartY = e.clientY;
+        // Get current position (handle 'right' positioning)
+        const rect = root.getBoundingClientRect();
+        rootInitialLeft = rect.left;
+        rootInitialTop = rect.top;
+        // Switch from right to left positioning
+        root.style.right = 'auto';
+        root.style.left = rootInitialLeft + 'px';
+        root.style.top = rootInitialTop + 'px';
+
+        document.onmousemove = (e) => {
+            if (!isRootDragging) return;
+            const dx = e.clientX - rootStartX;
+            const dy = e.clientY - rootStartY;
+            root.style.left = (rootInitialLeft + dx) + 'px';
+            root.style.top = (rootInitialTop + dy) + 'px';
+        };
+        document.onmouseup = () => {
+            isRootDragging = false;
+            document.onmousemove = null;
+        };
+    };
+
     document.getElementById('synura-reload').onclick = () => {
-        // Attempt to clear global SYNURA
+        // Clear global SYNURA
         let cleared = false;
         try {
-            // 1. Try delete (works for implicit globals)
             delete window.SYNURA;
-
-            // 2. If still there (e.g. 'var'), force undefined
-            if (typeof window.SYNURA !== 'undefined') {
-                window.SYNURA = undefined;
-            }
-
-            // 3. Check if effective
-            // We check 'SYNURA' (global scope lookup) to see if it's truly gone/undefined.
-            // If it's 'const', window.SYNURA assignment won't affect the 'const' binding.
-            if (typeof SYNURA === 'undefined') {
-                cleared = true;
-            }
+            if (typeof window.SYNURA !== 'undefined') window.SYNURA = undefined;
+            if (typeof SYNURA === 'undefined') cleared = true;
         } catch (e) { }
 
-        // Clear Views
+        // Clear views
         const viewStack = document.getElementById('synura-view-stack');
         if (viewStack) viewStack.innerHTML = '';
-
-        // Clear internal state
         if (typeof views !== 'undefined') {
             Object.keys(views).forEach(key => delete views[key]);
         }
@@ -526,16 +594,73 @@
     document.getElementById('synura-title').ondblclick = toggleMinimize;
 
     // --- Helper to find handler ---
+    let _handlerWrapped = false;
     function getHandler() {
-        if (typeof SYNURA !== 'undefined' && SYNURA.main) return SYNURA.main;
+        if (typeof SYNURA !== 'undefined' && SYNURA.main) {
+            // Wrap handler methods for debug mode (once)
+            if (!_handlerWrapped) {
+                wrapHandlerForDebug(SYNURA.main);
+                _handlerWrapped = true;
+            }
+            return SYNURA.main;
+        }
         return null;
     }
+
+    // --- Debug Mode Helper ---
+    function isDebugEnabled() {
+        return document.getElementById('synura-debug-toggle')?.checked || false;
+    }
+
+    // --- Wrap handler methods with debugger ---
+    function wrapHandlerForDebug(handler) {
+        const methodsToWrap = ['router', 'home', 'resume', 'deeplink', 'onViewEvent'];
+        methodsToWrap.forEach(methodName => {
+            if (typeof handler[methodName] === 'function') {
+                const original = handler[methodName];
+                handler[methodName] = function (...args) {
+                    if (isDebugEnabled()) {
+                        console.log(`%c[Synura Debug] Breaking on ${methodName}()`, "color: #f0f; font-weight: bold");
+                        debugger;
+                    }
+                    return original.apply(this, args);
+                };
+                console.log(`%c[Synura] Wrapped handler.${methodName}() for debugging`, "color: #888");
+            }
+        });
+    }
+
+    // --- Auto-detect and wrap SYNURA.main when extension loads ---
+    let _wrapAttempts = 0;
+    const _wrapInterval = setInterval(() => {
+        _wrapAttempts++;
+        const hasSYNURA = typeof SYNURA !== 'undefined';
+        const hasMain = hasSYNURA && SYNURA.main;
+
+        if (_wrapAttempts <= 3) {
+            console.log(`%c[Synura] Detection attempt ${_wrapAttempts}: SYNURA=${hasSYNURA}, main=${!!hasMain}, wrapped=${_handlerWrapped}`, "color: #888");
+        }
+
+        if (hasMain && !_handlerWrapped) {
+            wrapHandlerForDebug(SYNURA.main);
+            _handlerWrapped = true;
+            console.log("%c[Synura] Handler detected and wrapped for debugging", "color: #0f0; font-weight: bold");
+            clearInterval(_wrapInterval);
+        }
+
+        // Stop after 30 seconds
+        if (_wrapAttempts > 300) {
+            console.warn("[Synura] Gave up waiting for SYNURA.main");
+            clearInterval(_wrapInterval);
+        }
+    }, 100);
 
     // --- New Control Handlers ---
     document.getElementById('synura-home').onclick = () => {
         const h = getHandler();
         if (h && h.home) {
             console.log("%c[Synura] Calling handler.home()", "color: cyan");
+            if (isDebugEnabled()) debugger;
             h.home();
         } else {
             console.warn("[Synura] handler.home() not found. Set 'SYNURA.main'.");
@@ -548,6 +673,7 @@
             const h = getHandler();
             if (h && h.deeplink) {
                 console.log(`%c[Synura] Calling handler.deeplink('${url}')`, "color: cyan");
+                if (isDebugEnabled()) debugger;
                 h.deeplink(url);
             } else {
                 console.warn("[Synura] handler.deeplink() not found");
@@ -590,6 +716,7 @@
                 const h = getHandler();
                 if (h && h.resume) {
                     console.log(`%c[Synura] Calling handler.resume(${result.viewId}, context)`, "color: cyan");
+                    if (isDebugEnabled()) debugger;
                     h.resume(result.viewId, _capturedBookmark.context);
                 } else {
                     console.warn("[Synura] handler.resume() not found. View opened but resume not called.");
@@ -617,7 +744,7 @@
         const styles = data.styles || {};
         const titleText = styles.title || path.split('/').pop();
 
-        // Appbar Style (Query Support)
+        // Query appbar support
         let isQuery = false;
         let queryLabel = 'Search';
         let queryHint = '';
@@ -641,29 +768,17 @@
             }
         }
 
-        // Check if we should have a back button
-        // Logic: If it already has one, keep it. If it's a new view (appbar empty) and id > 1, add it.
-        // (Simplification: standard synura behavior usually has back button for pushed views)
+        // Back button logic
         const existingBack = appbar.querySelector('.back-btn');
         let hasBack = existingBack !== null;
-        if (appbar.innerHTML === '' && Object.keys(views).length > 1) {
-            // Note: views object includes THIS view if called after insertion. 
-            // If called from createView, 'views' might not contain it yet or might contain others.
-            // Let's rely on the caller passing 'hasBack' intent or just check view count.
-            hasBack = true;
-        }
-
+        if (appbar.innerHTML === '' && Object.keys(views).length > 1) hasBack = true;
         let inner = '';
         if (hasBack) inner += `<span class="back-btn">←</span>`;
-
-        // Center Content
         if (isQuery) {
             inner += `<input type="text" class="synura-appbar-query" placeholder="${escapeHtml(queryHint || queryLabel)}" value="${view._queryValue || ''}" style="flex:1; min-width:0; background:#333; border:none; padding:8px 12px; color:#fff; border-radius:4px; margin:0 12px; font-size:14px; outline:none;">`;
         } else {
             inner += `<span class="title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(titleText)}</span>`;
         }
-
-        // Right Actions
         let actions = '';
         if (isQuery) actions += `<span class="action-icon search-btn">🔍</span>`;
 
@@ -766,6 +881,8 @@
             renderEditor(contentEl, models, data.styles, view);
         } else if (path === '/views/markdown') {
             renderMarkdown(contentEl, models, data.styles, view);
+        } else if (path === '/views/source') {
+            renderSource(contentEl, models, data.styles, view);
         } else if (path === '/views/simple') {
             contentEl.innerHTML = `<div style="padding:16px"><h3>${models.title?.message || ''}</h3><p>${models.content?.message || ''}</p></div>`;
         } else {
@@ -1120,8 +1237,7 @@
 
         scrollContainer.appendChild(header);
 
-        // Content Blocks
-        // In Post View, 'content' model details are JSON strings, or raw strings
+        // Content blocks
         const blocks = (models.content?.details || []).map(d => {
             if (typeof d === 'string') {
                 try {
@@ -1159,7 +1275,6 @@
         });
 
         // Comments
-        // In Post View, 'comments' model details are JSON strings
         const comments = (models.comments?.details || []).map(d => typeof d === 'string' ? JSON.parse(d) : d);
 
         if (comments.length > 0) {
@@ -1173,8 +1288,7 @@
                 el.style.marginLeft = (c.level || 0) * 16 + 'px';
                 el.style.paddingLeft = (c.level > 0 ? 12 : 0) + 'px';
                 if (c.level > 0) el.style.borderLeft = '2px solid #333';
-
-                // Hot/Cold Logic for Comments
+                // Hot/Cold borders
                 const hotCount = c.hotCount;
                 const coldCount = c.coldCount;
 
@@ -1195,7 +1309,6 @@
 
                 let contentHtml = '';
                 if (Array.isArray(c.content)) {
-                    // Comment content is a list of blocks
                     contentHtml = c.content.map(b => {
                         if (b.type === 'image') return `<img src="${b.value}" style="max-width:100px; border-radius:4px">`;
                         return `<span>${b.value}</span>`;
@@ -1306,19 +1419,45 @@
         const list = document.createElement('div');
         list.className = 'synura-chat-list';
 
-        // Reverse order for display (bottom up)
-        [...msgs].reverse().forEach(msg => {
+        // Messages in order: oldest first, newest last at bottom
+        msgs.forEach(msg => {
             const isMe = msg.user === 'Me';
+            const isMarkdown = msg.format === 'markdown' || msg.format === 'md';
             const el = document.createElement('div');
             el.className = `synura-chat-msg ${isMe ? 'me' : 'other'}`;
+
+            const messageContent = isMarkdown
+                ? parseMarkdown(msg.message)
+                : escapeHtml(msg.message);
+
             el.innerHTML = `
                 ${!isMe ? `<div class="synura-chat-user">${escapeHtml(msg.user || 'Other')}</div>` : ''}
-                <div class="synura-chat-bubble">${escapeHtml(msg.message)}</div>
+                <div class="synura-chat-bubble">${messageContent}</div>
             `;
+
+            // Handle links in chat bubbles (for markdown messages)
+            if (isMarkdown) {
+                const links = el.querySelectorAll('a');
+                links.forEach(a => {
+                    const href = a.getAttribute('href');
+                    if (href) {
+                        a.onclick = (e) => {
+                            e.preventDefault();
+                            triggerEvent(view, 'CLICK', { link: href });
+                        };
+                    }
+                });
+            }
+
             list.appendChild(el);
         });
 
         container.appendChild(list);
+
+        // Scroll to bottom
+        setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+        }, 50);
 
         // Input Area
         const inputArea = document.createElement('div');
@@ -1333,12 +1472,15 @@
 
         const send = () => {
             if (input.value.trim()) {
-                triggerEvent(view, 'SUBMIT', { message: input.value });
-                // Locally echo for UI feel
+                // Add user message first
                 const echoMsg = { user: 'Me', message: input.value };
                 if (!view.data.models.append) view.data.models.append = { details: [] };
                 view.data.models.append.details.push(echoMsg);
-                renderView(view); // Re-render
+                const msg = input.value;
+                input.value = '';
+                // Then trigger event for extension to respond
+                triggerEvent(view, 'SUBMIT', { message: msg });
+                renderView(view);
             }
         };
 
@@ -1696,13 +1838,143 @@
         }
     }
 
+    function renderSource(container, models, styles, view) {
+        const title = styles?.title || 'Source';
+        const language = styles?.language || '';
+        const lineNumbers = styles?.lineNumbers !== false && String(styles?.lineNumbers) !== 'false';
+        const wordWrap = styles?.wordWrap === true || String(styles?.wordWrap) === 'true';
+        const content = models.content?.message || '';
+
+        // Detect language if not specified
+        let effectiveLanguage = language.toLowerCase() || 'plaintext';
+
+        // Create wrapper with styling
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.flexDirection = 'column';
+        wrapper.style.height = '100%';
+        wrapper.style.overflow = 'hidden';
+
+        // Add copy button to appbar actions
+        const appbar = view.el.querySelector('.synura-appbar');
+        if (appbar) {
+            let actionsDiv = appbar.querySelector('.actions');
+            if (!actionsDiv) {
+                actionsDiv = document.createElement('div');
+                actionsDiv.className = 'actions';
+                actionsDiv.style.marginLeft = 'auto';
+                appbar.appendChild(actionsDiv);
+            }
+
+            const copyAction = document.createElement('span');
+            copyAction.className = 'action-icon';
+            copyAction.innerText = '📋';
+            copyAction.title = 'Copy to clipboard';
+            copyAction.onclick = () => {
+                navigator.clipboard.writeText(content).then(() => {
+                    console.log('%c[Synura] Copied to clipboard', 'color: green');
+                    copyAction.innerText = '✓';
+                    setTimeout(() => { copyAction.innerText = '📋'; }, 1500);
+                }).catch(err => {
+                    console.error('%c[Synura] Failed to copy:', 'color: red', err);
+                });
+            };
+            actionsDiv.appendChild(copyAction);
+        }
+
+        if (!content) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.style.display = 'flex';
+            emptyMsg.style.alignItems = 'center';
+            emptyMsg.style.justifyContent = 'center';
+            emptyMsg.style.height = '100%';
+            emptyMsg.style.color = '#888';
+            emptyMsg.innerText = 'No content';
+            wrapper.appendChild(emptyMsg);
+            container.appendChild(wrapper);
+            return;
+        }
+
+        const lines = content.split('\n');
+        const lineCount = lines.length;
+        const lineNumberWidth = Math.max(String(lineCount).length * 10 + 16, 36);
+
+        const scrollContainer = document.createElement('div');
+        scrollContainer.style.flex = '1';
+        scrollContainer.style.overflowY = 'auto';
+        scrollContainer.style.overflowX = wordWrap ? 'hidden' : 'auto';
+
+        const innerContainer = document.createElement('div');
+        innerContainer.style.display = 'flex';
+        innerContainer.style.minWidth = 'fit-content';
+
+        if (lineNumbers) {
+            const lineNumbersCol = document.createElement('div');
+            lineNumbersCol.style.width = lineNumberWidth + 'px';
+            lineNumbersCol.style.flexShrink = '0';
+            lineNumbersCol.style.padding = '8px 8px 8px 8px';
+            lineNumbersCol.style.borderRight = '1px solid rgba(255,255,255,0.2)';
+            lineNumbersCol.style.fontFamily = 'monospace';
+            lineNumbersCol.style.fontSize = '14px';
+            lineNumbersCol.style.lineHeight = '1.5';
+            lineNumbersCol.style.color = 'rgba(255,255,255,0.5)';
+            lineNumbersCol.style.textAlign = 'right';
+            lineNumbersCol.style.userSelect = 'none';
+
+            for (let i = 1; i <= lineCount; i++) {
+                const lineNumEl = document.createElement('div');
+                lineNumEl.innerText = String(i);
+                lineNumbersCol.appendChild(lineNumEl);
+            }
+            innerContainer.appendChild(lineNumbersCol);
+        }
+
+        // Code content column
+        const codeCol = document.createElement('div');
+        codeCol.style.flex = '1';
+        codeCol.style.padding = lineNumbers ? '8px 16px 8px 8px' : '8px 16px';
+        codeCol.style.fontFamily = 'monospace';
+        codeCol.style.fontSize = '14px';
+        codeCol.style.lineHeight = '1.5';
+        codeCol.style.whiteSpace = wordWrap ? 'pre-wrap' : 'pre';
+        codeCol.style.wordBreak = wordWrap ? 'break-word' : 'normal';
+        codeCol.style.color = '#e0e0e0';
+
+        // Apply syntax highlighting
+        const highlightedCode = highlightCode(content, effectiveLanguage);
+        codeCol.innerHTML = highlightedCode;
+
+        innerContainer.appendChild(codeCol);
+        scrollContainer.appendChild(innerContainer);
+        wrapper.appendChild(scrollContainer);
+        container.appendChild(wrapper);
+
+        // Add CSS for source view
+        const styleEl = document.createElement('style');
+        styleEl.innerHTML = `
+            .synura-source-view pre {
+                margin: 0;
+                background: transparent;
+            }
+            .synura-source-view code {
+                background: transparent;
+                padding: 0;
+            }
+        `;
+        container.appendChild(styleEl);
+    }
+
     function highlightCode(code, lang) {
-        if (!lang) return code;
+        if (!lang) return escapeHtml(code);
         const l = lang.toLowerCase();
 
+        // Escape HTML entities first for non-HTML languages
+        const isHtmlLang = l === 'html' || l === 'xml' || l === 'xhtml' || l === 'svg';
+        const escaped = isHtmlLang ? code : escapeHtml(code);
+
         if (l === 'js' || l === 'javascript') {
-            return code.replace(
-                /(\/\/.*$|\/\*[\s\S]*?\*\/)|(['"`](?:\\.|[^\\\n\r])*?['"`])|\b(const|let|var|function|return|if|else|for|while|class|new|this|import|export|async|await|try|catch|console|window|document)\b|(=>)|\b(\d+)\b/gm,
+            return escaped.replace(
+                /(\/\/.*$|\/\*[\s\S]*?\*\/)|(&quot;(?:\\.|[^\\])*?&quot;|&#039;(?:\\.|[^\\])*?&#039;|`(?:\\.|[^\\])*?`)|(&amp;[a-zA-Z]+;|\b(?:const|let|var|function|return|if|else|for|while|class|new|this|import|export|async|await|try|catch|console|window|document)\b)|(=&gt;)|(\b\d+\b)/gm,
                 (match, comment, string, keyword, arrow, number) => {
                     if (comment) return `<span style="color:#6a9955">${comment}</span>`;
                     if (string) return `<span style="color:#ce9178">${string}</span>`;
@@ -1713,8 +1985,8 @@
                 }
             );
         } else if (l === 'py' || l === 'python') {
-            return code.replace(
-                /(#.*$)|(['"](?:\\.|[^\\\n\r])*?['"])|(\b(?:def|class|if|else|elif|return|import|from|print|None|True|False|for|while|in|and|or|not|try|except|finally|with|as|pass|lambda|yield|global|nonlocal|assert|del|break|continue|raise)\b)|(\b\d+\b)/gm,
+            return escaped.replace(
+                /(#.*$)|(&quot;(?:\\.|[^\\])*?&quot;|&#039;(?:\\.|[^\\])*?&#039;)|(\b(?:def|class|if|else|elif|return|import|from|print|None|True|False|for|while|in|and|or|not|try|except|finally|with|as|pass|lambda|yield|global|nonlocal|assert|del|break|continue|raise)\b)|(\b\d+\b)/gm,
                 (match, comment, string, keyword, number) => {
                     if (comment) return `<span style="color:#6a9955">${comment}</span>`;
                     if (string) return `<span style="color:#ce9178">${string}</span>`;
@@ -1723,8 +1995,34 @@
                     return match;
                 }
             );
+        } else if (isHtmlLang) {
+            // HTML/XML highlighting - escape first then highlight
+            return escapeHtml(code).replace(
+                /(&lt;!--[\s\S]*?--&gt;)|(&lt;!DOCTYPE[^&]*&gt;)|(&lt;\/?)([\w:-]+)((?:\s+[\w:-]+(?:=(?:&quot;[^&]*&quot;|&#039;[^&]*&#039;|[^\s&gt;]+))?)*\s*)(\/?&gt;)|(&quot;[^&]*&quot;|&#039;[^&]*&#039;)/gm,
+                (match, comment, doctype, openBracket, tagName, attrs, closeBracket, attrValue) => {
+                    if (comment) return `<span style="color:#6a9955">${comment}</span>`;
+                    if (doctype) return `<span style="color:#808080">${doctype}</span>`;
+                    if (tagName) {
+                        // Highlight tag and attributes
+                        let highlightedAttrs = attrs || '';
+                        if (highlightedAttrs) {
+                            // Highlight attribute names and values
+                            highlightedAttrs = highlightedAttrs.replace(
+                                /([\w:-]+)(=)(&quot;[^&]*&quot;|&#039;[^&]*&#039;|[^\s&gt;]+)?/g,
+                                (m, name, eq, val) => {
+                                    const valHighlight = val ? `<span style="color:#ce9178">${val}</span>` : '';
+                                    return `<span style="color:#9cdcfe">${name}</span>${eq}${valHighlight}`;
+                                }
+                            );
+                        }
+                        return `<span style="color:#808080">${openBracket}</span><span style="color:#569cd6">${tagName}</span>${highlightedAttrs}<span style="color:#808080">${closeBracket}</span>`;
+                    }
+                    if (attrValue) return `<span style="color:#ce9178">${attrValue}</span>`;
+                    return match;
+                }
+            );
         }
-        return code;
+        return escaped;
     }
 
     function parseMarkdown(text) {
@@ -1770,31 +2068,14 @@
         // For underscore-based italic, require word boundaries to avoid matching inside URLs/hrefs
         // This requires underscore to be preceded and followed by whitespace or start/end of string
         html = html.replace(/(^|[\s>])_([^_]+)_(?=[\s<.,;:!?)]|$)/gm, '$1<em>$2</em>');
-
-        // Unordered Lists (handling simple single-level lists)
-        // We use a temporary placeholder for list items to avoid mixing with * italic
+        // Unordered lists
         html = html.replace(/^\s*[\-\*] (.*)/gm, '<li class="md-li">$1</li>');
 
-        // Wrap consecutive lis in ul (Basic approach)
-        // Note: proper regex list wrapping is hard, this is a rough approximation
-        // We'll just let them be lis and wrap the whole block if we could, 
-        // but for simple visual emulation, just converting them to div with bullet works or:
+        // Wrap lis in ul
         html = html.replace(/(<li class="md-li">.*<\/li>)/g, '<ul>$1</ul>');
-        html = html.replace(/<\/ul>\s*<ul>/g, ''); // Merge adjacent uls
-
-        // Horizontal Rule
-        html = html.replace(/^---$/gm, '<hr>');
-
-        // Newlines to BR (but not inside pre/code if we could help it, but simple regex hits all)
-        // A better way: Split by blocks? 
-        // For this simple version: Double newline -> P, Single -> BR
-
-        // Paragraphs (double newline)
+        html = html.replace(/<\/ul>\s*<ul>/g, '');
+        // Newlines
         html = html.replace(/\n\n/g, '<p></p>');
-        // Note: The above simple replacements might break HTML structure if not careful.
-        // A truly robust one requires tokenization.
-        // Let's stick to a very simple line-based approach for the "rest":
-
         html = html.replace(/\n/g, '<br>');
 
         return html;
@@ -1872,22 +2153,18 @@
                 return { success: false, error: "view is required" };
             }
 
-            // options is data
             let data = options;
-
-            // Apply type inference to models
             if (data.models) {
                 data.models = processModels(data.models);
             }
 
-            // Handle optional arguments (context/callback)
+            // Handle optional callback
             if (typeof context === 'function') {
                 callback = context;
                 context = undefined;
             }
 
             const viewId = _viewIdCounter++;
-            // Attach context to data for easy access in render
             data.context = context;
 
             console.groupCollapsed(`%c[Synura] OPEN ${viewPath} (ID: ${viewId})`, "color: green");
@@ -1907,7 +2184,6 @@
         update: (viewId, data) => {
             const view = views[viewId];
             if (view) {
-                // Apply type inference to models in update data
                 if (data.models) {
                     data.models = processModels(data.models);
                 }
@@ -1916,7 +2192,7 @@
                 console.log("Diff:", data);
                 console.groupEnd();
 
-                // Deep merge (simplified)
+                // Merge styles
                 if (data.styles) {
                     if (!view.data.styles) view.data.styles = {};
                     Object.assign(view.data.styles, data.styles);
@@ -1925,11 +2201,10 @@
                 if (data.models) {
                     if (!view.data.models) view.data.models = {};
 
-                    // Handle 'append' specially for lists/chats
+                    // Handle 'append' for lists/chats
                     if (data.models.append) {
                         if (view.path === '/views/chat') {
                             if (!view.data.models.append) view.data.models.append = { details: [] };
-                            // inferModel ensures 'details' exists if passed as array, but let's be safe
                             const newDetails = data.models.append.details || [];
                             view.data.models.append.details.push(...newDetails);
                         } else if (view.path === '/views/list') {
@@ -1938,12 +2213,7 @@
                             view.data.models.contents.details.push(...newDetails);
                         }
                     }
-
-                    // Overwrite other models
                     for (const key in data.models) {
-                        // Skip append as it's handled above, or merge it?
-                        // The original code merged everything. But 'append' is special action.
-                        // Let's keep overwriting other keys.
                         if (key !== 'append') {
                             view.data.models[key] = data.models[key];
                         }
@@ -2110,15 +2380,6 @@
         }
     }
 
-    // SessionStorage Shim
-    const memoryStore = {};
-    window.sessionStorageShim = {
-        setItem: (k, v) => memoryStore[k] = v,
-        getItem: (k) => memoryStore[k],
-        removeItem: (k) => delete memoryStore[k],
-        clear: () => { for (const k in memoryStore) delete memoryStore[k]; }
-    };
-
     // DOM Parsing Logic
     function domToDetails(node) {
         let details = [];
@@ -2194,7 +2455,7 @@
         return details;
     }
 
-    // Sync Fetch Polyfill
+    // Fetch polyfill
     window.fetch = (url, options) => {
         console.log(`%c[Synura] FETCH ${url}`, "color: grey", options);
 
@@ -2214,8 +2475,6 @@
             console.error("%c[Synura] Fetch Failed! Likely CORS.", "color: red");
             return { ok: false, status: 0, text: () => "", json: () => ({}), dom: () => new StrictDOMElement(document.createElement('div')) };
         }
-
-        // Mock Response Object
         return {
             status: request.status,
             statusText: request.statusText,
@@ -2234,19 +2493,16 @@
     // Open logs by default
     toggleLogOverlay();
 
-    // CSP Violation Listener
+    // CSP listener
     document.addEventListener('securitypolicyviolation', (e) => {
         console.error(`%c[Synura] CSP Violation blocked '${e.blockedURI}'`, "color: red; font-weight: bold");
         console.error(`  Violated Directive: ${e.violatedDirective}`);
-        console.error(`  Original Policy: ${e.originalPolicy}`);
-        // Optional: alert user if it's critical
-        // alert(`Synura Polyfill blocked by CSP!\nCannot load: ${e.blockedURI}\nDirective: ${e.violatedDirective}`);
     });
 
-    // Global Error Capture
+    // Error handlers
     window.onerror = function (msg, url, line, col, error) {
         console.error(`%c[Synura] Global Error: ${msg}`, "color: red");
-        return false; // Let default handler run too
+        return false;
     };
     window.onunhandledrejection = function (e) {
         console.error(`%c[Synura] Unhandled Rejection: ${e.reason}`, "color: red");

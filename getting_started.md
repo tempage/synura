@@ -4,9 +4,45 @@
 
 This guide will walk you through creating your first Synura extension.
 
+## Data-Driven Views
+
+Synura uses a **Data-Driven** architecture that inverts the traditional web development model:
+
+| Traditional (HTML) | Synura |
+|-------------------|--------|
+| Write HTML structure first | Write JavaScript data first |
+| Add JS for interactivity | Views render automatically |
+| You control every pixel | Strict, optimized view templates |
+| Markup → Logic | **Data → Views** |
+
+**How it works:**
+1. Your extension provides **data** (JavaScript objects)
+2. You specify a **view type** (`list`, `post`, `chat`, etc.)
+3. Synura **renders the UI natively** - no HTML, no CSS
+
+```javascript
+// You write data, not markup
+synura.open({
+  view: '/views/list',
+  models: {
+    contents: [
+      { title: "Article 1", author: "Alice", date: "Today" },
+      { title: "Article 2", author: "Bob", date: "Yesterday" }
+    ]
+  }
+});
+// Synura renders a native list automatically
+```
+
+**Benefits:**
+- 🚀 **Faster development** - No UI code to write
+- 📱 **Native performance** - Views are optimized for each platform  
+- 🎨 **Consistent UX** - All extensions look polished
+- 🔒 **Secure** - No DOM manipulation, no XSS risks
+
 ## Development Tools
 
-We provide a **Visual Polyfill** that simulates the Synura environment directly in your web browser. This allows you to develop and debug extensions using standard DevTools before testing them on the device.
+We provide a **Visual Polyfill** that simulates the Synura environment directly in your web browser. This allows you to develop and debug extensions using standard DevTools before testing them on the device. Enable **Debug Mode** to set breakpoints and step through your handler functions.
 
 *   **[Polyfill Guide](polyfill_guide.md)**: Read this first! It explains how to use the emulator.
 *   **[synura_polyfill.js](synura_polyfill.js)**: The emulator script.
@@ -26,27 +62,21 @@ The `SYNURA` object serves as the manifest and entry point for your extension.
 
 ```javascript
 var SYNURA = {
-    name: "My First Extension", // Required
-    api: 0, // Required (0 denotes Beta API)
-    version: 0.1, // Required
-    description: "A simple hello world extension.", // Optional
-    domain: "example.com", // Optional: Domain for the extension
-    icon: "emoji:📖", // Optional: Icon for the extension (or https://example.com/favicon.ico)
-    bypass: "firefox", // Optional: Browser identity
-    
-    // Entry Point
-    main: {
-        home: function() {
-            // Your logic here
-        },
-        deeplink: function(url) {
-            // Handle deep links
-            return true;
-        },
-        resume: function(viewId, context) {
-            // Restore bookmark
-        }
-    }
+  name: "My First Extension",
+  api: 0,
+  version: 0.1,
+  description: "A simple hello world extension.",
+  license: "Apache-2.0",
+  domain: "example.com",
+  icon: "emoji:📖",
+  bypass: "firefox",
+  main: {
+    home: function() {},
+    deeplink: function(url) {
+      return true;
+    },
+    resume: function(viewId, context) {}
+  }
 };
 ```
 
@@ -58,20 +88,13 @@ var SYNURA = {
 The `main` object (inside `SYNURA`) must define a `home` function, which is the entry point when the user opens your extension.
 
 ```javascript
-    main: {
-        home: function() {
-            // Your logic here
-        },
-        // Optional: Handle deep links
-        deeplink: function(url) {
-            // Return true if handled, false to let the app handle it
-            return true;
-        },
-        // Optional: Handle bookmark restoration
-        resume: function(viewId, context) {
-            // Re-connect to the view
-        }
-    }
+main: {
+  home: function() {},
+  deeplink: function(url) {
+    return true;
+  },
+  resume: function(viewId, context) {}
+}
 ```
 
 ### Deep Linking
@@ -83,31 +106,21 @@ You can enable deep linking to allow your extension to handle links matching you
 
 ```javascript
 const SYNURA = {
-    // ...
-    domain: "example.com",
-    deeplink: true,
-    
-    main: {
-        // ...
-        deeplink: function(url) {
-            if (url.includes("/post/")) {
-                // Note: This is a simplified example.
-                // For real implementations, you must fetch and parse the page content
-                // to populate the 'models' (e.g., title, content) for the post view.
-                // Simply passing the URL is not enough.
-                // Refer to 'api_reference.md' and 'post.md' for details.
-                synura.open("/views/post", { 
-                    models: {
-                        link: url, // Simplified syntax: string maps to message
-                        // author: "Author Name",
-                        // ... other models
-                    }
-                });
-                return true; // Handled
-            }
-            return false; // Not handled, open in browser
-        }
+  domain: "example.com",
+  deeplink: true,
+  main: {
+    deeplink: function(url) {
+      if (url.includes("/post/")) {
+        synura.open("/views/post", {
+          models: {
+            link: url,
+          }
+        });
+        return true;
+      }
+      return false;
     }
+  }
 };
 ```
 
@@ -120,18 +133,11 @@ However, if the user wants to interact with the view again (restore it to a live
 Your extension **must** implement `resume` to re-attach event listeners to the restored view.
 
 ```javascript
-    // ... inside SYNURA.main
-    resume: function(viewId, context) {
-        // 'context' contains the data saved when the view was created
-        // You MUST reconnect to the view to handle future events
-        synura.connect(viewId, context, function(event) {
-            // Handle events (e.g., clicks, refresh) just like in a new view
-            // You can reuse your existing event handler function here
-             if (event.eventId === "LOAD") {
-                // Handle load event
-             }
-        });
-    }
+resume: function(viewId, context) {
+  synura.connect(viewId, context, function(event) {
+    if (event.eventId === "LOAD") {}
+  });
+}
 ```
 
 ### Domain Launcher Support
@@ -143,9 +149,8 @@ You can allow users to install your extension by simply typing your website doma
 
 ```javascript
 const SYNURA = {
-    name: "My Extension",
-    domain: "yourdomain.com", // Must match the host of synura.js
-    // ...
+  name: "My Extension",
+  domain: "yourdomain.com",
 };
 ```
 
@@ -179,30 +184,27 @@ Let's create a simple extension that displays a list with a single item.
 
 ```javascript
 var SYNURA = {
-    name: "Hello World",
-    api: 0,
-    version: 0.1,
-    description: "My first Synura extension.",
-    
-    main: {
-        home: function() {
-            // Open a 'list' view
-            synura.open('/views/list', {
-                styles: {
-                    title: "Hello World Extension"
-                },
-                models: {
-                    contents: [
-                        {
-                            title: "Welcome to Synura!",
-                            author: "Me",
-                            date: new Date().toLocaleDateString()
-                        }
-                    ]
-                }
-            });
+  name: "Hello World",
+  api: 0,
+  version: 0.1,
+  description: "My first Synura extension.",
+  license: "Apache-2.0",
+  main: {
+    home: function() {
+      synura.open('/views/list', {
+        styles: {
+          title: "Hello World Extension"
+        },
+        models: {
+          contents: [{
+            title: "Welcome to Synura!",
+            author: "Me",
+            date: new Date().toLocaleDateString()
+          }]
         }
+      });
     }
+  }
 };
 ```
 
