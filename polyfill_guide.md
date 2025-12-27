@@ -233,6 +233,12 @@ The Synura runtime uses a custom, lightweight HTML parser, not a full browser en
 *   **Supported Methods**: `getAttribute(name)`, `hasAttribute(name)`, `querySelector(selector)`, `querySelectorAll(selector)`, `remove()`, `cloneNode(deep)`.
 *   **NOT Supported**: `innerHTML`, `outerHTML`, `parentElement`, `previousSibling`, `style`, `addEventListener`, etc.
 
+### Web APIs Available
+
+The following standard Web APIs are available in both the Synura runtime and the polyfill:
+
+*   **`URLSearchParams`**: Standard API for working with query strings. Use `new URLSearchParams(query)` and methods like `get()`, `set()`, `has()`, `delete()`, `toString()`.
+
 > [!IMPORTANT]
 > If your code works in the browser but fails in the app, you are likely using an unsupported DOM property. The polyfill will now throw an error or return undefined for these properties to help you catch this early.
 

@@ -14,8 +14,10 @@ The `styles` object controls the appearance and behavior of the view.
 | `appbar` | `object` or `string` | Customizes the app bar. See [List View](list.md#styles) for details. |
 | `authorClickable` | `boolean` | If `true`, enables the author click event. |
 | `categoryClickable` | `boolean` | If `true`, enables the category click event. |
-| `hotThreshold` | `number` | The threshold for displaying the "hot" (left) border. |
-| `coldThreshold` | `number` | The threshold for displaying the "cold" (right) border. |
+| `hotThreshold` | `number` | The threshold for displaying the "hot" (left) border for the post body and comments (if comment specific threshold is not set). |
+| `coldThreshold` | `number` | The threshold for displaying the "cold" (right) border for the post body and comments (if comment specific threshold is not set). |
+| `commentHotThreshold` | `number` | The threshold for displaying the "hot" (left) border for comments. Overrides `hotThreshold` for comments. |
+| `commentColdThreshold` | `number` | The threshold for displaying the "cold" (right) border for comments. Overrides `coldThreshold` for comments. |
 
 ## Models
 The `models` object contains the data to be displayed.
@@ -33,6 +35,8 @@ The `models` object contains the data to be displayed.
 | `viewCount` | `string` | View count (displayed as text). Empty to hide. |
 | `likeCount` | `string` | Like count (displayed as text). Empty to hide. |
 | `dislikeCount` | `string` | Dislike count (displayed as text). Empty to hide. |
+| `hotCount` | `number` | Count used for calculating the "hot" border intensity for the post body. |
+| `coldCount` | `number` | Count used for calculating the "cold" border intensity for the post body. |
 | `menus` | `list<string>` | List of menu items to show in the app bar. |
 | `buttons` | `list<string>` | List of buttons to show at the bottom of the post. |
 | `content` | `value` | Contains the main content of the post (string or list of content items). See below. |
@@ -72,6 +76,8 @@ The `comments` object has a `details` field which is a list of comment objects.
 | `content` | `value` | Comment content (string or list of content items). |
 | `likeCount` | `string` | Like count (displayed as text). Empty to hide. |
 | `dislikeCount` | `string` | Dislike count (displayed as text). Empty to hide. |
+| `hotCount` | `number` | Count used for calculating the "hot" border intensity for this comment. |
+| `coldCount` | `number` | Count used for calculating the "cold" border intensity for this comment. |
 | `level` | `number` | Nesting level (0 for root, 1 for reply, etc.). |
 
 ```json
@@ -100,6 +106,7 @@ The view sends the following events to the extension:
 | `MENU_CLICK` | Triggered when a menu item is selected. | `menu`: The selected menu string. `link`: The post link. |
 | `AUTHOR_CLICK` | Triggered when the author is clicked. | `link`: The post link. `author`: The author name. |
 | `CATEGORY_CLICK` | Triggered when the category is clicked. | `link`: The post link. `category`: The category name. |
+| `SUBMIT` | Triggered when a button is clicked. | `button`: The text of the clicked button. |
 
 ## Example Usage
 

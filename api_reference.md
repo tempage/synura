@@ -132,6 +132,9 @@ sessionStorage.setItem("cache", {
 const cache = sessionStorage.getItem("cache");
 ```
 
+### `URLSearchParams`
+The standard Web API for working with URL query strings is available. See [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams) for full API reference.
+
 ---
 
 ## Synura Models
