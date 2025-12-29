@@ -159,9 +159,11 @@ Displays a detailed post with content and comments.
   date: "1h ago",
   content: "Comment text",
   avatar: "https://...",
-  level: 0
+  level: 0,
+  menus: ["Reply", "Report"] // Optional: renders a 3-dot menu button
 }
 ```
+*   **Comment Menu**: If `menus` is provided, a 3-dot icon appears. Clicking a menu item triggers `ITEM_MENU_CLICK` with `{ menu: "...", author: "...", date: "...", ...allCommentFields }`.
 
 ### 3. Chat View (`/views/chat`)
 

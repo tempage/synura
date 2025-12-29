@@ -1336,9 +1336,24 @@
                         <span class="synura-author-name" style="color:#fff;font-weight:500">${escapeHtml(c.author || 'Unknown')}</span>
                         <span>${escapeHtml(c.date)}</span>
                         ${commentStats.length > 0 ? `<span style="margin-left:8px; color:#777">${commentStats.join(' ')}</span>` : ''}
+                        ${c.menus && c.menus.length > 0 ? `<span class="synura-comment-menu-btn" style="margin-left:auto; cursor:pointer; padding:0 4px;">⋮</span>` : ''}
                     </div>
                     <div class="synura-comment-content">${contentHtml}</div>
                 `;
+
+                // Comment menu click handler
+                if (c.menus && c.menus.length > 0) {
+                    const menuBtn = el.querySelector('.synura-comment-menu-btn');
+                    if (menuBtn) {
+                        menuBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            showSelectionDialog("Select Action", c.menus, (choice) => {
+                                // Pass entire comment data with menu selection
+                                triggerEvent(view, 'ITEM_MENU_CLICK', { menu: choice, ...c });
+                            });
+                        };
+                    }
+                }
 
                 if (styles?.authorClickable) {
                     const handler = (e) => {
@@ -1564,9 +1579,20 @@
     function renderForm(container, models, view) {
         const inputs = models.body?.details || [];
         const formValues = {};
+        const styles = view.data.styles;
+        const message = styles?.message || '';
 
         const formContainer = document.createElement('div');
         formContainer.style.padding = '16px';
+
+        // Show message if provided
+        if (message) {
+            const msgEl = document.createElement('p');
+            msgEl.style.marginBottom = '16px';
+            msgEl.style.color = '#ccc';
+            msgEl.innerText = message;
+            formContainer.appendChild(msgEl);
+        }
 
         inputs.forEach(input => {
             // Input might be JSON string
@@ -1580,10 +1606,33 @@
             label.innerText = input.label || input.name;
             group.appendChild(label);
 
-            const field = document.createElement('input');
-            field.className = 'synura-input-field';
-            field.type = input.type === 'number' ? 'number' : (input.format === 'password' ? 'password' : 'text');
-            if (input.value) field.value = input.value;
+            let field;
+            const lines = input.lines;
+
+            if (lines && lines > 1 && (input.type === 'string' || input.type === 'text')) {
+                // Multi-line textarea
+                field = document.createElement('textarea');
+                field.className = 'synura-input-field';
+                field.rows = lines;
+                field.style.resize = 'vertical';
+                if (input.value) field.value = input.value;
+            } else if (input.type === 'boolean') {
+                // Boolean switch (simplified as checkbox for polyfill)
+                field = document.createElement('input');
+                field.type = 'checkbox';
+                field.checked = input.value || false;
+                formValues[input.name] = input.value || false;
+                field.onchange = (e) => formValues[input.name] = e.target.checked;
+                group.appendChild(field);
+                formContainer.appendChild(group);
+                return;
+            } else {
+                // Standard input
+                field = document.createElement('input');
+                field.className = 'synura-input-field';
+                field.type = input.type === 'number' ? 'number' : (input.format === 'password' ? 'password' : 'text');
+                if (input.value) field.value = input.value;
+            }
 
             formValues[input.name] = input.value; // Initial 
             field.onchange = (e) => formValues[input.name] = e.target.value;
@@ -1607,6 +1656,9 @@
     function renderConfirmation(container, styles, view) {
         const title = styles?.title || 'Confirmation';
         const message = styles?.message || '';
+        const showClose = styles?.close === true || String(styles?.close) === 'true';
+        const models = view.data.models;
+        const buttons = (models?.buttons?.details || []).map(b => typeof b === 'string' ? b : (b.value || b));
 
         const wrapper = document.createElement('div');
         wrapper.style.padding = '24px';
@@ -1623,6 +1675,7 @@
         titleEl.innerText = title;
         wrapper.appendChild(titleEl);
 
+        // Show message
         if (message) {
             const msgEl = document.createElement('p');
             msgEl.style.marginBottom = '24px';
@@ -1632,13 +1685,43 @@
             wrapper.appendChild(msgEl);
         }
 
-        const okBtn = document.createElement('button');
-        okBtn.className = 'synura-btn';
-        okBtn.innerText = 'OK';
-        okBtn.style.minWidth = '100px';
-        okBtn.onclick = () => triggerEvent(view, 'SUBMIT', {});
-        wrapper.appendChild(okBtn);
+        // Buttons container
+        const btnContainer = document.createElement('div');
+        btnContainer.style.display = 'flex';
+        btnContainer.style.gap = '12px';
 
+        if (buttons.length > 0) {
+            buttons.forEach(btnText => {
+                const btn = document.createElement('button');
+                btn.className = 'synura-btn';
+                btn.innerText = btnText;
+                btn.style.minWidth = '80px';
+                btn.onclick = () => triggerEvent(view, 'SUBMIT', { button: btnText });
+                btnContainer.appendChild(btn);
+            });
+        } else {
+            const okBtn = document.createElement('button');
+            okBtn.className = 'synura-btn';
+            okBtn.innerText = 'OK';
+            okBtn.style.minWidth = '100px';
+            okBtn.onclick = () => triggerEvent(view, 'SUBMIT', {});
+            btnContainer.appendChild(okBtn);
+        }
+
+        if (showClose) {
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'synura-btn';
+            closeBtn.innerText = 'Close';
+            closeBtn.style.minWidth = '80px';
+            closeBtn.style.background = '#333';
+            closeBtn.onclick = () => {
+                triggerEvent(view, 'CLOSE', {});
+                window.synura.close(view.id);
+            };
+            btnContainer.appendChild(closeBtn);
+        }
+
+        wrapper.appendChild(btnContainer);
         container.appendChild(wrapper);
     }
 

@@ -79,6 +79,7 @@ The `comments` object has a `details` field which is a list of comment objects.
 | `hotCount` | `number` | Count used for calculating the "hot" border intensity for this comment. |
 | `coldCount` | `number` | Count used for calculating the "cold" border intensity for this comment. |
 | `level` | `number` | Nesting level (0 for root, 1 for reply, etc.). |
+| `menus` | `list<string>` | Menu items to show in the comment's overflow menu (3-dot icon). |
 
 ```json
 "comments": [
@@ -91,7 +92,8 @@ The `comments` object has a `details` field which is a list of comment objects.
     "content": "This is a comment.", // Can be string or list of content items
     "likeCount": "10",
     "dislikeCount": "0",
-    "level": 0 // Nesting level (0 for root, 1 for reply, etc.)
+    "level": 0, // Nesting level (0 for root, 1 for reply, etc.)
+    "menus": ["Reply", "Report"] // Optional: Menu items for this comment
   }
 ]
 ```
@@ -107,6 +109,7 @@ The view sends the following events to the extension:
 | `AUTHOR_CLICK` | Triggered when the author is clicked. | `link`: The post link. `author`: The author name. |
 | `CATEGORY_CLICK` | Triggered when the category is clicked. | `link`: The post link. `category`: The category name. |
 | `SUBMIT` | Triggered when a button is clicked. | `button`: The text of the clicked button. |
+| `ITEM_MENU_CLICK` | Triggered when a comment menu item is selected. | `menu`: The selected menu string. All comment fields (author, date, content, etc.). |
 
 ## Example Usage
 

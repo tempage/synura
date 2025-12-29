@@ -27,10 +27,11 @@ The `body` model contains a list of input fields. Each field is an object with t
 | `label` | `string` | The display label for the field. |
 | `value` | `any` | The initial value. |
 | `format` | `string` | Optional format, e.g., `'password'` for obscured text input. |
+| `lines` | `number` | Optional. Number of visible lines for multi-line text input. Only applies to `string`/`text` types. |
 
 #### Input Types
 
-- **`string` / `text`**: A single-line text input field.
+- **`string` / `text`**: A text input field. Single-line by default, or multi-line if `lines` is specified.
 - **`number`**: A numeric input field with number keyboard.
 - **`boolean`**: A toggle switch.
 
