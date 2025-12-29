@@ -212,6 +212,83 @@ var SYNURA = {
 4.  Load the extension into Synura (refer to the app's import instructions).
 5.  Open the extension from the main menu. You should see a list with "Welcome to Synura!".
 
+## View Events
+    
+Extensions can listen to events from the UI using the `onViewEvent` callback.
+
+### Lifecycle Events (Automatic)
+
+These events are triggered automatically by the system:
+
+*   **`LOAD`**: Triggered when a view is first rendered or comes into focus. Use this to fetch data or initialize the view.
+    > **Note:** `LOAD` events do not reset the "Total Time" (`t`) metric in the Developer Overlay, ensuring that the initial user action (e.g., clicking a list item) remains the start time for performance measurement.
+*   **`CLOSE`**: Triggered when a view is popped from the navigation stack.
+*   **`REFRESH`**: Triggered by pull-to-refresh actions.
+
+### Interaction Events (User)
+
+These events are triggered by user actions:
+
+*   **`CLICK`**: Tapped on an item (list item, card, etc.).
+*   **`DOUBLE_CLICK`**: Double-tapped an item.
+*   **`SUBMIT`**: Form submitted.
+*   **`QUERY`**: Search query entered.
+*   **`MENU_CLICK`**: Top-level view menu item selected.
+*   **`ITEM_MENU_CLICK`**: Item context menu action selected (e.g., on a comment or card).
+
+## Developer Overlay
+
+When **Developer Mode** is enabled in Settings, a floating overlay displays real-time performance metrics for extension execution.
+
+### Metrics
+
+| Key | Description |
+|-----|-------------|
+| **t** | **Total time** – End-to-end latency from user action to visible UI (includes Flutter render) |
+| **b** | **Backend time** – Total backend execution time, including extension logic (total minus fetch) |
+| **f** | **Fetch time** – Total HTTP request duration |
+| **c** | **Fetch count** – Number of HTTP requests made |
+
+### Log Prefixes
+
+- `c:/views/...` – CreateView (new view opened)
+- `u:/views/...` – UpdateView (existing view refreshed)
+
+### Example Log
+
+```
+18:30:45 c:/views/list: t=1,245, b=89, f=1,120, c=2
+```
+
+This means:
+- Total end-to-end time: **1,245ms**
+- Backend execution: **89ms**
+- Network fetches: **1,120ms** (2 requests)
+
+### AI Metrics
+
+When the AI engine is enabled, additional metrics are logged for analysis and translation operations:
+
+| Key | Description |
+|-----|-------------|
+| **t** | Total AI processing time |
+| **f** | Fetch time (LLM API call) |
+| **it** | Input tokens sent to the LLM |
+| **ot** | Output tokens received from the LLM |
+| **ap** | AI provider (e.g., `gemini`, `openai`) |
+| **am** | AI model name |
+
+#### AI Log Prefixes
+
+- `a:/views/...` – AI Analysis (content summarization, sentiment)
+- `t:/views/...` – AI Translation
+
+#### Example AI Log
+
+```
+18:30:47 a:/views/post: t=890, f=850, it=1,024, ot=256, ap=gemini
+```
+
 ## Next Steps
 
 - Explore the **[API Reference](api_reference.md)** to learn about other view types like `post`, `chat`, and `settings`.

@@ -76,7 +76,8 @@ The view sends the following events to the extension:
 | `REFRESH` | Triggered when the user pulls to refresh. | None |
 | `SCROLL_TO_END` | Triggered when the user scrolls to the bottom (if `pagination` is true). | None |
 | `CLICK` | Triggered when an item is tapped. | `link`: Item link (Card). `title`: Item title. `_index`: Item index. All properties of the item object are included in the event data. |
-| `MENU_CLICK` | Triggered when a menu item is selected. | `menu`: The selected menu string. |
+| `ITEM_MENU_CLICK` | Triggered when an item's menu option is selected. | `menu`: The selected menu string. All properties of the item object are included in the event data. |
+| `MENU_CLICK` | Triggered when a top-level app bar menu item is selected. | `menu`: The selected menu string. |
 | `REORDER` | Triggered when an item is reordered. | `_newIndex`: New index. All properties of the item object are included in the event data. |
 | `AUTHOR_CLICK` | Triggered when the author is clicked. | `link`: Item link. `author`: Author name. |
 | `CATEGORY_CLICK` | Triggered when the category is clicked. | `link`: Item link. `category`: Category name. |

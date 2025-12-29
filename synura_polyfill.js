@@ -1027,7 +1027,7 @@
                         menuBtn.onclick = (e) => {
                             e.stopPropagation();
                             showSelectionDialog("Select Item Action", item.menus, (choice) => {
-                                triggerEvent(view, 'MENU_CLICK', { menu: choice });
+                                triggerEvent(view, 'ITEM_MENU_CLICK', { menu: choice, ...item });
                             });
                         };
                     }
