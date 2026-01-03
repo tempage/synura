@@ -50,6 +50,7 @@ The `content` object has a `details` field which is a list of content items. Eac
 | `text` | `value` | The text content to display. |
 | `image`| `value` | The URL of the image to display. |
 | `video`| `value` | The URL of the video to play. Supports 'rtsp' protocol. |
+| `thumbnail`| `value` | The URL of the high-res thumbnail/poster for video content. |
 | `link` | `value` | The text to display for the link. If the URL is a YouTube link, it will be automatically converted to a media player. |
 
 You can automatically generate the `details` array from a DOM element using the `synura.parse('post', element)` API.

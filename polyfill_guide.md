@@ -110,6 +110,7 @@ Displays a list of items.
 **Models:**
 *   `contents`: List of items.
     *   `details`: Array of objects (or JSON strings).
+    *   **Note**: If `thumbnail` is provided, it is used for the list item image instead of `mediaUrl`. This is useful for video posters or low-res previews.
 *   `append`: Use this in `synura.update` to add items to the end of the list.
 *   `menus`: List of app bar menu items (strings or objects with `label`/`checked`).
 
@@ -121,6 +122,7 @@ Displays a list of items.
   author: "Author Name",
   date: "2023-10-27",
   mediaUrl: "https://...",
+  thumbnail: "https://...", // Optional: Poster image for video or low-res preview
   memo: "Short description",
   avatar: "https://...",
   category: "Category Name",

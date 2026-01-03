@@ -1013,8 +1013,16 @@
                     menuHtml = `<div class="synura-card-menu-btn">⋮</div>`;
                 }
 
-                const mediaHtml = hasMedia && item.mediaUrl
-                    ? renderImageOrEmoji(item.mediaUrl, '', 'width:100%; aspect-ratio:16/9; object-fit:cover;')
+                // Media Logic
+                let mediaSource = item.thumbnail || item.mediaUrl;
+                let mediaOverlay = '';
+
+                if (item.mediaType === 'video') {
+                    mediaOverlay = `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:rgba(255,255,255,0.8);">▶</div>`;
+                }
+
+                const mediaHtml = hasMedia && mediaSource
+                    ? `<div style="position:relative;width:100%;height:100%;">${renderImageOrEmoji(mediaSource, '', 'width:100%; aspect-ratio:16/9; object-fit:cover;')}${mediaOverlay}</div>`
                     : (hasMedia ? '<div style="height:100px;background:#333"></div>' : '');
 
                 const avatarHtml = item.avatar

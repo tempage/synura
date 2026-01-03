@@ -54,6 +54,7 @@ Used when `layout` is `'card'` or `'gallery'`.
 | `commentCount` | `string` | Comment count (displayed as text). Empty to hide. |
 | `dislikeCount` | `string` | Dislike count (displayed as text). Empty to hide. |
 | `mediaUrl` | `string` | URL of the thumbnail or media. |
+| `thumbnail` | `string` | URL of the high-res thumbnail/poster. Used instead of `mediaUrl` for display in list if provided. |
 | `mediaType` | `string` | `'image'` or `'video'`. |
 | `types` | `list<string>` | Tags like `'hot'`, `'image'`, `'video'`, `'link'`. |
 | `hotCount` | `int` | Hot threshold count (for highlighting). |
