@@ -22,11 +22,12 @@ The `body` model contains a list of form fields in its `details` property. Each 
 
 | Key | Type | Description |
 | :--- | :--- | :--- |
-| `type` | `string` | The input type: `'string'`, `'text'`, `'number'`, `'boolean'`. |
+| `type` | `string` | The input type: `'string'`, `'text'`, `'number'`, `'boolean'`, `'select'`. |
 | `name` | `string` | The unique identifier for the field. Used in the `SUBMIT` event. |
 | `label` | `string` | The display label for the field. |
 | `value` | `any` | The initial value. |
 | `format` | `string` | Optional format, e.g., `'password'` for obscured text. |
+| `options` | `string[]` | Required for `'select'` type. Array of option strings. |
 
 ### Buttons
 The `buttons.details` model is a `string[]` that lets you dynamically create any buttons you need. Each string in the array becomes a button with that label.
@@ -62,6 +63,12 @@ synura.open('/views/settings', {
       name: 'notifications',
       label: 'Enable Notifications',
       value: true
+    }, {
+      type: 'select',
+      name: 'theme',
+      label: 'Theme',
+      value: 'dark',
+      options: ['light', 'dark', 'system']
     }],
     buttons: ['Save', 'Cancel', 'Apply']
   }

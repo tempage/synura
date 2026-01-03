@@ -19,7 +19,7 @@ The `models` object contains the data to be displayed.
 | Key | Type | Description |
 | :--- | :--- | :--- |
 | `content` | `string` | The markdown content to render. |
-| `menus` | `list<string>` | List of menu items to show in the app bar. |
+| `menus` | `list<string\|object>` | List of menu items to show in the app bar. Can be strings or objects with `label` (string) and optional `checked` (boolean) for checkbox items. |
 
 
 ## Events

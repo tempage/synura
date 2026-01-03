@@ -31,7 +31,7 @@ The `models` object contains the data to be displayed.
 | Key | Type | Description |
 | :--- | :--- | :--- |
 | `contents` | `list` | A list of items to display. See [Item Models](#item-models) below. |
-| `menus` | `list<string>` | List of menu items to show in the app bar. |
+| `menus` | `list<string\|object>` | List of menu items to show in the app bar. Can be strings or objects with `label` (string) and optional `checked` (boolean) for checkbox items. |
 | `append` | `list` | A list of items to append to the existing list (useful for pagination). |
 
 ### Item Models

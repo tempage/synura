@@ -22,18 +22,20 @@ The `body` model contains a list of input fields. Each field is an object with t
 
 | Key | Type | Description |
 | :--- | :--- | :--- |
-| `type` | `string` | The input type: `'string'`, `'text'`, `'number'`, `'boolean'`. |
+| `type` | `string` | The input type: `'string'`, `'text'`, `'number'`, `'boolean'`, `'select'`. |
 | `name` | `string` | The unique identifier for the field. Used as the key in the `SUBMIT` event data. |
 | `label` | `string` | The display label for the field. |
 | `value` | `any` | The initial value. |
 | `format` | `string` | Optional format, e.g., `'password'` for obscured text input. |
 | `lines` | `number` | Optional. Number of visible lines for multi-line text input. Only applies to `string`/`text` types. |
+| `options` | `string[]` | Required for `'select'` type. Array of option strings. |
 
 #### Input Types
 
 - **`string` / `text`**: A text input field. Single-line by default, or multi-line if `lines` is specified.
 - **`number`**: A numeric input field with number keyboard.
 - **`boolean`**: A toggle switch.
+- **`select`**: A dropdown menu. Requires `options` array of strings.
 
 ### Buttons
 The `buttons` model is a `string[]` where each string becomes a button label. When clicked, the form data is submitted along with which button was pressed.

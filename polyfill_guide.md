@@ -111,7 +111,7 @@ Displays a list of items.
 *   `contents`: List of items.
     *   `details`: Array of objects (or JSON strings).
 *   `append`: Use this in `synura.update` to add items to the end of the list.
-*   `menus`: List of app bar menu items (strings).
+*   `menus`: List of app bar menu items (strings or objects with `label`/`checked`).
 
 **Item Structure (`CardItemModel`):**
 ```javascript
@@ -177,7 +177,7 @@ Displays a chat interface.
 *   `append`: List of new messages (array of objects).
     *   Message object: `{ user: "Me"|"Other", message: "Hello", time: "...", format: "text"|"markdown" }`.
     *   `format`: Optional. Set to `"markdown"` or `"md"` to render the message as markdown. Defaults to plain text.
-*   `menus`: List of app bar menu items (strings).
+*   `menus`: List of app bar menu items (strings or objects with `label`/`checked`).
 
 ### 4. Browser View (`/views/browser`)
 
@@ -207,7 +207,7 @@ Displays text content formatted using Markdown.
 **Models:**
 *   `content`: The markdown string to render.
     *   *Alternative*: `body` model.
-*   `menus`: List of app bar menu items (strings).
+*   `menus`: List of app bar menu items (strings or objects with `label`/`checked`).
 
 ### 6. Source View (`/views/source`)
 

@@ -25,6 +25,12 @@ const initialFormFields = [{
   name: 'darkMode',
   label: 'Dark Mode',
   value: false
+}, {
+  type: 'select',
+  name: 'theme',
+  label: 'Theme',
+  value: 'system',
+  options: ['light', 'dark', 'system']
 }];
 
 const handler = {

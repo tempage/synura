@@ -799,9 +799,24 @@
         if (isQuery) {
             const input = appbar.querySelector('input');
             input.oninput = (e) => view._queryValue = e.target.value;
-            input.onkeypress = (e) => { if (e.key === 'Enter') triggerEvent(view, 'QUERY', { query: input.value }); };
+
+            // Build full event data including appbar style configuration
+            const buildQueryEventData = (queryValue) => {
+                const eventData = { query: queryValue };
+                // Include all appbar style data if it's an object
+                if (typeof appbarStyle === 'object' && appbarStyle !== null) {
+                    for (const [key, value] of Object.entries(appbarStyle)) {
+                        if (value !== null && value !== undefined) {
+                            eventData[key] = value;
+                        }
+                    }
+                }
+                return eventData;
+            };
+
+            input.onkeypress = (e) => { if (e.key === 'Enter') triggerEvent(view, 'QUERY', buildQueryEventData(input.value)); };
             const sBtn = appbar.querySelector('.search-btn');
-            if (sBtn) sBtn.onclick = () => triggerEvent(view, 'QUERY', { query: input.value });
+            if (sBtn) sBtn.onclick = () => triggerEvent(view, 'QUERY', buildQueryEventData(input.value));
         }
 
         const mBtn = appbar.querySelector('.menu-btn');
@@ -811,17 +826,22 @@
                     if (typeof m === 'string') {
                         try {
                             const parsed = JSON.parse(m);
-                            return parsed.value || parsed;
-                        } catch (e) { return m; }
+                            // Return as object with label and checked
+                            if (typeof parsed === 'object' && parsed !== null) {
+                                return { label: parsed.label || String(parsed), checked: parsed.checked || false };
+                            }
+                            return { label: String(parsed), checked: false };
+                        } catch (e) { return { label: m, checked: false }; }
                     }
-                    return m.value || m;
+                    if (typeof m === 'object' && m !== null) {
+                        return { label: m.label || m.value || String(m), checked: m.checked || false };
+                    }
+                    return { label: String(m), checked: false };
                 });
-                // Flatten potential objects to strings for prompt
-                const menuStrings = menus.map(m => (typeof m === 'object' ? JSON.stringify(m) : String(m)));
 
-                if (menuStrings.length > 0) {
-                    console.log("%c[Synura] Available Menus:", "color: cyan", menuStrings);
-                    showSelectionDialog("Select Menu Action", menuStrings, (choice) => {
+                if (menus.length > 0) {
+                    console.log("%c[Synura] Available Menus:", "color: cyan", menus);
+                    showSelectionDialog("Select Menu Action", menus, (choice) => {
                         triggerEvent(view, 'MENU_CLICK', { menu: choice });
                     });
                 } else {
@@ -1626,6 +1646,20 @@
                 group.appendChild(field);
                 formContainer.appendChild(group);
                 return;
+            } else if (input.type === 'select') {
+                // Dropdown select
+                const options = input.options || [];
+                field = document.createElement('select');
+                field.className = 'synura-input-field';
+                options.forEach(opt => {
+                    const optEl = document.createElement('option');
+                    optEl.value = opt;
+                    optEl.innerText = opt;
+                    if (input.value === opt) optEl.selected = true;
+                    field.appendChild(optEl);
+                });
+                formValues[input.name] = input.value || (options.length > 0 ? options[0] : '');
+                field.onchange = (e) => formValues[input.name] = e.target.value;
             } else {
                 // Standard input
                 field = document.createElement('input');
@@ -2364,10 +2398,31 @@
         options.forEach(opt => {
             const btn = document.createElement('div');
             btn.className = 'synura-modal-option';
-            btn.innerText = opt;
+            btn.style.display = 'flex';
+            btn.style.alignItems = 'center';
+            btn.style.justifyContent = 'center';
+            btn.style.gap = '8px';
+
+            // Support both string and object options
+            const isObject = typeof opt === 'object' && opt !== null;
+            const label = isObject ? (opt.label || String(opt)) : String(opt);
+            const checked = isObject ? opt.checked : false;
+
+            if (checked) {
+                const checkIcon = document.createElement('span');
+                checkIcon.innerText = '✓';
+                checkIcon.style.color = '#0e639c';
+                checkIcon.style.fontWeight = 'bold';
+                btn.appendChild(checkIcon);
+            }
+
+            const labelSpan = document.createElement('span');
+            labelSpan.innerText = label;
+            btn.appendChild(labelSpan);
+
             btn.onclick = () => {
                 overlay.remove();
-                callback(opt);
+                callback(label);
             };
             list.appendChild(btn);
         });

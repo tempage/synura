@@ -37,7 +37,7 @@ The `models` object contains the data to be displayed.
 | `dislikeCount` | `string` | Dislike count (displayed as text). Empty to hide. |
 | `hotCount` | `number` | Count used for calculating the "hot" border intensity for the post body. |
 | `coldCount` | `number` | Count used for calculating the "cold" border intensity for the post body. |
-| `menus` | `list<string>` | List of menu items to show in the app bar. |
+| `menus` | `list<string\|object>` | List of menu items to show in the app bar. Can be strings or objects with `label` (string) and optional `checked` (boolean) for checkbox items. |
 | `buttons` | `list<string>` | List of buttons to show at the bottom of the post. |
 | `content` | `value` | Contains the main content of the post (string or list of content items). See below. |
 | `comments` | `object` | Contains the list of comments. See below. |
