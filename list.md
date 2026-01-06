@@ -13,6 +13,7 @@ The `styles` object controls the appearance and behavior of the view.
 | `title` | `string` | The title displayed in the app bar. |
 | `appbar` | `object` or `string` | Customizes the app bar. If set to `'query'`, it shows a search bar. Can also be an object `{'type': 'query', 'label': 'Search', 'hint': 'Enter text...'}` to customize the search bar text. |
 | `layout` | `string` | `'card'` (default) or `'gallery'`. |
+| `columnCount` | `int` | Number of columns for gallery layout. In landscape mode, this scales based on the screen's aspect ratio (width/height), up to a maximum of 3 times the base value. Default is 1. |
 | `pagination` | `boolean` | If `true`, enables infinite scrolling (triggers `SCROLL_TO_END`). |
 | `reorderable` | `boolean` | If `true`, allows users to reorder items (triggers `REORDER`). |
 | `history` | `boolean` | If `true`, enables history tracking for visited items. |

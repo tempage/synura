@@ -943,7 +943,25 @@
         if (layout === 'card' || layout === 'gallery') {
             listContainer.className = 'synura-card-grid';
             if (layout === 'gallery') {
-                listContainer.style.gridTemplateColumns = '1fr 1fr 1fr';
+                let colCount = 1; // default
+                if (styles?.columnCount) {
+                    colCount = parseInt(styles.columnCount, 10) || 1;
+                }
+
+                // Adaptive columns based on container aspect ratio (mimic Flutter logic)
+                // We use the root container or window to determine "orientation"
+                const root = document.getElementById('synura-root');
+                if (root) {
+                    const width = root.clientWidth;
+                    const height = root.clientHeight;
+                    // If width > height, we are in "landscape"
+                    if (width > height) {
+                        colCount = Math.min(Math.round(colCount * (width / height)), colCount * 3);
+                        colCount = Math.max(colCount, parseInt(styles?.columnCount || 1, 10)); // Clamp low
+                    }
+                }
+
+                listContainer.style.gridTemplateColumns = `repeat(${colCount}, 1fr)`;
             } else if (layout === 'card') {
                 listContainer.style.gridTemplateColumns = '1fr';
             }
