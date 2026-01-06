@@ -191,16 +191,21 @@
             overflow: hidden; 
             cursor: pointer; 
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             position: relative;
             border-left: 0 solid transparent;
             border-right: 0 solid transparent;
         }
+        .synura-card.gallery-mode {
+            flex-direction: column;
+        }
         .synura-card img { 
-            width: 100%; 
-            aspect-ratio: 16/9; 
             object-fit: cover; 
             background: #333;
+        }
+        .synura-card.gallery-mode img {
+            width: 100%;
+            aspect-ratio: 1;
         }
         .synura-card-content { padding: 12px; flex: 1; display: flex; flex-direction: column; }
         .synura-card-menu-btn {
@@ -623,9 +628,19 @@
                         console.log(`%c[Synura Debug] Breaking on ${methodName}()`, "color: #f0f; font-weight: bold");
                         debugger;
                     }
-                    return original.apply(this, args);
+                    // SWAP FETCH: Temporarily enforce Synura sync fetch for the global scope
+                    // This allows code pasted in console (global scope) to use the correct fetch
+                    const nativeFetch = window.fetch;
+                    window.fetch = window.synura.fetch;
+
+                    try {
+                        return original.apply(this, args);
+                    } finally {
+                        // RESTORE FETCH
+                        window.fetch = nativeFetch;
+                    }
                 };
-                console.log(`%c[Synura] Wrapped handler.${methodName}() for debugging`, "color: #888");
+                console.log(`%c[Synura] Wrapped handler.${methodName}() for debugging & fetch-swapping`, "color: #888");
             }
         });
     }
@@ -1004,6 +1019,8 @@
 
             if (layout === 'card' || layout === 'gallery') {
                 el.className = 'synura-card';
+                if (layout === 'gallery') el.classList.add('gallery-mode');
+
                 el.style.borderLeft = borderLeft;
                 el.style.borderRight = borderRight;
 
@@ -1021,9 +1038,15 @@
                     mediaOverlay = `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:rgba(255,255,255,0.8);">▶</div>`;
                 }
 
-                const mediaHtml = hasMedia && mediaSource
-                    ? `<div style="position:relative;width:100%;height:100%;">${renderImageOrEmoji(mediaSource, '', 'width:100%; aspect-ratio:16/9; object-fit:cover;')}${mediaOverlay}</div>`
-                    : (hasMedia ? '<div style="height:100px;background:#333"></div>' : '');
+                let mediaHtml = '';
+                if (hasMedia && mediaSource) {
+                    if (layout === 'gallery') {
+                        mediaHtml = `<div style="position:relative;width:100%;aspect-ratio:1;">${renderImageOrEmoji(mediaSource, '', 'width:100%; height:100%; object-fit:cover;')}${mediaOverlay}</div>`;
+                    } else {
+                        // Card Layout: Fixed width 120px, 16/9
+                        mediaHtml = `<div style="position:relative;width:120px;aspect-ratio:16/9;flex-shrink:0;">${renderImageOrEmoji(mediaSource, '', 'width:100%; height:100%; object-fit:cover;')}${mediaOverlay}</div>`;
+                    }
+                }
 
                 const avatarHtml = item.avatar
                     ? renderImageOrEmoji(item.avatar, 'synura-avatar', 'width:16px;height:16px;border-radius:50%;margin-right:4px;font-size:12px;')
@@ -2602,7 +2625,7 @@
     }
 
     // Fetch polyfill
-    window.fetch = (url, options) => {
+    window.synura.fetch = (url, options) => {
         console.log(`%c[Synura] FETCH ${url}`, "color: grey", options);
 
         if (options && options.bypass) {
