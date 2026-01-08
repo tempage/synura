@@ -130,13 +130,23 @@ func main() {
 		log.Println("")
 		log.Printf("--- Custom Extensions from: %s ---", additionalScriptPath)
 		absPath, _ := filepath.Abs(additionalScriptPath)
-		entries, err := os.ReadDir(absPath)
-		if err == nil {
-			for _, entry := range entries {
-				if !entry.IsDir() {
-					log.Printf("  http://localhost:8080/ext/%s", entry.Name())
+		
+		err := filepath.Walk(absPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && strings.HasSuffix(info.Name(), ".js") {
+				relPath, err := filepath.Rel(absPath, path)
+				if err == nil {
+					// Ensure URL uses forward slashes even on Windows
+					urlPath := filepath.ToSlash(relPath)
+					log.Printf("  http://localhost:8080/ext/%s", urlPath)
 				}
 			}
+			return nil
+		})
+		if err != nil {
+			log.Printf("  (Error walking directory: %v)", err)
 		}
 	}
 	log.Println("")
