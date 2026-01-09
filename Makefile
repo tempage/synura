@@ -7,18 +7,19 @@
 #   make android   - Setup ADB and start server (for Android testing)
 #   make clean     - Clean build artifacts
 
-.PHONY: server test reverse android clean help
+.PHONY: server test reverse android clean help generate_extensions
 
 # Default target
 help:
 	@echo "Synura Public Makefile"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make server   - Start the mock server on port 8080"
-	@echo "  make test     - Run mock server tests"
-	@echo "  make reverse  - Setup ADB reverse for Android testing"
-	@echo "  make android  - Setup ADB and start server"
-	@echo "  make clean    - Clean build artifacts"
+	@echo "  make server              - Start the mock server on port 8080"
+	@echo "  make test                - Run mock server tests"
+	@echo "  make reverse             - Setup ADB reverse for Android testing"
+	@echo "  make android             - Setup ADB and start server"
+	@echo "  make generate_extensions - Generate extensions.json from extensions directory"
+	@echo "  make clean               - Clean build artifacts"
 	@echo ""
 	@echo "Endpoints available at http://localhost:8080:"
 	@echo "  GET  /login          - Set session cookie (10s expiry)"
@@ -41,9 +42,9 @@ help:
 server:
 	@echo "Starting mock server on :8080..."
 ifdef EXTDIR
-	cd mock_server && go run main.go $(EXTDIR)
+	go run mock_server/main.go -path $(EXTDIR)
 else
-	cd mock_server && go run main.go
+	go run mock_server/main.go
 endif
 
 # Run tests
@@ -74,3 +75,9 @@ build:
 	@echo "Building mock_server..."
 	cd mock_server && go build -o mock_server main.go
 	@echo "Build complete: mock_server/mock_server"
+
+# Generate extensions.json
+generate_extensions:
+	@echo "Generating extensions.json..."
+	python extensions/generate_extensions_json.py
+	@echo "Done."

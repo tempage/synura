@@ -2,12 +2,12 @@
 
 This document explains the example extensions found in the `examples/` directory.
 
-## 1. Hello World (`examples/hello_world.js`)
+## 1. Hello World (`extensions/basic/hello_world.js`)
 
 A minimal extension that demonstrates the basic structure of a Synura extension.
 - **Concepts**: `package` metadata, `handler.home` entry point, opening a static `list` view.
 
-## 2. Wikipedia Featured Article (`examples/wikipedia_featured.js`)
+## 2. Wikipedia Featured Article (`extensions/basic/wikipedia_featured.js`)
 
 An extension that displays the Wikipedia featured article of the day.
 - **Concepts**:

@@ -1,0 +1,13 @@
+{
+  "extensions": [
+    {
+      "name": "test_damoang",
+      "description": "Unofficial example extension for educational purposes.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/damoang.js",
+      "api": 0,
+      "domain": "damoang.net",
+      "locale": "ko_KR"
+    }
+  ]
+}

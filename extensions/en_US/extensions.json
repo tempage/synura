@@ -1,0 +1,20 @@
+{
+  "extensions": [
+    {
+      "name": "test_reddit",
+      "description": "Unofficial example extension for educational purposes.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/en_US/reddit.js",
+      "api": 0,
+      "domain": "www.reddit.com",
+      "author": "Synura Team",
+      "tags": [
+        "social",
+        "news",
+        "images",
+        "video",
+        "community"
+      ]
+    }
+  ]
+}

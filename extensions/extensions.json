@@ -1,0 +1,10 @@
+{
+  "name": "Synura Example Repository",
+  "description": "A collection of example extensions for educational purposes.",
+  "version": 1.0,
+  "includes": [
+    "basic/extensions.json",
+    "en_US/extensions.json",
+    "ko_KR/extensions.json"
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "extensions": [
+    {
+      "name": "List View Example",
+      "description": "Demonstrates how to use the List View with pagination.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/list.js",
+      "api": 0
+    },
+    {
+      "name": "Source View Example",
+      "description": "Fetches Wikipedia pages to test source code highlighting.",
+      "version": 1.0,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/source.js",
+      "api": 0,
+      "domain": "en.wikipedia.org"
+    },
+    {
+      "name": "Input Dialog Example",
+      "description": "An example extension showing how to use input dialogs for user authentication.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/input_dialog.js",
+      "api": 0
+    },
+    {
+      "name": "Markdown View Example",
+      "description": "An example extension showing how to create a markdown view.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/markdown.js",
+      "api": 0
+    },
+    {
+      "name": "Simple View Example",
+      "description": "Demonstrates how to use the Simple View.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/simple.js",
+      "api": 0
+    },
+    {
+      "name": "Settings View Example",
+      "description": "Demonstrates how to use the Settings View.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/settings.js",
+      "api": 0
+    },
+    {
+      "name": "Chat View Example",
+      "description": "An example extension showing how to create a chat view with markdown support.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/chat.js",
+      "api": 0
+    },
+    {
+      "name": "Browser View Example",
+      "description": "Demonstrates how to use the Browser View.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/browser.js",
+      "api": 0
+    },
+    {
+      "name": "Editor View Example",
+      "description": "An example extension showing how to use the editor view.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/editor.js",
+      "api": 0
+    },
+    {
+      "name": "Wikipedia Featured",
+      "description": "Displays the Wikipedia featured article of the day.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/wikipedia_featured.js",
+      "api": 0,
+      "domain": "api.wikimedia.org"
+    },
+    {
+      "name": "Confirmation Dialog Example",
+      "description": "An example extension showing how to use confirmation dialogs for notifications and confirmations.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/confirmation_dialog.js",
+      "api": 0
+    },
+    {
+      "name": "Router Example",
+      "description": "Demonstrates router(url) and state sharing.",
+      "version": 1.3,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/router.js",
+      "api": 0
+    },
+    {
+      "name": "Hello World",
+      "description": "My first Synura extension.",
+      "version": 1.0,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/hello_world.js",
+      "api": 0
+    },
+    {
+      "name": "Post View Example",
+      "description": "An example extension showing how to create a post view.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/basic/post.js",
+      "api": 0,
+      "domain": "example.com"
+    }
+  ]
+}

@@ -75,7 +75,6 @@ func main() {
 	mux.HandleFunc("/post", enforceMethod(http.MethodPost, handleEcho))
 	mux.HandleFunc("/api/hello", handleEcho)
 	mux.HandleFunc("/upload", handleUpload)
-	mux.HandleFunc("/synura.js", handleSynuraJS)
 
 	// --- Additional Script Endpoint ---
 	// WARNING: This serves files from a user-specified directory for TESTING PURPOSES ONLY.
@@ -104,9 +103,36 @@ func main() {
 	mux.HandleFunc("/login/post", requireLogin(handleEcho))
 	mux.HandleFunc("/login/upload", requireLogin(handleUpload))
 
+	// Serve synura.js
+	mux.HandleFunc("/synura.js", func(w http.ResponseWriter, r *http.Request) {
+		// Try to serve from mock_server/synura.js (when running via make from parent dir)
+		if _, err := os.Stat("mock_server/synura.js"); err == nil {
+			http.ServeFile(w, r, "mock_server/synura.js")
+			return
+		}
+		// Try to serve from current directory (when running directly in mock_server dir)
+		if _, err := os.Stat("synura.js"); err == nil {
+			http.ServeFile(w, r, "synura.js")
+			return
+		}
+		http.Error(w, "synura.js not found", http.StatusNotFound)
+	})
+
+	// --- Locate Extensions Directory ---
+	// Check current directory and parent directory
+	extensionsDir := "extensions"
+	if _, err := os.Stat(extensionsDir); os.IsNotExist(err) {
+		extensionsDir = "../extensions"
+		if _, err := os.Stat(extensionsDir); os.IsNotExist(err) {
+			// Fallback for when running from a different location, mostly for avoiding crash
+			extensionsDir = "./extensions"
+		}
+	}
+	absExtensionsDir, _ := filepath.Abs(extensionsDir)
+
 	// --- Static File Server ---
 	// Only serve example extensions, not local files (security: avoid exposing source code)
-	mux.Handle("/examples/", http.StripPrefix("/examples/", http.FileServer(http.Dir("../examples"))))
+	mux.Handle("/examples/", http.StripPrefix("/examples/", http.FileServer(http.Dir(absExtensionsDir))))
 
 	log.Println("===========================================")
 	log.Println("       Mock Server Starting on :8080")
@@ -130,17 +156,20 @@ func main() {
 		log.Println("")
 		log.Printf("--- Custom Extensions from: %s ---", additionalScriptPath)
 		absPath, _ := filepath.Abs(additionalScriptPath)
-		
+
 		err := filepath.Walk(absPath, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			if !info.IsDir() && strings.HasSuffix(info.Name(), ".js") {
-				relPath, err := filepath.Rel(absPath, path)
-				if err == nil {
-					// Ensure URL uses forward slashes even on Windows
-					urlPath := filepath.ToSlash(relPath)
-					log.Printf("  http://localhost:8080/ext/%s", urlPath)
+			if !info.IsDir() {
+				name := info.Name()
+				if strings.HasSuffix(name, ".js") || name == "extensions.json" {
+					relPath, err := filepath.Rel(absPath, path)
+					if err == nil {
+						// Ensure URL uses forward slashes even on Windows
+						urlPath := filepath.ToSlash(relPath)
+						log.Printf("  http://localhost:8080/ext/%s", urlPath)
+					}
 				}
 			}
 			return nil
@@ -150,19 +179,27 @@ func main() {
 		}
 	}
 	log.Println("")
-	log.Println("--- Example Extensions (Copy URLs) ---")
-	examplesPath, err := filepath.Abs("../examples")
-	if err == nil {
-		entries, err := os.ReadDir(examplesPath)
-		if err == nil {
-			for _, entry := range entries {
-				if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".js") {
-					log.Printf("  http://localhost:8080/examples/%s", entry.Name())
+	log.Printf("--- Example Extensions from: %s ---", absExtensionsDir)
+	
+	err := filepath.Walk(absExtensionsDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			// Don't fail if directory doesn't exist, just skip
+			return nil
+		}
+		if !info.IsDir() {
+			name := info.Name()
+			if strings.HasSuffix(name, ".js") || name == "extensions.json" {
+				relPath, err := filepath.Rel(absExtensionsDir, path)
+				if err == nil {
+					urlPath := filepath.ToSlash(relPath)
+					log.Printf("  http://localhost:8080/examples/%s", urlPath)
 				}
 			}
-		} else {
-			log.Printf("  (Could not read examples directory: %v)", err)
 		}
+		return nil
+	})
+	if err != nil {
+		log.Printf("  (Could not read extensions directory: %v)", err)
 	}
 	log.Println("")
 	log.Println("===========================================")
@@ -312,10 +349,6 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-}
-
-func handleSynuraJS(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "synura.js")
 }
 
 func isLoggedIn(r *http.Request) bool {

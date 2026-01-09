@@ -9,9 +9,13 @@
 
 var SYNURA = {
   name: "Router Example",
-  version: 1,
+  version: 1.3,
+  api: 0,
   description: "Demonstrates router(url) and state sharing.",
   license: "Apache-2.0",
+  get main() {
+    return handler;
+  }
 };
 
 // Cache Helpers with TTL
@@ -66,13 +70,13 @@ const handler = {
         content: {
           details: [{
             type: 'text',
-            content: 'This content was fetched by the router.'
+            value: 'This content was fetched by the router.'
           }, {
             type: 'text',
-            content: 'URL: ' + url
+            value: 'URL: ' + url
           }, {
             type: 'text',
-            content: 'Timestamp: ' + new Date().toISOString()
+            value: 'Timestamp: ' + new Date().toISOString()
           }]
         }
       },
@@ -111,11 +115,13 @@ const handler = {
       styles: {
         title: "Router Demo"
       }
+    }, { from: "home" }, (event) => {
+      handler.onViewEvent(event.viewId, event);
     });
   },
 
   onViewEvent: function(viewId, event) {
-    if (event.eventId === 'CLICK_LINK') {
+    if (event.eventId === 'CLICK') {
       const url = event.data.link;
       console.log("User clicked: " + url);
 
@@ -125,7 +131,9 @@ const handler = {
       // Open View
       const v = synura.open(routeData);
       // Re-attach handlers to the new view
-      synura.connect(v.id, {}, this.onViewEvent);
+      synura.connect(v.id, {}, (event) => {
+        handler.onViewEvent(event.viewId, event);
+      });
     }
   }
 };
