@@ -28,11 +28,12 @@ type Request struct {
 
 // Response is a runtime fetch response.
 type Response struct {
-	StatusCode int
-	Status     string
-	URL        string
-	Headers    http.Header
-	Body       []byte
+	StatusCode  int
+	Status      string
+	URL         string
+	Headers     http.Header
+	Body        []byte
+	NetworkTime time.Duration
 }
 
 type httpClientDoer interface {
@@ -135,6 +136,7 @@ func Do(req Request) (*Response, error) {
 		httpReq.Header.Set("User-Agent", UserAgentFromBypass(req.Bypass))
 	}
 
+	startedAt := time.Now()
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
@@ -152,6 +154,7 @@ func Do(req Request) (*Response, error) {
 	if req.OnProgress != nil {
 		req.OnProgress(int64(len(body)), total)
 	}
+	networkTime := time.Since(startedAt)
 
 	respURL := ""
 	if httpResp.Request != nil && httpResp.Request.URL != nil {
@@ -159,11 +162,12 @@ func Do(req Request) (*Response, error) {
 	}
 
 	return &Response{
-		StatusCode: httpResp.StatusCode,
-		Status:     httpResp.Status,
-		URL:        respURL,
-		Headers:    httpResp.Header.Clone(),
-		Body:       body,
+		StatusCode:  httpResp.StatusCode,
+		Status:      httpResp.Status,
+		URL:         respURL,
+		Headers:     httpResp.Header.Clone(),
+		Body:        body,
+		NetworkTime: networkTime,
 	}, nil
 }
 

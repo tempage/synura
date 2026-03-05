@@ -725,11 +725,22 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 	if err := r.validateFetchDomain(resp.URL); err != nil {
 		return r.errorFetchResponse(err.Error())
 	}
+	networkMs := resp.NetworkTime.Milliseconds()
+	if networkMs < 0 {
+		networkMs = 0
+	}
 
 	if r.jsonMode {
-		r.jsonLog(map[string]any{"type": "fetch", "method": strings.ToUpper(method), "url": urlStr, "status": resp.StatusCode})
+		r.jsonLog(map[string]any{
+			"type":        "fetch",
+			"method":      strings.ToUpper(method),
+			"url":         urlStr,
+			"status":      resp.StatusCode,
+			"networkMs":   networkMs,
+			"networkTime": resp.NetworkTime.String(),
+		})
 	} else {
-		fmt.Fprintf(r.out, "%s %s %s -> %d\n", r.tag("FETCH", "\033[34m"), strings.ToUpper(method), urlStr, resp.StatusCode)
+		fmt.Fprintf(r.out, "%s %s %s -> %d (network=%dms)\n", r.tag("FETCH", "\033[34m"), strings.ToUpper(method), urlStr, resp.StatusCode, networkMs)
 	}
 	return r.buildFetchResponse(resp)
 }
@@ -820,6 +831,8 @@ func (r *Runtime) errorFetchResponse(message string) goja.Value {
 	_ = obj.Set("statusText", "")
 	_ = obj.Set("ok", false)
 	_ = obj.Set("error", message)
+	_ = obj.Set("networkMs", int64(0))
+	_ = obj.Set("networkTime", "0s")
 	_ = obj.Set("text", func(goja.FunctionCall) goja.Value { return r.vm.ToValue("") })
 	_ = obj.Set("json", func(goja.FunctionCall) goja.Value { return r.vm.ToValue(map[string]any{}) })
 	_ = obj.Set("dom", func(goja.FunctionCall) goja.Value { return r.newDocumentFromHTML("") })
@@ -833,6 +846,8 @@ func (r *Runtime) buildFetchResponse(resp *fetch.Response) goja.Value {
 	_ = obj.Set("ok", resp.StatusCode >= 200 && resp.StatusCode < 300)
 	_ = obj.Set("url", resp.URL)
 	_ = obj.Set("headers", headerToMap(resp.Headers))
+	_ = obj.Set("networkMs", resp.NetworkTime.Milliseconds())
+	_ = obj.Set("networkTime", resp.NetworkTime.String())
 	body := string(resp.Body)
 	_ = obj.Set("text", func(goja.FunctionCall) goja.Value {
 		return r.vm.ToValue(body)

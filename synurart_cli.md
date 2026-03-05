@@ -107,7 +107,7 @@ If your environment merges streams, parse line-by-line JSON and ignore optional 
 - `{"type":"update","viewId":1,"diff":{...}}`
 - `{"type":"close","viewId":1}`
 - `{"type":"event","viewId":1,"eventId":"CLICK","data":{...}}`
-- `{"type":"fetch","method":"GET","url":"...","status":200}`
+- `{"type":"fetch","method":"GET","url":"...","status":200,"networkMs":123,"networkTime":"123ms"}`
 - `{"type":"console","level":"log","message":"..."}`
 - `{"type":"error","message":"..."}`
 
