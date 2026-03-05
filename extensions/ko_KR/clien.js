@@ -6,12 +6,13 @@ var SYNURA = {
     domain: "m.clien.net",
     name: "test_clien",
     description: "Unofficial example extension for educational purposes.",
-    version: 0.1,
+    version: 0.2,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
     locale: "ko_KR",
     deeplink: true,
+    icon: "https://m.clien.net/service/image/favicon.ico",
     get main() { return handler; }
 };
 

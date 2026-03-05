@@ -552,9 +552,56 @@ var evaluateJSLiteral = (literal) => {
     }
 };
 
+var DATE_FORMAT_CONTEXT = (() => {
+    const now = new Date();
+    const currentYear = String(now.getFullYear());
+    const today = `${currentYear}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const nextRefreshAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+    return { currentYear, today, nextRefreshAt };
+})();
+
+var getDateFormatContext = () => {
+    const nowMs = Date.now();
+    if (nowMs < DATE_FORMAT_CONTEXT.nextRefreshAt) {
+        return DATE_FORMAT_CONTEXT;
+    }
+
+    const now = new Date(nowMs);
+    const currentYear = String(now.getFullYear());
+    DATE_FORMAT_CONTEXT.currentYear = currentYear;
+    DATE_FORMAT_CONTEXT.today = `${currentYear}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    DATE_FORMAT_CONTEXT.nextRefreshAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+    return DATE_FORMAT_CONTEXT;
+};
+
 var normalizeDate = (value) => {
     if (!value) return '';
-    return String(value).replace('T', ' ').replace('Z', '');
+    const raw = String(value).trim();
+    const normalized = raw
+        .replace('T', ' ')
+        .replace(/\.\d+/, '')
+        .replace(/([+-]\d{2}:?\d{2}|Z)$/, '')
+        .trim();
+
+    const matched = normalized.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(.+))?$/);
+    if (!matched) return normalized;
+
+    const dateContext = getDateFormatContext();
+    const currentYear = dateContext.currentYear;
+    const month = matched[2];
+    const day = matched[3];
+    const timePart = (matched[4] || '').trim();
+    const today = dateContext.today;
+    const datePart = `${matched[1]}-${month}-${day}`;
+    if (datePart === today) {
+        return timePart;
+    }
+
+    if (matched[1] === currentYear) {
+        return timePart ? `${month}-${day} ${timePart}` : `${month}-${day}`;
+    }
+
+    return normalized;
 };
 
 var parseHTMLDetails = (htmlContent) => {

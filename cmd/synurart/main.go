@@ -219,6 +219,16 @@ func runCommand(state *shellState, args []string) error {
 			return err
 		}
 		emitOK()
+	case "itemmenu":
+		if err := handleItemMenu(rt, args[1:]); err != nil {
+			return err
+		}
+		emitOK()
+	case "reorder":
+		if err := handleReorder(rt, args[1:]); err != nil {
+			return err
+		}
+		emitOK()
 	case "close":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: close <viewId>")
@@ -340,7 +350,7 @@ func loadRuntimeExtension(state *shellState, extPath string, autoHome bool) erro
 
 func handleTap(rt *synurart.Runtime, args []string) error {
 	if len(args) < 2 {
-		return fmt.Errorf("usage: tap <title|author|index> <value> [viewId]")
+		return fmt.Errorf("usage: tap <title|author|category|index> <value> [viewId]")
 	}
 	kind := strings.ToLower(args[0])
 	value := args[1]
@@ -408,9 +418,111 @@ func handleTap(rt *synurart.Runtime, args []string) error {
 			return rt.Emit(id, "AUTHOR_CLICK", data)
 		}
 		return fmt.Errorf("author not found in view #%d: %q", id, value)
+	case "category":
+		items := contentItems(models)
+		for _, raw := range items {
+			item := mapFromAny(raw)
+			category := strings.TrimSpace(stringifyAny(item["category"]))
+			if strings.EqualFold(category, strings.TrimSpace(value)) {
+				data := map[string]any{"category": category}
+				if link := stringifyAny(item["link"]); link != "" {
+					data["link"] = link
+				}
+				return rt.Emit(id, "CATEGORY_CLICK", data)
+			}
+		}
+		if strings.TrimSpace(stringifyAny(modelMessage(models["category"]))) == strings.TrimSpace(value) {
+			data := map[string]any{"category": value}
+			if link := strings.TrimSpace(stringifyAny(modelMessage(models["link"]))); link != "" {
+				data["link"] = link
+			}
+			return rt.Emit(id, "CATEGORY_CLICK", data)
+		}
+		return fmt.Errorf("category not found in view #%d: %q", id, value)
 	default:
 		return fmt.Errorf("unknown tap target: %s", kind)
 	}
+}
+
+func handleItemMenu(rt *synurart.Runtime, args []string) error {
+	if len(args) < 2 || len(args) > 3 {
+		return fmt.Errorf("usage: itemmenu <viewId> <label> [index]")
+	}
+	id, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil {
+		return err
+	}
+	view, ok := rt.GetView(id)
+	if !ok {
+		return fmt.Errorf("view not found: %d", id)
+	}
+	models := mapFromAny(view.Data["models"])
+	items := contentItems(models)
+	if len(items) == 0 {
+		items = detailsFromModel(models["comments"])
+	}
+	if len(items) == 0 {
+		return fmt.Errorf("view #%d has no item data for ITEM_MENU_CLICK", id)
+	}
+
+	n := 1
+	if len(args) == 3 {
+		n, err = strconv.Atoi(args[2])
+		if err != nil {
+			return err
+		}
+	}
+	if n <= 0 || n > len(items) {
+		return fmt.Errorf("index out of range: 1..%d", len(items))
+	}
+	payload := map[string]any{"menu": args[1], "_index": n - 1}
+	if item := mapFromAny(items[n-1]); item != nil {
+		for k, v := range item {
+			payload[k] = v
+		}
+	}
+	return rt.Emit(id, "ITEM_MENU_CLICK", payload)
+}
+
+func handleReorder(rt *synurart.Runtime, args []string) error {
+	if len(args) != 3 {
+		return fmt.Errorf("usage: reorder <viewId> <fromIndex> <toIndex>")
+	}
+	id, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil {
+		return err
+	}
+	from, err := strconv.Atoi(args[1])
+	if err != nil {
+		return err
+	}
+	to, err := strconv.Atoi(args[2])
+	if err != nil {
+		return err
+	}
+	view, ok := rt.GetView(id)
+	if !ok {
+		return fmt.Errorf("view not found: %d", id)
+	}
+	models := mapFromAny(view.Data["models"])
+	items := contentItems(models)
+	if len(items) == 0 {
+		return fmt.Errorf("view #%d has no list items for REORDER", id)
+	}
+	if from <= 0 || from > len(items) {
+		return fmt.Errorf("fromIndex out of range: 1..%d", len(items))
+	}
+	if to <= 0 || to > len(items) {
+		return fmt.Errorf("toIndex out of range: 1..%d", len(items))
+	}
+
+	payload := map[string]any{"_index": from - 1, "_newIndex": to - 1}
+	if item := mapFromAny(items[from-1]); item != nil {
+		for k, v := range item {
+			payload[k] = v
+		}
+	}
+	return rt.Emit(id, "REORDER", payload)
 }
 
 func resolveViewID(rt *synurart.Runtime, tail []string) (int64, error) {
@@ -544,6 +656,7 @@ func printViewContent(rt *synurart.Runtime, id int64) {
 		c("Render", cBold),
 		c(fmt.Sprintf("#%d", id), cCyan, cBold),
 		dim("("+view.Path+")"))
+	renderStyleSummary(styles)
 
 	switch view.Path {
 	case "/views/list":
@@ -552,8 +665,22 @@ func printViewContent(rt *synurart.Runtime, id int64) {
 		renderPost(models, styles)
 	case "/views/chat":
 		renderChat(models)
+	case "/views/markdown":
+		renderMarkdown(models, styles)
+	case "/views/source":
+		renderSource(models, styles)
+	case "/views/settings":
+		renderSettings(models, styles)
+	case "/views/editor":
+		renderEditor(models, styles)
 	case "/views/browser":
 		renderBrowser(models)
+	case "/views/simple":
+		renderSimple(models, styles)
+	case "/dialogs/input":
+		renderInputDialog(models, styles)
+	case "/dialogs/confirmation":
+		renderConfirmationDialog(models, styles)
 	default:
 		renderGeneric(models)
 	}
@@ -561,6 +688,11 @@ func printViewContent(rt *synurart.Runtime, id int64) {
 }
 
 func renderList(models map[string]any) {
+	menus := buttonLabels(models["menus"])
+	if len(menus) > 0 {
+		fmt.Printf("  %s %s\n", dim("menus:"), strings.Join(menus, ", "))
+	}
+
 	items := contentItems(models)
 	w := indexWidth(len(items))
 	for i, raw := range items {
@@ -583,7 +715,10 @@ func renderList(models map[string]any) {
 			b.WriteString("  ")
 			b.WriteString(c(link, cCyan))
 		}
-		fmt.Println(b.String())
+		fmt.Println(compactText(b.String(), 240))
+		if itemMenus := labelsFromAny(item["menus"]); len(itemMenus) > 0 {
+			fmt.Printf("      %s %s\n", dim("menu:"), c(strings.Join(itemMenus, ", "), cBrightBlack))
+		}
 	}
 }
 
@@ -684,6 +819,9 @@ func renderPostCommentsCompact(comments []any) {
 		}
 
 		line := fmt.Sprintf("%s%s: %s%s", indent, author, body, meta)
+		if itemMenus := labelsFromAny(item["menus"]); len(itemMenus) > 0 {
+			line += fmt.Sprintf(" {menus:%s}", strings.Join(itemMenus, ", "))
+		}
 		fmt.Printf("  %s %s\n", fmtIndex(i+1, w), compactText(line, 120))
 	}
 }
@@ -818,6 +956,324 @@ func renderBrowser(models map[string]any) {
 	fmt.Printf("  %s %s\n", dim("url:"), c(url, cCyan, cUnderline))
 }
 
+func renderMarkdown(models, styles map[string]any) {
+	title := strings.TrimSpace(stringifyAny(styles["title"]))
+	if title == "" {
+		title = strings.TrimSpace(stringifyAny(modelMessage(models["title"])))
+	}
+	content := stringifyAny(modelMessage(models["content"]))
+	menus := detailsFromModel(models["menus"])
+	lines := lineCount(content)
+
+	fmt.Printf("  %s %s\n", dim("title:"), bold(title))
+	fmt.Printf("  %s %s\n", dim("lines:"), c(fmt.Sprintf("%d", lines), cBrightYellow))
+	fmt.Printf("  %s %s\n", dim("menus:"), c(fmt.Sprintf("%d", len(menus)), cBrightYellow))
+	if strings.TrimSpace(content) != "" {
+		fmt.Printf("  %s %s\n", dim("preview:"), compactText(strings.TrimSpace(content), 200))
+	}
+}
+
+func renderSource(models, styles map[string]any) {
+	content := stringifyAny(modelMessage(models["content"]))
+	language := strings.TrimSpace(stringifyAny(styles["language"]))
+	if language == "" {
+		language = "auto"
+	}
+	lines := lineCount(content)
+	lineNumbers := boolFromAny(styles["lineNumbers"])
+	wordWrap := boolFromAny(styles["wordWrap"])
+
+	fmt.Printf("  %s %s\n", dim("language:"), c(language, cBrightCyan))
+	fmt.Printf("  %s %s\n", dim("lines:"), c(fmt.Sprintf("%d", lines), cBrightYellow))
+	fmt.Printf("  %s %v\n", dim("lineNumbers:"), lineNumbers)
+	fmt.Printf("  %s %v\n", dim("wordWrap:"), wordWrap)
+	if strings.TrimSpace(content) != "" {
+		fmt.Printf("  %s %s\n", dim("preview:"), compactText(strings.TrimSpace(content), 200))
+	}
+}
+
+func renderSettings(models, styles map[string]any) {
+	title := strings.TrimSpace(stringifyAny(styles["title"]))
+	message := strings.TrimSpace(stringifyAny(styles["message"]))
+	fields := detailsFromModel(models["body"])
+	buttons := buttonLabels(models["buttons"])
+
+	fmt.Printf("  %s %s\n", dim("title:"), bold(title))
+	if message != "" {
+		fmt.Printf("  %s %s\n", dim("message:"), compactText(message, 160))
+	}
+	fmt.Printf("  %s %s\n", dim("fields:"), c(fmt.Sprintf("%d", len(fields)), cBrightYellow))
+	fmt.Printf("  %s %s\n", dim("buttons:"), c(fmt.Sprintf("%d", len(buttons)), cBrightYellow))
+	renderFormFields(fields)
+	if len(buttons) > 0 {
+		fmt.Printf("  %s %s\n", dim("button labels:"), strings.Join(buttons, ", "))
+	}
+}
+
+func renderEditor(models, styles map[string]any) {
+	types := strings.TrimSpace(stringifyAny(styles["acceptableFileType"]))
+	max := intFromAny(styles["max"])
+	if max <= 0 {
+		max = 1
+	}
+	fmt.Printf("  %s %s\n", dim("acceptableFileType:"), c(types, cBrightCyan))
+	fmt.Printf("  %s %s\n", dim("maxAttachments:"), c(fmt.Sprintf("%d", max), cBrightYellow))
+
+	if title := strings.TrimSpace(stringifyAny(modelMessage(models["title"]))); title != "" {
+		fmt.Printf("  %s %s\n", dim("title:"), compactText(title, 120))
+	}
+	if content := strings.TrimSpace(stringifyAny(modelMessage(models["content"]))); content != "" {
+		fmt.Printf("  %s %s\n", dim("content:"), compactText(content, 200))
+	}
+}
+
+func renderSimple(models, styles map[string]any) {
+	title := strings.TrimSpace(stringifyAny(styles["title"]))
+	if title == "" {
+		title = strings.TrimSpace(stringifyAny(modelMessage(models["title"])))
+	}
+	content := strings.TrimSpace(stringifyAny(modelMessage(models["content"])))
+	fmt.Printf("  %s %s\n", dim("title:"), bold(title))
+	fmt.Printf("  %s %s\n", dim("content:"), compactText(content, 200))
+}
+
+func renderInputDialog(models, styles map[string]any) {
+	title := strings.TrimSpace(stringifyAny(styles["title"]))
+	message := strings.TrimSpace(stringifyAny(styles["message"]))
+	closeEnabled := boolFromAny(styles["close"])
+	fields := detailsFromModel(models["body"])
+	buttons := buttonLabels(models["buttons"])
+
+	fmt.Printf("  %s %s\n", dim("title:"), bold(title))
+	if message != "" {
+		fmt.Printf("  %s %s\n", dim("message:"), compactText(message, 160))
+	}
+	fmt.Printf("  %s %v\n", dim("close:"), closeEnabled)
+	fmt.Printf("  %s %s\n", dim("fields:"), c(fmt.Sprintf("%d", len(fields)), cBrightYellow))
+	fmt.Printf("  %s %s\n", dim("buttons:"), c(fmt.Sprintf("%d", len(buttons)), cBrightYellow))
+	renderFormFields(fields)
+	if len(buttons) > 0 {
+		fmt.Printf("  %s %s\n", dim("button labels:"), strings.Join(buttons, ", "))
+	}
+}
+
+func renderConfirmationDialog(models, styles map[string]any) {
+	title := strings.TrimSpace(stringifyAny(styles["title"]))
+	message := strings.TrimSpace(stringifyAny(styles["message"]))
+	closeEnabled := boolFromAny(styles["close"])
+	buttons := buttonLabels(models["buttons"])
+	if len(buttons) == 0 {
+		buttons = []string{"OK"}
+	}
+
+	fmt.Printf("  %s %s\n", dim("title:"), bold(title))
+	if message != "" {
+		fmt.Printf("  %s %s\n", dim("message:"), compactText(message, 200))
+	}
+	fmt.Printf("  %s %v\n", dim("close:"), closeEnabled)
+	fmt.Printf("  %s %s\n", dim("buttons:"), strings.Join(buttons, ", "))
+}
+
+func renderFormFields(fields []any) {
+	if len(fields) == 0 {
+		return
+	}
+	fmt.Printf("  %s\n", dim("field list:"))
+	w := indexWidth(len(fields))
+	for i, raw := range fields {
+		field := mapFromAny(raw)
+		if field == nil {
+			fmt.Printf("  %s %s\n", fmtIndex(i+1, w), compactText(stringifyAny(raw), 120))
+			continue
+		}
+		typ := strings.TrimSpace(stringifyAny(field["type"]))
+		name := strings.TrimSpace(stringifyAny(field["name"]))
+		label := strings.TrimSpace(stringifyAny(field["label"]))
+		value := strings.TrimSpace(stringifyAny(field["value"]))
+		format := strings.TrimSpace(stringifyAny(field["format"]))
+		options := sliceFromAny(field["options"])
+
+		var b strings.Builder
+		if typ != "" {
+			b.WriteString(typ)
+		} else {
+			b.WriteString("field")
+		}
+		if name != "" {
+			b.WriteString(" ")
+			b.WriteString(name)
+		}
+		if label != "" {
+			b.WriteString(" (")
+			b.WriteString(label)
+			b.WriteString(")")
+		}
+		if value != "" {
+			b.WriteString(" value=")
+			b.WriteString(value)
+		}
+		if format != "" {
+			b.WriteString(" format=")
+			b.WriteString(format)
+		}
+		if len(options) > 0 {
+			b.WriteString(" options=")
+			b.WriteString(fmt.Sprintf("%d", len(options)))
+		}
+		fmt.Printf("  %s %s\n", fmtIndex(i+1, w), compactText(b.String(), 140))
+	}
+}
+
+func buttonLabels(model any) []string {
+	buttons := detailsFromModel(model)
+	if len(buttons) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(buttons))
+	for _, raw := range buttons {
+		if m := mapFromAny(raw); m != nil {
+			label := strings.TrimSpace(stringifyAny(m["label"]))
+			if label == "" {
+				label = strings.TrimSpace(stringifyAny(modelMessage(m)))
+			}
+			if label != "" {
+				out = append(out, label)
+			}
+			continue
+		}
+		label := strings.TrimSpace(stringifyAny(raw))
+		if label != "" {
+			out = append(out, label)
+		}
+	}
+	return out
+}
+
+func labelsFromAny(model any) []string {
+	if model == nil {
+		return nil
+	}
+	if wrapped := buttonLabels(model); len(wrapped) > 0 {
+		return wrapped
+	}
+
+	raw := sliceFromAny(model)
+	if len(raw) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(raw))
+	for _, item := range raw {
+		if m := mapFromAny(item); m != nil {
+			label := strings.TrimSpace(stringifyAny(m["label"]))
+			if label == "" {
+				label = strings.TrimSpace(stringifyAny(modelMessage(m)))
+			}
+			if label != "" {
+				out = append(out, label)
+			}
+			continue
+		}
+		label := strings.TrimSpace(stringifyAny(item))
+		if label != "" {
+			out = append(out, label)
+		}
+	}
+	return out
+}
+
+func lineCount(s string) int {
+	if strings.TrimSpace(s) == "" {
+		return 0
+	}
+	return strings.Count(s, "\n") + 1
+}
+
+func renderStyleSummary(styles map[string]any) {
+	if len(styles) == 0 {
+		return
+	}
+	order := []string{
+		"title",
+		"layout",
+		"appbar",
+		"pagination",
+		"menu",
+		"media",
+		"history",
+		"authorClickable",
+		"categoryClickable",
+		"close",
+		"message",
+	}
+	seen := make(map[string]bool, len(styles))
+	parts := make([]string, 0, len(styles))
+	for _, key := range order {
+		v, ok := styles[key]
+		if !ok {
+			continue
+		}
+		seen[key] = true
+		if key == "appbar" {
+			parts = append(parts, key+"="+summarizeAppbar(v))
+			continue
+		}
+		parts = append(parts, key+"="+compactText(stringifyAny(v), 60))
+	}
+	if len(styles) > len(seen) {
+		extras := make([]string, 0, len(styles)-len(seen))
+		for key, v := range styles {
+			if seen[key] {
+				continue
+			}
+			extras = append(extras, key+"="+compactText(stringifyAny(v), 40))
+		}
+		sort.Strings(extras)
+		parts = append(parts, extras...)
+	}
+	fmt.Printf("  %s %s\n", dim("style:"), c(compactText(strings.Join(parts, " | "), 220), cBrightBlack))
+}
+
+func summarizeAppbar(v any) string {
+	m := mapFromAny(v)
+	if m == nil {
+		return compactText(stringifyAny(v), 48)
+	}
+	typ := strings.TrimSpace(stringifyAny(m["type"]))
+	label := strings.TrimSpace(stringifyAny(m["label"]))
+	hint := strings.TrimSpace(stringifyAny(m["hint"]))
+	if typ == "" {
+		typ = "custom"
+	}
+	if label != "" && hint != "" {
+		return fmt.Sprintf("%s(%s, hint:%s)", typ, compactText(label, 24), compactText(hint, 24))
+	}
+	if label != "" {
+		return fmt.Sprintf("%s(%s)", typ, compactText(label, 24))
+	}
+	if hint != "" {
+		return fmt.Sprintf("%s(hint:%s)", typ, compactText(hint, 24))
+	}
+	return typ
+}
+
+func boolFromAny(v any) bool {
+	switch x := v.(type) {
+	case bool:
+		return x
+	case string:
+		s := strings.ToLower(strings.TrimSpace(x))
+		return s == "1" || s == "true" || s == "yes" || s == "on"
+	case int:
+		return x != 0
+	case int64:
+		return x != 0
+	case float64:
+		return x != 0
+	default:
+		return false
+	}
+}
+
 func renderGeneric(models map[string]any) {
 	keys := make([]string, 0, len(models))
 	for k := range models {
@@ -851,7 +1307,10 @@ func printHelp() {
 		{"resume <id> [json]", "Call SYNURA.main.resume(id, context)"},
 		{"tap title <text> [id]", "Emit CLICK for list item matching title"},
 		{"tap author <name> [id]", "Emit AUTHOR_CLICK for matching author"},
+		{"tap category <name> [id]", "Emit CATEGORY_CLICK for matching category"},
 		{"tap index <n> [id]", "Emit CLICK by 1-based item index"},
+		{"itemmenu <id> <label> [index]", "Emit ITEM_MENU_CLICK"},
+		{"reorder <id> <from> <to>", "Emit REORDER for list item"},
 		{"refresh <id>", "Emit REFRESH"},
 		{"event <id> SCROLL_TO_END", "Emit pagination event (fetch next page)"},
 		{"menu <id> <label>", "Emit MENU_CLICK"},

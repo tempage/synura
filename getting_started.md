@@ -46,6 +46,7 @@ We provide a **Visual Polyfill** that simulates the Synura environment directly 
 
 *   **[Polyfill Guide](polyfill_guide.md)**: Read this first! It explains how to use the emulator.
 *   **[synura_polyfill.js](synura_polyfill.js)**: The emulator script.
+*   **[synurart CLI Shell Guide](synurart_cli.md)**: AI-friendly command reference for local runtime simulation and scripted testing.
 
 ## Prerequisites
 

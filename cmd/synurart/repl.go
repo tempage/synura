@@ -28,6 +28,7 @@ var replCommandSuggestions = []string{
 	"home", "deeplink", "resume",
 	"event", "refresh", "menu", "query", "submit",
 	"tap", "click",
+	"itemmenu", "reorder",
 	"close",
 	"timeout",
 	"storage",
@@ -38,10 +39,14 @@ var replEventSuggestions = []string{
 	"LOAD",
 	"CLICK",
 	"AUTHOR_CLICK",
+	"CATEGORY_CLICK",
 	"REFRESH",
 	"MENU_CLICK",
+	"ITEM_MENU_CLICK",
 	"QUERY",
 	"SUBMIT",
+	"REORDER",
+	"CLOSE",
 	"SCROLL_TO_END",
 }
 
@@ -373,7 +378,7 @@ func (a *autoCompleter) suggestions(ctx completionContext) []completionCandidate
 	case "tap", "click":
 		switch ctx.argIndex {
 		case 1:
-			return filterSuggestions([]string{"index", "title", "author"}, ctx.current, false, true)
+			return filterSuggestions([]string{"index", "title", "author", "category"}, ctx.current, false, true)
 		case 2:
 			mode := ""
 			if len(ctx.argsBefore) > 1 {
@@ -386,9 +391,28 @@ func (a *autoCompleter) suggestions(ctx completionContext) []completionCandidate
 				return tapTitleSuggestions(a.state.rt, ctx.current)
 			case "author":
 				return tapAuthorSuggestions(a.state.rt, ctx.current)
+			case "category":
+				return tapCategorySuggestions(a.state.rt, ctx.current)
 			}
 		case 3:
 			return viewIDSuggestions(a.state.rt, ctx.current)
+		}
+	case "itemmenu":
+		if ctx.argIndex == 1 {
+			return viewIDSuggestions(a.state.rt, ctx.current)
+		}
+		if ctx.argIndex == 2 {
+			return itemMenuSuggestions(a.state.rt, ctx.argsBefore, ctx.current)
+		}
+		if ctx.argIndex == 3 {
+			return viewIndexSuggestions(a.state.rt, ctx.argsBefore, ctx.current)
+		}
+	case "reorder":
+		if ctx.argIndex == 1 {
+			return viewIDSuggestions(a.state.rt, ctx.current)
+		}
+		if ctx.argIndex == 2 || ctx.argIndex == 3 {
+			return viewIndexSuggestions(a.state.rt, ctx.argsBefore, ctx.current)
 		}
 	}
 
@@ -518,6 +542,112 @@ func tapAuthorSuggestions(rt *synurart.Runtime, prefix string) []completionCandi
 
 	if author := strings.TrimSpace(stringifyAny(modelMessage(models["author"]))); author != "" {
 		values = append(values, author)
+	}
+	return filterSuggestions(values, prefix, false, true)
+}
+
+func tapCategorySuggestions(rt *synurart.Runtime, prefix string) []completionCandidate {
+	models := topViewModels(rt)
+	if models == nil {
+		return nil
+	}
+
+	values := make([]string, 0)
+	items := contentItems(models)
+	for _, raw := range items {
+		item := mapFromAny(raw)
+		if item == nil {
+			continue
+		}
+		category := strings.TrimSpace(stringifyAny(item["category"]))
+		if category != "" {
+			values = append(values, category)
+		}
+	}
+
+	if category := strings.TrimSpace(stringifyAny(modelMessage(models["category"]))); category != "" {
+		values = append(values, category)
+	}
+	return filterSuggestions(values, prefix, false, true)
+}
+
+func itemMenuSuggestions(rt *synurart.Runtime, argsBefore []string, prefix string) []completionCandidate {
+	var viewID int64
+	if len(argsBefore) > 1 {
+		id, err := strconv.ParseInt(argsBefore[1], 10, 64)
+		if err != nil {
+			return nil
+		}
+		viewID = id
+	} else {
+		id, ok := rt.TopViewID()
+		if !ok {
+			return nil
+		}
+		viewID = id
+	}
+
+	view, ok := rt.GetView(viewID)
+	if !ok {
+		return nil
+	}
+	models := mapFromAny(view.Data["models"])
+	if models == nil {
+		return nil
+	}
+
+	items := contentItems(models)
+	if len(items) == 0 {
+		items = detailsFromModel(models["comments"])
+	}
+	values := make([]string, 0)
+	for _, raw := range items {
+		item := mapFromAny(raw)
+		if item == nil {
+			continue
+		}
+		menus := sliceFromAny(item["menus"])
+		for _, menuRaw := range menus {
+			label := strings.TrimSpace(stringifyAny(menuRaw))
+			if label != "" {
+				values = append(values, label)
+			}
+		}
+	}
+
+	return filterSuggestions(values, prefix, false, true)
+}
+
+func viewIndexSuggestions(rt *synurart.Runtime, argsBefore []string, prefix string) []completionCandidate {
+	var viewID int64
+	if len(argsBefore) > 1 {
+		id, err := strconv.ParseInt(argsBefore[1], 10, 64)
+		if err != nil {
+			return nil
+		}
+		viewID = id
+	} else {
+		id, ok := rt.TopViewID()
+		if !ok {
+			return nil
+		}
+		viewID = id
+	}
+	view, ok := rt.GetView(viewID)
+	if !ok {
+		return nil
+	}
+	models := mapFromAny(view.Data["models"])
+	if models == nil {
+		return nil
+	}
+	items := contentItems(models)
+	if len(items) == 0 {
+		items = detailsFromModel(models["comments"])
+	}
+	values := make([]string, 0, len(items))
+	for i := range items {
+		values = append(values, strconv.Itoa(i+1))
 	}
 	return filterSuggestions(values, prefix, false, true)
 }

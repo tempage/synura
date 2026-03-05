@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -668,6 +669,9 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 	if urlStr == "" {
 		return r.errorFetchResponse("fetch url is required")
 	}
+	if err := r.validateFetchDomain(urlStr); err != nil {
+		return r.errorFetchResponse(err.Error())
+	}
 
 	options := map[string]any{}
 	if len(call.Arguments) > 1 && !goja.IsUndefined(call.Argument(1)) && !goja.IsNull(call.Argument(1)) {
@@ -718,6 +722,9 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 		}
 		return r.errorFetchResponse(err.Error())
 	}
+	if err := r.validateFetchDomain(resp.URL); err != nil {
+		return r.errorFetchResponse(err.Error())
+	}
 
 	if r.jsonMode {
 		r.jsonLog(map[string]any{"type": "fetch", "method": strings.ToUpper(method), "url": urlStr, "status": resp.StatusCode})
@@ -725,6 +732,86 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 		fmt.Fprintf(r.out, "%s %s %s -> %d\n", r.tag("FETCH", "\033[34m"), strings.ToUpper(method), urlStr, resp.StatusCode)
 	}
 	return r.buildFetchResponse(resp)
+}
+
+func (r *Runtime) validateFetchDomain(rawURL string) error {
+	allowedDomain, err := r.synuraDomain()
+	if err != nil {
+		return err
+	}
+	reqHost, err := hostFromURL(rawURL)
+	if err != nil {
+		return err
+	}
+	if reqHost != allowedDomain {
+		return fmt.Errorf("fetch host %q is not allowed (SYNURA.domain=%q)", reqHost, allowedDomain)
+	}
+	return nil
+}
+
+func (r *Runtime) synuraDomain() (string, error) {
+	synuraDef := r.vm.Get("SYNURA")
+	if synuraDef == nil || goja.IsUndefined(synuraDef) || goja.IsNull(synuraDef) {
+		return "", errors.New("SYNURA.domain is required for fetch")
+	}
+	synuraObj := synuraDef.ToObject(r.vm)
+	if synuraObj == nil {
+		return "", errors.New("SYNURA.domain is required for fetch")
+	}
+	domainValue := synuraObj.Get("domain")
+	if goja.IsUndefined(domainValue) || goja.IsNull(domainValue) {
+		return "", errors.New("SYNURA.domain is required for fetch")
+	}
+	domain := normalizeHost(domainValue.String())
+	if domain == "" {
+		return "", errors.New("SYNURA.domain is required for fetch")
+	}
+	return domain, nil
+}
+
+func hostFromURL(rawURL string) (string, error) {
+	u, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return "", fmt.Errorf("invalid fetch url: %w", err)
+	}
+	if u.Host == "" {
+		if strings.HasPrefix(strings.TrimSpace(rawURL), "//") {
+			u, err = url.Parse("https:" + strings.TrimSpace(rawURL))
+			if err != nil {
+				return "", fmt.Errorf("invalid fetch url: %w", err)
+			}
+		}
+	}
+	host := normalizeHost(u.Host)
+	if host == "" {
+		return "", errors.New("fetch url must be absolute with a host")
+	}
+	return host, nil
+}
+
+func normalizeHost(input string) string {
+	s := strings.TrimSpace(input)
+	if s == "" {
+		return ""
+	}
+
+	if strings.Contains(s, "://") || strings.HasPrefix(s, "//") {
+		raw := s
+		if strings.HasPrefix(raw, "//") {
+			raw = "https:" + raw
+		}
+		u, err := url.Parse(raw)
+		if err == nil && strings.TrimSpace(u.Host) != "" {
+			s = u.Host
+		}
+	} else {
+		u, err := url.Parse("https://" + s)
+		if err == nil && strings.TrimSpace(u.Host) != "" {
+			s = u.Host
+		}
+	}
+
+	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(s)), ".")
 }
 
 func (r *Runtime) errorFetchResponse(message string) goja.Value {
