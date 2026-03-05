@@ -1,13 +1,15 @@
 # Synura Public Makefile
 #
 # Usage:
-#   make server    - Start the mock server on port 8080
-#   make test      - Run mock server tests
-#   make reverse   - Setup ADB reverse for Android testing
-#   make android   - Setup ADB and start server (for Android testing)
-#   make clean     - Clean build artifacts
+#   make server      - Start the mock server on port 8080
+#   make fetch       - Run curl-like fetch client (ARGS="...")
+#   make synurart    - Run Synura runtime shell (EXT=path/to/extension.js)
+#   make test        - Run all Go tests
+#   make reverse     - Setup ADB reverse for Android testing
+#   make android     - Setup ADB and start server (for Android testing)
+#   make clean       - Clean build artifacts
 
-.PHONY: server test reverse android clean help generate_extensions
+.PHONY: server fetch synurart test reverse android clean help generate_extensions build
 
 # Default target
 help:
@@ -15,7 +17,9 @@ help:
 	@echo ""
 	@echo "Usage:"
 	@echo "  make server              - Start the mock server on port 8080"
-	@echo "  make test                - Run mock server tests"
+	@echo "  make fetch ARGS=\"...\"   - Run fetch client (curl-like)"
+	@echo "  make synurart EXT=...    - Run Synura CLI runtime shell"
+	@echo "  make test                - Run all Go tests"
 	@echo "  make reverse             - Setup ADB reverse for Android testing"
 	@echo "  make android             - Setup ADB and start server"
 	@echo "  make generate_extensions - Generate extensions.json from extensions directory"
@@ -42,15 +46,27 @@ help:
 server:
 	@echo "Starting mock server on :8080..."
 ifdef EXTDIR
-	go run mock_server/main.go -path $(EXTDIR)
+	go run ./cmd/mock_server -path $(EXTDIR)
 else
-	go run mock_server/main.go
+	go run ./cmd/mock_server
+endif
+
+# Run curl-like fetch helper
+fetch:
+	go run ./cmd/fetch $(ARGS)
+
+# Run runtime shell for extension development
+synurart:
+ifdef EXT
+	go run ./cmd/synurart -ext $(EXT)
+else
+	go run ./cmd/synurart
 endif
 
 # Run tests
 test:
 	@echo "Running tests..."
-	cd mock_server && go test -v ./...
+	go test -v ./...
 
 # Setup ADB reverse for Android testing
 reverse:
@@ -65,16 +81,18 @@ android: reverse server
 # Clean build artifacts
 clean:
 	@echo "Cleaning..."
-	rm -f mock_server/mock_server
-	rm -f mock_server/mock_server.exe
-	cd mock_server && go clean
+	rm -rf bin
+	go clean ./...
 	@echo "Clean complete."
 
 # Build the server binary
 build:
 	@echo "Building mock_server..."
-	cd mock_server && go build -o mock_server main.go
-	@echo "Build complete: mock_server/mock_server"
+	mkdir -p bin
+	go build -o bin/mock_server ./cmd/mock_server
+	go build -o bin/fetch ./cmd/fetch
+	go build -o bin/synurart ./cmd/synurart
+	@echo "Build complete: bin/mock_server, bin/fetch, bin/synurart"
 
 # Generate extensions.json
 generate_extensions:

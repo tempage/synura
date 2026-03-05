@@ -81,22 +81,24 @@ var baseUrl = "https://example.com";  // Your API endpoints
 ## Testing with Synura App
 
 1. Start the server: `make server`
-2. For Android emulator/device: `make adb` (sets up port forwarding)
+2. For Android emulator/device: `make reverse` (sets up port forwarding)
 3. Install the extension from `http://localhost:8080/synura.js`
 4. The extension provides UI buttons to test each endpoint
 
 ## Example Extensions
 
-The server also serves example extensions from the `../examples` directory:
+The server also serves example extensions from the `extensions` directory:
 
-- `http://localhost:8080/examples/hello_world.js`
-- `http://localhost:8080/examples/list.js`
-- `http://localhost:8080/examples/post.js`
+- `http://localhost:8080/examples/basic/hello_world.js`
+- `http://localhost:8080/examples/basic/list.js`
+- `http://localhost:8080/examples/basic/post.js`
 - And more...
 
 ## Files
 
-- `main.go` - Server implementation
-- `main_test.go` - Unit tests
-- `synura.js` - Synura extension for UI testing
-- `Makefile` - Build and run targets
+- `testdata/mock_server/synura.js` - Synura extension for UI testing
+- `cmd/mock_server/main.go` - mock server command entrypoint
+- `internal/mockserver/server.go` - server implementation
+- `internal/mockserver/server_test.go` - unit tests
+- `cmd/fetch/main.go` - curl-like fetch helper
+- `cmd/synurart/main.go` - CLI runtime shell for extension simulation

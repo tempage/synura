@@ -24,7 +24,7 @@ var SYNURA = {
     domain: "damoang.net",
     name: "test_damoang",
     description: "Unofficial example extension for educational purposes.",
-    version: 0.1,
+    version: 0.2,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
@@ -149,6 +149,7 @@ var CUSTOM_BOARDS_KEY = "custom_boards";
 var COOKIE_KEY = "user_cookie";
 var CACHE_TTL_KEY = "cache_ttl";
 var CACHE_SNACKBAR_KEY = "cache_snackbar";
+var CACHE_SNACKBAR_MIN_AGE_MS = 10000;
 
 // =============================================================================
 // 3. CACHE HELPERS
@@ -186,8 +187,10 @@ var formatDuration = (ms) => {
 
 var showCacheSnackbar = (viewId, routeData) => {
     if (!getShowCacheSnackbar()) return;
+    if (!routeData || !routeData.timestamp) return;
 
     const age = Date.now() - routeData.timestamp;
+    if (age < CACHE_SNACKBAR_MIN_AGE_MS) return;
     const ttl = getCacheTTL();
     const remaining = ttl - age;
     const msg = `${formatDuration(age)} 전 캐시됨, ${formatDuration(remaining)} 남음.`;
@@ -430,16 +433,256 @@ var setParams = (viewId, params) => {
     const current = getParams(viewId);
     viewState.set(viewId, { ...current, ...params });
 }
+
+var boardItemIdNumber = (item) => {
+    if (!item) return 0;
+    const direct = parseInt(String(item.idNumber || ''), 10);
+    if (!isNaN(direct) && direct > 0) return direct;
+    if (item.link) {
+        const m = String(item.link).match(/\/(\d+)(?:$|[?#])/);
+        if (m && m[1]) {
+            const parsed = parseInt(m[1], 10);
+            if (!isNaN(parsed) && parsed > 0) return parsed;
+        }
+    }
+    return 0;
+};
+
+var computeLastPostId = (items) => {
+    let lastPostId = 0;
+    for (const item of (items || [])) {
+        if (item && item.isNotice === true) continue;
+        const id = boardItemIdNumber(item);
+        if (id <= 0) continue;
+        if (lastPostId === 0 || id < lastPostId) {
+            lastPostId = id;
+        }
+    }
+    return lastPostId;
+};
+
+var filterAppendByLastPostId = (items, lastPostId) => {
+    if (!(lastPostId > 0)) return items || [];
+    const out = [];
+    for (const item of (items || [])) {
+        const id = boardItemIdNumber(item);
+        if (id <= 0 || id < lastPostId) {
+            out.push(item);
+        }
+    }
+    return out;
+};
 // =============================================================================
 // 6. CORE FETCH FUNCTIONS
 // =============================================================================
 
-var fetchPage = (boardId, page, searchParams) => {
-    const options = {};
+var buildFetchOptions = () => {
+    const options = {
+        bypass: SYNURA.bypass || "chrome/android",
+        followRedirects: true
+    };
     const cookie = getCookie();
     if (cookie) {
         options.headers = { "Cookie": cookie };
     }
+    return options;
+};
+
+var extractBalancedSegment = (text, startIndex, openChar, closeChar) => {
+    if (!text || startIndex < 0 || startIndex >= text.length) return null;
+    if (text[startIndex] !== openChar) return null;
+
+    let depth = 0;
+    let quote = '';
+    let escaped = false;
+
+    for (let i = startIndex; i < text.length; i++) {
+        const ch = text[i];
+        if (quote) {
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            if (ch === '\\') {
+                escaped = true;
+                continue;
+            }
+            if (ch === quote) {
+                quote = '';
+            }
+            continue;
+        }
+
+        if (ch === '"' || ch === "'" || ch === '`') {
+            quote = ch;
+            continue;
+        }
+        if (ch === openChar) {
+            depth++;
+            continue;
+        }
+        if (ch === closeChar) {
+            depth--;
+            if (depth === 0) {
+                return text.substring(startIndex, i + 1);
+            }
+        }
+    }
+    return null;
+};
+
+var extractValueByKey = (text, key, startChar) => {
+    const marker = `${key}:`;
+    const keyIdx = text.indexOf(marker);
+    if (keyIdx < 0) return null;
+    let pos = keyIdx + marker.length;
+    while (pos < text.length && /\s/.test(text[pos])) pos++;
+    if (text[pos] !== startChar) return null;
+    const endChar = startChar === '[' ? ']' : '}';
+    return extractBalancedSegment(text, pos, startChar, endChar);
+};
+
+var evaluateJSLiteral = (literal) => {
+    if (!literal) return null;
+    try {
+        return (new Function(`return (${literal});`))();
+    } catch (e) {
+        console.log("Failed to evaluate hydration literal:", e.toString());
+        return null;
+    }
+};
+
+var normalizeDate = (value) => {
+    if (!value) return '';
+    return String(value).replace('T', ' ').replace('Z', '');
+};
+
+var parseHTMLDetails = (htmlContent) => {
+    const html = htmlContent || '';
+    const parser = new DOMParser();
+    const wrapped = parser.parseFromString(`<div id="synura_post_content">${html}</div>`, "text/html");
+    const root = wrapped.querySelector("#synura_post_content");
+    let details = root ? synura.parse('post', root) : [];
+    if (!details || details.length === 0) {
+        const text = root ? root.textContent.trim() : '';
+        details = [{ type: 'text', value: text || 'Could not load post content.' }];
+    }
+    return details;
+};
+
+var parseCommentContent = (content) => {
+    const raw = content == null ? '' : String(content);
+    if (raw.includes('<') && raw.includes('>')) {
+        return parseHTMLDetails(raw);
+    }
+    return [{ type: 'text', value: raw }];
+};
+
+var toCardItemFromHydration = (boardId, item) => {
+    const views = parseNumber(String(item.views || '0'));
+    const likes = parseNumber(String(item.likes || '0'));
+    const comments = parseNumber(String(item.comments_count || '0'));
+    const thumbnail = item.thumbnail || '';
+    const isNotice = item.is_notice === true;
+
+    let types = [];
+    if (isNotice) types.push("hot");
+    if (thumbnail) types.push("image");
+    if (item.link1 || item.link2) types.push("link");
+
+    return {
+        link: `https://${SYNURA.domain}/${boardId}/${item.id}`,
+        idNumber: parseInt(String(item.id || '0'), 10) || 0,
+        title: item.title || '',
+        types: types,
+        author: item.author || '',
+        avatar: '',
+        mediaUrl: thumbnail,
+        mediaType: thumbnail ? 'image' : '',
+        date: normalizeDate(item.created_at || item.updated_at),
+        category: item.category || (isNotice ? '공지' : ''),
+        isNotice: isNotice,
+        likeCount: likes,
+        dislikeCount: '',
+        commentCount: comments,
+        viewCount: views,
+        menus: [],
+        hotCount: parseInt(views || '0'),
+        coldCount: parseInt(views || '0')
+    };
+};
+
+var parseBoardHydration = (html) => {
+    const postsLiteral = extractValueByKey(html, "posts", '[');
+    const noticesLiteral = extractValueByKey(html, "notices", '[');
+    const posts = evaluateJSLiteral(postsLiteral) || [];
+    const notices = evaluateJSLiteral(noticesLiteral) || [];
+    return { posts, notices };
+};
+
+var toCommentModel = (item, postAuthor) => {
+    const likesVal = parseNumber(String(item.likes || '0'));
+    const likesInt = parseInt(likesVal) || 0;
+    const isDeleted = !!item.deleted_at;
+    const menus = isDeleted ? [] : ['답글'];
+    if (!isDeleted && (item.author || '') === (postAuthor || '')) {
+        menus.push('삭제');
+    }
+
+    const content = isDeleted
+        ? [{ type: 'text', value: '삭제된 댓글입니다.' }]
+        : parseCommentContent(item.content);
+    if (item.id) {
+        content.unshift({ type: 'anchor', value: `c_${item.id}` });
+    }
+
+    return {
+        author: item.author || '',
+        avatar: '',
+        content: content,
+        date: normalizeDate(item.created_at),
+        likeCount: likesVal,
+        dislikeCount: '',
+        level: typeof item.depth === 'number' ? item.depth : 0,
+        menus: menus,
+        hotCount: likesInt,
+        coldCount: likesInt,
+    };
+};
+
+var parsePostHydration = (html) => {
+    const postLiteral = extractValueByKey(html, "post", '{');
+    const commentsLiteral = extractValueByKey(html, "comments", '{');
+    const post = evaluateJSLiteral(postLiteral);
+    const commentsData = evaluateJSLiteral(commentsLiteral);
+    const comments = commentsData && commentsData.items ? commentsData.items : [];
+
+    if (!post) {
+        throw new Error("Failed to parse post hydration payload");
+    }
+
+    const details = parseHTMLDetails(post.content || '');
+    const mappedComments = comments.map(c => toCommentModel(c, post.author));
+
+    return {
+        styles: {
+            title: post.title || '',
+        },
+        models: {
+            author: post.author || '',
+            viewCount: parseNumber(String(post.views || '0')),
+            likeCount: parseNumber(String(post.likes || '0')),
+            dislikeCount: parseNumber(String(post.dislikes || '0')),
+            date: normalizeDate(post.created_at || post.updated_at),
+            avatar: '',
+            content: details,
+            comments: mappedComments,
+        }
+    };
+};
+
+var fetchPage = (boardId, page, searchParams) => {
+    const options = buildFetchOptions();
     let url = `https://damoang.net/${boardId}?page=${page}`;
     if (searchParams && searchParams.query) {
         url = `https://damoang.net/${boardId}?sfl=${encodeURIComponent(searchParams.field)}&stx=${encodeURIComponent(searchParams.query)}&sop=and&page=${page}`;
@@ -447,204 +690,25 @@ var fetchPage = (boardId, page, searchParams) => {
     console.log(url.replace(/%/g, '%%'));
 
     const response = fetch(url, options);
-    const doc = response.dom("text/html");
-    const posts = doc.querySelectorAll('li.list-group-item');
-    const cardItems = [];
-    posts.forEach(post => {
-        const titleElement = post.querySelector('a.da-article-link');
-        if (titleElement) {
-            const link = titleElement.getAttribute('href');
-            const title = titleElement.textContent.trim();
-            const category = '';
-            const authorElement = post.querySelector('span.sv_name');
-            const avatarElement = post.querySelector("img.mb-photo");
-            const dateElement = post.querySelector("span.da-list-date")
-                || post.querySelector("div.wr-date");
-            const likesElement = post.querySelector("div.rcmd-box");
-            const commentsElement = post.querySelector("span.count-plus");
-            const viewsElement = post.querySelector(".order-4");
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim());
+    }
 
-            const dateString = dateElement ? dateElement.textContent.replace('등록', '').trim() : '';
-            const likeCount = parseNumber(likesElement ? likesElement.textContent.trim() : 0);
-            const commentCount = parseNumber(commentsElement ? commentsElement.textContent.trim() : 0);
-            const viewCount = parseNumber(viewsElement ? viewsElement.textContent.replace('조회', '').trim() : 0);
-
-            const typeElements = post.querySelectorAll('span.na-icon');
-            let types = [];
-            typeElements.forEach(typeElement => {
-                const c = typeElement.getAttribute("class");
-                if (c.includes("na-hot")) {
-                    types.push("hot")
-                }
-                if (c.includes("na-image")) {
-                    types.push("image")
-                }
-                if (c.includes("na-video")) {
-                    types.push("video")
-                }
-                if (c.includes("na-link")) {
-                    types.push("link")
-                }
-            });
-            let menus = [];
-
-            cardItems.push({
-                link: link,
-                title: title,
-                types: types,
-                author: authorElement ? authorElement.textContent.trim() : '',
-                avatar: avatarElement ? avatarElement.getAttribute('src') : '',
-                mediaUrl: avatarElement ? avatarElement.getAttribute('src') : '',
-                mediaType: 'image',
-                date: dateString,
-                category: category,
-                likeCount: likeCount,
-                dislikeCount: '',
-                commentCount: commentCount,
-                viewCount: viewCount,
-                menus: menus,
-                hotCount: parseInt(viewCount || '0'),
-                coldCount: parseInt(viewCount || '0')
-            });
-        }
-    });
-    return cardItems;
+    const html = response.text();
+    const hydrated = parseBoardHydration(html);
+    const merged = [...hydrated.notices, ...hydrated.posts];
+    return merged.map(item => toCardItemFromHydration(boardId, item));
 };
 
 var fetchPost = (link) => {
-    const options = {};
-    const cookie = getCookie();
-    if (cookie) {
-        options.headers = { "Cookie": cookie };
-    }
+    const options = buildFetchOptions();
     const response = fetch(link, options);
-    const doc = response.dom("text/html");
-    return parsePost(doc);
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim());
+    }
+    const html = response.text();
+    return parsePostHydration(html);
 };
-
-var parsePost = (doc) => {
-    let articleElement = doc.querySelector("#bo_v");
-    if (!articleElement)
-        articleElement = doc;
-
-    const titleElement = articleElement.querySelector('#bo_v_title');
-    const infoElement = articleElement.querySelector("#bo_v_info");
-    const contentContainer = articleElement.querySelector('#bo_v_con'); // there are two #bo_v_con
-
-    let title = '';
-    let author = '';
-    let date = '';
-    let avatar = '';
-    let viewCount = '';
-    let likeCount = '';
-    let dislikeCount = '';
-
-    if (titleElement) {
-        title = titleElement.textContent.trim() || '';
-    }
-
-    if (infoElement) {
-        if (infoElement.querySelector("span.sv_name")) {
-            author = infoElement.querySelector("span.sv_name").textContent.trim() || '';
-        }
-        if (infoElement.querySelector("div.line-top")) {
-            const divs = infoElement.querySelector("div.line-top").querySelectorAll('div');
-            date = divs[divs.length - 1].textContent.replace('작성일', '').trim();
-        }
-        if (infoElement.querySelector("div.align-items-start")) {
-            const divs = infoElement.querySelectorAll("div.pe-2");
-            if (divs[0])
-                viewCount = parseNumber(divs[0].textContent.replace('조회', '').trim());
-            if (divs[2])
-                likeCount = parseNumber(divs[2].textContent.replace('추천', '').trim());
-        }
-
-
-        if (infoElement.querySelector('img.mb-photo')) {
-            avatar = infoElement.querySelector('img.mb-photo').getAttribute('src');
-        }
-    }
-
-
-    let details;
-    if (contentContainer) {
-        details = synura.parse('post', contentContainer);
-    }
-
-    if (!details || details.length === 0) {
-        if (contentContainer) {
-            details = [{ type: 'text', value: contentContainer.textContent.trim() }];
-        } else {
-            details = [{ type: 'text', value: 'Could not load post content.' }];
-        }
-    }
-
-    const comments = [];
-    const commentItems = articleElement.querySelector('#viewcomment').querySelectorAll("article");
-
-    commentItems.forEach(comment => {
-        const id = comment.getAttribute('id');
-        if (id && id.startsWith('c_')) {
-            const authorElement = comment.querySelector('span.sv_name');
-            const avatarElement = comment.querySelector('img.mb-photo');
-            const dateElement = comment.querySelector('div.ms-auto');
-            const contentElement = comment.querySelector('div.na-convert');
-            const likesElement = comment.querySelector("span.cnt")
-
-            const style = comment.getAttribute('style'); // margin-left:1rem;
-            let level = 0;
-            if (style) {
-                const match = style.match(/margin-left:\s*(\d+(?:\.\d+)?)/);
-                level = match ? parseFloat(match[1]) : 0;
-            }
-
-            if (authorElement && contentElement) {
-                const commentAuthor = authorElement.textContent.trim();
-
-                const menus = ['답글'];
-                if (commentAuthor === author) {
-                    menus.push('삭제');
-                }
-
-                let content = synura.parse('post', contentElement);
-                content.unshift({ type: 'anchor', value: id });
-
-                const likesVal = likesElement ? parseNumber(likesElement.textContent.trim()) : '';
-                const likesInt = parseInt(likesVal) || 0;
-                comments.push({
-                    author: commentAuthor,
-                    avatar: avatarElement ? avatarElement.getAttribute('src') : '',
-                    content: content,
-                    date: dateElement ? dateElement.getAttribute('title') : '',
-                    likeCount: likesVal,
-                    dislikeCount: '',
-                    level: level,
-                    menus: menus,
-                    hotCount: likesInt,
-                    coldCount: likesInt,
-                });
-            }
-        }
-    });
-
-    return {
-        styles: {
-            title: title || '',
-        },
-        models: {
-            author: author || '',
-            viewCount: viewCount || '',
-            likeCount: likeCount || '',
-            dislikeCount: dislikeCount || '',
-            date: date || '',
-            avatar: avatar || '',
-            // hotCount: parseInt(likeCount) || 0,
-            // coldCount: parseInt(likeCount) || 0,
-            content: details,
-            comments: comments,
-        }
-    };
-}
 // =============================================================================
 // 7. VIEW OPENERS
 // =============================================================================
@@ -689,9 +753,8 @@ var openPost = (parentViewId, link) => {
                 if (postData) {
                     synura.update(viewId, postData);
 
-                    // 4. Cache using router format
-                    const routeData = SYNURA.main.router(link);
-                    if (routeData) setCachedRoute(link, routeData);
+                    // 4. Cache from the already-fetched payload (avoid double fetch)
+                    setCachedRoute(link, createPostRouteData(link, postData));
                 } else {
                     synura.update(viewId, { models: { snackbar: "Failed to load data" } });
                 }
@@ -926,6 +989,7 @@ var handleBoardEvent = (viewId, event) => {
                 query: params.searchQuery
             };
             const cardItems = fetchPage(event.context.boardId, 1, searchParams);
+            setParams(viewId, { lastPostId: computeLastPostId(cardItems) });
             const updateResult = synura.update(viewId, {
                 models: {
                     contents: cardItems
@@ -955,9 +1019,17 @@ var handleBoardEvent = (viewId, event) => {
                 query: params.searchQuery
             };
             const cardItems = fetchPage(event.context.boardId, currentPage, searchParams);
+            const appendCandidates = cardItems.filter(item => item.isNotice !== true);
+            const lastPostId = params.lastPostId || 0;
+            const appendItems = filterAppendByLastPostId(appendCandidates, lastPostId);
+            const appendedLastPostId = computeLastPostId(appendItems);
+            if (appendedLastPostId > 0) {
+                const nextLastPostId = lastPostId > 0 ? Math.min(lastPostId, appendedLastPostId) : appendedLastPostId;
+                setParams(viewId, { lastPostId: nextLastPostId });
+            }
             const updateData = {
                 models: {
-                    append: cardItems,
+                    append: appendItems,
                 },
             };
 
@@ -1048,6 +1120,7 @@ var handleBoardEvent = (viewId, event) => {
                 query: query
             };
             const cardItems = fetchPage(event.context.boardId, 1, searchParams);
+            setParams(viewId, { lastPostId: computeLastPostId(cardItems) });
             synura.update(viewId, {
                 models: {
                     contents: cardItems
@@ -1722,10 +1795,7 @@ var handleCLIEvent = (viewId, event) => {
 
         try {
             const cookie = getCookie();
-            const fetchOptions = {};
-            if (cookie) {
-                fetchOptions.headers = { 'Cookie': cookie };
-            }
+            const fetchOptions = buildFetchOptions();
 
             const response = fetch(url, fetchOptions);
             const htmlContent = response.text();
