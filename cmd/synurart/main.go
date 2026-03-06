@@ -93,6 +93,20 @@ func runCommand(state *shellState, args []string) error {
 		os.Exit(0)
 	case "views", "ls":
 		renderViews(rt)
+	case "v":
+		if len(args) == 1 {
+			renderViews(rt)
+			break
+		}
+		if len(args) == 2 {
+			id, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return err
+			}
+			renderView(rt, id)
+			break
+		}
+		return fmt.Errorf("usage: v [viewId]")
 	case "view":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: view <id>")
@@ -162,11 +176,35 @@ func runCommand(state *shellState, args []string) error {
 			return err
 		}
 		emitOK()
+	case "n":
+		if len(args) > 2 {
+			return fmt.Errorf("usage: n [viewId]")
+		}
+		id, err := resolveViewID(rt, args[1:])
+		if err != nil {
+			return err
+		}
+		if err := rt.Emit(id, "SCROLL_TO_END", map[string]any{}); err != nil {
+			return err
+		}
+		emitOK()
 	case "refresh":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: refresh <viewId>")
 		}
 		id, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		if err := rt.Emit(id, "REFRESH", map[string]any{}); err != nil {
+			return err
+		}
+		emitOK()
+	case "r":
+		if len(args) > 2 {
+			return fmt.Errorf("usage: r [viewId]")
+		}
+		id, err := resolveViewID(rt, args[1:])
 		if err != nil {
 			return err
 		}
@@ -211,6 +249,14 @@ func runCommand(state *shellState, args []string) error {
 			return err
 		}
 		if err := rt.Emit(id, "SUBMIT", data); err != nil {
+			return err
+		}
+		emitOK()
+	case "s":
+		if len(args) < 2 || len(args) > 3 {
+			return fmt.Errorf("usage: s <index> [viewId]")
+		}
+		if err := handleTap(rt, append([]string{"index"}, args[1:]...)); err != nil {
 			return err
 		}
 		emitOK()
@@ -1299,19 +1345,23 @@ func printHelp() {
 		{"help", "Show help"},
 		{"load <path> [--no-home]", "Load extension file into fresh runtime"},
 		{"timeout [duration]", "Show or set fetch timeout (default 10s)"},
-		{"views", "Show view stack and top view render"},
+		{"views | ls", "Show view stack and top view render"},
+		{"v [id]", "Show stack, or show one view JSON + render when id is given"},
 		{"view <id>", "Show view data JSON + render"},
 		{"render [id]", "Render one view (default top)"},
 		{"home", "Call SYNURA.main.home()"},
 		{"deeplink <url>", "Call SYNURA.main.deeplink(url)"},
 		{"resume <id> [json]", "Call SYNURA.main.resume(id, context)"},
+		{"s <n> [id]", "Alias for tap index <n> [id]"},
 		{"tap title <text> [id]", "Emit CLICK for list item matching title"},
 		{"tap author <name> [id]", "Emit AUTHOR_CLICK for matching author"},
 		{"tap category <name> [id]", "Emit CATEGORY_CLICK for matching category"},
 		{"tap index <n> [id]", "Emit CLICK by 1-based item index"},
 		{"itemmenu <id> <label> [index]", "Emit ITEM_MENU_CLICK"},
 		{"reorder <id> <from> <to>", "Emit REORDER for list item"},
+		{"r [id]", "Alias for refresh <id> (default top view)"},
 		{"refresh <id>", "Emit REFRESH"},
+		{"n [id]", "Alias for event <id> SCROLL_TO_END (default top view)"},
 		{"event <id> SCROLL_TO_END", "Emit pagination event (fetch next page)"},
 		{"menu <id> <label>", "Emit MENU_CLICK"},
 		{"query <id> <text>", "Emit QUERY"},
@@ -1330,9 +1380,16 @@ func printHelp() {
 		jsonOut(map[string]any{"type": "help", "commands": cmds})
 		return
 	}
+	maxCmdWidth := 0
+	for _, e := range helpEntries {
+		if len(e.cmd) > maxCmdWidth {
+			maxCmdWidth = len(e.cmd)
+		}
+	}
 	fmt.Println(bold("Commands:"))
 	for _, e := range helpEntries {
-		fmt.Printf("  %-30s %s\n", c(e.cmd, cBrightCyan), dim(e.desc))
+		paddedCmd := fmt.Sprintf("%-*s", maxCmdWidth, e.cmd)
+		fmt.Printf("  %s  %s\n", c(paddedCmd, cBrightCyan), dim(e.desc))
 	}
 }
 

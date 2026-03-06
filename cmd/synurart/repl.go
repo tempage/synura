@@ -12,12 +12,15 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/ivere27/synura/internal/synurart"
 	"golang.org/x/term"
 )
 
 const replPrompt = "synurart> "
+
+const replKeyAltBackspace rune = '\U0010f701'
 
 var replCommandSuggestions = []string{
 	"help", "h", "?",
@@ -55,6 +58,70 @@ type stdioReadWriter struct {
 	io.Writer
 }
 
+type altBackspaceReader struct {
+	reader     io.Reader
+	pending    []byte
+	escapeSeen bool
+	readErr    error
+}
+
+func newAltBackspaceReader(reader io.Reader) *altBackspaceReader {
+	return &altBackspaceReader{reader: reader}
+}
+
+func (r *altBackspaceReader) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+
+	for len(r.pending) == 0 {
+		if r.readErr != nil {
+			if r.escapeSeen {
+				r.pending = append(r.pending, 0x1b)
+				r.escapeSeen = false
+				break
+			}
+			err := r.readErr
+			r.readErr = nil
+			return 0, err
+		}
+
+		buf := make([]byte, len(p))
+		n, err := r.reader.Read(buf)
+		if n > 0 {
+			r.appendNormalized(buf[:n])
+		}
+		if err != nil {
+			r.readErr = err
+		}
+	}
+
+	n := copy(p, r.pending)
+	r.pending = r.pending[n:]
+	return n, nil
+}
+
+func (r *altBackspaceReader) appendNormalized(data []byte) {
+	for _, b := range data {
+		if r.escapeSeen {
+			if b == 0x7f || b == 0x08 {
+				r.pending = utf8.AppendRune(r.pending, replKeyAltBackspace)
+				r.escapeSeen = false
+				continue
+			}
+			r.pending = append(r.pending, 0x1b)
+			r.escapeSeen = false
+		}
+
+		if b == 0x1b {
+			r.escapeSeen = true
+			continue
+		}
+
+		r.pending = append(r.pending, b)
+	}
+}
+
 func runREPL(state *shellState) error {
 	fd := int(os.Stdin.Fd())
 	if !term.IsTerminal(fd) {
@@ -71,7 +138,7 @@ func runREPL(state *shellState) error {
 	}()
 
 	t := term.NewTerminal(stdioReadWriter{
-		Reader: os.Stdin,
+		Reader: newAltBackspaceReader(os.Stdin),
 		Writer: os.Stdout,
 	}, replPrompt)
 	completer := newAutoCompleter(state)
@@ -177,6 +244,11 @@ func newAutoCompleter(state *shellState) *autoCompleter {
 }
 
 func (a *autoCompleter) callback(line string, pos int, key rune) (string, int, bool) {
+	if key == replKeyAltBackspace {
+		a.resetCycle()
+		return backwardKillWord(line, pos)
+	}
+
 	if key != '\t' {
 		a.resetCycle()
 		return "", 0, false
@@ -214,6 +286,48 @@ func (a *autoCompleter) callback(line string, pos int, key rune) (string, int, b
 	a.lastIndex = 0
 	nextLine, nextPos := applyCompletion(line, pos, ctx, options[0])
 	return nextLine, nextPos, true
+}
+
+func backwardKillWord(line string, pos int) (string, int, bool) {
+	if pos <= 0 {
+		return line, pos, true
+	}
+	if pos > len(line) {
+		pos = len(line)
+	}
+
+	runes := []rune(line)
+	runePos := utf8.RuneCountInString(line[:pos])
+	if runePos <= 0 {
+		return line, pos, true
+	}
+
+	start := findBackwardKillWordStart(runes, runePos)
+	if start >= runePos {
+		return line, pos, true
+	}
+
+	nextRunes := append(append([]rune{}, runes[:start]...), runes[runePos:]...)
+	nextPos := len(string(nextRunes[:start]))
+	return string(nextRunes), nextPos, true
+}
+
+func findBackwardKillWordStart(line []rune, pos int) int {
+	i := pos
+	for i > 0 && unicode.IsSpace(line[i-1]) {
+		i--
+	}
+	for i > 0 && !isReadlineWordRune(line[i-1]) && !unicode.IsSpace(line[i-1]) {
+		i--
+	}
+	for i > 0 && isReadlineWordRune(line[i-1]) {
+		i--
+	}
+	return i
+}
+
+func isReadlineWordRune(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
 }
 
 func (a *autoCompleter) resetCycle() {

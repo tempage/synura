@@ -24,11 +24,12 @@ var SYNURA = {
     domain: "damoang.net",
     name: "test_damoang",
     description: "Unofficial example extension for educational purposes.",
-    version: 0.2,
+    version: 0.3,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
     locale: "ko_KR",
+    icon: "https://damoang.net/favicon-96x96.png",
     deeplink: true,
     get main() { return handler; }
 }

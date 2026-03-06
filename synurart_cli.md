@@ -66,11 +66,13 @@ If your environment merges streams, parse line-by-line JSON and ignore optional 
 | `load <path> [--no-home]` | Reset runtime, load extension, optional `home()` call. |
 | `timeout [duration]` | Show or set fetch timeout (`10s`, `500ms`, `2.5`). |
 | `views` / `ls` | Show stack summary and active view. |
+| `v [id]` | Show stack summary, or show one view JSON + render when `id` is given. |
 | `view <id>` | Show one view JSON + render output. |
 | `render [id]` | Render one view (defaults to top view). |
 | `home` | Call `SYNURA.main.home()`. |
 | `deeplink <url>` | Call `SYNURA.main.deeplink(url)`. |
 | `resume <id> [jsonObject]` | Call `SYNURA.main.resume(id, context)`. |
+| `s <n> [id]` | Alias for `tap index <n> [id]`. |
 | `tap` or `click` | Same command; `click` is an alias of `tap`. |
 | `tap title <text> [id]` | Emit `CLICK` by title match in list contents. |
 | `tap author <name> [id]` | Emit `AUTHOR_CLICK` by author match (list/post). |
@@ -78,7 +80,9 @@ If your environment merges streams, parse line-by-line JSON and ignore optional 
 | `tap index <n> [id]` | Emit `CLICK` by 1-based list index. |
 | `itemmenu <id> <label> [index]` | Emit `ITEM_MENU_CLICK` using list item/comment data. |
 | `reorder <id> <fromIndex> <toIndex>` | Emit `REORDER` with `_index` and `_newIndex`. |
+| `r [id]` | Alias for `refresh <id>`; defaults to the top view. |
 | `refresh <id>` | Emit `REFRESH`. |
+| `n [id]` | Alias for `event <id> SCROLL_TO_END`; defaults to the top view. |
 | `menu <id> <label>` | Emit `MENU_CLICK` with `{"menu": "<label>"}`. |
 | `query <id> <text>` | Emit `QUERY` with `{"query": "<text>"}`. |
 | `submit <id> <jsonObject>` | Emit `SUBMIT` with object payload. |

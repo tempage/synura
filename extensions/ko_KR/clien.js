@@ -6,7 +6,7 @@ var SYNURA = {
     domain: "m.clien.net",
     name: "test_clien",
     description: "Unofficial example extension for educational purposes.",
-    version: 0.2,
+    version: 0.3,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
@@ -446,6 +446,82 @@ var parseNumber = (value) => {
     const s = String(value || "").replace(/[^0-9-]/g, "");
     if (!s || s === "-" || s === "--") return "";
     return s;
+};
+
+var hideZeroCount = (value) => {
+    const s = String(value || "").trim();
+    return s === "0" ? "" : s;
+};
+
+var DATE_FORMAT_CONTEXT = (() => {
+    const now = new Date();
+    const currentYear = String(now.getFullYear());
+    const today = `${currentYear}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const nextRefreshAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+    return { today: today, nextRefreshAt: nextRefreshAt };
+})();
+
+var getDateFormatContext = () => {
+    const nowMs = Date.now();
+    if (nowMs < DATE_FORMAT_CONTEXT.nextRefreshAt) {
+        return DATE_FORMAT_CONTEXT;
+    }
+
+    const now = new Date(nowMs);
+    DATE_FORMAT_CONTEXT.today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    DATE_FORMAT_CONTEXT.nextRefreshAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+    return DATE_FORMAT_CONTEXT;
+};
+
+var selectBestDateValue = (values) => {
+    if (!values || !Array.isArray(values)) return "";
+
+    let fallback = "";
+    for (let i = 0; i < values.length; i++) {
+        const value = values[i];
+        if (value === null || value === undefined) continue;
+
+        const s = String(value).replace(/\s+/g, " ").trim();
+        if (!s) continue;
+        if (!fallback) fallback = s;
+        if (/\d{4}-\d{2}-\d{2}/.test(s)) return s;
+    }
+
+    return fallback;
+};
+
+var formatCommentDate = (value) => {
+    if (!value) return "";
+
+    const raw = String(value)
+        .replace(/\s*\/\s*수정\b.*$/u, "")
+        .replace(/\s*\(수정\)\s*$/u, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    if (!raw) return "";
+
+    const normalized = raw
+        .replace("T", " ")
+        .replace(/\.\d+/, "")
+        .replace(/([+-]\d{2}:?\d{2}|Z)$/, "")
+        .trim();
+    const fullMatches = normalized.match(/\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?/g);
+    const candidate = fullMatches && fullMatches.length > 0 ? fullMatches[fullMatches.length - 1] : normalized;
+    const matched = candidate.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}:\d{2})(?::\d{2})?)?$/);
+
+    if (matched) {
+        const today = getDateFormatContext().today;
+        const datePart = `${matched[1]}-${matched[2]}-${matched[3]}`;
+        const timePart = matched[4] || "";
+        if (datePart === today) {
+            return timePart || `${matched[2]}-${matched[3]}`;
+        }
+        return timePart ? `${matched[2]}-${matched[3]} ${timePart}` : `${matched[2]}-${matched[3]}`;
+    }
+
+    const timeMatch = candidate.match(/\b(\d{1,2}:\d{2})(?::\d{2})?\b/);
+    if (timeMatch) return timeMatch[1];
+    return raw;
 };
 
 var parseIntSafe = (value, fallback) => {
@@ -1116,15 +1192,22 @@ var parseDomComments = (doc, postUrl, postAuthor) => {
                 "[data-role='comment-dislike']"
             ]))
         ]));
-        const date = firstNonEmpty([
-            getText(selectFirst(row, [
-                ".comment_time",
-                ".post_time",
-                ".timestamp",
-                "time",
-                "[data-role='comment-date']"
-            ]))
+        const dateEl = selectFirst(row, [
+            ".comment_time",
+            ".post_time",
+            ".timestamp",
+            "time",
+            "[data-role='comment-date']"
         ]);
+        const nestedTimeEl = selectFirst(dateEl, ["time"]);
+        const date = formatCommentDate(selectBestDateValue([
+            getAttr(dateEl, "datetime"),
+            getAttr(nestedTimeEl, "datetime"),
+            getAttr(dateEl, "title"),
+            getAttr(nestedTimeEl, "title"),
+            getText(nestedTimeEl),
+            getText(dateEl)
+        ]));
         const avatar = toAbsoluteUrl(getAttr(selectFirst(row, [
             ".post_contact img",
             ".contact_name img",
@@ -1140,6 +1223,7 @@ var parseDomComments = (doc, postUrl, postAuthor) => {
             `comment_${i}`
         ]);
 
+        const normalizedLikeCount = hideZeroCount(likeCount);
         const hotBase = parseIntSafe(likeCount, 0);
         const menus = ["답글"];
         if (author && postAuthor && author === postAuthor) {
@@ -1152,7 +1236,7 @@ var parseDomComments = (doc, postUrl, postAuthor) => {
             avatar: avatar,
             content: content,
             date: date,
-            likeCount: likeCount,
+            likeCount: normalizedLikeCount,
             dislikeCount: dislikeCount,
             level: level,
             menus: menus,
@@ -1280,6 +1364,7 @@ var fetchPost = (link) => {
     }
 
     const comments = parseDomComments(doc, usedUrl || primaryUrl, author);
+    const normalizedLikeCount = hideZeroCount(likeCount);
     const hotBase = parseIntSafe(likeCount, 0);
 
     return {
@@ -1296,7 +1381,7 @@ var fetchPost = (link) => {
             avatar: "",
             date: date || "",
             viewCount: viewCount || "",
-            likeCount: likeCount || "",
+            likeCount: normalizedLikeCount,
             dislikeCount: dislikeCount || "",
             hotCount: hotBase,
             coldCount: hotBase,
