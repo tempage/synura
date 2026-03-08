@@ -275,6 +275,19 @@ func runCommand(state *shellState, args []string) error {
 			return err
 		}
 		emitOK()
+	case "c":
+		if len(args) > 2 {
+			return fmt.Errorf("usage: c [viewId]")
+		}
+		id, err := resolveViewID(rt, args[1:])
+		if err != nil {
+			return err
+		}
+		_, err = rt.VM().RunString(fmt.Sprintf("synura.close(%d)", id))
+		if err != nil {
+			return err
+		}
+		emitOK()
 	case "close":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: close <viewId>")
@@ -1362,6 +1375,7 @@ func printHelp() {
 		{"r [id]", "Alias for refresh <id> (default top view)"},
 		{"refresh <id>", "Emit REFRESH"},
 		{"n [id]", "Alias for event <id> SCROLL_TO_END (default top view)"},
+		{"c [id]", "Alias for close <id> (default top view)"},
 		{"event <id> SCROLL_TO_END", "Emit pagination event (fetch next page)"},
 		{"menu <id> <label>", "Emit MENU_CLICK"},
 		{"query <id> <text>", "Emit QUERY"},

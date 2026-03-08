@@ -83,6 +83,7 @@ If your environment merges streams, parse line-by-line JSON and ignore optional 
 | `r [id]` | Alias for `refresh <id>`; defaults to the top view. |
 | `refresh <id>` | Emit `REFRESH`. |
 | `n [id]` | Alias for `event <id> SCROLL_TO_END`; defaults to the top view. |
+| `c [id]` | Alias for `close <id>`; defaults to the top view. |
 | `menu <id> <label>` | Emit `MENU_CLICK` with `{"menu": "<label>"}`. |
 | `query <id> <text>` | Emit `QUERY` with `{"query": "<text>"}`. |
 | `submit <id> <jsonObject>` | Emit `SUBMIT` with object payload. |

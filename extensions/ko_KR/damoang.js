@@ -24,7 +24,7 @@ var SYNURA = {
     domain: "damoang.net",
     name: "test_damoang",
     description: "Unofficial example extension for educational purposes.",
-    version: 0.3,
+    version: 0.4,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
@@ -534,13 +534,29 @@ var extractBalancedSegment = (text, startIndex, openChar, closeChar) => {
 
 var extractValueByKey = (text, key, startChar) => {
     const marker = `${key}:`;
-    const keyIdx = text.indexOf(marker);
-    if (keyIdx < 0) return null;
-    let pos = keyIdx + marker.length;
-    while (pos < text.length && /\s/.test(text[pos])) pos++;
-    if (text[pos] !== startChar) return null;
     const endChar = startChar === '[' ? ']' : '}';
-    return extractBalancedSegment(text, pos, startChar, endChar);
+    let searchFrom = 0;
+
+    while (searchFrom < text.length) {
+        const keyIdx = text.indexOf(marker, searchFrom);
+        if (keyIdx < 0) return null;
+
+        const prevChar = keyIdx > 0 ? text[keyIdx - 1] : '';
+        if (prevChar && /[A-Za-z0-9_$]/.test(prevChar)) {
+            searchFrom = keyIdx + marker.length;
+            continue;
+        }
+
+        let pos = keyIdx + marker.length;
+        while (pos < text.length && /\s/.test(text[pos])) pos++;
+        if (text[pos] === startChar) {
+            return extractBalancedSegment(text, pos, startChar, endChar);
+        }
+
+        searchFrom = keyIdx + marker.length;
+    }
+
+    return null;
 };
 
 var evaluateJSLiteral = (literal) => {
@@ -551,6 +567,140 @@ var evaluateJSLiteral = (literal) => {
         console.log("Failed to evaluate hydration literal:", e.toString());
         return null;
     }
+};
+
+var parseJSONSafe = (text, label) => {
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        console.log(`Failed to parse ${label || 'JSON'}:`, e.toString());
+        return null;
+    }
+};
+
+var decodeSvelteTransport = (entries, rootIndex) => {
+    if (!Array.isArray(entries) || entries.length === 0) return null;
+
+    const cache = {};
+    const resolving = {};
+
+    var decodeNested = null;
+    var decodeValue = null;
+    var resolveRef = null;
+
+    const decodeArray = (arr) => {
+        if (arr.length > 0 && typeof arr[0] === 'string') {
+            const tag = arr[0];
+            if (tag === "Date") {
+                return decodeNested(arr[1]);
+            }
+            if (tag === "Promise") {
+                return { __deferred: true, id: decodeNested(arr[1]) };
+            }
+        }
+        return arr.map(item => decodeNested(item));
+    };
+
+    const decodeObject = (obj) => {
+        const out = {};
+        Object.keys(obj).forEach((key) => {
+            out[key] = decodeNested(obj[key]);
+        });
+        return out;
+    };
+
+    decodeNested = (value) => {
+        if (typeof value === 'number' && isFinite(value) && Math.floor(value) === value && value >= 0) {
+            return resolveRef(value);
+        }
+        return decodeValue(value);
+    };
+
+    decodeValue = (value) => {
+        if (Array.isArray(value)) return decodeArray(value);
+        if (value && typeof value === 'object') return decodeObject(value);
+        return value;
+    };
+
+    resolveRef = (index) => {
+        if (index < 0 || index >= entries.length) return null;
+        if (Object.prototype.hasOwnProperty.call(cache, index)) return cache[index];
+        if (resolving[index]) return null;
+
+        resolving[index] = true;
+        const decoded = decodeValue(entries[index]);
+        cache[index] = decoded;
+        delete resolving[index];
+        return decoded;
+    };
+
+    const safeRootIndex = typeof rootIndex === 'number' ? rootIndex : 0;
+    return resolveRef(safeRootIndex);
+};
+
+var parseSvelteDataStream = (text) => {
+    const raw = String(text || '').trim();
+    if (!raw.startsWith('{"type":"data"')) return null;
+
+    const docs = raw
+        .split(/\n+/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map((line, index) => parseJSONSafe(line, `Svelte data line ${index + 1}`));
+
+    if (docs.some(doc => !doc)) return null;
+
+    const nodes = [];
+    const chunks = [];
+
+    docs.forEach((doc) => {
+        if (!doc || typeof doc !== 'object') return;
+        if (doc.type === 'data' && Array.isArray(doc.nodes)) {
+            doc.nodes.forEach((node) => {
+                if (!node || node.type !== 'data' || !Array.isArray(node.data)) return;
+                const decoded = decodeSvelteTransport(node.data, 0);
+                if (decoded) {
+                    nodes.push({
+                        uses: node.uses || {},
+                        data: decoded
+                    });
+                }
+            });
+            return;
+        }
+        if (doc.type === 'chunk' && Array.isArray(doc.data)) {
+            const decoded = decodeSvelteTransport(doc.data, 0);
+            if (decoded) {
+                chunks.push({
+                    id: doc.id,
+                    data: decoded
+                });
+            }
+        }
+    });
+
+    return { nodes, chunks };
+};
+
+var buildPostRouteData = (post, comments) => {
+    const details = parseHTMLDetails(post.content || '');
+    const mappedComments = (comments || []).map(c => toCommentModel(c, post.author));
+
+    return {
+        styles: {
+            title: post.title || '',
+        },
+        models: {
+            author: post.author || '',
+            viewCount: parseNumber(String(post.views || '0')),
+            likeCount: parseNumber(String(post.likes || '0')),
+            dislikeCount: parseNumber(String(post.dislikes || '0')),
+            date: normalizeDate(post.created_at || post.updated_at),
+            avatar: '',
+            content: details,
+            comments: mappedComments,
+        }
+    };
 };
 
 var DATE_FORMAT_CONTEXT = (() => {
@@ -661,11 +811,40 @@ var toCardItemFromHydration = (boardId, item) => {
 };
 
 var parseBoardHydration = (html) => {
+    const svelteData = parseSvelteDataStream(html);
+    if (svelteData) {
+        const boardChunk = svelteData.chunks.find(chunk => {
+            const data = chunk && chunk.data;
+            return data && (Array.isArray(data.posts) || Array.isArray(data.notices));
+        });
+        if (!boardChunk) {
+            throw new Error("Failed to parse board svelte data payload");
+        }
+        return {
+            posts: Array.isArray(boardChunk.data.posts) ? boardChunk.data.posts : [],
+            notices: Array.isArray(boardChunk.data.notices) ? boardChunk.data.notices : []
+        };
+    }
+
     const postsLiteral = extractValueByKey(html, "posts", '[');
     const noticesLiteral = extractValueByKey(html, "notices", '[');
+    if (!postsLiteral && !noticesLiteral) {
+        throw new Error("Failed to parse board hydration payload");
+    }
     const posts = evaluateJSLiteral(postsLiteral) || [];
     const notices = evaluateJSLiteral(noticesLiteral) || [];
     return { posts, notices };
+};
+
+var parseBoardApiResponse = (text) => {
+    const payload = parseJSONSafe(text, "board API response");
+    if (!payload || payload.success !== true || !Array.isArray(payload.data)) {
+        throw new Error("Failed to parse board API response");
+    }
+    return {
+        posts: payload.data,
+        notices: []
+    };
 };
 
 var toCommentModel = (item, postAuthor) => {
@@ -699,6 +878,31 @@ var toCommentModel = (item, postAuthor) => {
 };
 
 var parsePostHydration = (html) => {
+    const svelteData = parseSvelteDataStream(html);
+    if (svelteData) {
+        const postNode = svelteData.nodes.find(node => {
+            const data = node && node.data;
+            return data && data.post && data.board;
+        });
+        if (!postNode || !postNode.data || !postNode.data.post) {
+            throw new Error("Failed to parse post svelte data payload");
+        }
+
+        const secondaryChunk = svelteData.chunks.find(chunk => {
+            const data = chunk && chunk.data;
+            return data && (data.comments || data.transformedPostContent || data.likersData);
+        });
+
+        const post = { ...postNode.data.post };
+        if (secondaryChunk && secondaryChunk.data && secondaryChunk.data.transformedPostContent) {
+            post.content = secondaryChunk.data.transformedPostContent;
+        }
+
+        const commentsData = secondaryChunk && secondaryChunk.data ? secondaryChunk.data.comments : null;
+        const comments = commentsData && Array.isArray(commentsData.items) ? commentsData.items : [];
+        return buildPostRouteData(post, comments);
+    }
+
     const postLiteral = extractValueByKey(html, "post", '{');
     const commentsLiteral = extractValueByKey(html, "comments", '{');
     const post = evaluateJSLiteral(postLiteral);
@@ -709,30 +913,16 @@ var parsePostHydration = (html) => {
         throw new Error("Failed to parse post hydration payload");
     }
 
-    const details = parseHTMLDetails(post.content || '');
-    const mappedComments = comments.map(c => toCommentModel(c, post.author));
-
-    return {
-        styles: {
-            title: post.title || '',
-        },
-        models: {
-            author: post.author || '',
-            viewCount: parseNumber(String(post.views || '0')),
-            likeCount: parseNumber(String(post.likes || '0')),
-            dislikeCount: parseNumber(String(post.dislikes || '0')),
-            date: normalizeDate(post.created_at || post.updated_at),
-            avatar: '',
-            content: details,
-            comments: mappedComments,
-        }
-    };
+    return buildPostRouteData(post, comments);
 };
 
 var fetchPage = (boardId, page, searchParams) => {
     const options = buildFetchOptions();
+    const useApiPagination = page > 1 && !(searchParams && searchParams.query);
     let url = `https://damoang.net/${boardId}?page=${page}`;
-    if (searchParams && searchParams.query) {
+    if (useApiPagination) {
+        url = `https://damoang.net/api/v1/boards/${boardId}/posts?page=${page}&limit=30`;
+    } else if (searchParams && searchParams.query) {
         url = `https://damoang.net/${boardId}?sfl=${encodeURIComponent(searchParams.field)}&stx=${encodeURIComponent(searchParams.query)}&sop=and&page=${page}`;
     }
     console.log(url.replace(/%/g, '%%'));
@@ -742,8 +932,10 @@ var fetchPage = (boardId, page, searchParams) => {
         throw new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim());
     }
 
-    const html = response.text();
-    const hydrated = parseBoardHydration(html);
+    const responseText = response.text();
+    const hydrated = useApiPagination
+        ? parseBoardApiResponse(responseText)
+        : parseBoardHydration(responseText);
     const merged = [...hydrated.notices, ...hydrated.posts];
     return merged.map(item => toCardItemFromHydration(boardId, item));
 };

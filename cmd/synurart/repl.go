@@ -32,6 +32,7 @@ var replCommandSuggestions = []string{
 	"event", "refresh", "menu", "query", "submit",
 	"tap", "click",
 	"itemmenu", "reorder",
+	"c",
 	"close",
 	"timeout",
 	"storage",
@@ -463,7 +464,7 @@ func (a *autoCompleter) suggestions(ctx completionContext) []completionCandidate
 		if ctx.argIndex == 1 {
 			return pathSuggestions(ctx.current, true)
 		}
-	case "view", "render", "resume", "refresh", "query", "submit", "close":
+	case "view", "render", "resume", "refresh", "query", "submit", "close", "c":
 		if ctx.argIndex == 1 {
 			return viewIDSuggestions(a.state.rt, ctx.current)
 		}
