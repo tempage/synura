@@ -484,7 +484,10 @@ func (a *autoCompleter) suggestions(ctx completionContext) []completionCandidate
 		}
 	case "storage":
 		if ctx.argIndex == 1 {
-			return filterSuggestions([]string{"local", "session"}, ctx.current, false, true)
+			return filterSuggestions([]string{"local", "session", "clear"}, ctx.current, false, true)
+		}
+		if ctx.argIndex == 2 && len(ctx.argsBefore) > 1 && strings.EqualFold(ctx.argsBefore[1], "clear") {
+			return filterSuggestions([]string{"local", "session", "all"}, ctx.current, false, true)
 		}
 	case "timeout":
 		if ctx.argIndex == 1 {

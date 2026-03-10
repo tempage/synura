@@ -14,6 +14,10 @@ This document is a practical command reference for the Synura runtime shell (`cm
 
 It is the fastest way to validate extension behavior without launching the mobile app.
 
+`localStorage` is persisted automatically in `.synurart/local_storage.json`, namespaced by the loaded extension's absolute path. Each extension reload restores its last saved `localStorage` snapshot before the JS file is evaluated.
+
+The runtime exposes the same browser-like `navigator.language` global as Synura extensions. In `synurart`, it defaults to `en-US` and can be changed with `locale <tag>`.
+
 ## Start Commands
 
 ```bash
@@ -65,6 +69,7 @@ If your environment merges streams, parse line-by-line JSON and ignore optional 
 | `help` / `h` / `?` | Show command help. |
 | `load <path> [--no-home]` | Reset runtime, load extension, optional `home()` call. |
 | `timeout [duration]` | Show or set fetch timeout (`10s`, `500ms`, `2.5`). |
+| `locale [tag]` | Show or set `navigator.language` (`ko-KR`, `pt-BR`, `en-US`). |
 | `views` / `ls` | Show stack summary and active view. |
 | `v [id]` | Show stack summary, or show one view JSON + render when `id` is given. |
 | `view <id>` | Show one view JSON + render output. |
@@ -90,6 +95,7 @@ If your environment merges streams, parse line-by-line JSON and ignore optional 
 | `event <id> <EVENT_ID> [jsonObject]` | Emit custom event (event ID is uppercased). |
 | `close <id>` | Close view by ID (`synura.close`). |
 | `storage [local|session]` | Print storage snapshot(s). |
+| `storage clear [local|session|all]` | Clear storage. `local` is persisted to disk immediately. |
 | `eval <javascript>` | Run JS directly in runtime VM. |
 | `quit` / `q` / `exit` | Exit shell. |
 
@@ -102,7 +108,9 @@ If your environment merges streams, parse line-by-line JSON and ignore optional 
 - `{"type":"view","viewId":1,"path":"...","data":{...}}`
 - `{"type":"render","viewId":1,"path":"...","models":{...},"styles":{...}}`
 - `{"type":"timeout","timeout":"10s","seconds":10}`
+- `{"type":"locale","locale":"ko-KR"}`
 - `{"type":"storage","local":{...},"session":{...}}`
+- `{"type":"storage_cleared","local":true,"session":false}`
 - `{"type":"eval","result":...}`
 - `{"type":"ok"}`
 
@@ -112,9 +120,16 @@ If your environment merges streams, parse line-by-line JSON and ignore optional 
 - `{"type":"update","viewId":1,"diff":{...}}`
 - `{"type":"close","viewId":1}`
 - `{"type":"event","viewId":1,"eventId":"CLICK","data":{...}}`
-- `{"type":"fetch","method":"GET","url":"...","status":200,"networkMs":123,"networkTime":"123ms"}`
+- `{"type":"event_done","viewId":1,"eventId":"QUERY","depth":1,"totalMs":182,"backendMs":41,"backendTime":"41ms","fetchMs":141,"fetchTime":"141ms","fetchCount":1,"fetchLogicMs":18,"fetchTotalMs":159,"exclusiveTime":"182ms"}`
+- `{"type":"fetch","method":"GET","url":"...","status":200,"totalMs":141,"logicMs":18,"logicTime":"18ms","networkMs":123,"networkTime":"123ms"}`
 - `{"type":"console","level":"log","message":"..."}`
 - `{"type":"error","message":"..."}`
+
+In text mode, callback completion now prints lines like:
+
+- `[EVENT←EXT] #1 QUERY done (total=182ms, b=41ms, f=141ms, fetches=1, depth=1)`
+
+`event_done` is exclusive per callback. If a parent event opens another view and triggers a nested `LOAD`, the nested `LOAD` receives its own timing line and the parent line does not double-count that child callback's fetch time.
 
 ## Available Events By View Path
 
@@ -183,6 +198,6 @@ printf 'views\ntap index 1\nviews\nquit\n' | \
 ## Practical Notes
 
 - `load` creates a fresh runtime (view IDs restart from `1`).
-- `timeout` value is preserved when reloading via `load`.
+- `timeout` and `locale` values are preserved when reloading via `load`.
 - `render` and `tap ... [id]` default to the current top view when ID is omitted.
 - Pretty render output is specialized for: list, post, chat, browser, markdown, source, settings, editor, simple, input dialog, confirmation dialog.

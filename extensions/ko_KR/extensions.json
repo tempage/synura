@@ -1,21 +1,113 @@
 {
   "extensions": [
     {
+      "name": "fmkorea",
+      "description": "Unofficial Synura extension for FMKorea mobile boards.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/fmkorea.js",
+      "api": 0,
+      "domain": "m.fmkorea.com",
+      "icon": "https://m.fmkorea.com/favicon.ico",
+      "locale": "ko_KR"
+    },
+    {
+      "name": "ppomppu",
+      "description": "Unofficial Synura extension for Ppomppu mobile boards.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/ppomppu.js",
+      "api": 0,
+      "domain": "m.ppomppu.co.kr",
+      "icon": "https://m.ppomppu.co.kr/favicon.ico",
+      "locale": "ko_KR"
+    },
+    {
+      "name": "pann",
+      "description": "Unofficial Synura extension for Nate Pann mobile boards.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/pann.js",
+      "api": 0,
+      "domain": "m.pann.nate.com",
+      "icon": "https://m.pann.nate.com/favicon.ico",
+      "locale": "ko_KR"
+    },
+    {
       "name": "test_damoang",
       "description": "Unofficial example extension for educational purposes.",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/damoang.js",
       "api": 0,
       "domain": "damoang.net",
+      "icon": "https://damoang.net/favicon-96x96.png",
+      "locale": "ko_KR"
+    },
+    {
+      "name": "ruliweb",
+      "description": "Unofficial Synura extension for Ruliweb mobile boards.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/ruliweb.js",
+      "api": 0,
+      "domain": "m.ruliweb.com",
+      "icon": "https://m.ruliweb.com/favicon.ico",
+      "locale": "ko_KR"
+    },
+    {
+      "name": "dcinside",
+      "description": "Unofficial Synura extension for dcinside mobile boards.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/dcinside.js",
+      "api": 0,
+      "domain": "m.dcinside.com",
+      "icon": "https://m.dcinside.com/favicon.ico",
+      "locale": "ko_KR"
+    },
+    {
+      "name": "arca",
+      "description": "Unofficial Synura extension for arca.live boards.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/arca.js",
+      "api": 0,
+      "domain": "arca.live",
+      "icon": "https://arca.live/favicon.ico",
       "locale": "ko_KR"
     },
     {
       "name": "test_clien",
       "description": "Unofficial example extension for educational purposes.",
-      "version": 0.1,
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/clien.js",
       "api": 0,
       "domain": "m.clien.net",
+      "icon": "https://m.clien.net/service/image/favicon.ico",
+      "locale": "ko_KR"
+    },
+    {
+      "name": "mlbpark",
+      "description": "Unofficial Synura extension for MLBPark boards.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/mlbpark.js",
+      "api": 0,
+      "domain": "mlbpark.donga.com",
+      "icon": "https://mlbpark.donga.com/favicon.ico",
+      "locale": "ko_KR"
+    },
+    {
+      "name": "inven",
+      "description": "Unofficial Synura extension for Inven mobile boards.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/inven.js",
+      "api": 0,
+      "domain": "m.inven.co.kr",
+      "icon": "https://m.inven.co.kr/favicon.ico",
+      "locale": "ko_KR"
+    },
+    {
+      "name": "theqoo",
+      "description": "Unofficial Synura extension for theqoo.net boards.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/theqoo.js",
+      "api": 0,
+      "domain": "theqoo.net",
+      "icon": "https://theqoo.net/favicon.ico",
       "locale": "ko_KR"
     }
   ]

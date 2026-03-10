@@ -1,15 +1,18 @@
 package synurart
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,7 +21,9 @@ import (
 	"github.com/dop251/goja"
 	"github.com/ivere27/synura/internal/fetch"
 	"golang.org/x/net/html"
+	"golang.org/x/net/html/charset"
 	"golang.org/x/term"
+	"golang.org/x/text/language"
 )
 
 // View is a simulated Synura view state.
@@ -29,7 +34,27 @@ type View struct {
 	Callback goja.Value
 }
 
+type eventTiming struct {
+	ViewID         int64
+	EventID        string
+	Depth          int
+	StartedAt      time.Time
+	ChildTotalMs   int64
+	FetchCount     int64
+	FetchTotalMs   int64
+	FetchLogicMs   int64
+	FetchNetworkMs int64
+}
+
 const defaultFetchTimeout = 10 * time.Second
+const defaultNavigatorLanguage = "en-US"
+
+var htmlCharsetPattern = regexp.MustCompile(`(?i)charset\s*=\s*['"]?\s*([a-z0-9._-]+)`)
+
+// Options configures runtime initialization.
+type Options struct {
+	LocalStorageBackend LocalStorageBackend
+}
 
 // Runtime is a CLI Synura runtime simulator powered by goja.
 type Runtime struct {
@@ -41,9 +66,12 @@ type Runtime struct {
 	views          map[int64]*View
 	viewOrder      []int64
 	callbackStack  []int64
+	eventStack     []*eventTiming
 	nextViewID     int64
 	localStorage   map[string]string
+	localBackend   LocalStorageBackend
 	sessionStorage map[string]any
+	locale         string
 	nodeIndex      map[int64]any
 	nodeObjects    map[*html.Node]*goja.Object
 	nextNodeID     int64
@@ -52,6 +80,15 @@ type Runtime struct {
 
 // New creates a runtime with built-in Synura globals.
 func New(out, errOut io.Writer) *Runtime {
+	r, err := NewWithOptions(out, errOut, Options{})
+	if err != nil {
+		panic(fmt.Sprintf("synurart.New: %v", err))
+	}
+	return r
+}
+
+// NewWithOptions creates a runtime with built-in Synura globals and optional backends.
+func NewWithOptions(out, errOut io.Writer, opts Options) (*Runtime, error) {
 	if out == nil {
 		out = os.Stdout
 	}
@@ -62,6 +99,14 @@ func New(out, errOut io.Writer) *Runtime {
 	if f, ok := out.(*os.File); ok {
 		colorOut = term.IsTerminal(int(f.Fd()))
 	}
+	localStorage := make(map[string]string)
+	if opts.LocalStorageBackend != nil {
+		loaded, err := opts.LocalStorageBackend.Load()
+		if err != nil {
+			return nil, fmt.Errorf("load local storage: %w", err)
+		}
+		localStorage = loaded
+	}
 	r := &Runtime{
 		vm:             goja.New(),
 		out:            out,
@@ -70,16 +115,19 @@ func New(out, errOut io.Writer) *Runtime {
 		views:          make(map[int64]*View),
 		viewOrder:      make([]int64, 0),
 		callbackStack:  make([]int64, 0),
+		eventStack:     make([]*eventTiming, 0),
 		nextViewID:     1,
-		localStorage:   make(map[string]string),
+		localStorage:   localStorage,
+		localBackend:   opts.LocalStorageBackend,
 		sessionStorage: make(map[string]any),
+		locale:         defaultNavigatorLanguage,
 		nodeIndex:      make(map[int64]any),
 		nodeObjects:    make(map[*html.Node]*goja.Object),
 		nextNodeID:     1,
 		fetchTimeout:   defaultFetchTimeout,
 	}
 	r.installGlobals()
-	return r
+	return r, nil
 }
 
 // VM returns the underlying goja runtime.
@@ -108,6 +156,29 @@ func (r *Runtime) SetTimeout(timeout time.Duration) error {
 		return errors.New("timeout must be greater than 0")
 	}
 	r.fetchTimeout = timeout
+	return nil
+}
+
+// Locale returns the current navigator.language value.
+func (r *Runtime) Locale() string {
+	if strings.TrimSpace(r.locale) == "" {
+		return defaultNavigatorLanguage
+	}
+	return r.locale
+}
+
+// SetLocale updates navigator.language for the current runtime.
+func (r *Runtime) SetLocale(raw string) error {
+	normalized, err := normalizeLocale(raw)
+	if err != nil {
+		return err
+	}
+	r.locale = normalized
+	if nav := r.vm.Get("navigator"); nav != nil && !goja.IsUndefined(nav) && !goja.IsNull(nav) {
+		if obj := nav.ToObject(r.vm); obj != nil {
+			_ = obj.Set("language", normalized)
+		}
+	}
 	return nil
 }
 
@@ -217,6 +288,25 @@ func (r *Runtime) LocalStorageSnapshot() map[string]string {
 	return m
 }
 
+// SetLocalStorageItem updates one localStorage value and persists it when configured.
+func (r *Runtime) SetLocalStorageItem(key, value string) error {
+	next := r.LocalStorageSnapshot()
+	next[key] = value
+	return r.replaceLocalStorage(next)
+}
+
+// RemoveLocalStorageItem removes one localStorage value and persists it when configured.
+func (r *Runtime) RemoveLocalStorageItem(key string) error {
+	next := r.LocalStorageSnapshot()
+	delete(next, key)
+	return r.replaceLocalStorage(next)
+}
+
+// ClearLocalStorage resets localStorage and persists the empty snapshot when configured.
+func (r *Runtime) ClearLocalStorage() error {
+	return r.replaceLocalStorage(make(map[string]string))
+}
+
 // SessionStorageSnapshot returns a copy of sessionStorage.
 func (r *Runtime) SessionStorageSnapshot() map[string]any {
 	m := make(map[string]any, len(r.sessionStorage))
@@ -226,13 +316,50 @@ func (r *Runtime) SessionStorageSnapshot() map[string]any {
 	return m
 }
 
+// ClearSessionStorage resets in-memory sessionStorage.
+func (r *Runtime) ClearSessionStorage() {
+	r.sessionStorage = make(map[string]any)
+}
+
+func (r *Runtime) replaceLocalStorage(next map[string]string) error {
+	if next == nil {
+		next = make(map[string]string)
+	}
+	if r.localBackend != nil {
+		if err := r.localBackend.Save(next); err != nil {
+			return err
+		}
+	}
+	r.localStorage = next
+	return nil
+}
+
 func (r *Runtime) installGlobals() {
+	r.installNavigator()
 	r.installConsole()
 	r.installStorage()
 	r.installSynura()
 	r.installFetch()
 	r.installURLSearchParams()
 	r.installDOMParser()
+}
+
+func (r *Runtime) installNavigator() {
+	navigator := r.vm.NewObject()
+	_ = navigator.Set("language", r.Locale())
+	_ = r.vm.Set("navigator", navigator)
+}
+
+func normalizeLocale(raw string) (string, error) {
+	normalized := strings.TrimSpace(strings.ReplaceAll(raw, "_", "-"))
+	if normalized == "" {
+		return "", errors.New("locale is required")
+	}
+	tag, err := language.Parse(normalized)
+	if err != nil {
+		return "", fmt.Errorf("invalid locale: %q", raw)
+	}
+	return tag.String(), nil
 }
 
 func (r *Runtime) installConsole() {
@@ -287,7 +414,9 @@ func (r *Runtime) installStorage() {
 		}
 		key := call.Argument(0).String()
 		val := call.Argument(1)
-		r.localStorage[key] = val.String()
+		if err := r.SetLocalStorageItem(key, val.String()); err != nil {
+			panic(r.vm.NewGoError(err))
+		}
 		return goja.Undefined()
 	})
 	_ = local.Set("getItem", func(call goja.FunctionCall) goja.Value {
@@ -302,12 +431,16 @@ func (r *Runtime) installStorage() {
 	})
 	_ = local.Set("removeItem", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) > 0 {
-			delete(r.localStorage, call.Argument(0).String())
+			if err := r.RemoveLocalStorageItem(call.Argument(0).String()); err != nil {
+				panic(r.vm.NewGoError(err))
+			}
 		}
 		return goja.Undefined()
 	})
 	_ = local.Set("clear", func(call goja.FunctionCall) goja.Value {
-		r.localStorage = make(map[string]string)
+		if err := r.ClearLocalStorage(); err != nil {
+			panic(r.vm.NewGoError(err))
+		}
 		return goja.Undefined()
 	})
 	_ = r.vm.Set("localStorage", local)
@@ -338,7 +471,7 @@ func (r *Runtime) installStorage() {
 		return goja.Undefined()
 	})
 	_ = session.Set("clear", func(call goja.FunctionCall) goja.Value {
-		r.sessionStorage = make(map[string]any)
+		r.ClearSessionStorage()
 		return goja.Undefined()
 	})
 	_ = r.vm.Set("sessionStorage", session)
@@ -662,6 +795,7 @@ func (r *Runtime) jsParse(call goja.FunctionCall) goja.Value {
 }
 
 func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
+	startedAt := time.Now()
 	if len(call.Arguments) < 1 {
 		return r.errorFetchResponse("fetch url is required")
 	}
@@ -729,6 +863,16 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 	if networkMs < 0 {
 		networkMs = 0
 	}
+	response := r.buildFetchResponse(resp)
+	totalMs := time.Since(startedAt).Milliseconds()
+	if totalMs < 0 {
+		totalMs = 0
+	}
+	logicMs := totalMs - networkMs
+	if logicMs < 0 {
+		logicMs = 0
+	}
+	r.recordFetchTiming(totalMs, logicMs, networkMs)
 
 	if r.jsonMode {
 		r.jsonLog(map[string]any{
@@ -736,17 +880,20 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 			"method":      strings.ToUpper(method),
 			"url":         urlStr,
 			"status":      resp.StatusCode,
+			"totalMs":     totalMs,
+			"logicMs":     logicMs,
 			"networkMs":   networkMs,
+			"logicTime":   (time.Duration(logicMs) * time.Millisecond).String(),
 			"networkTime": resp.NetworkTime.String(),
 		})
 	} else {
-		fmt.Fprintf(r.out, "%s %s %s -> %d (network=%dms)\n", r.tag("FETCH", "\033[34m"), strings.ToUpper(method), urlStr, resp.StatusCode, networkMs)
+		fmt.Fprintf(r.out, "%s %s %s -> %d (b=%dms, network=%dms)\n", r.tag("FETCH", "\033[34m"), strings.ToUpper(method), urlStr, resp.StatusCode, logicMs, networkMs)
 	}
-	return r.buildFetchResponse(resp)
+	return response
 }
 
 func (r *Runtime) validateFetchDomain(rawURL string) error {
-	allowedDomain, err := r.synuraDomain()
+	allowedHosts, err := r.allowedFetchHosts()
 	if err != nil {
 		return err
 	}
@@ -754,10 +901,51 @@ func (r *Runtime) validateFetchDomain(rawURL string) error {
 	if err != nil {
 		return err
 	}
-	if reqHost != allowedDomain {
-		return fmt.Errorf("fetch host %q is not allowed (SYNURA.domain=%q)", reqHost, allowedDomain)
+	for _, allowedHost := range allowedHosts {
+		if reqHost == allowedHost {
+			return nil
+		}
 	}
-	return nil
+	return fmt.Errorf("fetch host %q is not allowed (allowed=%q)", reqHost, strings.Join(allowedHosts, ", "))
+}
+
+func (r *Runtime) allowedFetchHosts() ([]string, error) {
+	allowedDomain, err := r.synuraDomain()
+	if err != nil {
+		return nil, err
+	}
+	hosts := []string{allowedDomain}
+	seen := map[string]struct{}{allowedDomain: {}}
+
+	siteDef := r.vm.Get("SITE")
+	if siteDef == nil || goja.IsUndefined(siteDef) || goja.IsNull(siteDef) {
+		return hosts, nil
+	}
+	siteObj := siteDef.ToObject(r.vm)
+	if siteObj == nil {
+		return hosts, nil
+	}
+	aliasesValue := siteObj.Get("hostAliases")
+	if goja.IsUndefined(aliasesValue) || goja.IsNull(aliasesValue) {
+		return hosts, nil
+	}
+	exported := aliasesValue.Export()
+	aliases, ok := exported.([]any)
+	if !ok {
+		return hosts, nil
+	}
+	for _, alias := range aliases {
+		host := normalizeHost(stringifyAny(alias))
+		if host == "" {
+			continue
+		}
+		if _, exists := seen[host]; exists {
+			continue
+		}
+		seen[host] = struct{}{}
+		hosts = append(hosts, host)
+	}
+	return hosts, nil
 }
 
 func (r *Runtime) synuraDomain() (string, error) {
@@ -848,7 +1036,7 @@ func (r *Runtime) buildFetchResponse(resp *fetch.Response) goja.Value {
 	_ = obj.Set("headers", headerToMap(resp.Headers))
 	_ = obj.Set("networkMs", resp.NetworkTime.Milliseconds())
 	_ = obj.Set("networkTime", resp.NetworkTime.String())
-	body := string(resp.Body)
+	body := decodeResponseBody(resp.Headers, resp.Body)
 	_ = obj.Set("text", func(goja.FunctionCall) goja.Value {
 		return r.vm.ToValue(body)
 	})
@@ -870,6 +1058,112 @@ func (r *Runtime) buildFetchResponse(resp *fetch.Response) goja.Value {
 	return obj
 }
 
+func decodeResponseBody(headers http.Header, body []byte) string {
+	if len(body) == 0 {
+		return ""
+	}
+
+	contentType := ""
+	if headers != nil {
+		contentType = headers.Get("Content-Type")
+	}
+
+	headerCharset := declaredCharsetFromContentType(contentType)
+	htmlCharset := declaredCharsetFromHTML(body)
+	if headerCharset != "" {
+		decoded, ok := decodeBytesWithCharset(body, headerCharset)
+		if ok {
+			if htmlCharset != "" && !sameCharset(headerCharset, htmlCharset) && looksLikeMojibake(decoded) {
+				if repaired, repairedOK := decodeBytesWithCharset(body, htmlCharset); repairedOK {
+					return repaired
+				}
+			}
+			return decoded
+		}
+	}
+	if htmlCharset != "" {
+		if decoded, ok := decodeBytesWithCharset(body, htmlCharset); ok {
+			return decoded
+		}
+	}
+
+	enc, _, _ := charset.DetermineEncoding(body, contentType)
+	decoded, err := io.ReadAll(enc.NewDecoder().Reader(bytes.NewReader(body)))
+	if err != nil {
+		return string(body)
+	}
+	if htmlCharset != "" && looksLikeMojibake(string(decoded)) {
+		if repaired, ok := decodeBytesWithCharset(body, htmlCharset); ok {
+			return repaired
+		}
+	}
+	return string(decoded)
+}
+
+func declaredCharsetFromContentType(contentType string) string {
+	trimmed := strings.TrimSpace(contentType)
+	if trimmed == "" {
+		return ""
+	}
+	_, params, err := mime.ParseMediaType(trimmed)
+	if err == nil {
+		if value := strings.TrimSpace(params["charset"]); value != "" {
+			return value
+		}
+	}
+	lower := strings.ToLower(trimmed)
+	idx := strings.Index(lower, "charset=")
+	if idx < 0 {
+		return ""
+	}
+	value := strings.TrimSpace(trimmed[idx+len("charset="):])
+	value = strings.Trim(value, `"' ;`)
+	return value
+}
+
+func declaredCharsetFromHTML(body []byte) string {
+	if len(body) == 0 {
+		return ""
+	}
+	scan := body
+	if len(scan) > 64*1024 {
+		scan = scan[:64*1024]
+	}
+	match := htmlCharsetPattern.FindStringSubmatch(strings.ToLower(string(scan)))
+	if len(match) < 2 {
+		return ""
+	}
+	return strings.TrimSpace(match[1])
+}
+
+func decodeBytesWithCharset(body []byte, label string) (string, bool) {
+	enc, _ := charset.Lookup(strings.TrimSpace(label))
+	if enc == nil {
+		return "", false
+	}
+	decoded, err := io.ReadAll(enc.NewDecoder().Reader(bytes.NewReader(body)))
+	if err != nil {
+		return "", false
+	}
+	return string(decoded), true
+}
+
+func sameCharset(a, b string) bool {
+	_, nameA := charset.Lookup(strings.TrimSpace(a))
+	_, nameB := charset.Lookup(strings.TrimSpace(b))
+	if nameA != "" && nameB != "" {
+		return strings.EqualFold(nameA, nameB)
+	}
+	return strings.EqualFold(strings.TrimSpace(a), strings.TrimSpace(b))
+}
+
+func looksLikeMojibake(text string) bool {
+	if text == "" {
+		return false
+	}
+	return strings.ContainsRune(text, '\uFFFD')
+}
+
 func (r *Runtime) callViewCallback(view *View, event map[string]any) error {
 	if view.Callback == nil {
 		return nil
@@ -878,17 +1172,84 @@ func (r *Runtime) callViewCallback(view *View, event map[string]any) error {
 	if !ok {
 		return nil
 	}
+	eventID := strings.TrimSpace(stringifyAny(event["eventId"]))
+	frame := &eventTiming{
+		ViewID:    view.ID,
+		EventID:   eventID,
+		Depth:     len(r.eventStack) + 1,
+		StartedAt: time.Now(),
+	}
 	r.callbackStack = append(r.callbackStack, view.ID)
+	r.eventStack = append(r.eventStack, frame)
 	defer func() {
+		totalMs := time.Since(frame.StartedAt).Milliseconds()
+		if totalMs < 0 {
+			totalMs = 0
+		}
+		exclusiveMs := totalMs - frame.ChildTotalMs
+		if exclusiveMs < 0 {
+			exclusiveMs = 0
+		}
+		backendMs := exclusiveMs - frame.FetchNetworkMs
+		if backendMs < 0 {
+			backendMs = 0
+		}
+		r.logEventTiming(frame, exclusiveMs, backendMs)
+		if len(r.eventStack) > 1 {
+			r.eventStack[len(r.eventStack)-2].ChildTotalMs += totalMs
+		}
+		r.eventStack = r.eventStack[:len(r.eventStack)-1]
 		r.callbackStack = r.callbackStack[:len(r.callbackStack)-1]
 	}()
-	arity := callbackArity(r.vm, view.Callback)
-	if arity >= 2 {
-		_, err := fn(goja.Undefined(), r.vm.ToValue(view.ID), r.vm.ToValue(event))
-		return err
-	}
 	_, err := fn(goja.Undefined(), r.vm.ToValue(event))
 	return err
+}
+
+func (r *Runtime) recordFetchTiming(totalMs, logicMs, networkMs int64) {
+	if len(r.eventStack) == 0 {
+		return
+	}
+	frame := r.eventStack[len(r.eventStack)-1]
+	frame.FetchCount++
+	frame.FetchTotalMs += totalMs
+	frame.FetchLogicMs += logicMs
+	frame.FetchNetworkMs += networkMs
+}
+
+func (r *Runtime) logEventTiming(frame *eventTiming, totalMs, backendMs int64) {
+	if frame == nil {
+		return
+	}
+	if r.jsonMode {
+		r.jsonLog(map[string]any{
+			"type":          "event_done",
+			"viewId":        frame.ViewID,
+			"eventId":       frame.EventID,
+			"depth":         frame.Depth,
+			"totalMs":       totalMs,
+			"backendMs":     backendMs,
+			"fetchMs":       frame.FetchNetworkMs,
+			"fetchCount":    frame.FetchCount,
+			"fetchLogicMs":  frame.FetchLogicMs,
+			"fetchTotalMs":  frame.FetchTotalMs,
+			"exclusiveTime": (time.Duration(totalMs) * time.Millisecond).String(),
+			"backendTime":   (time.Duration(backendMs) * time.Millisecond).String(),
+			"fetchTime":     (time.Duration(frame.FetchNetworkMs) * time.Millisecond).String(),
+		})
+		return
+	}
+	fmt.Fprintf(
+		r.out,
+		"%s #%d %s done (total=%dms, b=%dms, f=%dms, fetches=%d, depth=%d)\n",
+		r.tag("EVENT\u2190EXT", "\033[32m"),
+		frame.ViewID,
+		frame.EventID,
+		totalMs,
+		backendMs,
+		frame.FetchNetworkMs,
+		frame.FetchCount,
+		frame.Depth,
+	)
 }
 
 func (r *Runtime) currentCallbackViewID() (int64, bool) {
@@ -1031,18 +1392,6 @@ func isModelWrapper(m map[string]any) bool {
 		}
 	}
 	return true
-}
-
-func callbackArity(vm *goja.Runtime, fnValue goja.Value) int64 {
-	obj := fnValue.ToObject(vm)
-	if obj == nil {
-		return 1
-	}
-	l := obj.Get("length")
-	if goja.IsUndefined(l) || goja.IsNull(l) {
-		return 1
-	}
-	return l.ToInteger()
 }
 
 func cloneAny(v any) any {

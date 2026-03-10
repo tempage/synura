@@ -99,6 +99,9 @@ Objects returned by `response.dom()` or `document.querySelector` provide a subse
 ### `console`
 -   `console.log(...args)`: Logs messages to the debug console (and logcat on Android).
 
+### `navigator`
+-   `navigator.language`: The current locale exposed by the runtime as a BCP 47 language tag. In `synurart`, this defaults to `en-US` and can be changed with the `locale <tag>` command.
+
 ### `localStorage`
 Persistent key-value storage backed by a database.
 -   **`localStorage.setItem(key, value)`**
@@ -237,4 +240,3 @@ See **[Router Pattern](router.md)** for full documentation on:
 -   **Threading Model**
 -   **State Sharing**
 -   **Caching Strategy**
-

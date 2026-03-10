@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,7 +15,8 @@ import (
 )
 
 type shellState struct {
-	rt *synurart.Runtime
+	rt               *synurart.Runtime
+	localStoragePath string
 }
 
 var (
@@ -46,7 +48,14 @@ func run() error {
 	if extPath == "" && flag.NArg() > 0 {
 		extPath = flag.Arg(0)
 	}
-	state := &shellState{rt: synurart.New(os.Stdout, os.Stderr)}
+	localStoragePath, err := defaultLocalStoragePath()
+	if err != nil {
+		return err
+	}
+	state := &shellState{
+		rt:               synurart.New(os.Stdout, os.Stderr),
+		localStoragePath: localStoragePath,
+	}
 	if jsonMode {
 		state.rt.SetJSONMode(true)
 	}
@@ -324,34 +333,26 @@ func runCommand(state *shellState, args []string) error {
 		} else {
 			fmt.Printf("%s %s\n", dim("timeout:"), c(timeout.String(), cBrightYellow))
 		}
-	case "storage":
+	case "locale":
+		if len(args) > 2 {
+			return fmt.Errorf("usage: locale [tag]")
+		}
+		if len(args) == 2 {
+			if err := rt.SetLocale(args[1]); err != nil {
+				return err
+			}
+		}
+		locale := rt.Locale()
 		if jsonMode {
-			result := map[string]any{"type": "storage"}
-			if len(args) == 1 || strings.EqualFold(args[1], "local") {
-				result["local"] = rt.LocalStorageSnapshot()
-				if len(args) == 1 {
-					result["session"] = rt.SessionStorageSnapshot()
-				}
-			} else if strings.EqualFold(args[1], "session") {
-				result["session"] = rt.SessionStorageSnapshot()
-			} else {
-				return fmt.Errorf("usage: storage [local|session]")
-			}
-			jsonOut(result)
-			break
+			jsonOut(map[string]any{
+				"type":   "locale",
+				"locale": locale,
+			})
+		} else {
+			fmt.Printf("%s %s\n", dim("locale:"), c(locale, cBrightYellow))
 		}
-		if len(args) == 1 || strings.EqualFold(args[1], "local") {
-			printJSON(rt.LocalStorageSnapshot())
-			if len(args) == 1 {
-				printJSON(rt.SessionStorageSnapshot())
-			}
-			break
-		}
-		if strings.EqualFold(args[1], "session") {
-			printJSON(rt.SessionStorageSnapshot())
-			break
-		}
-		return fmt.Errorf("usage: storage [local|session]")
+	case "storage":
+		return handleStorageCommand(rt, args[1:])
 	case "eval":
 		if len(args) < 2 {
 			return fmt.Errorf("usage: eval <javascript>")
@@ -374,12 +375,23 @@ func runCommand(state *shellState, args []string) error {
 
 func loadRuntimeExtension(state *shellState, extPath string, autoHome bool) error {
 	timeout := 10 * time.Second
+	locale := ""
 	if state.rt != nil {
 		timeout = state.rt.Timeout()
+		locale = state.rt.Locale()
 	}
-	state.rt = synurart.New(os.Stdout, os.Stderr)
+	rt, err := newRuntimeForExtension(state, extPath)
+	if err != nil {
+		return err
+	}
+	state.rt = rt
 	if err := state.rt.SetTimeout(timeout); err != nil {
 		return err
+	}
+	if locale != "" {
+		if err := state.rt.SetLocale(locale); err != nil {
+			return err
+		}
 	}
 	if jsonMode {
 		state.rt.SetJSONMode(true)
@@ -405,6 +417,131 @@ func loadRuntimeExtension(state *shellState, extPath string, autoHome bool) erro
 		renderViews(state.rt)
 	}
 	return nil
+}
+
+func defaultLocalStoragePath() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("resolve working directory: %w", err)
+	}
+	return filepath.Join(wd, ".synurart", "local_storage.json"), nil
+}
+
+func newRuntimeForExtension(state *shellState, extPath string) (*synurart.Runtime, error) {
+	opts := synurart.Options{}
+	if strings.TrimSpace(state.localStoragePath) != "" && strings.TrimSpace(extPath) != "" {
+		backend, err := newDiskLocalStorageBackend(state.localStoragePath, extPath)
+		if err != nil {
+			return nil, err
+		}
+		opts.LocalStorageBackend = backend
+	}
+	return synurart.NewWithOptions(os.Stdout, os.Stderr, opts)
+}
+
+func newDiskLocalStorageBackend(storagePath, extPath string) (synurart.LocalStorageBackend, error) {
+	absExtPath, err := filepath.Abs(extPath)
+	if err != nil {
+		return nil, fmt.Errorf("resolve extension path: %w", err)
+	}
+	backend, err := synurart.NewDiskLocalStorageBackend(storagePath, absExtPath)
+	if err != nil {
+		return nil, err
+	}
+	return backend, nil
+}
+
+func handleStorageCommand(rt *synurart.Runtime, args []string) error {
+	if len(args) == 0 {
+		printStorageSnapshot(rt, true, true)
+		return nil
+	}
+
+	switch strings.ToLower(args[0]) {
+	case "local":
+		if len(args) != 1 {
+			return fmt.Errorf("usage: storage [local|session] | storage clear [local|session|all]")
+		}
+		printStorageSnapshot(rt, true, false)
+		return nil
+	case "session":
+		if len(args) != 1 {
+			return fmt.Errorf("usage: storage [local|session] | storage clear [local|session|all]")
+		}
+		printStorageSnapshot(rt, false, true)
+		return nil
+	case "clear":
+		if len(args) > 2 {
+			return fmt.Errorf("usage: storage [local|session] | storage clear [local|session|all]")
+		}
+		target := "all"
+		if len(args) == 2 {
+			target = strings.ToLower(args[1])
+		}
+
+		clearedLocal := false
+		clearedSession := false
+		switch target {
+		case "all":
+			if err := rt.ClearLocalStorage(); err != nil {
+				return err
+			}
+			rt.ClearSessionStorage()
+			clearedLocal = true
+			clearedSession = true
+		case "local":
+			if err := rt.ClearLocalStorage(); err != nil {
+				return err
+			}
+			clearedLocal = true
+		case "session":
+			rt.ClearSessionStorage()
+			clearedSession = true
+		default:
+			return fmt.Errorf("usage: storage [local|session] | storage clear [local|session|all]")
+		}
+
+		if jsonMode {
+			jsonOut(map[string]any{
+				"type":    "storage_cleared",
+				"local":   clearedLocal,
+				"session": clearedSession,
+			})
+			return nil
+		}
+
+		cleared := make([]string, 0, 2)
+		if clearedLocal {
+			cleared = append(cleared, "local")
+		}
+		if clearedSession {
+			cleared = append(cleared, "session")
+		}
+		fmt.Printf("%s %s\n", dim("cleared storage:"), c(strings.Join(cleared, ", "), cBrightYellow))
+		return nil
+	default:
+		return fmt.Errorf("usage: storage [local|session] | storage clear [local|session|all]")
+	}
+}
+
+func printStorageSnapshot(rt *synurart.Runtime, includeLocal, includeSession bool) {
+	if jsonMode {
+		result := map[string]any{"type": "storage"}
+		if includeLocal {
+			result["local"] = rt.LocalStorageSnapshot()
+		}
+		if includeSession {
+			result["session"] = rt.SessionStorageSnapshot()
+		}
+		jsonOut(result)
+		return
+	}
+	if includeLocal {
+		printJSON(rt.LocalStorageSnapshot())
+	}
+	if includeSession {
+		printJSON(rt.SessionStorageSnapshot())
+	}
 }
 
 func handleTap(rt *synurart.Runtime, args []string) error {
@@ -1358,6 +1495,7 @@ func printHelp() {
 		{"help", "Show help"},
 		{"load <path> [--no-home]", "Load extension file into fresh runtime"},
 		{"timeout [duration]", "Show or set fetch timeout (default 10s)"},
+		{"locale [tag]", "Show or set navigator.language (for example ko-KR)"},
 		{"views | ls", "Show view stack and top view render"},
 		{"v [id]", "Show stack, or show one view JSON + render when id is given"},
 		{"view <id>", "Show view data JSON + render"},
@@ -1383,6 +1521,7 @@ func printHelp() {
 		{"event <id> <EVENT> [json]", "Emit custom event with JSON object"},
 		{"close <id>", "Close a view"},
 		{"storage [local|session]", "Show storage snapshots"},
+		{"storage clear [local|session|all]", "Clear storage and persist localStorage changes"},
 		{"eval <javascript>", "Evaluate JS in current runtime"},
 		{"quit", "Exit shell"},
 	}
