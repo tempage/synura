@@ -1,4 +1,4 @@
-var SITE = {"siteKey":"clien","displayName":"클리앙","browserHomeUrl":"https://m.clien.net/service/","browserCookieAuth":false,"minimumHomeBoards":10,"defaultCacheTtlMs":600000,"showCacheSnackbarByDefault":true,"enableCacheSettings":true,"enableBoardReorder":true,"enableBoardDelete":true,"boardSettingsMenuLabel":"소모임","boardSettingsTitle":"소모임/게시판 설정","boardSettingsLargeThreshold":256,"boardSettingsPageSize":96,"boardAddMode":"id_title","defaultVisibleBoardIds":[],"hostAliases":["clien.net","www.clien.net"],"challengeMarkers":[],"titleSuffixes":[" : 클리앙"," - 클리앙"],"linkAllowPatterns":["^https://m\\.clien\\.net/service/board/[^/]+/\\d+"],"listBoardQueryParam":"","boards":[{"id":"park","title":"모두의공원"},{"id":"news","title":"새로운소식"},{"id":"use","title":"사용기"},{"id":"lecture","title":"강좌/팁"},{"id":"useful","title":"유용한사이트"},{"id":"jirum","title":"알뜰구매"},{"id":"sold","title":"중고장터"},{"id":"image","title":"사진게시판"},{"id":"kin","title":"아무거나질문"},{"id":"pds","title":"자료실"}],"selectors":{"boardTitle":[".board_name .board_subject span",".board_name .board_subject","h3.board_name",".board_name",".board_title","h2.board_title","h2 .board_name","title"],"listRows":["[data-role='list-row']","a.list_item","div.list_item.symph_row","div.list_item","tr.list_item","tr"],"listLink":[".list_title a.list_subject","a.list_subject","a[href*='/service/board/']"],"listTitle":["[data-role='list-title-text']",".list_title a.list_subject",".list_title","a.list_subject",".subject_fixed"],"listAuthor":[".list_author .nickname",".list_author .nickimg",".list_author .nickimg img",".list_author",".author","[data-role='list-author']"],"listAvatar":[".list_author .nickimg img",".list_author img",".author img","[data-role='list-author'] img"],"listDate":[".list_time",".list_date","time","[data-role='list-date']"],"listCommentCount":[".list_comment",".comment_count",".reply_count",".list_reply",".rSymph05","[data-role='list-comment-count']"],"listViewCount":[".list_hit",".list_view",".hit","[data-role='list-hit']"],"listLikeCount":[".list_symph",".symph_count",".list_recommend","[data-role='list-like-count']"],"listCategory":[".list_category",".category","[data-role='list-category']"],"listImage":["img[src]"],"postTitle":["h3.post_subject span","h3.post_subject",".post_subject span",".post_subject","h1.subject","h1","title"],"postAuthor":[".post_contact .contact_name",".post_contact .nickimg",".post_contact .nickimg img",".post_author .nickname",".post_author .name",".post_info .nickname",".post_info .name",".author .nickname",".author","[data-role='post-author']"],"postAvatar":[".post_contact .nickimg img",".post_contact img",".post_author img",".post_info img",".author img","[data-role='post-author'] img"],"postDate":[".post_information .post_date .time",".post_information .post_date",".post_information .post_time",".post_author .view_count.date",".post_time",".post_info .post_time",".post_info time","[data-role='post-date']","time"],"postViewCount":[".view_count",".post_hit",".post_view_count",".hit","[data-role='post-hit']"],"postLikeCount":[".symph_count",".post_symph",".recommend_count",".post_recommend .num","[data-role='post-like']"],"postCategory":[".post_category",".category"],"postContent":["article .post_article body","article .post_article",".post_article body",".post_article","article .post_content body","article .post_content","#div_content","[data-role='post-content']"],"commentRows":["#comment_view .comment_row",".comment_row",".comment_list .comment_item",".comment_list li",".post_comment .comment_item",".post_comment .comment_row","[data-role='comment-item']"],"commentAuthor":[".nickname",".name",".comment_author",".user_name","[data-role='comment-author']"],"commentAvatar":[".comment_profile img",".profile img",".nickname img",".comment_author img",".user_name img","[data-role='comment-author'] img"],"commentContent":[".comment_view","[data-comment-view]",".comment_content .comment_view",".comment_text",".comment_contents",".cmt_content","[data-role^='comment-content-']","[data-role='comment-content']"],"commentDate":[".comment_time",".post_time",".timestamp","time","[data-role='comment-date']"],"commentLikeCount":[".symph_count",".comment_symph .num",".comment_symph strong","[id^='setLikeCount_']",".recommend_count",".comment_recommend .num","[data-role='comment-like']"],"commentLevel":[]},"commentLevelAttrs":["data-depth","depth"],"useRawPostParse":true,"useRawPostParseInEmulator":true,"boardGroupMap":{"park":"커뮤니티","news":"정보","use":"정보","lecture":"정보","useful":"정보","jirum":"거래","sold":"거래","image":"사진","kin":"질문","pds":"자료"}};
+var SITE = {"siteKey":"clien","displayName":"클리앙","browserHomeUrl":"https://m.clien.net/service/","browserCookieAuth":false,"minimumHomeBoards":10,"defaultCacheTtlMs":600000,"showCacheSnackbarByDefault":true,"enableCacheSettings":true,"enableBoardReorder":true,"enableBoardDelete":true,"boardSettingsMenuLabel":"소모임","boardSettingsTitle":"소모임/게시판 설정","boardSettingsLargeThreshold":256,"boardSettingsPageSize":96,"boardAddMode":"id_title","defaultVisibleBoardIds":[],"hostAliases":["clien.net","www.clien.net"],"challengeMarkers":[],"titleSuffixes":[" : 클리앙"," - 클리앙"],"linkAllowPatterns":["^https://m\\.clien\\.net/service/board/[^/]+/\\d+"],"listBoardQueryParam":"","boards":[{"id":"park","title":"모두의공원"},{"id":"news","title":"새로운소식"},{"id":"use","title":"사용기"},{"id":"lecture","title":"강좌/팁"},{"id":"useful","title":"유용한사이트"},{"id":"jirum","title":"알뜰구매"},{"id":"sold","title":"중고장터"},{"id":"image","title":"사진게시판","showMedia":true},{"id":"kin","title":"아무거나질문"},{"id":"pds","title":"자료실"}],"selectors":{"boardTitle":[".board_name .board_subject span",".board_name .board_subject","h3.board_name",".board_name",".board_title","h2.board_title","h2 .board_name","title"],"listRows":["[data-role='list-row']","a.list_item","div.list_item.symph_row","div.list_item","tr.list_item","tr"],"listLink":[".list_title a.list_subject","a.list_subject","a.card_subject","a[href*='/service/board/']"],"listTitle":["[data-role='list-title-text']",".card_subject span[title]",".card_subject span",".card_subject",".list_title a.list_subject",".list_title","a.list_subject",".subject_fixed"],"listAuthor":[".list_author .nickname",".list_author .nickimg",".list_author .nickimg img",".list_author",".author","[data-role='list-author']"],"listAvatar":[".list_author .nickimg img",".list_author img",".author img","[data-role='list-author'] img"],"listDate":[".list_time",".list_date","time","[data-role='list-date']"],"listCommentCount":[".list_comment",".comment_count",".reply_count",".list_reply",".rSymph05","[data-role='list-comment-count']"],"listViewCount":[".list_hit",".list_view",".hit","[data-role='list-hit']"],"listLikeCount":[".list_symph",".symph_count",".list_recommend","[data-role='list-like-count']"],"listCategory":[".list_category",".category","[data-role='list-category']"],"listImage":[".card_image img",".img_box img","[data-role='card-content'] img","img[src]"],"postTitle":["h3.post_subject span","h3.post_subject",".post_subject span",".post_subject","h1.subject","h1","title"],"postAuthor":[".post_contact .contact_name",".post_contact .nickimg",".post_contact .nickimg img",".post_author .nickname",".post_author .name",".post_info .nickname",".post_info .name",".author .nickname",".author","[data-role='post-author']"],"postAvatar":[".post_contact .nickimg img",".post_contact img",".post_author img",".post_info img",".author img","[data-role='post-author'] img"],"postDate":[".post_information .post_date .time",".post_information .post_date",".post_information .post_time",".post_author .view_count.date",".post_time",".post_info .post_time",".post_info time","[data-role='post-date']","time"],"postViewCount":[".view_count",".post_hit",".post_view_count",".hit","[data-role='post-hit']"],"postLikeCount":[".symph_count",".post_symph",".recommend_count",".post_recommend .num","[data-role='post-like']"],"postCategory":[".post_category",".category"],"postContent":[".post_content","article .post_article body","article .post_article",".post_article body",".post_article","article .post_content body","article .post_content","#div_content","[data-role='post-content']"],"commentRows":["#comment_view .comment_row",".comment_row",".comment_list .comment_item",".comment_list li",".post_comment .comment_item",".post_comment .comment_row","[data-role='comment-item']"],"commentAuthor":[".nickname",".name",".comment_author",".user_name","[data-role='comment-author']"],"commentAvatar":[".comment_profile img",".profile img",".nickname img",".comment_author img",".user_name img","[data-role='comment-author'] img"],"commentContent":[".comment_view","[data-comment-view]",".comment_content .comment_view",".comment_text",".comment_contents",".cmt_content","[data-role^='comment-content-']","[data-role='comment-content']"],"commentDate":[".comment_time",".post_time",".timestamp","time","[data-role='comment-date']"],"commentLikeCount":[".symph_count",".comment_symph .num",".comment_symph strong","[id^='setLikeCount_']",".recommend_count",".comment_recommend .num","[data-role='comment-like']"],"commentLevel":[]},"commentLevelAttrs":["data-depth","depth"],"useRawPostParse":true,"useRawPostParseInEmulator":true,"boardGroupMap":{"park":"커뮤니티","news":"정보","use":"정보","lecture":"정보","useful":"정보","jirum":"거래","sold":"거래","image":"사진","kin":"질문","pds":"자료"}};
 SITE.matchBoard = function (urlInfo) {
 var parts = pathSegments(urlInfo.path);
 if (parts.length >= 3 && parts[0] === "service" && parts[1] === "board" && parts[2] && !/^\d+$/.test(parts[2])) {
@@ -101,6 +101,9 @@ SITE.buildPostMenus = function (menus, state) {
 return menus;
 };
 SITE.routeBoardCustom = function (url, urlInfo, match, force) {
+if (match && match.board && match.board.id === "image") {
+return clienBuildImageBoardRoute(url, match);
+}
 return null;
 };
 SITE.routePostCustom = function (url, urlInfo, match, force) {
@@ -218,13 +221,14 @@ var DEFAULT_CACHE_TTL = SITE.defaultCacheTtlMs || 300000;
 var CACHE_PREFIX = "community_route:" + SITE.siteKey + ":";
 var CACHE_TTL_KEY = "community_cache_ttl_ms:" + SITE.siteKey;
 var CACHE_SNACKBAR_KEY = "community_cache_snackbar:" + SITE.siteKey;
+var CATEGORY_TWO_CHAR_KEY = "community_category_two_char:" + SITE.siteKey;
 var CACHE_SNACKBAR_MIN_AGE_MS = 10000;
 var COOKIE_KEY = "community_cookie:" + SITE.siteKey;
 var CUSTOM_BOARDS_KEY = "community_custom_boards:" + SITE.siteKey;
 var VISIBLE_BOARDS_KEY = "community_visible_boards:" + SITE.siteKey;
 var BOARD_ORDER_KEY = "community_board_order:" + SITE.siteKey;
 var AUTH_ERROR_PREFIX = "AUTH_REQUIRED:";
-var MENU_CACHE_SETTINGS = "캐시설정";
+var MENU_CACHE_SETTINGS = "설정";
 var MENU_BROWSER = "브라우저로 보기";
 var MENU_HOME = "홈";
 var MENU_SETTINGS = SITE.boardSettingsMenuLabel || "게시판 설정";
@@ -235,10 +239,6 @@ var viewState = {};
 var boardIndex = {};
 var defaultBoards = (SITE.boards || []).slice();
 var homeBoards = defaultBoards.slice();
-function deepClone(value) {
-if (value === null || value === undefined) return value;
-return JSON.parse(JSON.stringify(value));
-}
 function normalizeWhitespace(value) {
 return String(value == null ? "" : value)
 .replace(/\u00a0/g, " ")
@@ -332,6 +332,7 @@ title: title,
 url: url,
 description: normalizeWhitespace(raw.description || title),
 group: normalizeWhitespace(raw.group || ""),
+showMedia: !!((flags && flags.showMedia) || raw.showMedia),
 custom: !!((flags && flags.custom) || raw.custom),
 dynamic: !!((flags && flags.dynamic) || raw.dynamic)
 };
@@ -349,12 +350,12 @@ return out;
 }
 function readStoredJson(key, fallback) {
 var raw = localStorage.getItem(key);
-if (!raw) return deepClone(fallback);
+if (!raw) return fallback;
 try {
 var parsed = JSON.parse(raw);
-return parsed == null ? deepClone(fallback) : parsed;
+return parsed == null ? fallback : parsed;
 } catch (e) {
-return deepClone(fallback);
+return fallback;
 }
 }
 function writeStoredJson(key, value) {
@@ -390,6 +391,24 @@ return !(raw === "false" || raw === "0" || raw === "off" || raw === "no");
 }
 function setShowCacheSnackbar(enabled) {
 localStorage.setItem(CACHE_SNACKBAR_KEY, enabled ? "true" : "false");
+}
+function getUseTwoCharCategory() {
+var raw = localStorage.getItem(CATEGORY_TWO_CHAR_KEY);
+if (raw === null || raw === undefined || raw === "") {
+return true;
+}
+raw = String(raw).trim().toLowerCase();
+return !(raw === "false" || raw === "0" || raw === "off" || raw === "no");
+}
+function setUseTwoCharCategory(enabled) {
+localStorage.setItem(CATEGORY_TWO_CHAR_KEY, enabled ? "true" : "false");
+}
+function formatBoardListCategory(value) {
+var text = normalizeWhitespace(value);
+if (!text) return "";
+if (!getUseTwoCharCategory()) return text;
+var compact = text.replace(/\s+/g, "");
+return compact.length <= 2 ? compact : compact.substring(0, 2);
 }
 function supportsCacheSettings() {
 return SITE.enableCacheSettings !== false;
@@ -926,13 +945,13 @@ return null;
 }
 return {
 timestamp: cached.timestamp || 0,
-route: deepClone(cached.route)
+route: cached.route
 };
 }
 function setCachedRoute(kind, url, route) {
 sessionStorage.setItem(cacheKey(kind, url), {
 timestamp: Date.now(),
-route: deepClone(route)
+route: route
 });
 }
 function itemPreviewKey(link) {
@@ -940,7 +959,7 @@ return CACHE_PREFIX + "item:" + (normalizeUrl(link) || String(link || ""));
 }
 function rememberItemPreview(item) {
 if (!item || !item.link) return;
-sessionStorage.setItem(itemPreviewKey(item.link), deepClone({
+sessionStorage.setItem(itemPreviewKey(item.link), {
 link: normalizeUrl(item.link) || item.link,
 title: normalizeWhitespace(item.title || ""),
 author: normalizeWhitespace(item.author || ""),
@@ -950,16 +969,16 @@ category: normalizeWhitespace(item.category || ""),
 viewCount: normalizeWhitespace(item.viewCount || ""),
 likeCount: normalizeWhitespace(item.likeCount || ""),
 commentCount: normalizeWhitespace(item.commentCount || "")
-}));
+});
 }
 function getRememberedItemPreview(link) {
-return deepClone(sessionStorage.getItem(itemPreviewKey(link)) || null);
+return sessionStorage.getItem(itemPreviewKey(link)) || null;
 }
 function setViewState(viewId, state) {
-viewState[String(viewId)] = deepClone(state || {});
+viewState[String(viewId)] = state || {};
 }
 function getViewState(viewId) {
-return deepClone(viewState[String(viewId)] || {});
+return viewState[String(viewId)] || {};
 }
 function shouldUseBrowserCookieAuth() {
 return !!SITE.browserCookieAuth;
@@ -1031,7 +1050,7 @@ return [];
 function absolutizeDetails(details, baseUrl) {
 var out = [];
 for (var i = 0; i < (details || []).length; i++) {
-var item = deepClone(details[i]);
+var item = details[i];
 if (!item) continue;
 if (item.type === "image" || item.type === "video") {
 item.value = ensureAbsoluteUrl(item.value, baseUrl) || item.value;
@@ -1053,11 +1072,16 @@ var out = [];
 var seen = {};
 for (var i = 0; i < nodes.length; i++) {
 var resolved = ensureAbsoluteUrl(firstNonEmpty([
+attrOf(nodes[i], "data-thumbnail"),
+attrOf(nodes[i], "data-thumb"),
 attrOf(nodes[i], "data-original"),
 attrOf(nodes[i], "data-src"),
 attrOf(nodes[i], "data-lazy-src"),
+attrOf(nodes[i], "data-srcset"),
 attrOf(nodes[i], "data-file"),
 attrOf(nodes[i], "data-url"),
+attrOf(nodes[i], "poster"),
+firstUrlFromSrcset(attrOf(nodes[i], "srcset")),
 attrOf(nodes[i], "src")
 ]), baseUrl);
 if (!resolved || seen[resolved]) continue;
@@ -1067,7 +1091,7 @@ out.push(resolved);
 return out;
 }
 function fixParsedMediaDetails(details, element, baseUrl) {
-var out = deepClone(details || []);
+var out = details || [];
 var images = collectResolvedImageUrls(element, baseUrl);
 var imageCursor = 0;
 var hasImage = false;
@@ -1261,6 +1285,9 @@ firstText(doc, SITE.selectors.boardTitle),
 SITE.displayName
 ]);
 }
+function boardShowsMedia(board) {
+return !!(board && board.showMedia === true);
+}
 function isAllowedListLink(link, patterns) {
 patterns = patterns || [];
 if (!link) return false;
@@ -1293,6 +1320,18 @@ if (fallbacks.indexOf(rowHref) < 0) fallbacks.push(rowHref);
 if (patterns.length > 0) return "";
 return fallbacks.length > 0 ? fallbacks[0] : "";
 }
+function firstUrlFromSrcset(value) {
+var raw = normalizeWhitespace(value);
+if (!raw) return "";
+var parts = raw.split(",");
+for (var i = 0; i < parts.length; i++) {
+var item = normalizeWhitespace(parts[i]);
+if (!item) continue;
+var candidate = item.split(/\s+/)[0];
+if (candidate) return candidate;
+}
+return "";
+}
 function imageUrlFromNode(node, baseUrl) {
 if (!node) return "";
 var style = attrOf(node, "style");
@@ -1300,11 +1339,16 @@ var styleMatch = style ? style.match(/url\((['"]?)([^'")]+)\)/i) : null;
 var resolved = ensureAbsoluteUrl(firstNonEmpty([
 attrOf(node, "data-bg_url"),
 attrOf(node, "data-bg-url"),
+attrOf(node, "data-thumbnail"),
+attrOf(node, "data-thumb"),
 attrOf(node, "data-original"),
 attrOf(node, "data-src"),
 attrOf(node, "data-lazy-src"),
+attrOf(node, "data-srcset"),
 attrOf(node, "data-file"),
 attrOf(node, "data-url"),
+attrOf(node, "poster"),
+firstUrlFromSrcset(attrOf(node, "srcset")),
 styleMatch ? styleMatch[2] : "",
 attrOf(node, "src")
 ]), baseUrl);
@@ -1313,11 +1357,16 @@ if (!node.querySelectorAll) return "";
 var images = node.querySelectorAll("img");
 for (var i = 0; i < images.length; i++) {
 resolved = ensureAbsoluteUrl(firstNonEmpty([
+attrOf(images[i], "data-thumbnail"),
+attrOf(images[i], "data-thumb"),
 attrOf(images[i], "data-original"),
 attrOf(images[i], "data-src"),
 attrOf(images[i], "data-lazy-src"),
+attrOf(images[i], "data-srcset"),
 attrOf(images[i], "data-file"),
 attrOf(images[i], "data-url"),
+attrOf(images[i], "poster"),
+firstUrlFromSrcset(attrOf(images[i], "srcset")),
 attrOf(images[i], "src")
 ]), baseUrl);
 if (resolved) return resolved;
@@ -1396,6 +1445,7 @@ for (var i = 0; i < rows.length; i++) {
 var item = extractListItem(rows[i], baseUrl);
 if (!item || !item.link || seen[item.link]) continue;
 seen[item.link] = true;
+item.category = formatBoardListCategory(item.category || "");
 items.push(item);
 }
 return items;
@@ -1501,7 +1551,7 @@ if (supportsBoardReorder()) {
 menus.push({ label: MENU_REORDER, checked: !!isReorderable });
 }
 try {
-menus = SITE.buildHomeMenus ? (SITE.buildHomeMenus(deepClone(menus), !!isReorderable) || menus) : menus;
+menus = SITE.buildHomeMenus ? (SITE.buildHomeMenus(menus, !!isReorderable) || menus) : menus;
 } catch (e) {
 }
 if (supportsCli() && !hasMenuItem(menus, MENU_CLI)) {
@@ -1510,9 +1560,9 @@ menus.push(MENU_CLI);
 return menus;
 }
 function getBoardMenus(state) {
-var menus = [MENU_BROWSER, MENU_HOME];
+var menus = [MENU_BROWSER];
 try {
-menus = SITE.buildBoardMenus ? (SITE.buildBoardMenus(deepClone(menus), deepClone(state || {})) || menus) : menus;
+menus = SITE.buildBoardMenus ? (SITE.buildBoardMenus(menus, state || {}) || menus) : menus;
 } catch (e) {
 }
 return menus;
@@ -1520,7 +1570,7 @@ return menus;
 function getPostMenus(state) {
 var menus = [MENU_BROWSER, MENU_HOME];
 try {
-menus = SITE.buildPostMenus ? (SITE.buildPostMenus(deepClone(menus), deepClone(state || {})) || menus) : menus;
+menus = SITE.buildPostMenus ? (SITE.buildPostMenus(menus, state || {}) || menus) : menus;
 } catch (e) {
 }
 return menus;
@@ -1538,6 +1588,12 @@ type: "boolean",
 name: "show_snackbar",
 label: "캐시 알림 표시",
 value: getShowCacheSnackbar()
+},
+{
+type: "boolean",
+name: "category_two_char",
+label: "카테고리 2자",
+value: getUseTwoCharCategory()
 }
 ];
 }
@@ -1828,6 +1884,19 @@ function updateHomeAfterBoardMutation(homeViewId, snackbar) {
 if (!homeViewId) return;
 var homeState = getViewState(homeViewId);
 updateViewFromRoute(homeViewId, createHomeRoute(!!(homeState && homeState.isReorderable), snackbar || ""));
+}
+function resetBoardSettingsStorage() {
+localStorage.removeItem(CUSTOM_BOARDS_KEY);
+localStorage.removeItem(VISIBLE_BOARDS_KEY);
+localStorage.removeItem(BOARD_ORDER_KEY);
+homeBoards = getVisibleBoards();
+rebuildBoardIndex();
+}
+function resetHomeAfterBoardSettingsReset(settingsViewId, homeViewId, snackbar) {
+var route = createHomeRoute(false, snackbar || "");
+if (settingsViewId) synura.close(settingsViewId);
+if (homeViewId) synura.close(homeViewId);
+openRoute(route);
 }
 function cliMessage(viewId, message) {
 synura.update(viewId, {
@@ -2205,8 +2274,8 @@ parentViewId: parentViewId || 0
 var result = synura.open({
 view: "/dialogs/input",
 styles: {
-title: "캐시 설정",
-message: "캐시 설정을 변경하세요.",
+title: "설정",
+message: "설정을 변경하세요.",
 close: true
 },
 models: {
@@ -2516,6 +2585,7 @@ view: "/views/list",
 styles: {
 title: title,
 layout: "card",
+media: boardShowsMedia(match ? match.board : null),
 menu: true,
 pagination: !!nextUrl
 },
@@ -2555,7 +2625,7 @@ var rememberedItem = getRememberedItemPreview(url);
 var schemaPost = detectSchemaPost(doc);
 var comments = parseComments(doc, url);
 try {
-var fetchedComments = SITE.fetchPostComments ? SITE.fetchPostComments(match, url, doc, page, deepClone(comments)) : null;
+var fetchedComments = SITE.fetchPostComments ? SITE.fetchPostComments(match, url, doc, page, comments) : null;
 if (Array.isArray(fetchedComments) && fetchedComments.length > 0) {
 comments = fetchedComments;
 }
@@ -2668,6 +2738,7 @@ view: "/views/list",
 styles: {
 title: title,
 layout: "card",
+media: boardShowsMedia(board),
 menu: true,
 pagination: !!nextUrl
 },
@@ -2938,7 +3009,7 @@ return true;
 }
 function openBrowser(url, title, extraState) {
 var browserUrl = normalizeUrl(url) || ensureAbsoluteUrl(url, SITE.browserHomeUrl) || SITE.browserHomeUrl;
-var context = deepClone(extraState || {});
+var context = extraState || {};
 context.kind = context.kind || "browser";
 context.link = browserUrl;
 context.title = context.title || title || SITE.displayName;
@@ -2976,8 +3047,21 @@ return true;
 }
 return false;
 }
+function shouldOpenRouteWithHistory(route) {
+return !!(
+route &&
+route.kind === "board" &&
+route.viewData &&
+route.viewData.view === "/views/list"
+);
+}
 function openRoute(route) {
-var result = synura.open(route.viewData, route.context, function (event) {
+var viewData = route.viewData || {};
+viewData.styles = viewData.styles || {};
+if (shouldOpenRouteWithHistory(route)) {
+viewData.styles.history = true;
+}
+var result = synura.open(viewData, route.context, function (event) {
 handler.onViewEvent(event);
 });
 if (result && result.success) {
@@ -3042,10 +3126,10 @@ error: e.toString()
 }
 }
 function updateViewFromRoute(viewId, route, snackbar) {
-var models = deepClone(route.viewData.models || {});
+var models = route.viewData.models || {};
 if (snackbar) models.snackbar = snackbar;
 synura.update(viewId, {
-styles: deepClone(route.viewData.styles || {}),
+styles: route.viewData.styles || {},
 models: models
 });
 setViewState(viewId, route.context);
@@ -3210,13 +3294,8 @@ showBoardDeleteDialog(viewId, state.parentViewId || 0);
 return true;
 }
 if (menu === "초기화") {
-localStorage.removeItem(CUSTOM_BOARDS_KEY);
-localStorage.removeItem(VISIBLE_BOARDS_KEY);
-localStorage.removeItem(BOARD_ORDER_KEY);
-homeBoards = getVisibleBoards();
-rebuildBoardIndex();
-refreshBoardSettingsRootView(viewId, state, "설정이 초기화되었습니다.");
-updateHomeAfterBoardMutation(state.parentViewId || 0, "설정이 초기화되었습니다.");
+resetBoardSettingsStorage();
+resetHomeAfterBoardSettingsReset(viewId, state.parentViewId || 0, "설정이 초기화되었습니다.");
 return true;
 }
 return true;
@@ -3280,6 +3359,7 @@ return;
 }
 setCacheTTL(ttlMinutes * 60000);
 setShowCacheSnackbar(!!(event.data && event.data.show_snackbar));
+setUseTwoCharCategory(!(event.data && event.data.category_two_char === false));
 synura.close(viewId);
 if (parentViewId) {
 synura.update(parentViewId, {
@@ -3293,6 +3373,7 @@ return;
 if (button === "초기화") {
 localStorage.removeItem(CACHE_TTL_KEY);
 localStorage.removeItem(CACHE_SNACKBAR_KEY);
+localStorage.removeItem(CATEGORY_TWO_CHAR_KEY);
 synura.update(viewId, {
 models: {
 body: getCacheSettingsBody(),
@@ -3371,15 +3452,8 @@ updateViewFromRoute(parentViewId, createHomeRoute(!!(parentState && parentState.
 return;
 }
 if (button === "초기화") {
-localStorage.removeItem(CUSTOM_BOARDS_KEY);
-localStorage.removeItem(VISIBLE_BOARDS_KEY);
-localStorage.removeItem(BOARD_ORDER_KEY);
-homeBoards = getVisibleBoards();
-rebuildBoardIndex();
-refreshBoardSettingsView(viewId, createBoardSettingsState(parentViewId, 0, "열기"), "설정이 초기화되었습니다.");
-if (parentViewId) {
-updateViewFromRoute(parentViewId, createHomeRoute(false, "설정이 초기화되었습니다."));
-}
+resetBoardSettingsStorage();
+resetHomeAfterBoardSettingsReset(viewId, parentViewId, "설정이 초기화되었습니다.");
 return;
 }
 if (button === "추가") {
@@ -3486,6 +3560,127 @@ refreshBoardSettingsParent(settingsViewId, message);
 }
 updateHomeAfterBoardMutation(homeViewId, message);
 }
+function clienImageBoardPage(match) {
+if (!match) return 0;
+var page = match.page;
+return typeof page === "number" && !isNaN(page) ? page : 0;
+}
+function clienImageBoardLink(row, baseUrl) {
+return extractListLink(row, baseUrl, [
+"a.card_subject",
+"a.card_image",
+"a[href*='/service/board/image/']"
+], LIST_LINK_ALLOW_PATTERNS);
+}
+function clienExtractImageBoardItem(row, baseUrl) {
+if (!row) return null;
+var link = clienImageBoardLink(row, baseUrl);
+if (!link) return null;
+var title = firstNonEmpty([
+attrOf(firstNode(row, ["a.card_subject span[title]"]), "title"),
+textOfNodeWithoutSelectors(firstNode(row, ["a.card_subject"]), [".card_preview"]),
+firstText(row, ["a.card_subject span", ".card_subject", ".card_preview span"])
+]);
+if (!title) return null;
+var commentCount = hideZeroCount(parseCount(firstNonEmpty([
+attrOf(row, "data-comment-count"),
+firstText(row, [".list_reply", "[data-role='ele-after']"])
+])));
+var viewCount = parseCount(firstText(row, [".list_time .hit", ".hit"]));
+var likeCount = hideZeroCount(parseCount(firstText(row, [".list_symph", "[data-role='list-like-count']"])));
+var date = firstNonEmpty([
+firstText(row, [".list_time span:last-child"]),
+firstText(row, [".list_time > span:not(.hit)"]),
+firstText(row, LIST_DATE_SELECTORS)
+]);
+var author = firstNonEmpty([
+firstText(row, [".list_author .nickname", ".list_author"]),
+attrOf(row, "data-author-id")
+]);
+var mediaUrl = imageUrlFromNode(firstNode(row, [
+".card_image img",
+".img_box img",
+"[data-role='card-content'] img"
+]), baseUrl);
+var types = [];
+if (mediaUrl) types.push("image");
+return {
+link: normalizeUrl(link) || link,
+title: title,
+author: author,
+avatar: "",
+date: date,
+category: "",
+commentCount: commentCount,
+viewCount: viewCount,
+likeCount: likeCount,
+mediaUrl: mediaUrl,
+mediaType: mediaUrl ? "image" : "",
+types: types,
+menus: [],
+hotCount: toInt(likeCount || viewCount || commentCount, 0),
+coldCount: toInt(viewCount || likeCount || commentCount, 0)
+};
+}
+function clienParseImageBoardItems(doc, baseUrl) {
+var rows = allNodes(doc, [
+".card_item[data-role='list-row']",
+"[data-role='list-row'].card_item",
+"[data-role='list-row']"
+]);
+var items = [];
+var seen = {};
+for (var i = 0; i < rows.length; i++) {
+var item = clienExtractImageBoardItem(rows[i], baseUrl);
+if (!item || !item.link || seen[item.link]) continue;
+seen[item.link] = true;
+items.push(item);
+}
+return items;
+}
+function clienBuildImageBoardRoute(url, match) {
+var doc = fetchDocument(url);
+var items = clienParseImageBoardItems(doc, url);
+var title = detectBoardTitle(doc, match ? match.board : null);
+var page = clienImageBoardPage(match);
+var nextUrl = SITE.buildNextPageUrl(match, url, page + 1);
+var seenLinks = [];
+for (var i = 0; i < items.length; i++) {
+seenLinks.push(items[i].link);
+}
+var context = {
+kind: "board",
+link: url,
+boardId: match && match.board ? match.board.id : "",
+title: title,
+page: page,
+nextUrl: nextUrl,
+seenLinks: seenLinks
+};
+try {
+context = SITE.prepareBoardContext ? (SITE.prepareBoardContext(context, items, match, url) || context) : context;
+} catch (e) {
+}
+return {
+kind: "board",
+url: url,
+viewData: {
+view: "/views/list",
+styles: {
+title: title,
+layout: "card",
+media: boardShowsMedia(match ? match.board : null),
+menu: true,
+pagination: !!nextUrl
+},
+models: {
+contents: items,
+menus: getBoardMenus(context)
+}
+},
+context: context
+};
+}
 var handler = {
 home: function () {
 openRoute(createHomeRoute(false));
@@ -3498,7 +3693,7 @@ handler.onViewEvent(event);
 },
 router: function (url) {
 var route = routeUrl(url, false);
-return route ? deepClone(route.viewData) : null;
+return route ? route.viewData : null;
 },
 deeplink: function (url) {
 var result = openByUrl(url, false);

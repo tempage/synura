@@ -26,6 +26,7 @@ var SYNURA = {
     version: 0.1,
     api: 0,
     license: "Apache-2.0",
+    locale: "en_US",
     bypass: "chrome/android",
     deeplink: true,
     tags: ["social", "news", "images", "video", "community"],
@@ -1063,6 +1064,7 @@ var handleHomeEvent = (viewId, event) => {
             const currentTTL = getCacheTTL() / 60000;
             const showSnackbar = getShowCacheSnackbar();
             const globalSettings = getGlobalSettings();
+            const showMedia = globalSettings.show_media;
             const videoInList = globalSettings.video_in_list;
 
             synura.open({
@@ -1072,6 +1074,7 @@ var handleHomeEvent = (viewId, event) => {
                     body: [
                         { type: 'number', name: 'ttl', label: 'Cache TTL (min)', value: currentTTL },
                         { type: 'boolean', name: 'show_snackbar', label: 'Show Cache Notification', value: showSnackbar },
+                        { type: 'boolean', name: 'show_media', label: 'Display Media in List', value: showMedia },
                         { type: 'boolean', name: 'video_in_list', label: 'Play Videos in List', value: videoInList }
                     ],
                     buttons: ['Save', 'Clear Cache']
@@ -1907,7 +1910,11 @@ var handleGlobalSettingsEvent = (viewId, event) => {
             localStorage.setItem(CACHE_SNACKBAR_KEY, event.data.show_snackbar.toString());
 
             // Save Global Media Settings
-            const settings = { video_in_list: event.data.video_in_list };
+            const settings = {
+                ...getGlobalSettings(),
+                show_media: event.data.show_media,
+                video_in_list: event.data.video_in_list
+            };
             localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 
             showSnackbar(viewId, "Settings saved!");

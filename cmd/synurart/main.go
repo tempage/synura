@@ -761,11 +761,14 @@ func renderViews(rt *synurart.Runtime) {
 		result := map[string]any{"type": "views", "views": views}
 		if id, ok := rt.TopViewID(); ok {
 			if view, ok2 := rt.GetView(id); ok2 {
+				models := mapFromAny(view.Data["models"])
+				styles := mapFromAny(view.Data["styles"])
 				result["activeView"] = map[string]any{
-					"viewId": id,
-					"path":   view.Path,
-					"models": view.Data["models"],
-					"styles": view.Data["styles"],
+					"viewId":   id,
+					"path":     view.Path,
+					"models":   view.Data["models"],
+					"styles":   view.Data["styles"],
+					"rendered": renderedViewSummary(view.Path, models, styles),
 				}
 			}
 		}
@@ -821,7 +824,13 @@ func renderView(rt *synurart.Runtime, id int64) {
 		return
 	}
 	if jsonMode {
-		jsonOut(map[string]any{"type": "view", "viewId": id, "path": view.Path, "data": view.Data})
+		jsonOut(map[string]any{
+			"type":     "view",
+			"viewId":   id,
+			"path":     view.Path,
+			"data":     view.Data,
+			"rendered": renderedViewSummary(view.Path, mapFromAny(view.Data["models"]), mapFromAny(view.Data["styles"])),
+		})
 		return
 	}
 	fmt.Printf("%s %s\n", bold("View"), c(fmt.Sprintf("#%d", id), cCyan, cBold))
@@ -839,11 +848,12 @@ func printViewContent(rt *synurart.Runtime, id int64) {
 
 	if jsonMode {
 		jsonOut(map[string]any{
-			"type":   "render",
-			"viewId": id,
-			"path":   view.Path,
-			"models": models,
-			"styles": styles,
+			"type":     "render",
+			"viewId":   id,
+			"path":     view.Path,
+			"models":   models,
+			"styles":   styles,
+			"rendered": renderedViewSummary(view.Path, models, styles),
 		})
 		return
 	}
@@ -856,7 +866,7 @@ func printViewContent(rt *synurart.Runtime, id int64) {
 
 	switch view.Path {
 	case "/views/list":
-		renderList(models)
+		renderList(models, styles)
 	case "/views/post":
 		renderPost(models, styles)
 	case "/views/chat":
@@ -883,8 +893,9 @@ func printViewContent(rt *synurart.Runtime, id int64) {
 	renderSnackbar(models)
 }
 
-func renderList(models map[string]any) {
+func renderList(models, styles map[string]any) {
 	menus := buttonLabels(models["menus"])
+	showMedia := boolFromAny(styles["media"])
 	if len(menus) > 0 {
 		fmt.Printf("  %s %s\n", dim("menus:"), strings.Join(menus, ", "))
 	}
@@ -912,6 +923,9 @@ func renderList(models map[string]any) {
 			b.WriteString(c(link, cCyan))
 		}
 		fmt.Println(compactText(b.String(), 240))
+		if mediaLine := listItemMediaLine(item, showMedia); mediaLine != "" {
+			fmt.Printf("      %s %s\n", dim("media:"), compactText(mediaLine, 220))
+		}
 		if itemMenus := labelsFromAny(item["menus"]); len(itemMenus) > 0 {
 			fmt.Printf("      %s %s\n", dim("menu:"), c(strings.Join(itemMenus, ", "), cBrightBlack))
 		}
@@ -939,14 +953,80 @@ func listItemMeta(item map[string]any) string {
 	if v := strings.TrimSpace(stringifyAny(item["viewCount"])); v != "" && v != "0" {
 		parts = append(parts, "view:"+v)
 	}
-	if v := strings.TrimSpace(stringifyAny(item["mediaType"])); v != "" {
-		parts = append(parts, "media:"+v)
-	}
 
 	if len(parts) == 0 {
 		return ""
 	}
 	return "[" + strings.Join(parts, " | ") + "]"
+}
+
+func listItemMediaLine(item map[string]any, enabled bool) string {
+	if !enabled || item == nil {
+		return ""
+	}
+	parts := make([]string, 0, 2)
+	if mediaType := strings.TrimSpace(stringifyAny(item["mediaType"])); mediaType != "" {
+		parts = append(parts, "type="+mediaType)
+	}
+	if mediaURL := strings.TrimSpace(stringifyAny(item["mediaUrl"])); mediaURL != "" {
+		parts = append(parts, "url="+mediaURL)
+	}
+	return strings.Join(parts, " ")
+}
+
+func renderedViewSummary(path string, models, styles map[string]any) map[string]any {
+	switch path {
+	case "/views/list":
+		return renderedListSummary(models, styles)
+	default:
+		return nil
+	}
+}
+
+func renderedListSummary(models, styles map[string]any) map[string]any {
+	items := contentItems(models)
+	outItems := make([]map[string]any, 0, len(items))
+	showMedia := boolFromAny(styles["media"])
+	for i, raw := range items {
+		item := mapFromAny(raw)
+		entry := map[string]any{"index": i + 1}
+		if item == nil {
+			text := strings.TrimSpace(stringifyAny(raw))
+			if text != "" {
+				entry["text"] = text
+			}
+			outItems = append(outItems, entry)
+			continue
+		}
+		if title := strings.TrimSpace(stringifyAny(item["title"])); title != "" {
+			entry["title"] = title
+		}
+		if author := strings.TrimSpace(stringifyAny(item["author"])); author != "" {
+			entry["author"] = author
+		}
+		if link := strings.TrimSpace(stringifyAny(item["link"])); link != "" {
+			entry["link"] = link
+		}
+		if meta := listItemMeta(item); meta != "" {
+			entry["meta"] = meta
+		}
+		if showMedia {
+			if mediaType := strings.TrimSpace(stringifyAny(item["mediaType"])); mediaType != "" {
+				entry["mediaType"] = mediaType
+			}
+			if mediaURL := strings.TrimSpace(stringifyAny(item["mediaUrl"])); mediaURL != "" {
+				entry["mediaUrl"] = mediaURL
+			}
+		}
+		if menus := labelsFromAny(item["menus"]); len(menus) > 0 {
+			entry["menus"] = menus
+		}
+		outItems = append(outItems, entry)
+	}
+	return map[string]any{
+		"items": outItems,
+		"menus": buttonLabels(models["menus"]),
+	}
 }
 
 func renderPost(models, styles map[string]any) {

@@ -1,4 +1,4 @@
-var SITE = {"siteKey":"damoang","displayName":"Damoang","browserHomeUrl":"https://damoang.net/free","browserCookieAuth":false,"minimumHomeBoards":10,"defaultCacheTtlMs":600000,"showCacheSnackbarByDefault":true,"enableCacheSettings":true,"enableBoardReorder":true,"enableBoardDelete":true,"boardSettingsMenuLabel":"소모임","boardSettingsTitle":"게시판 설정","boardSettingsLargeThreshold":256,"boardSettingsPageSize":96,"boardAddMode":"id_title","defaultVisibleBoardIds":["fire","free","new","economy","lecture","tutorial","pds","qa","gallery","trade","ai","git","development"],"hostAliases":["www.damoang.net"],"challengeMarkers":[],"titleSuffixes":[" - Damoang"," | 다모앙"," - 다모앙"],"linkAllowPatterns":["^https://damoang\\.net/[^/]+/\\d+(?:\\?|$)"],"listBoardQueryParam":"","boards":[{"id":"fire","title":"불타는앙"},{"id":"free","title":"자유게시판"},{"id":"new","title":"새로운 소식"},{"id":"economy","title":"알뜰구매"},{"id":"lecture","title":"강좌/팁"},{"id":"tutorial","title":"사용기"},{"id":"pds","title":"자료실"},{"id":"laboratory","title":"낙서/연습장"},{"id":"promotion","title":"직접홍보"},{"id":"qa","title":"질문과 답변"},{"id":"gallery","title":"갤러리"},{"id":"giving","title":"나눔"},{"id":"trade","title":"중고장터"},{"id":"ai","title":"AI당"},{"id":"git","title":"GIT당"},{"id":"lol","title":"LOL당"},{"id":"nba","title":"NBA"},{"id":"ott","title":"OTT당"},{"id":"vr","title":"VR당"},{"id":"youtube","title":"Youtube당"},{"id":"cryptocurrency","title":"가상화폐당"},{"id":"development","title":"개발한당"},{"id":"game","title":"게임한당"},{"id":"seniorcenter","title":"경로당"},{"id":"golf","title":"골프당"},{"id":"study","title":"공부한당"},{"id":"car","title":"굴러간당"},{"id":"drawing","title":"그림그린당"},{"id":"writing","title":"글쓴당"},{"id":"nas","title":"나스당"},{"id":"fishing","title":"낚시당"},{"id":"fly","title":"날아간당"},{"id":"cat","title":"냐옹이당"},{"id":"paddle","title":"노젓는당"},{"id":"recording","title":"녹음한당"},{"id":"coffee","title":"다바앙"},{"id":"running","title":"달린당"},{"id":"daegu","title":"대구당"},{"id":"dongsup","title":"동숲한당"},{"id":"drone","title":"드론당"},{"id":"listening","title":"듣는당"},{"id":"hike","title":"등산한당"},{"id":"diablo","title":"디아블로당"},{"id":"gym","title":"땀흘린당"},{"id":"lego","title":"레고당"},{"id":"linux","title":"리눅서당"},{"id":"comic","title":"만화본당"},{"id":"macmoang","title":"맥모앙"},{"id":"military","title":"밀리터리당"},{"id":"overseas","title":"바다건너당"},{"id":"bts","title":"방탄소년당"},{"id":"boardgame","title":"보드게임당"},{"id":"see","title":"보러간당"},{"id":"volunteer","title":"봉사앙"},{"id":"beer","title":"비어있당"},{"id":"bread","title":"빵친당"},{"id":"business","title":"사장한당"},{"id":"server","title":"서버당"},{"id":"MSSurface","title":"서피스당"},{"id":"socialgame","title":"소셜게임한당"},{"id":"watches","title":"시계당"},{"id":"instrument","title":"악기당"},{"id":"android","title":"안드로메당"},{"id":"applemoang","title":"애플모앙"},{"id":"baseball","title":"야구당"},{"id":"travel","title":"여행한당"},{"id":"movie","title":"영화본당"},{"id":"obsidang","title":"옵시디안당"},{"id":"wow","title":"와우한당"},{"id":"wine","title":"와인마신당"},{"id":"cooking","title":"요리당"},{"id":"space","title":"우주본당"},{"id":"whiskey","title":"위스키당"},{"id":"parenting","title":"육아당"},{"id":"mbike","title":"이륜차당"},{"id":"japanlive","title":"일본산당"},{"id":"bicycle","title":"자전거당"},{"id":"scuba","title":"잠수한당"},{"id":"sewing","title":"재봉한당"},{"id":"ebook","title":"전자책이당"},{"id":"stock","title":"주식한당"},{"id":"watchingyou","title":"지켜본당"},{"id":"interior","title":"집꾸민당"},{"id":"homebuilding","title":"집짓는당"},{"id":"photo","title":"찰칵찍당"},{"id":"readingbooks","title":"책읽는당"},{"id":"train","title":"철도당"},{"id":"soccer","title":"축구한당"},{"id":"compliment","title":"칭차앙"},{"id":"camping","title":"캠핑간당"},{"id":"console","title":"콘솔한당"},{"id":"keyboard","title":"키보드당"},{"id":"tabletennis","title":"탁구당"},{"id":"pathofexile","title":"패스오브엑자일당"},{"id":"formula","title":"포뮬러당"},{"id":"photoshop","title":"포토샵당"},{"id":"swim","title":"퐁당퐁당"},{"id":"plant","title":"푸르르당"},{"id":"plasticmodel","title":"플라스틱모델앙"},{"id":"playmobil","title":"플레이모빌당"},{"id":"stationery","title":"필기도구당"},{"id":"hardware","title":"하드웨어앙"}],"selectors":{"boardTitle":["title"],"listRows":["article","li","tr"],"listLink":["a[href]"],"listTitle":["h2","strong","a[href]"],"listAuthor":[".author",".writer"],"listDate":["time",".date"],"listCommentCount":[".comment",".reply"],"listViewCount":[".view",".hit"],"listLikeCount":[".like",".vote"],"listCategory":[".category"],"listImage":["img"],"postTitle":["h1","title"],"postAuthor":[".author",".writer"],"postDate":["time",".date"],"postViewCount":[".view",".hit"],"postLikeCount":[".like",".vote"],"postCategory":[".category"],"postContent":["article",".content"],"commentRows":["li",".comment"],"commentAuthor":[".author",".writer"],"commentContent":[".content",".text"],"commentDate":["time",".date"],"commentLikeCount":[".like",".vote"],"commentLevel":[]},"commentLevelAttrs":[]};
+var SITE = {"siteKey":"damoang","displayName":"Damoang","browserHomeUrl":"https://damoang.net/free","browserCookieAuth":false,"minimumHomeBoards":10,"defaultCacheTtlMs":600000,"showCacheSnackbarByDefault":true,"enableCacheSettings":true,"enableBoardReorder":true,"enableBoardDelete":true,"boardSettingsMenuLabel":"소모임","boardSettingsTitle":"게시판 설정","boardSettingsLargeThreshold":256,"boardSettingsPageSize":96,"boardAddMode":"id_title","defaultVisibleBoardIds":["fire","free","new","economy","lecture","tutorial","pds","qa","gallery","trade","ai","git","development"],"hostAliases":["www.damoang.net"],"challengeMarkers":[],"titleSuffixes":[" - Damoang"," | 다모앙"," - 다모앙"],"linkAllowPatterns":["^https://damoang\\.net/[^/]+/\\d+(?:\\?|$)"],"listBoardQueryParam":"","boards":[{"id":"fire","title":"불타는앙"},{"id":"free","title":"자유게시판"},{"id":"new","title":"새로운 소식"},{"id":"economy","title":"알뜰구매"},{"id":"lecture","title":"강좌/팁"},{"id":"tutorial","title":"사용기"},{"id":"pds","title":"자료실"},{"id":"laboratory","title":"낙서/연습장"},{"id":"promotion","title":"직접홍보"},{"id":"qa","title":"질문과 답변"},{"id":"gallery","title":"갤러리","showMedia":true},{"id":"giving","title":"나눔"},{"id":"trade","title":"중고장터"},{"id":"ai","title":"AI당"},{"id":"git","title":"GIT당"},{"id":"lol","title":"LOL당"},{"id":"nba","title":"NBA"},{"id":"ott","title":"OTT당"},{"id":"vr","title":"VR당"},{"id":"youtube","title":"Youtube당"},{"id":"cryptocurrency","title":"가상화폐당"},{"id":"development","title":"개발한당"},{"id":"game","title":"게임한당"},{"id":"seniorcenter","title":"경로당"},{"id":"golf","title":"골프당"},{"id":"study","title":"공부한당"},{"id":"car","title":"굴러간당"},{"id":"drawing","title":"그림그린당"},{"id":"writing","title":"글쓴당"},{"id":"nas","title":"나스당"},{"id":"fishing","title":"낚시당"},{"id":"fly","title":"날아간당"},{"id":"cat","title":"냐옹이당"},{"id":"paddle","title":"노젓는당"},{"id":"recording","title":"녹음한당"},{"id":"coffee","title":"다바앙"},{"id":"running","title":"달린당"},{"id":"daegu","title":"대구당"},{"id":"dongsup","title":"동숲한당"},{"id":"drone","title":"드론당"},{"id":"listening","title":"듣는당"},{"id":"hike","title":"등산한당"},{"id":"diablo","title":"디아블로당"},{"id":"gym","title":"땀흘린당"},{"id":"lego","title":"레고당"},{"id":"linux","title":"리눅서당"},{"id":"comic","title":"만화본당"},{"id":"macmoang","title":"맥모앙"},{"id":"military","title":"밀리터리당"},{"id":"overseas","title":"바다건너당"},{"id":"bts","title":"방탄소년당"},{"id":"boardgame","title":"보드게임당"},{"id":"see","title":"보러간당"},{"id":"volunteer","title":"봉사앙"},{"id":"beer","title":"비어있당"},{"id":"bread","title":"빵친당"},{"id":"business","title":"사장한당"},{"id":"server","title":"서버당"},{"id":"MSSurface","title":"서피스당"},{"id":"socialgame","title":"소셜게임한당"},{"id":"watches","title":"시계당"},{"id":"instrument","title":"악기당"},{"id":"android","title":"안드로메당"},{"id":"applemoang","title":"애플모앙"},{"id":"baseball","title":"야구당"},{"id":"travel","title":"여행한당"},{"id":"movie","title":"영화본당"},{"id":"obsidang","title":"옵시디안당"},{"id":"wow","title":"와우한당"},{"id":"wine","title":"와인마신당"},{"id":"cooking","title":"요리당"},{"id":"space","title":"우주본당"},{"id":"whiskey","title":"위스키당"},{"id":"parenting","title":"육아당"},{"id":"mbike","title":"이륜차당"},{"id":"japanlive","title":"일본산당"},{"id":"bicycle","title":"자전거당"},{"id":"scuba","title":"잠수한당"},{"id":"sewing","title":"재봉한당"},{"id":"ebook","title":"전자책이당"},{"id":"stock","title":"주식한당"},{"id":"watchingyou","title":"지켜본당"},{"id":"interior","title":"집꾸민당"},{"id":"homebuilding","title":"집짓는당"},{"id":"photo","title":"찰칵찍당"},{"id":"readingbooks","title":"책읽는당"},{"id":"train","title":"철도당"},{"id":"soccer","title":"축구한당"},{"id":"compliment","title":"칭차앙"},{"id":"camping","title":"캠핑간당"},{"id":"console","title":"콘솔한당"},{"id":"keyboard","title":"키보드당"},{"id":"tabletennis","title":"탁구당"},{"id":"pathofexile","title":"패스오브엑자일당"},{"id":"formula","title":"포뮬러당"},{"id":"photoshop","title":"포토샵당"},{"id":"swim","title":"퐁당퐁당"},{"id":"plant","title":"푸르르당"},{"id":"plasticmodel","title":"플라스틱모델앙"},{"id":"playmobil","title":"플레이모빌당"},{"id":"stationery","title":"필기도구당"},{"id":"hardware","title":"하드웨어앙"}],"selectors":{"boardTitle":["title"],"listRows":["article","li","tr"],"listLink":["a[href]"],"listTitle":["h2","strong","a[href]"],"listAuthor":[".author",".writer"],"listDate":["time",".date"],"listCommentCount":[".comment",".reply"],"listViewCount":[".view",".hit"],"listLikeCount":[".like",".vote"],"listCategory":[".category"],"listImage":["figure img","picture img",".thumbnail img",".thumb img","img"],"postTitle":["h1","title"],"postAuthor":[".author",".writer"],"postDate":["time",".date"],"postViewCount":[".view",".hit"],"postLikeCount":[".like",".vote"],"postCategory":[".category"],"postContent":["article",".content"],"commentRows":["li",".comment"],"commentAuthor":[".author",".writer"],"commentContent":[".content",".text"],"commentDate":["time",".date"],"commentLikeCount":[".like",".vote"],"commentLevel":[]},"commentLevelAttrs":[]};
 SITE.matchBoard = function (urlInfo) {
 var parts = pathSegments(urlInfo.path);
 if (parts.length === 1 && parts[0] && parts[0] !== "api" && parts[0] !== "bbs" && parts[0] !== "best") {
@@ -54,7 +54,7 @@ out.push("로그인", "로그아웃", "CLI");
 return out;
 };
 SITE.buildBoardMenus = function (menus, state) {
-return ["제목검색", "제목+내용검색", "새글쓰기", MENU_BROWSER, MENU_HOME];
+return ["제목검색", "제목+내용검색", "새글쓰기", MENU_BROWSER];
 };
 SITE.buildPostMenus = function (menus, state) {
 return menus;
@@ -91,13 +91,14 @@ var DEFAULT_CACHE_TTL = SITE.defaultCacheTtlMs || 300000;
 var CACHE_PREFIX = "community_route:" + SITE.siteKey + ":";
 var CACHE_TTL_KEY = "community_cache_ttl_ms:" + SITE.siteKey;
 var CACHE_SNACKBAR_KEY = "community_cache_snackbar:" + SITE.siteKey;
+var CATEGORY_TWO_CHAR_KEY = "community_category_two_char:" + SITE.siteKey;
 var CACHE_SNACKBAR_MIN_AGE_MS = 10000;
 var COOKIE_KEY = "community_cookie:" + SITE.siteKey;
 var CUSTOM_BOARDS_KEY = "community_custom_boards:" + SITE.siteKey;
 var VISIBLE_BOARDS_KEY = "community_visible_boards:" + SITE.siteKey;
 var BOARD_ORDER_KEY = "community_board_order:" + SITE.siteKey;
 var AUTH_ERROR_PREFIX = "AUTH_REQUIRED:";
-var MENU_CACHE_SETTINGS = "캐시설정";
+var MENU_CACHE_SETTINGS = "설정";
 var MENU_BROWSER = "브라우저로 보기";
 var MENU_HOME = "홈";
 var MENU_SETTINGS = SITE.boardSettingsMenuLabel || "게시판 설정";
@@ -108,10 +109,6 @@ var viewState = {};
 var boardIndex = {};
 var defaultBoards = (SITE.boards || []).slice();
 var homeBoards = defaultBoards.slice();
-function deepClone(value) {
-if (value === null || value === undefined) return value;
-return JSON.parse(JSON.stringify(value));
-}
 function normalizeWhitespace(value) {
 return String(value == null ? "" : value)
 .replace(/\u00a0/g, " ")
@@ -205,6 +202,7 @@ title: title,
 url: url,
 description: normalizeWhitespace(raw.description || title),
 group: normalizeWhitespace(raw.group || ""),
+showMedia: !!((flags && flags.showMedia) || raw.showMedia),
 custom: !!((flags && flags.custom) || raw.custom),
 dynamic: !!((flags && flags.dynamic) || raw.dynamic)
 };
@@ -222,12 +220,12 @@ return out;
 }
 function readStoredJson(key, fallback) {
 var raw = localStorage.getItem(key);
-if (!raw) return deepClone(fallback);
+if (!raw) return fallback;
 try {
 var parsed = JSON.parse(raw);
-return parsed == null ? deepClone(fallback) : parsed;
+return parsed == null ? fallback : parsed;
 } catch (e) {
-return deepClone(fallback);
+return fallback;
 }
 }
 function writeStoredJson(key, value) {
@@ -263,6 +261,24 @@ return !(raw === "false" || raw === "0" || raw === "off" || raw === "no");
 }
 function setShowCacheSnackbar(enabled) {
 localStorage.setItem(CACHE_SNACKBAR_KEY, enabled ? "true" : "false");
+}
+function getUseTwoCharCategory() {
+var raw = localStorage.getItem(CATEGORY_TWO_CHAR_KEY);
+if (raw === null || raw === undefined || raw === "") {
+return true;
+}
+raw = String(raw).trim().toLowerCase();
+return !(raw === "false" || raw === "0" || raw === "off" || raw === "no");
+}
+function setUseTwoCharCategory(enabled) {
+localStorage.setItem(CATEGORY_TWO_CHAR_KEY, enabled ? "true" : "false");
+}
+function formatBoardListCategory(value) {
+var text = normalizeWhitespace(value);
+if (!text) return "";
+if (!getUseTwoCharCategory()) return text;
+var compact = text.replace(/\s+/g, "");
+return compact.length <= 2 ? compact : compact.substring(0, 2);
 }
 function supportsCacheSettings() {
 return SITE.enableCacheSettings !== false;
@@ -799,13 +815,13 @@ return null;
 }
 return {
 timestamp: cached.timestamp || 0,
-route: deepClone(cached.route)
+route: cached.route
 };
 }
 function setCachedRoute(kind, url, route) {
 sessionStorage.setItem(cacheKey(kind, url), {
 timestamp: Date.now(),
-route: deepClone(route)
+route: route
 });
 }
 function itemPreviewKey(link) {
@@ -813,7 +829,7 @@ return CACHE_PREFIX + "item:" + (normalizeUrl(link) || String(link || ""));
 }
 function rememberItemPreview(item) {
 if (!item || !item.link) return;
-sessionStorage.setItem(itemPreviewKey(item.link), deepClone({
+sessionStorage.setItem(itemPreviewKey(item.link), {
 link: normalizeUrl(item.link) || item.link,
 title: normalizeWhitespace(item.title || ""),
 author: normalizeWhitespace(item.author || ""),
@@ -823,16 +839,16 @@ category: normalizeWhitespace(item.category || ""),
 viewCount: normalizeWhitespace(item.viewCount || ""),
 likeCount: normalizeWhitespace(item.likeCount || ""),
 commentCount: normalizeWhitespace(item.commentCount || "")
-}));
+});
 }
 function getRememberedItemPreview(link) {
-return deepClone(sessionStorage.getItem(itemPreviewKey(link)) || null);
+return sessionStorage.getItem(itemPreviewKey(link)) || null;
 }
 function setViewState(viewId, state) {
-viewState[String(viewId)] = deepClone(state || {});
+viewState[String(viewId)] = state || {};
 }
 function getViewState(viewId) {
-return deepClone(viewState[String(viewId)] || {});
+return viewState[String(viewId)] || {};
 }
 function shouldUseBrowserCookieAuth() {
 return !!SITE.browserCookieAuth;
@@ -904,7 +920,7 @@ return [];
 function absolutizeDetails(details, baseUrl) {
 var out = [];
 for (var i = 0; i < (details || []).length; i++) {
-var item = deepClone(details[i]);
+var item = details[i];
 if (!item) continue;
 if (item.type === "image" || item.type === "video") {
 item.value = ensureAbsoluteUrl(item.value, baseUrl) || item.value;
@@ -926,11 +942,16 @@ var out = [];
 var seen = {};
 for (var i = 0; i < nodes.length; i++) {
 var resolved = ensureAbsoluteUrl(firstNonEmpty([
+attrOf(nodes[i], "data-thumbnail"),
+attrOf(nodes[i], "data-thumb"),
 attrOf(nodes[i], "data-original"),
 attrOf(nodes[i], "data-src"),
 attrOf(nodes[i], "data-lazy-src"),
+attrOf(nodes[i], "data-srcset"),
 attrOf(nodes[i], "data-file"),
 attrOf(nodes[i], "data-url"),
+attrOf(nodes[i], "poster"),
+firstUrlFromSrcset(attrOf(nodes[i], "srcset")),
 attrOf(nodes[i], "src")
 ]), baseUrl);
 if (!resolved || seen[resolved]) continue;
@@ -940,7 +961,7 @@ out.push(resolved);
 return out;
 }
 function fixParsedMediaDetails(details, element, baseUrl) {
-var out = deepClone(details || []);
+var out = details || [];
 var images = collectResolvedImageUrls(element, baseUrl);
 var imageCursor = 0;
 var hasImage = false;
@@ -1134,6 +1155,9 @@ firstText(doc, SITE.selectors.boardTitle),
 SITE.displayName
 ]);
 }
+function boardShowsMedia(board) {
+return !!(board && board.showMedia === true);
+}
 function isAllowedListLink(link, patterns) {
 patterns = patterns || [];
 if (!link) return false;
@@ -1166,6 +1190,18 @@ if (fallbacks.indexOf(rowHref) < 0) fallbacks.push(rowHref);
 if (patterns.length > 0) return "";
 return fallbacks.length > 0 ? fallbacks[0] : "";
 }
+function firstUrlFromSrcset(value) {
+var raw = normalizeWhitespace(value);
+if (!raw) return "";
+var parts = raw.split(",");
+for (var i = 0; i < parts.length; i++) {
+var item = normalizeWhitespace(parts[i]);
+if (!item) continue;
+var candidate = item.split(/\s+/)[0];
+if (candidate) return candidate;
+}
+return "";
+}
 function imageUrlFromNode(node, baseUrl) {
 if (!node) return "";
 var style = attrOf(node, "style");
@@ -1173,11 +1209,16 @@ var styleMatch = style ? style.match(/url\((['"]?)([^'")]+)\)/i) : null;
 var resolved = ensureAbsoluteUrl(firstNonEmpty([
 attrOf(node, "data-bg_url"),
 attrOf(node, "data-bg-url"),
+attrOf(node, "data-thumbnail"),
+attrOf(node, "data-thumb"),
 attrOf(node, "data-original"),
 attrOf(node, "data-src"),
 attrOf(node, "data-lazy-src"),
+attrOf(node, "data-srcset"),
 attrOf(node, "data-file"),
 attrOf(node, "data-url"),
+attrOf(node, "poster"),
+firstUrlFromSrcset(attrOf(node, "srcset")),
 styleMatch ? styleMatch[2] : "",
 attrOf(node, "src")
 ]), baseUrl);
@@ -1186,11 +1227,16 @@ if (!node.querySelectorAll) return "";
 var images = node.querySelectorAll("img");
 for (var i = 0; i < images.length; i++) {
 resolved = ensureAbsoluteUrl(firstNonEmpty([
+attrOf(images[i], "data-thumbnail"),
+attrOf(images[i], "data-thumb"),
 attrOf(images[i], "data-original"),
 attrOf(images[i], "data-src"),
 attrOf(images[i], "data-lazy-src"),
+attrOf(images[i], "data-srcset"),
 attrOf(images[i], "data-file"),
 attrOf(images[i], "data-url"),
+attrOf(images[i], "poster"),
+firstUrlFromSrcset(attrOf(images[i], "srcset")),
 attrOf(images[i], "src")
 ]), baseUrl);
 if (resolved) return resolved;
@@ -1269,6 +1315,7 @@ for (var i = 0; i < rows.length; i++) {
 var item = extractListItem(rows[i], baseUrl);
 if (!item || !item.link || seen[item.link]) continue;
 seen[item.link] = true;
+item.category = formatBoardListCategory(item.category || "");
 items.push(item);
 }
 return items;
@@ -1374,7 +1421,7 @@ if (supportsBoardReorder()) {
 menus.push({ label: MENU_REORDER, checked: !!isReorderable });
 }
 try {
-menus = SITE.buildHomeMenus ? (SITE.buildHomeMenus(deepClone(menus), !!isReorderable) || menus) : menus;
+menus = SITE.buildHomeMenus ? (SITE.buildHomeMenus(menus, !!isReorderable) || menus) : menus;
 } catch (e) {
 }
 if (supportsCli() && !hasMenuItem(menus, MENU_CLI)) {
@@ -1383,9 +1430,9 @@ menus.push(MENU_CLI);
 return menus;
 }
 function getBoardMenus(state) {
-var menus = [MENU_BROWSER, MENU_HOME];
+var menus = [MENU_BROWSER];
 try {
-menus = SITE.buildBoardMenus ? (SITE.buildBoardMenus(deepClone(menus), deepClone(state || {})) || menus) : menus;
+menus = SITE.buildBoardMenus ? (SITE.buildBoardMenus(menus, state || {}) || menus) : menus;
 } catch (e) {
 }
 return menus;
@@ -1393,7 +1440,7 @@ return menus;
 function getPostMenus(state) {
 var menus = [MENU_BROWSER, MENU_HOME];
 try {
-menus = SITE.buildPostMenus ? (SITE.buildPostMenus(deepClone(menus), deepClone(state || {})) || menus) : menus;
+menus = SITE.buildPostMenus ? (SITE.buildPostMenus(menus, state || {}) || menus) : menus;
 } catch (e) {
 }
 return menus;
@@ -1411,6 +1458,12 @@ type: "boolean",
 name: "show_snackbar",
 label: "캐시 알림 표시",
 value: getShowCacheSnackbar()
+},
+{
+type: "boolean",
+name: "category_two_char",
+label: "카테고리 2자",
+value: getUseTwoCharCategory()
 }
 ];
 }
@@ -1701,6 +1754,19 @@ function updateHomeAfterBoardMutation(homeViewId, snackbar) {
 if (!homeViewId) return;
 var homeState = getViewState(homeViewId);
 updateViewFromRoute(homeViewId, createHomeRoute(!!(homeState && homeState.isReorderable), snackbar || ""));
+}
+function resetBoardSettingsStorage() {
+localStorage.removeItem(CUSTOM_BOARDS_KEY);
+localStorage.removeItem(VISIBLE_BOARDS_KEY);
+localStorage.removeItem(BOARD_ORDER_KEY);
+homeBoards = getVisibleBoards();
+rebuildBoardIndex();
+}
+function resetHomeAfterBoardSettingsReset(settingsViewId, homeViewId, snackbar) {
+var route = createHomeRoute(false, snackbar || "");
+if (settingsViewId) synura.close(settingsViewId);
+if (homeViewId) synura.close(homeViewId);
+openRoute(route);
 }
 function cliMessage(viewId, message) {
 synura.update(viewId, {
@@ -2078,8 +2144,8 @@ parentViewId: parentViewId || 0
 var result = synura.open({
 view: "/dialogs/input",
 styles: {
-title: "캐시 설정",
-message: "캐시 설정을 변경하세요.",
+title: "설정",
+message: "설정을 변경하세요.",
 close: true
 },
 models: {
@@ -2389,6 +2455,7 @@ view: "/views/list",
 styles: {
 title: title,
 layout: "card",
+media: boardShowsMedia(match ? match.board : null),
 menu: true,
 pagination: !!nextUrl
 },
@@ -2428,7 +2495,7 @@ var rememberedItem = getRememberedItemPreview(url);
 var schemaPost = detectSchemaPost(doc);
 var comments = parseComments(doc, url);
 try {
-var fetchedComments = SITE.fetchPostComments ? SITE.fetchPostComments(match, url, doc, page, deepClone(comments)) : null;
+var fetchedComments = SITE.fetchPostComments ? SITE.fetchPostComments(match, url, doc, page, comments) : null;
 if (Array.isArray(fetchedComments) && fetchedComments.length > 0) {
 comments = fetchedComments;
 }
@@ -2541,6 +2608,7 @@ view: "/views/list",
 styles: {
 title: title,
 layout: "card",
+media: boardShowsMedia(board),
 menu: true,
 pagination: !!nextUrl
 },
@@ -2811,7 +2879,7 @@ return true;
 }
 function openBrowser(url, title, extraState) {
 var browserUrl = normalizeUrl(url) || ensureAbsoluteUrl(url, SITE.browserHomeUrl) || SITE.browserHomeUrl;
-var context = deepClone(extraState || {});
+var context = extraState || {};
 context.kind = context.kind || "browser";
 context.link = browserUrl;
 context.title = context.title || title || SITE.displayName;
@@ -2849,8 +2917,21 @@ return true;
 }
 return false;
 }
+function shouldOpenRouteWithHistory(route) {
+return !!(
+route &&
+route.kind === "board" &&
+route.viewData &&
+route.viewData.view === "/views/list"
+);
+}
 function openRoute(route) {
-var result = synura.open(route.viewData, route.context, function (event) {
+var viewData = route.viewData || {};
+viewData.styles = viewData.styles || {};
+if (shouldOpenRouteWithHistory(route)) {
+viewData.styles.history = true;
+}
+var result = synura.open(viewData, route.context, function (event) {
 handler.onViewEvent(event);
 });
 if (result && result.success) {
@@ -2915,10 +2996,10 @@ error: e.toString()
 }
 }
 function updateViewFromRoute(viewId, route, snackbar) {
-var models = deepClone(route.viewData.models || {});
+var models = route.viewData.models || {};
 if (snackbar) models.snackbar = snackbar;
 synura.update(viewId, {
-styles: deepClone(route.viewData.styles || {}),
+styles: route.viewData.styles || {},
 models: models
 });
 setViewState(viewId, route.context);
@@ -3083,13 +3164,8 @@ showBoardDeleteDialog(viewId, state.parentViewId || 0);
 return true;
 }
 if (menu === "초기화") {
-localStorage.removeItem(CUSTOM_BOARDS_KEY);
-localStorage.removeItem(VISIBLE_BOARDS_KEY);
-localStorage.removeItem(BOARD_ORDER_KEY);
-homeBoards = getVisibleBoards();
-rebuildBoardIndex();
-refreshBoardSettingsRootView(viewId, state, "설정이 초기화되었습니다.");
-updateHomeAfterBoardMutation(state.parentViewId || 0, "설정이 초기화되었습니다.");
+resetBoardSettingsStorage();
+resetHomeAfterBoardSettingsReset(viewId, state.parentViewId || 0, "설정이 초기화되었습니다.");
 return true;
 }
 return true;
@@ -3153,6 +3229,7 @@ return;
 }
 setCacheTTL(ttlMinutes * 60000);
 setShowCacheSnackbar(!!(event.data && event.data.show_snackbar));
+setUseTwoCharCategory(!(event.data && event.data.category_two_char === false));
 synura.close(viewId);
 if (parentViewId) {
 synura.update(parentViewId, {
@@ -3166,6 +3243,7 @@ return;
 if (button === "초기화") {
 localStorage.removeItem(CACHE_TTL_KEY);
 localStorage.removeItem(CACHE_SNACKBAR_KEY);
+localStorage.removeItem(CATEGORY_TWO_CHAR_KEY);
 synura.update(viewId, {
 models: {
 body: getCacheSettingsBody(),
@@ -3244,15 +3322,8 @@ updateViewFromRoute(parentViewId, createHomeRoute(!!(parentState && parentState.
 return;
 }
 if (button === "초기화") {
-localStorage.removeItem(CUSTOM_BOARDS_KEY);
-localStorage.removeItem(VISIBLE_BOARDS_KEY);
-localStorage.removeItem(BOARD_ORDER_KEY);
-homeBoards = getVisibleBoards();
-rebuildBoardIndex();
-refreshBoardSettingsView(viewId, createBoardSettingsState(parentViewId, 0, "열기"), "설정이 초기화되었습니다.");
-if (parentViewId) {
-updateViewFromRoute(parentViewId, createHomeRoute(false, "설정이 초기화되었습니다."));
-}
+resetBoardSettingsStorage();
+resetHomeAfterBoardSettingsReset(viewId, parentViewId, "설정이 초기화되었습니다.");
 return;
 }
 if (button === "추가") {
@@ -3557,15 +3628,12 @@ chunks.push({ id: doc.id, data: chunkDecoded });
 }
 return { nodes: nodes, chunks: chunks };
 }
-function damoangParseHTMLDetails(htmlContent) {
-var details = parseMarkupDetails(htmlContent || "", SITE.browserHomeUrl);
-if (!details || details.length === 0) {
-details = [{ type: "text", value: "Could not load post content." }];
-}
-return details;
-}
-function damoangParseCommentContent(content) {
-return parseMarkupDetails(content == null ? "" : String(content), SITE.browserHomeUrl);
+function dA(value) {
+var text = normalizeWhitespace(value);
+if (!text) return "";
+if (text.indexOf("http") === 0) return text;
+if (text.indexOf("data/member_image/") >= 0) return "https://s3.damoang.net/" + text.replace(/^\/+/, "");
+return normalizeUrl(text) || ensureAbsoluteUrl(text, SITE.browserHomeUrl) || "";
 }
 function damoangToCommentModel(item, postAuthor) {
 var likesVal = damoangParseNumber(item && item.likes);
@@ -3573,7 +3641,7 @@ var likesInt = parseInt(likesVal || "0", 10) || 0;
 var isDeleted = !!(item && item.deleted_at);
 var content = isDeleted
 ? [{ type: "text", value: "삭제된 댓글입니다." }]
-: damoangParseCommentContent(item ? item.content : "");
+: parseMarkupDetails(item && item.content || "", SITE.browserHomeUrl);
 if (item && item.id) {
 content.unshift({ type: "anchor", value: "c_" + item.id });
 }
@@ -3582,8 +3650,8 @@ if (!isDeleted && item && (item.author || "") === (postAuthor || "")) {
 menus.push("삭제");
 }
 return {
-author: item && item.author ? item.author : "",
-avatar: "",
+author: item && item.author || "",
+avatar: dA(item && (item.author_image || item.avatar)),
 content: content,
 date: damoangNormalizeDate(item ? item.created_at : ""),
 likeCount: hideZeroCount(likesVal),
@@ -3595,7 +3663,10 @@ coldCount: likesInt
 };
 }
 function damoangBuildPostViewData(post, comments) {
-var details = damoangParseHTMLDetails(post && post.content ? post.content : "");
+var details = parseMarkupDetails(post && post.content || "", SITE.browserHomeUrl);
+if (!details || details.length === 0) {
+details = [{ type: "text", value: "Could not load post content." }];
+}
 var commentModels = [];
 for (var i = 0; i < (comments || []).length; i++) {
 commentModels.push(damoangToCommentModel(comments[i], post ? post.author : ""));
@@ -3605,12 +3676,12 @@ styles: {
 title: post && post.title ? post.title : ""
 },
 models: {
-author: post && post.author ? post.author : "",
+author: post && post.author || "",
 viewCount: damoangParseNumber(post && post.views ? post.views : "0"),
 likeCount: hideZeroCount(damoangParseNumber(post && post.likes ? post.likes : "0")),
 dislikeCount: damoangParseNumber(post && post.dislikes ? post.dislikes : "0"),
 date: damoangNormalizeDate(post ? (post.created_at || post.updated_at) : ""),
-avatar: "",
+avatar: dA(post && (post.avatar || post.author_image)),
 content: details,
 comments: commentModels
 }
@@ -3636,7 +3707,7 @@ avatar: "",
 mediaUrl: thumbnail,
 mediaType: thumbnail ? "image" : "",
 date: damoangNormalizeDate(item ? (item.created_at || item.updated_at) : ""),
-category: item && item.category ? item.category : (isNotice ? "공지" : ""),
+category: formatBoardListCategory(item && item.category ? item.category : (isNotice ? "공지" : "")),
 isNotice: isNotice,
 likeCount: hideZeroCount(likes),
 dislikeCount: "",
@@ -3684,6 +3755,8 @@ notices: []
 }
 function damoangParsePostHydration(html) {
 var svelteData = damoangParseSvelteDataStream(html);
+var matchedAvatar = String(html || "").match(/src="([^"]*member_image[^"]*)"/i);
+var postAvatar = dA(matchedAvatar && matchedAvatar[1]);
 if (svelteData) {
 var postNode = null;
 for (var i = 0; i < svelteData.nodes.length; i++) {
@@ -3704,11 +3777,8 @@ secondaryChunk = svelteData.chunks[j];
 break;
 }
 }
-var post = {};
-var keys = Object.keys(postNode.data.post || {});
-for (var k = 0; k < keys.length; k++) {
-post[keys[k]] = postNode.data.post[keys[k]];
-}
+var post = postNode.data.post || {};
+if (postAvatar) post.avatar = postAvatar;
 if (secondaryChunk && secondaryChunk.data && secondaryChunk.data.transformedPostContent) {
 post.content = secondaryChunk.data.transformedPostContent;
 }
@@ -3719,6 +3789,7 @@ return damoangBuildPostViewData(post, comments);
 var postLiteral = damoangExtractValueByKey(html, "post", "{");
 var commentsLiteral = damoangExtractValueByKey(html, "comments", "{");
 var postFallback = damoangEvaluateJSLiteral(postLiteral);
+if (postFallback && postAvatar) postFallback.avatar = postAvatar;
 var commentsDataFallback = damoangEvaluateJSLiteral(commentsLiteral);
 var commentItems = commentsDataFallback && commentsDataFallback.items ? commentsDataFallback.items : [];
 if (!postFallback) throw new Error("Failed to parse post hydration payload");
@@ -3850,6 +3921,7 @@ view: "/views/list",
 styles: {
 title: boardTitle,
 layout: "card",
+media: boardShowsMedia(match ? match.board : null),
 menu: true,
 pagination: true,
 appbar: damoangBoardAppbar(searchField)
@@ -3864,24 +3936,26 @@ context: context
 }
 function damoangBuildPostRoute(url) {
 var postView = damoangFetchPostViewData(url);
+var m = postView.models || {};
+var s = postView.styles || {};
 return {
 kind: "post",
 url: url,
 viewData: {
 view: "/views/post",
 styles: {
-title: (postView.styles || {}).title || "",
+title: s.title || "",
 menu: true
 },
 models: {
-author: (postView.models || {}).author || "",
-viewCount: (postView.models || {}).viewCount || "",
-likeCount: (postView.models || {}).likeCount || "",
-dislikeCount: (postView.models || {}).dislikeCount || "",
-date: (postView.models || {}).date || "",
-avatar: "",
-content: (postView.models || {}).content || [{ type: "text", value: "본문을 가져오지 못했습니다." }],
-comments: (postView.models || {}).comments || [],
+author: m.author || "",
+viewCount: m.viewCount || "",
+likeCount: m.likeCount || "",
+dislikeCount: m.dislikeCount || "",
+date: m.date || "",
+avatar: m.avatar || "",
+content: m.content || [{ type: "text", value: "본문을 가져오지 못했습니다." }],
+comments: m.comments || [],
 link: url,
 menus: getPostMenus({ kind: "post", link: url }),
 buttons: [BUTTON_REFRESH]
@@ -3995,7 +4069,7 @@ handler.onViewEvent(event);
 },
 router: function (url) {
 var route = routeUrl(url, false);
-return route ? deepClone(route.viewData) : null;
+return route ? route.viewData : null;
 },
 deeplink: function (url) {
 var result = openByUrl(url, false);

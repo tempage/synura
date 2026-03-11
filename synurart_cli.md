@@ -104,9 +104,9 @@ If your environment merges streams, parse line-by-line JSON and ignore optional 
 ### Shell result objects (stdout, `-json`)
 
 - `{"type":"help","commands":[...]}`
-- `{"type":"views","views":[...],"activeView":{...}}`
-- `{"type":"view","viewId":1,"path":"...","data":{...}}`
-- `{"type":"render","viewId":1,"path":"...","models":{...},"styles":{...}}`
+- `{"type":"views","views":[...],"activeView":{"viewId":1,"path":"...","models":{...},"styles":{...},"rendered":{...}}}`
+- `{"type":"view","viewId":1,"path":"...","data":{...},"rendered":{...}}`
+- `{"type":"render","viewId":1,"path":"...","models":{...},"styles":{...},"rendered":{...}}`
 - `{"type":"timeout","timeout":"10s","seconds":10}`
 - `{"type":"locale","locale":"ko-KR"}`
 - `{"type":"storage","local":{...},"session":{...}}`
