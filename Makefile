@@ -9,7 +9,7 @@
 #   make android     - Setup ADB and start server (for Android testing)
 #   make clean       - Clean build artifacts
 
-.PHONY: server fetch synurart test reverse android clean help generate_extensions build
+.PHONY: server fetch synurart test reverse android clean help generate_extensions build build_ko_community_extensions
 
 # Default target
 help:
@@ -23,6 +23,7 @@ help:
 	@echo "  make reverse             - Setup ADB reverse for Android testing"
 	@echo "  make android             - Setup ADB and start server"
 	@echo "  make generate_extensions - Generate extensions.json from extensions directory"
+	@echo "  make build_ko_community_extensions - Build ko_KR community extensions with make + tsc"
 	@echo "  make clean               - Clean build artifacts"
 	@echo ""
 	@echo "Endpoints available at http://localhost:8080:"
@@ -98,4 +99,9 @@ build:
 generate_extensions:
 	@echo "Generating extensions.json..."
 	python extensions/generate_extensions_json.py
+	@echo "Done."
+
+build_ko_community_extensions:
+	@echo "Building ko_KR community extensions..."
+	$(MAKE) -C extensions/ko_KR build
 	@echo "Done."

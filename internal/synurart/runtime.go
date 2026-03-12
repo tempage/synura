@@ -6,23 +6,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/dop251/goja"
 	"github.com/ivere27/synura/internal/fetch"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/charset"
 	"golang.org/x/term"
+	"golang.org/x/text/encoding"
 	"golang.org/x/text/language"
 )
 
@@ -48,8 +48,6 @@ type eventTiming struct {
 
 const defaultFetchTimeout = 10 * time.Second
 const defaultNavigatorLanguage = "en-US"
-
-var htmlCharsetPattern = regexp.MustCompile(`(?i)charset\s*=\s*['"]?\s*([a-z0-9._-]+)`)
 
 // Options configures runtime initialization.
 type Options struct {
@@ -342,6 +340,8 @@ func (r *Runtime) installGlobals() {
 	r.installFetch()
 	r.installURLSearchParams()
 	r.installDOMParser()
+	r.installTextEncoder()
+	r.installTextDecoder()
 }
 
 func (r *Runtime) installNavigator() {
@@ -511,6 +511,128 @@ func (r *Runtime) installDOMParser() {
 		})
 		return obj
 	})
+}
+
+func (r *Runtime) installTextEncoder() {
+	uint8ArrayCtor, ok := goja.AssertConstructor(r.vm.Get("Uint8Array"))
+	if !ok {
+		return
+	}
+
+	_ = r.vm.Set("TextEncoder", func(call goja.ConstructorCall) *goja.Object {
+		obj := call.This
+		_ = obj.Set("encoding", "utf-8")
+		_ = obj.Set("encode", func(fc goja.FunctionCall) goja.Value {
+			input := ""
+			if len(fc.Arguments) > 0 {
+				input = fc.Argument(0).String()
+			}
+
+			buf := r.vm.NewArrayBuffer([]byte(input))
+			value, err := uint8ArrayCtor(nil, r.vm.ToValue(buf))
+			if err != nil {
+				panic(r.vm.ToValue(err.Error()))
+			}
+			return value
+		})
+		_ = obj.Set("encodeInto", func(fc goja.FunctionCall) goja.Value {
+			input := ""
+			if len(fc.Arguments) > 0 {
+				input = fc.Argument(0).String()
+			}
+			if len(fc.Arguments) < 2 || goja.IsUndefined(fc.Argument(1)) || goja.IsNull(fc.Argument(1)) {
+				panic(r.vm.ToValue("TextEncoder.encodeInto requires a destination Uint8Array"))
+			}
+
+			var dest []byte
+			if err := r.vm.ExportTo(fc.Argument(1), &dest); err != nil {
+				panic(r.vm.ToValue(err.Error()))
+			}
+
+			read, written := encodeUTF8Into(input, dest)
+			result := r.vm.NewObject()
+			_ = result.Set("read", read)
+			_ = result.Set("written", written)
+			return result
+		})
+		return obj
+	})
+}
+
+func (r *Runtime) installTextDecoder() {
+	_ = r.vm.Set("TextDecoder", func(call goja.ConstructorCall) *goja.Object {
+		label := "utf-8"
+		if len(call.Arguments) > 0 && !goja.IsUndefined(call.Argument(0)) && !goja.IsNull(call.Argument(0)) {
+			label = call.Argument(0).String()
+		}
+
+		enc, canonical, err := lookupTextEncoding(label)
+		if err != nil {
+			panic(r.vm.ToValue(err.Error()))
+		}
+
+		obj := call.This
+		_ = obj.Set("encoding", canonical)
+		_ = obj.Set("fatal", false)
+		_ = obj.Set("ignoreBOM", false)
+		_ = obj.Set("decode", func(fc goja.FunctionCall) goja.Value {
+			if len(fc.Arguments) == 0 || goja.IsUndefined(fc.Argument(0)) || goja.IsNull(fc.Argument(0)) {
+				return r.vm.ToValue("")
+			}
+
+			var data []byte
+			if err := r.vm.ExportTo(fc.Argument(0), &data); err != nil {
+				panic(r.vm.ToValue("TextDecoder.decode requires an ArrayBuffer or typed array"))
+			}
+			if len(data) == 0 {
+				return r.vm.ToValue("")
+			}
+
+			decoded, err := io.ReadAll(enc.NewDecoder().Reader(bytes.NewReader(data)))
+			if err != nil {
+				panic(r.vm.ToValue(err.Error()))
+			}
+			return r.vm.ToValue(string(decoded))
+		})
+		return obj
+	})
+}
+
+func lookupTextEncoding(label string) (encoding.Encoding, string, error) {
+	trimmed := strings.TrimSpace(label)
+	if trimmed == "" {
+		trimmed = "utf-8"
+	}
+
+	enc, canonical := charset.Lookup(trimmed)
+	if enc == nil {
+		return nil, "", fmt.Errorf("unsupported encoding: %s", label)
+	}
+	if canonical == "" {
+		canonical = strings.ToLower(trimmed)
+	}
+	return enc, canonical, nil
+}
+
+func encodeUTF8Into(input string, dest []byte) (read int, written int) {
+	var encoded [utf8.UTFMax]byte
+
+	for _, r := range input {
+		size := utf8.EncodeRune(encoded[:], r)
+		if written+size > len(dest) {
+			break
+		}
+
+		copy(dest[written:], encoded[:size])
+		written += size
+		if r > 0xFFFF {
+			read += 2
+		} else {
+			read++
+		}
+	}
+
+	return read, written
 }
 
 func (r *Runtime) jsOpen(call goja.FunctionCall) goja.Value {
@@ -822,7 +944,6 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 	}
 	body := stringifyAny(options["body"])
 	bypass := strings.TrimSpace(stringifyAny(options["bypass"]))
-	follow := boolFromAny(options["followRedirects"])
 
 	var progressFn goja.Callable
 	if len(call.Arguments) > 1 && !goja.IsUndefined(call.Argument(1)) && !goja.IsNull(call.Argument(1)) {
@@ -835,13 +956,16 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 	}
 
 	resp, err := fetch.Do(fetch.Request{
-		Method:          method,
-		URL:             urlStr,
-		Headers:         headers,
-		Body:            []byte(body),
-		Bypass:          bypass,
-		Timeout:         r.fetchTimeout,
-		FollowRedirects: follow,
+		Method:  method,
+		URL:     urlStr,
+		Headers: headers,
+		Body:    []byte(body),
+		Bypass:  bypass,
+		Timeout: r.fetchTimeout,
+		// Synurart fetch intentionally exposes 3xx responses to extensions.
+		// Redirect-following flags such as `followRedirects` or `redirect: "follow"`
+		// are ignored by design; extensions must handle redirect responses explicitly.
+		FollowRedirects: false,
 		OnProgress: func(current, total int64) {
 			if progressFn != nil {
 				_, _ = progressFn(goja.Undefined(), r.vm.ToValue(current), r.vm.ToValue(total))
@@ -873,9 +997,10 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 		logicMs = 0
 	}
 	r.recordFetchTiming(totalMs, logicMs, networkMs)
+	redirectTo := redirectTarget(urlStr, resp.StatusCode, resp.Headers)
 
 	if r.jsonMode {
-		r.jsonLog(map[string]any{
+		data := map[string]any{
 			"type":        "fetch",
 			"method":      strings.ToUpper(method),
 			"url":         urlStr,
@@ -885,9 +1010,17 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 			"networkMs":   networkMs,
 			"logicTime":   (time.Duration(logicMs) * time.Millisecond).String(),
 			"networkTime": resp.NetworkTime.String(),
-		})
+		}
+		if redirectTo != "" {
+			data["redirectTo"] = redirectTo
+		}
+		r.jsonLog(data)
 	} else {
-		fmt.Fprintf(r.out, "%s %s %s -> %d (b=%dms, network=%dms)\n", r.tag("FETCH", "\033[34m"), strings.ToUpper(method), urlStr, resp.StatusCode, logicMs, networkMs)
+		if redirectTo != "" {
+			fmt.Fprintf(r.out, "%s %s %s -> %d (redirect=%s, b=%dms, network=%dms)\n", r.tag("FETCH", "\033[34m"), strings.ToUpper(method), urlStr, resp.StatusCode, redirectTo, logicMs, networkMs)
+		} else {
+			fmt.Fprintf(r.out, "%s %s %s -> %d (b=%dms, network=%dms)\n", r.tag("FETCH", "\033[34m"), strings.ToUpper(method), urlStr, resp.StatusCode, logicMs, networkMs)
+		}
 	}
 	return response
 }
@@ -1018,10 +1151,13 @@ func (r *Runtime) errorFetchResponse(message string) goja.Value {
 	_ = obj.Set("status", 0)
 	_ = obj.Set("statusText", "")
 	_ = obj.Set("ok", false)
+	_ = obj.Set("url", "")
+	_ = obj.Set("headers", map[string]string{})
 	_ = obj.Set("error", message)
 	_ = obj.Set("networkMs", int64(0))
 	_ = obj.Set("networkTime", "0s")
 	_ = obj.Set("text", func(goja.FunctionCall) goja.Value { return r.vm.ToValue("") })
+	_ = obj.Set("arrayBuffer", func(goja.FunctionCall) goja.Value { return r.newArrayBufferValue(nil) })
 	_ = obj.Set("json", func(goja.FunctionCall) goja.Value { return r.vm.ToValue(map[string]any{}) })
 	_ = obj.Set("dom", func(goja.FunctionCall) goja.Value { return r.newDocumentFromHTML("") })
 	return obj
@@ -1036,9 +1172,12 @@ func (r *Runtime) buildFetchResponse(resp *fetch.Response) goja.Value {
 	_ = obj.Set("headers", headerToMap(resp.Headers))
 	_ = obj.Set("networkMs", resp.NetworkTime.Milliseconds())
 	_ = obj.Set("networkTime", resp.NetworkTime.String())
-	body := decodeResponseBody(resp.Headers, resp.Body)
+	body := string(resp.Body)
 	_ = obj.Set("text", func(goja.FunctionCall) goja.Value {
 		return r.vm.ToValue(body)
+	})
+	_ = obj.Set("arrayBuffer", func(goja.FunctionCall) goja.Value {
+		return r.newArrayBufferValue(resp.Body)
 	})
 	_ = obj.Set("json", func(goja.FunctionCall) goja.Value {
 		var v any
@@ -1058,110 +1197,9 @@ func (r *Runtime) buildFetchResponse(resp *fetch.Response) goja.Value {
 	return obj
 }
 
-func decodeResponseBody(headers http.Header, body []byte) string {
-	if len(body) == 0 {
-		return ""
-	}
-
-	contentType := ""
-	if headers != nil {
-		contentType = headers.Get("Content-Type")
-	}
-
-	headerCharset := declaredCharsetFromContentType(contentType)
-	htmlCharset := declaredCharsetFromHTML(body)
-	if headerCharset != "" {
-		decoded, ok := decodeBytesWithCharset(body, headerCharset)
-		if ok {
-			if htmlCharset != "" && !sameCharset(headerCharset, htmlCharset) && looksLikeMojibake(decoded) {
-				if repaired, repairedOK := decodeBytesWithCharset(body, htmlCharset); repairedOK {
-					return repaired
-				}
-			}
-			return decoded
-		}
-	}
-	if htmlCharset != "" {
-		if decoded, ok := decodeBytesWithCharset(body, htmlCharset); ok {
-			return decoded
-		}
-	}
-
-	enc, _, _ := charset.DetermineEncoding(body, contentType)
-	decoded, err := io.ReadAll(enc.NewDecoder().Reader(bytes.NewReader(body)))
-	if err != nil {
-		return string(body)
-	}
-	if htmlCharset != "" && looksLikeMojibake(string(decoded)) {
-		if repaired, ok := decodeBytesWithCharset(body, htmlCharset); ok {
-			return repaired
-		}
-	}
-	return string(decoded)
-}
-
-func declaredCharsetFromContentType(contentType string) string {
-	trimmed := strings.TrimSpace(contentType)
-	if trimmed == "" {
-		return ""
-	}
-	_, params, err := mime.ParseMediaType(trimmed)
-	if err == nil {
-		if value := strings.TrimSpace(params["charset"]); value != "" {
-			return value
-		}
-	}
-	lower := strings.ToLower(trimmed)
-	idx := strings.Index(lower, "charset=")
-	if idx < 0 {
-		return ""
-	}
-	value := strings.TrimSpace(trimmed[idx+len("charset="):])
-	value = strings.Trim(value, `"' ;`)
-	return value
-}
-
-func declaredCharsetFromHTML(body []byte) string {
-	if len(body) == 0 {
-		return ""
-	}
-	scan := body
-	if len(scan) > 64*1024 {
-		scan = scan[:64*1024]
-	}
-	match := htmlCharsetPattern.FindStringSubmatch(strings.ToLower(string(scan)))
-	if len(match) < 2 {
-		return ""
-	}
-	return strings.TrimSpace(match[1])
-}
-
-func decodeBytesWithCharset(body []byte, label string) (string, bool) {
-	enc, _ := charset.Lookup(strings.TrimSpace(label))
-	if enc == nil {
-		return "", false
-	}
-	decoded, err := io.ReadAll(enc.NewDecoder().Reader(bytes.NewReader(body)))
-	if err != nil {
-		return "", false
-	}
-	return string(decoded), true
-}
-
-func sameCharset(a, b string) bool {
-	_, nameA := charset.Lookup(strings.TrimSpace(a))
-	_, nameB := charset.Lookup(strings.TrimSpace(b))
-	if nameA != "" && nameB != "" {
-		return strings.EqualFold(nameA, nameB)
-	}
-	return strings.EqualFold(strings.TrimSpace(a), strings.TrimSpace(b))
-}
-
-func looksLikeMojibake(text string) bool {
-	if text == "" {
-		return false
-	}
-	return strings.ContainsRune(text, '\uFFFD')
+func (r *Runtime) newArrayBufferValue(data []byte) goja.Value {
+	cloned := append([]byte(nil), data...)
+	return r.vm.ToValue(r.vm.NewArrayBuffer(cloned))
 }
 
 func (r *Runtime) callViewCallback(view *View, event map[string]any) error {
@@ -1481,24 +1519,6 @@ func sliceFromAny(v any) []any {
 	}
 }
 
-func boolFromAny(v any) bool {
-	switch b := v.(type) {
-	case bool:
-		return b
-	case string:
-		l := strings.ToLower(strings.TrimSpace(b))
-		return l == "1" || l == "true" || l == "yes" || l == "on"
-	case int:
-		return b != 0
-	case int64:
-		return b != 0
-	case float64:
-		return b != 0
-	default:
-		return false
-	}
-}
-
 func stringifyAny(v any) string {
 	switch x := v.(type) {
 	case nil:
@@ -1551,4 +1571,28 @@ func headerToMap(h http.Header) map[string]string {
 		out[k] = strings.Join(v, ", ")
 	}
 	return out
+}
+
+func redirectTarget(requestURL string, statusCode int, headers http.Header) string {
+	if statusCode < 300 || statusCode >= 400 || headers == nil {
+		return ""
+	}
+	location := strings.TrimSpace(headers.Get("Location"))
+	if location == "" {
+		return ""
+	}
+
+	locationURL, err := url.Parse(location)
+	if err != nil {
+		return location
+	}
+	if locationURL.IsAbs() {
+		return locationURL.String()
+	}
+
+	baseURL, err := url.Parse(requestURL)
+	if err != nil {
+		return location
+	}
+	return baseURL.ResolveReference(locationURL).String()
 }

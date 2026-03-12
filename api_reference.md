@@ -49,6 +49,9 @@ The core object for interacting with the Synura application.
 
 ### `fetch(url, options)`
 A custom **synchronous** HTTP client (unlike Web API, it does **not** return a Promise).
+
+> **Host restriction:** Extension requests must target `SYNURA.domain`. This is the rule in both `synurart` and the real Synura app. Do not fetch `api.*`, `cdn.*`, or any other host directly if it differs from `SYNURA.domain`, even if the site's own web frontend does so.
+
 -   **Options**:
     -   `method`: `'GET'` | `'POST'`
     -   `headers`: Object `{ "Key": "Value" }`
@@ -58,9 +61,31 @@ A custom **synchronous** HTTP client (unlike Web API, it does **not** return a P
     -   `status`: (Number) The HTTP status code (e.g., 200, 404).
     -   `statusText`: (String) The status message corresponding to the status code (e.g., "OK", "Not Found").
     -   `ok`: (Boolean) `true` if the status code is in the range 200-299.
-    -   `text()`: Returns response body as string.
+    -   `url`: (String) The response URL visible to the runtime. If a runtime follows redirects internally, this can be the final URL. If a `3xx` response is exposed to the extension, this remains the requested URL.
+    -   `headers`: (Object) Response headers flattened as `{ "Header-Name": "value" }`. For redirect handling, inspect `response.headers["Location"]` when present.
+    -   `text()`: Returns response body as a JavaScript string without Synura-specific charset guessing. For legacy encodings, prefer `arrayBuffer()` with `TextDecoder(...)`.
+    -   `arrayBuffer()`: Returns the raw response body bytes as an `ArrayBuffer`.
     -   `json()`: Returns response body as JSON object.
-    -   `dom(mimeType)`: **Synura Custom Function**. Returns a parsed DOM document (only `'text/html'` supported).
+    -   `dom(mimeType)`: **Synura Custom Function**. Parses the current response string as HTML (only `'text/html'` supported). For non-UTF-8 pages, decode bytes first and use `new DOMParser().parseFromString(...)`.
+
+> **Redirect note:** Do not rely on `followRedirects` or `redirect: "follow"` as a portable Synura extension contract. Extensions should inspect `response.status`, `response.url`, and `response.headers` and handle `3xx` responses explicitly when needed.
+
+#### Legacy Charset Example
+```javascript
+const response = fetch("https://example.com/page");
+const raw = response.arrayBuffer();
+const html = new TextDecoder("euc-kr").decode(raw);
+const utf8Bytes = new TextEncoder().encode(html);
+```
+
+#### Redirect Inspection Example
+```javascript
+const response = fetch("https://" + SYNURA.domain + "/some/path");
+if (response.status >= 300 && response.status < 400) {
+  const location = (response.headers && (response.headers["Location"] || response.headers["location"])) || "";
+  console.log("redirect", response.url, location);
+}
+```
 
 ### DOM API
 Objects returned by `response.dom()` or `document.querySelector` provide a subset of the standard DOM API.
@@ -137,6 +162,27 @@ const cache = sessionStorage.getItem("cache");
 
 ### `URLSearchParams`
 The standard Web API for working with URL query strings is available. See [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams) for full API reference.
+
+### `TextEncoder`
+Browser-like UTF-8 encoder.
+-   `new TextEncoder()`
+-   `encoding`: Always `"utf-8"`.
+-   `encode(input)`: Returns a `Uint8Array` containing UTF-8 bytes for the input string.
+-   `encodeInto(input, destination)`: Writes UTF-8 bytes into a destination `Uint8Array` and returns `{ read, written }`.
+
+### `TextDecoder`
+Browser-like byte decoder for supported charset labels.
+-   `new TextDecoder(label)`
+-   `encoding`: Canonical encoding label resolved by the runtime (for example `"utf-8"` or `"euc-kr"`).
+-   `fatal`: Always `false`.
+-   `ignoreBOM`: Always `false`.
+-   `decode(input)`: Decodes an `ArrayBuffer` or typed array into a JavaScript string.
+
+Common use cases include:
+-   `new TextDecoder("utf-8")`
+-   `new TextDecoder("euc-kr")`
+
+> **Note:** The API shape matches the Web Encoding API, but Synura's `fetch()` is synchronous. Methods like `response.text()` and `response.arrayBuffer()` return values directly instead of Promises.
 
 ---
 

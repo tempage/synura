@@ -1324,7 +1324,6 @@ var SYNURA = {
   var cfg = resolveInnertubeConfig(apiCfg), url = YT_ORIGIN + path + "?key=" + encodeURIComponent(cfg.apiKey || DEFAULT_API_KEY), response = fetch(url, {
     method: "POST",
     bypass: SYNURA.bypass,
-    followRedirects: !0,
     headers: {
       "Content-Type": "application/json",
       "Accept-Language": resolveAcceptLanguage(cfg)
@@ -1337,7 +1336,6 @@ var SYNURA = {
   for (var current = getString(url), localeCfg = defaultConfig(), response = null, i = 0; i <= 4 && (response = fetch(current, {
     method: "GET",
     bypass: SYNURA.bypass,
-    followRedirects: !0,
     redirect: "follow",
     headers: {
       "Accept-Language": resolveAcceptLanguage(localeCfg)

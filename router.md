@@ -35,7 +35,7 @@ const handler = {
 The background worker runtimes used for `router(url)` have a restricted API surface to ensure safety and statelessness.
 
 **Allowed APIs:**
-*   `fetch(url, options)`: Fully supported for network requests.
+*   `fetch(url, options)`: Fully supported for network requests. The response object exposes `status`, `statusText`, `ok`, `url`, `headers`, `text()`, `arrayBuffer()`, `json()`, and `dom()`.
 *   `console.log(...)`: Logs to the system debug output.
 *   `DOMParser`: Available for parsing HTML content.
 *   `localStorage` / `sessionStorage`: Shared with the main runtime to allow reading/writing state (e.g., tokens).
@@ -61,6 +61,11 @@ const response = fetch(url, {
     'Authorization': token
   }
 });
+
+if (response.status >= 300 && response.status < 400) {
+  const location = response.headers["Location"] || response.headers["location"] || "";
+  console.log("redirect", response.url, location);
+}
 ```
 
 ## Caching Strategy

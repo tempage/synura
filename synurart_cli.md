@@ -18,6 +18,15 @@ It is the fastest way to validate extension behavior without launching the mobil
 
 The runtime exposes the same browser-like `navigator.language` global as Synura extensions. In `synurart`, it defaults to `en-US` and can be changed with `locale <tag>`.
 
+## Network Host Rule
+
+Extension network requests must stay on `SYNURA.domain`.
+
+- `synurart` and the real Synura app follow the same rule.
+- Do not call API hosts, CDN hosts, or any other host directly from extension code if the host is different from `SYNURA.domain`.
+- If a site's web app uses cross-host APIs, that does not make those calls valid for Synura extensions.
+- In practice, extension `fetch(...)` URLs should be `https://` + `SYNURA.domain` + `...`.
+
 ## Start Commands
 
 ```bash
