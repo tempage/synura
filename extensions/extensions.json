@@ -2,6 +2,23 @@
   "name": "Synura Example Repository",
   "description": "A collection of example extensions for educational purposes.",
   "version": 1.0,
+  "extensions": [
+    {
+      "name": "test_youtube",
+      "description": "Unofficial YouTube extension with search, comments, and related videos.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/youtube.js",
+      "api": 0,
+      "domain": "m.youtube.com",
+      "author": "Synura Team",
+      "tags": [
+        "video",
+        "streaming",
+        "search",
+        "media"
+      ]
+    }
+  ],
   "includes": [
     "basic/extensions.json",
     "en_US/extensions.json",

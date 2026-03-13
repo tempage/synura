@@ -3,7 +3,7 @@
 var SITE = {
   "siteKey": "fmkorea",
   "displayName": "에펨코리아",
-  "browserHomeUrl": "https://www.fmkorea.com/best",
+  "browserHomeUrl": "https://m.fmkorea.com/best",
   "browserCookieAuth": true,
   "minimumHomeBoards": 10,
   "defaultCacheTtlMs": 300000,
@@ -16,9 +16,12 @@ var SITE = {
   "boardSettingsLargeThreshold": 256,
   "boardSettingsPageSize": 96,
   "boardAddMode": "url_title",
+  "hasFullBoardCatalog": false,
+  "supportsBoardCatalogSync": false,
   "defaultVisibleBoardIds": [],
   "hostAliases": [
     "fmkorea.com",
+    "www.fmkorea.com",
     "m.fmkorea.com"
   ],
   "challengeMarkers": [
@@ -32,7 +35,8 @@ var SITE = {
     " : 에펨코리아"
   ],
   "linkAllowPatterns": [
-    "^https://www\\.fmkorea\\.com/(?:[A-Za-z0-9_]+/)?\\d+(?:\\?|$)"
+    "^https://(?:www|m)\\.fmkorea\\.com/(?:[A-Za-z0-9_]+/)?\\d+(?:\\?|$)",
+    "^https://(?:www|m)\\.fmkorea\\.com/index\\.php\\?[^#]*document_srl=\\d+(?:[&#]|$)"
   ],
   "listBoardQueryParam": "",
   "boards": [
@@ -222,20 +226,58 @@ var SITE = {
     "slug_lol": "게임"
   }
 };
+function fmkoreaBoardFromSlug(slug) {
+    var normalized = normalizeWhitespace(slug);
+    if (!normalized) return null;
+    return boardById("slug_" + normalized) ||
+        boardById("mid_" + normalized) ||
+        ensureBoard("slug_" + normalized, "https://" + SYNURA.domain + "/" + encodeURIComponent(normalized), normalized);
+}
+function fmkoreaBoardFromMid(mid) {
+    var normalized = normalizeWhitespace(mid);
+    if (!normalized) return null;
+    return boardById("mid_" + normalized) ||
+        boardById("slug_" + normalized) ||
+        ensureBoard("mid_" + normalized, "https://" + SYNURA.domain + "/index.php?mid=" + encodeURIComponent(normalized), normalized);
+}
+function fmkoreaBuildBoardUrl(boardId) {
+    var normalized = normalizeWhitespace(boardId);
+    if (!normalized) return "";
+    if (normalized.indexOf("slug_") === 0) {
+        return "https://" + SYNURA.domain + "/" + encodeURIComponent(normalized.substring(5));
+    }
+    if (normalized.indexOf("mid_") === 0) {
+        return "https://" + SYNURA.domain + "/index.php?mid=" + encodeURIComponent(normalized.substring(4));
+    }
+    return "";
+}
+function fmkoreaBuildBoardPageUrl(board, page) {
+    var boardId = normalizeWhitespace(board && board.id ? board.id : board);
+    var pageNumber = parseInt(String(page || 1), 10);
+    if (!(pageNumber > 1)) return fmkoreaBuildBoardUrl(boardId);
+    if (boardId.indexOf("slug_") === 0) {
+        return "https://" + SYNURA.domain + "/index.php?mid=" + encodeURIComponent(boardId.substring(5)) + "&page=" + pageNumber;
+    }
+    if (boardId.indexOf("mid_") === 0) {
+        return "https://" + SYNURA.domain + "/index.php?mid=" + encodeURIComponent(boardId.substring(4)) + "&page=" + pageNumber;
+    }
+    var baseUrl = fmkoreaBuildBoardUrl(boardId);
+    return baseUrl ? setPageParam(baseUrl, "page", pageNumber) : "";
+}
 SITE.matchBoard = function (urlInfo) {
     var parts = pathSegments(urlInfo.path);
     if (urlInfo.path === "/index.php") {
         var mid = queryValue(urlInfo.query, "mid");
         if (mid) {
             return {
-                board: ensureBoard("mid_" + mid, "https://" + SYNURA.domain + "/index.php?mid=" + mid, mid),
+                board: fmkoreaBoardFromMid(mid),
                 page: queryInt(urlInfo.query, "page", 1)
             };
         }
     }
     if (parts.length === 1 && parts[0] && !/^\d+$/.test(parts[0])) {
         return {
-            board: ensureBoard("slug_" + parts[0], "https://" + SYNURA.domain + "/" + parts[0], parts[0]),
+            board: fmkoreaBoardFromSlug(parts[0]),
             page: queryInt(urlInfo.query, "page", 1)
         };
     }
@@ -243,28 +285,38 @@ SITE.matchBoard = function (urlInfo) {
 };
 SITE.matchPost = function (urlInfo) {
     var parts = pathSegments(urlInfo.path);
+    if (urlInfo.path === "/index.php") {
+        var mid = queryValue(urlInfo.query, "mid");
+        var documentSrl = queryValue(urlInfo.query, "document_srl");
+        if (/^\d+$/.test(documentSrl)) {
+            return {
+                board: mid ? fmkoreaBoardFromMid(mid) : fmkoreaBoardFromSlug("best"),
+                postId: documentSrl
+            };
+        }
+    }
     if (parts.length === 1 && /^\d+$/.test(parts[0])) {
         return {
-            board: ensureBoard("slug_best", "https://" + SYNURA.domain + "/best", "best"),
+            board: fmkoreaBoardFromSlug("best"),
             postId: parts[0]
         };
     }
     if (parts.length === 2 && !/^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1])) {
         return {
-            board: ensureBoard("slug_" + parts[0], "https://" + SYNURA.domain + "/" + parts[0], parts[0]),
+            board: fmkoreaBoardFromSlug(parts[0]),
             postId: parts[1]
         };
     }
     return null;
 };
 SITE.buildNextPageUrl = function (match, currentUrl, nextPage) {
-    return setPageParam(currentUrl, "page", nextPage);
+    return fmkoreaBuildBoardPageUrl(match ? match.board : null, nextPage) || setPageParam(currentUrl, "page", nextPage);
 };
 SITE.buildPostFetchUrls = function (match, currentUrl) {
     return [currentUrl];
 };
 SITE.buildBoardUrlFromId = function (boardId) {
-    return "";
+    return fmkoreaBuildBoardPageUrl(boardId, 1);
 };
 SITE.loadDynamicBoards = function () {
     return [];
@@ -310,20 +362,23 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 };
 
 var SYNURA = {
-    domain: "www.fmkorea.com",
+    domain: "m.fmkorea.com",
     name: "fmkorea",
-    description: "Unofficial Synura extension for FMKorea mobile boards.",
+    description: "Unofficial FMKorea extension",
     version: 0.1,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
     locale: "ko_KR",
     deeplink: true,
-    icon: "https://www.fmkorea.com/favicon.ico",
+    icon: "https://m.fmkorea.com/favicon.ico",
     main: null
 };
 
-var LIST_LINK_ALLOW_PATTERNS = ["^https://www\\.fmkorea\\.com/(?:[A-Za-z0-9_]+/)?\\d+(?:\\?|$)"];
+var LIST_LINK_ALLOW_PATTERNS = [
+    "^https://(?:www|m)\\.fmkorea\\.com/(?:[A-Za-z0-9_]+/)?\\d+(?:\\?|$)",
+    "^https://(?:www|m)\\.fmkorea\\.com/index\\.php\\?[^#]*document_srl=\\d+(?:[&#]|$)"
+];
 var LIST_LINK_SELECTORS = ["h3.title a","a[href]"];
 var LIST_TITLE_SELECTORS = ["h3.title",".title"];
 var LIST_AUTHOR_SELECTORS = [".author"];

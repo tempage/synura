@@ -16,6 +16,8 @@ var SITE = {
   "boardSettingsLargeThreshold": 256,
   "boardSettingsPageSize": 96,
   "boardAddMode": "url_title",
+  "hasFullBoardCatalog": false,
+  "supportsBoardCatalogSync": true,
   "defaultVisibleBoardIds": [],
   "hostAliases": [
     "inven.co.kr",
@@ -518,7 +520,7 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "m.inven.co.kr",
     name: "inven",
-    description: "Unofficial Synura extension for Inven mobile boards.",
+    description: "Unofficial Inven extension",
     version: 0.1,
     api: 0,
     license: "Apache-2.0",

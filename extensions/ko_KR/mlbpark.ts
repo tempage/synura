@@ -4,49 +4,49 @@ var MLBPARK_PRELOADED_BOARDS = [
   {
     "id": "bullpen",
     "title": "불펜",
-    "url": "/mp/b.php?b=bullpen",
+    "url": "/mp/b.php?m=list&b=bullpen",
     "description": "대표 자유 게시판"
   },
   {
     "id": "mlbtown",
     "title": "MLB타운",
-    "url": "/mp/b.php?b=mlbtown",
+    "url": "/mp/b.php?m=list&b=mlbtown",
     "description": "메이저리그 게시판"
   },
   {
     "id": "kbotown",
     "title": "KBO타운",
-    "url": "/mp/b.php?b=kbotown",
+    "url": "/mp/b.php?m=list&b=kbotown",
     "description": "국내야구 게시판"
   },
   {
     "id": "news",
     "title": "뉴스",
-    "url": "/mp/b.php?b=news",
+    "url": "/mp/b.php?m=list&b=news",
     "description": "뉴스 게시판"
   },
   {
     "id": "suggestion",
     "title": "건의사항",
-    "url": "/mp/b.php?b=suggestion",
+    "url": "/mp/b.php?m=list&b=suggestion",
     "description": "건의사항 게시판"
   },
   {
     "id": "phone",
     "title": "폰판기",
-    "url": "/mp/b.php?b=phone",
+    "url": "/mp/b.php?m=list&b=phone",
     "description": "폰판기 게시판"
   },
   {
     "id": "notice",
     "title": "공지사항",
-    "url": "/mp/b.php?b=notice",
+    "url": "/mp/b.php?m=list&b=notice",
     "description": "운영 공지 게시판"
   },
   {
     "id": "point",
     "title": "포인트",
-    "url": "/mp/b.php?b=point",
+    "url": "/mp/b.php?m=list&b=point",
     "description": "포인트 및 이벤트 게시판"
   },
   {
@@ -134,6 +134,8 @@ var SITE = {
   "boardSettingsLargeThreshold": 256,
   "boardSettingsPageSize": 96,
   "boardAddMode": "url_title",
+  "hasFullBoardCatalog": false,
+  "supportsBoardCatalogSync": true,
   "defaultVisibleBoardIds": MLBPARK_DEFAULT_VISIBLE_BOARD_IDS,
   "hostAliases": [],
   "challengeMarkers": [],
@@ -293,9 +295,9 @@ SITE.matchBoard = function (urlInfo) {
         var boardId = queryValue(urlInfo.query, "b");
         var postId = queryValue(urlInfo.query, "id");
         var mode = queryValue(urlInfo.query, "m");
-        if (boardId && !postId && mode !== "view") {
+        if (boardId && !postId && (!mode || mode === "l" || mode === "list")) {
             return {
-                board: ensureBoard(boardId, "https://" + SYNURA.domain + "/mp/b.php?b=" + boardId, boardId),
+                board: ensureBoard(boardId, "https://" + SYNURA.domain + "/mp/b.php?m=list&b=" + boardId, boardId),
                 page: queryInt(urlInfo.query, "p", 1)
             };
         }
@@ -319,7 +321,7 @@ SITE.matchPost = function (urlInfo) {
         var mode = queryValue(urlInfo.query, "m");
         if (boardId && postId && (!mode || mode === "view")) {
             return {
-                board: ensureBoard(boardId, "https://" + SYNURA.domain + "/mp/b.php?b=" + boardId, boardId),
+                board: ensureBoard(boardId, "https://" + SYNURA.domain + "/mp/b.php?m=list&b=" + boardId, boardId),
                 postId: postId
             };
         }
@@ -329,13 +331,20 @@ SITE.matchPost = function (urlInfo) {
 SITE.buildNextPageUrl = function (match, currentUrl, nextPage) {
     var info = parseAbsoluteUrl(currentUrl);
     if (info && info.path === "/mp/best.php") return "";
-    return setPageParam(currentUrl, "p", nextPage);
+    var currentOffset = info && info.query ? queryInt(info.query, "p", 1) : 1;
+    if (!(currentOffset > 0)) currentOffset = 1;
+    var nextOffset = currentOffset + MLBPARK_BOARD_PAGE_SIZE;
+    var withMode = setQueryParam(currentUrl, "m", "list");
+    return setPageParam(withMode || currentUrl, "p", nextOffset);
 };
 SITE.buildPostFetchUrls = function (match, currentUrl) {
     return [currentUrl];
 };
 SITE.buildBoardUrlFromId = function (boardId) {
-    return "";
+    var normalizedBoardId = normalizeWhitespace(boardId);
+    return normalizedBoardId
+        ? "https://" + SYNURA.domain + "/mp/b.php?m=list&b=" + encodeURIComponent(normalizedBoardId)
+        : "";
 };
 SITE.loadDynamicBoards = function (options) {
     var allowNetwork = !(options && options.allowNetwork === false);
@@ -379,7 +388,7 @@ SITE.loadDynamicBoards = function (options) {
             pushBoard(
                 boardId,
                 title,
-                "https://" + SYNURA.domain + "/mp/b.php?b=" + encodeURIComponent(boardId),
+                "https://" + SYNURA.domain + "/mp/b.php?m=list&b=" + encodeURIComponent(boardId),
                 title,
                 inferBoardGroupFromContext(realLinks[i])
             );
@@ -441,8 +450,9 @@ SITE.routePostCustom = function (url, urlInfo, match, force) {
     var doc = page.doc;
     var finalUrl = page.finalUrl || url;
     var titleNode = firstNode(doc, ["title"]);
-    var contentRoot = firstNode(doc, SITE.selectors.postContent);
+    var contentRoot = mlbparkSanitizePostContent(firstNode(doc, SITE.selectors.postContent));
     var content = parseDetails(contentRoot, finalUrl);
+    content = mlbparkCleanPostDetails(content);
     content = mlbparkAttachImageHeaders(content, finalUrl);
     var rememberedItem = getRememberedItemPreview(url) || getRememberedItemPreview(finalUrl);
     var schemaPost = detectSchemaPost(doc);
@@ -498,7 +508,7 @@ SITE.routePostCustom = function (url, urlInfo, match, force) {
                     rememberedItem ? rememberedItem.avatar : ""
                 ]),
                 date: firstNonEmpty([
-                    cleanSingleLineField(firstText(doc, SITE.selectors.postDate), 40),
+                    mlbparkExtractPostDate(doc),
                     schemaPost ? schemaPost.datePublished : "",
                     rememberedItem ? rememberedItem.date : ""
                 ]),
@@ -507,7 +517,7 @@ SITE.routePostCustom = function (url, urlInfo, match, force) {
                     rememberedItem ? rememberedItem.category : ""
                 ]),
                 viewCount: firstNonEmpty([
-                    parseCount(firstText(doc, SITE.selectors.postViewCount)),
+                    mlbparkExtractPostMetric(doc, "조회"),
                     rememberedItem ? rememberedItem.viewCount : ""
                 ]),
                 likeCount: hideZeroCount(firstNonEmpty([
@@ -715,6 +725,103 @@ function mlbparkNeedsImageReferer(url) {
     return /^https:\/\/simg\.donga\.com\//i.test(normalized);
 }
 
+function mlbparkNormalizeCount(value) {
+    var digits = parseCount(value);
+    if (!digits) return "";
+    return digits.replace(/^0+(?=\d)/, "");
+}
+
+function mlbparkEscapeRegex(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function mlbparkExtractPostMetric(doc, label) {
+    if (!doc || !label) return "";
+
+    var metricRoot = firstNode(doc, [".view_head .text2", ".text2"]);
+    if (!metricRoot) return "";
+
+    var metricText = normalizeWhitespace(textOf(metricRoot));
+    if (metricText) {
+        var matchedText = metricText.match(new RegExp(mlbparkEscapeRegex(label) + "\\s*(\\d+)"));
+        if (matchedText && matchedText[1]) {
+            return mlbparkNormalizeCount(matchedText[1]);
+        }
+    }
+
+    var labels = metricRoot.querySelectorAll(".tit, .mark");
+    for (var i = 0; i < labels.length; i++) {
+        var titleNode = labels[i];
+        if (normalizeWhitespace(textOf(titleNode)) !== label) continue;
+
+        for (var current = titleNode.nextElementSibling; current; current = current.nextElementSibling) {
+            if (mlbparkNodeMatches(current, ".tit, .mark")) break;
+
+            var valueNode = mlbparkNodeMatches(current, ".val") ? current : firstNode(current, [".val"]);
+            var parsed = mlbparkNormalizeCount(textOf(valueNode || current));
+            if (parsed) return parsed;
+        }
+    }
+
+    return "";
+}
+
+function mlbparkExtractPostDate(doc) {
+    if (!doc) return "";
+
+    var raw = firstNonEmpty([
+        firstText(doc, [".view_head .text3 .val", ".text_right .text3 .val", ".text3 .val"]),
+        firstText(doc, SITE.selectors.postDate)
+    ]);
+    return formatMlbparkCommentDate(raw);
+}
+
+function mlbparkSanitizePostContent(contentRoot) {
+    if (!contentRoot || typeof contentRoot.cloneNode !== "function") return contentRoot;
+
+    var cloned = contentRoot.cloneNode(true);
+    var removable = cloned.querySelectorAll(".tool_cont");
+    for (var i = 0; i < removable.length; i++) {
+        var node = removable[i];
+        if (node && node.parentNode) {
+            node.parentNode.removeChild(node);
+        }
+    }
+    return cloned;
+}
+
+function mlbparkStripTrailingPostTools(value) {
+    var text = String(value || "");
+    if (!text) return "";
+
+    return text
+        .replace(/\s*추천\s*\d+\s*공유\s*$/, "")
+        .replace(/[ \t\r\n]+$/, "");
+}
+
+function mlbparkCleanPostDetails(details) {
+    var out = [];
+    for (var i = 0; i < (details || []).length; i++) {
+        var item = details[i];
+        if (!item) continue;
+
+        if (item.type === "text") {
+            var next = {};
+            for (var key in item) {
+                if (!Object.prototype.hasOwnProperty.call(item, key)) continue;
+                next[key] = item[key];
+            }
+            next.value = mlbparkStripTrailingPostTools(item.value);
+            if (!normalizeWhitespace(next.value)) continue;
+            out.push(next);
+            continue;
+        }
+
+        out.push(item);
+    }
+    return out;
+}
+
 function mlbparkAttachImageHeaders(details, refererUrl) {
     var referer = normalizeUrl(refererUrl) || normalizeUrl(SITE.browserHomeUrl) || "";
     if (!referer || !details || !details.length) return details || [];
@@ -773,6 +880,33 @@ function formatMlbparkCommentDate(value) {
     return matched[4] ? (shortDate + " " + matched[4]) : shortDate;
 }
 
+function formatMlbparkListDate(value) {
+    if (!value) return "";
+
+    var raw = String(value)
+        .replace(/\s+/g, " ")
+        .trim();
+    if (!raw) return "";
+
+    if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(raw)) return raw;
+
+    var normalized = raw
+        .replace("T", " ")
+        .replace(/\.\d+/, "")
+        .replace(/([+-]\d{2}:?\d{2}|Z)$/, "")
+        .trim();
+    var fullMatches = normalized.match(/\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?/g);
+    var candidate = fullMatches && fullMatches.length > 0 ? fullMatches[fullMatches.length - 1] : normalized;
+    var matched = candidate.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}:\d{2}(?::\d{2})?))?$/);
+    if (!matched) return raw;
+
+    var currentYear = String((new Date()).getFullYear());
+    if (matched[1] !== currentYear) return candidate;
+
+    var shortDate = matched[2] + "-" + matched[3];
+    return matched[4] ? (shortDate + " " + matched[4]) : shortDate;
+}
+
 SITE.parseComments = function (doc, postUrl) {
     var comments = parseGenericComments(doc, postUrl);
     for (var i = 0; i < comments.length; i++) {
@@ -793,11 +927,11 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "mlbpark.donga.com",
     name: "mlbpark",
-    description: "Unofficial Synura extension for MLBPark boards.",
+    description: "Unofficial MLBPark extension",
     version: 0.1,
     api: 0,
     license: "Apache-2.0",
-    bypass: "chrome/android",
+    bypass: "chrome/windows",
     locale: "ko_KR",
     deeplink: true,
     icon: "https://mlbpark.donga.com/favicon.ico",
@@ -815,6 +949,7 @@ var LIST_VIEW_COUNT_SELECTORS = [".viewV",".view"];
 var LIST_LIKE_COUNT_SELECTORS = [".recommend",".recom"];
 var LIST_CATEGORY_SELECTORS = [".list_word",".cate",".category"];
 var LIST_IMAGE_SELECTORS = [".icon_img img",".thumb img","img[src*='simg.donga.com']"];
+var MLBPARK_BOARD_PAGE_SIZE = 30;
 
 var MLBPARK_LIST_CATEGORIES = [
     "정치", "야구", "축구", "해축", "배구", "농구", "NBA", "헬스", "러닝", "격투기",
@@ -853,6 +988,22 @@ function mlbparkStripCategoryFromTitle(title, category) {
     return normalizedTitle;
 }
 
+function mlbparkCanonicalizePostLink(link) {
+    var normalized = normalizeUrl(link) || link;
+    var info = parseAbsoluteUrl(normalized);
+    if (!info || info.path !== "/mp/b.php") return normalized;
+
+    var boardId = normalizeWhitespace(queryValue(info.query, "b"));
+    var postId = normalizeWhitespace(queryValue(info.query, "id"));
+    var mode = normalizeWhitespace(queryValue(info.query, "m"));
+    if (!boardId || !postId || (mode && mode !== "view")) return normalized;
+
+    return "https://" + SYNURA.domain
+        + "/mp/b.php?b=" + encodeURIComponent(boardId)
+        + "&id=" + encodeURIComponent(postId)
+        + "&m=view";
+}
+
 function extractListItem(row, baseUrl) {
     var linkNode = firstNode(row, LIST_LINK_SELECTORS);
     var titleNode = firstNode(row, LIST_TITLE_SELECTORS);
@@ -879,11 +1030,11 @@ function extractListItem(row, baseUrl) {
     if (mediaUrl) types.push("image");
 
     return {
-        link: normalizeUrl(link) || link,
+        link: mlbparkCanonicalizePostLink(link),
         title: title,
         author: author,
         avatar: avatar,
-        date: firstText(row, LIST_DATE_SELECTORS),
+        date: formatMlbparkListDate(firstText(row, LIST_DATE_SELECTORS)),
         category: category,
         commentCount: commentCount,
         viewCount: viewCount,

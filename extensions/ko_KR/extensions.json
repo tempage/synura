@@ -2,17 +2,17 @@
   "extensions": [
     {
       "name": "fmkorea",
-      "description": "Unofficial Synura extension for FMKorea mobile boards.",
+      "description": "Unofficial FMKorea extension",
       "version": 0.1,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/fmkorea.js",
       "api": 0,
-      "domain": "www.fmkorea.com",
-      "icon": "https://www.fmkorea.com/favicon.ico",
+      "domain": "m.fmkorea.com",
+      "icon": "https://m.fmkorea.com/favicon.ico",
       "locale": "ko_KR"
     },
     {
       "name": "ppomppu",
-      "description": "Unofficial Synura extension for Ppomppu mobile boards.",
+      "description": "Unofficial Ppomppu extension",
       "version": 0.1,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/ppomppu.js",
       "api": 0,
@@ -21,18 +21,8 @@
       "locale": "ko_KR"
     },
     {
-      "name": "test_clien",
-      "description": "Unofficial example extension for educational purposes.",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/clien.manual.js",
-      "api": 0,
-      "domain": "m.clien.net",
-      "icon": "https://m.clien.net/service/image/favicon.ico",
-      "locale": "ko_KR"
-    },
-    {
       "name": "pann",
-      "description": "Unofficial Synura extension for Nate Pann mobile boards.",
+      "description": "Unofficial Nate Pann extension",
       "version": 0.1,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/pann.js",
       "api": 0,
@@ -41,18 +31,8 @@
       "locale": "ko_KR"
     },
     {
-      "name": "test_damoang",
-      "description": "Unofficial example extension for educational purposes.",
-      "version": 0.4,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/damoang.manual.js",
-      "api": 0,
-      "domain": "damoang.net",
-      "icon": "https://damoang.net/favicon-96x96.png",
-      "locale": "ko_KR"
-    },
-    {
       "name": "damoang",
-      "description": "Unofficial Synura extension for damoang.net boards.",
+      "description": "Unofficial damoang.net extension",
       "version": 0.5,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/damoang.js",
       "api": 0,
@@ -62,7 +42,7 @@
     },
     {
       "name": "ruliweb",
-      "description": "Unofficial Synura extension for Ruliweb mobile boards.",
+      "description": "Unofficial Ruliweb extension",
       "version": 0.1,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/ruliweb.js",
       "api": 0,
@@ -72,27 +52,26 @@
     },
     {
       "name": "dcinside",
-      "description": "Unofficial Synura extension for dcinside mobile boards.",
+      "description": "Unofficial dcinside extension",
       "version": 0.1,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/dcinside.js",
       "api": 0,
-      "domain": "m.dcinside.com",
       "icon": "https://nstatic.dcinside.com/dc/m/img/dcinside_icon.png",
       "locale": "ko_KR"
     },
     {
       "name": "arca",
-      "description": "Unofficial Synura extension for arca.live boards.",
+      "description": "Unofficial arca.live extension",
       "version": 0.1,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/arca.js",
       "api": 0,
       "domain": "arca.live",
-      "icon": "https://arca.live/favicon.ico",
+      "icon": "https://arca.live/static/favicon-192.png",
       "locale": "ko_KR"
     },
     {
       "name": "clien",
-      "description": "Unofficial Synura extension for Clien mobile boards.",
+      "description": "Unofficial Clien extension",
       "version": 0.5,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/clien.js",
       "api": 0,
@@ -102,7 +81,7 @@
     },
     {
       "name": "mlbpark",
-      "description": "Unofficial Synura extension for MLBPark boards.",
+      "description": "Unofficial MLBPark extension",
       "version": 0.1,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/mlbpark.js",
       "api": 0,
@@ -112,7 +91,7 @@
     },
     {
       "name": "inven",
-      "description": "Unofficial Synura extension for Inven mobile boards.",
+      "description": "Unofficial Inven extension",
       "version": 0.1,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/inven.js",
       "api": 0,
@@ -122,12 +101,12 @@
     },
     {
       "name": "theqoo",
-      "description": "Unofficial Synura extension for theqoo.net boards.",
+      "description": "Unofficial theqoo.net extension",
       "version": 0.1,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/theqoo.js",
       "api": 0,
       "domain": "theqoo.net",
-      "icon": "https://theqoo.net/favicon.ico",
+      "icon": "https://theqoo.net/files/attach/xeicon/favicon.ico",
       "locale": "ko_KR"
     }
   ]

@@ -12,7 +12,7 @@
 // 2. Fetch each fixed section seed (for example `https://bbs.ruliweb.com/community`)
 //    and each `/family/{id}` returned by the API with `curl -sS -L '<seed-url>'`.
 // 3. Parse `.menu_wrapper` and `.snb_family .list_menu`, normalize board URLs to the
-//    queryless board URL, and update `RULIWEB_PRELOADED_BOARD_ROWS` below.
+//    queryless board URL, and update the grouped `RULIWEB_PRELOADED_BOARD_ROWS` data below.
 // 4. Keep `RULIWEB_DEFAULT_VISIBLE_BOARD_IDS` small so cold starts do not expose every board.
 
 var RULIWEB_DEFAULT_VISIBLE_BOARD_IDS = [
@@ -89,181 +89,356 @@ var RULIWEB_HOME_BOARDS = [
   }
 ];
 
-var RULIWEB_PRELOADED_BOARD_ROWS = [
-  ["LIVE / 개설 신청", "userboard_700220", "지금 듣는 노래 게시판", "/userboard/board/700220"],
-  ["LOL 루리웹 / LOL 게시판", "family_4526_300585", "매칭/모집", "/family/4526/board/300585"],
-  ["LOL 루리웹 / 기타", "family_4526_300064", "웹툰 갤러리", "/family/4526/board/300064"],
-  ["LOL 루리웹 / 뉴스/정보", "family_4526_300007", "뉴스 게시판", "/family/4526/board/300007"],
-  ["LOL 루리웹 / 커뮤니티", "family_4526_300143", "유머 게시판", "/family/4526/board/300143"],
-  ["LOL 루리웹 / 포지션 게시판", "family_4526_300586", "TOP 포지션", "/family/4526/board/300586"],
-  ["PC / H/W 게시판", "pc_320019", "조립/견적", "/pc/board/320019"],
-  ["PC / 게임 게시판", "pc_300058", "EPIC/스팀/패키지", "/pc/board/300058"],
-  ["PC / 스샷 / 영상", "pc_300535", "패키지게임 스샷", "/pc/board/300535"],
-  ["PC / 정보 게시판", "pc_300006", "PC 정보", "/pc/board/300006"],
-  ["PS4/5 / 게임 게시판", "ps_300421", "게임 이야기", "/ps/board/300421"],
-  ["PS4/5 / 리뷰 게시판", "ps_300577", "게임 소감/비평", "/ps/board/300577"],
-  ["PS4/5 / 스샷 / 영상", "ps_300496", "스크린샷", "/ps/board/300496"],
-  ["PS4/5 / 자료실", "ps_300432", "질문/요청", "/ps/board/300432"],
-  ["PS4/5 / 정보 게시판", "ps_300001", "유저 정보", "/ps/board/300001"],
-  ["SWITCH / 게임 게시판", "nin_300051", "게임 이야기", "/nin/board/300051"],
-  ["SWITCH / 리뷰 게시판", "nin_300577", "게임 소감/비평", "/nin/board/300577"],
-  ["SWITCH / 스샷 / 영상", "nin_300496", "스크린샷", "/nin/board/300496"],
-  ["SWITCH / 정보 게시판", "nin_300004", "유저 정보", "/nin/board/300004"],
-  ["VR / 메타 퀘스트", "family_5342_300777", "메타퀘스트3/3S", "/family/5342/board/300777"],
-  ["VR / 버튜버", "userboard_700037", "버튜버 게시판", "/userboard/board/700037"],
-  ["VR / 정보 게시판", "family_5342_300700", "버튜버 정보", "/family/5342/board/300700"],
-  ["XBO/SX / 게임 게시판", "xbox_300047", "게임 이야기", "/xbox/board/300047"],
-  ["XBO/SX / 리뷰 게시판", "xbox_300577", "게임 소감/비평", "/xbox/board/300577"],
-  ["XBO/SX / 스샷 / 영상", "xbox_300496", "스크린샷", "/xbox/board/300496"],
-  ["XBO/SX / 정보 게시판", "xbox_300003", "유저 정보", "/xbox/board/300003"],
-  ["검은사막 루리웹 / 검은사막", "family_4653_180450", "이야기 게시판", "/family/4653/board/180450"],
-  ["검은사막 루리웹 / 검은사막 M", "family_4653_184563", "이야기 게시판", "/family/4653/board/184563"],
-  ["검은사막 루리웹 / 검은사막 콘솔", "family_4653_185160", "이야기 게시판", "/family/4653/board/185160"],
-  ["검은사막 루리웹 / 직업 게시판", "family_4653_300600", "워리어", "/family/4653/board/300600"],
-  ["검은사막 루리웹 / 커뮤/자료실", "family_4653_300143", "유머 게시판", "/family/4653/board/300143"],
-  ["고전/아케이드 / PSV/PSP", "family_249_300002", "유저 정보", "/family/249/board/300002"],
-  ["고전/아케이드 / 기타", "family_249_300139", "네오지오", "/family/249/board/300139"],
-  ["고전/아케이드 / 닌텐도", "family_249_300127", "패미컴", "/family/249/board/300127"],
-  ["고전/아케이드 / 닌텐도 3DS", "family_249_300005", "유저 정보", "/family/249/board/300005"],
-  ["고전/아케이드 / 세가", "family_249_300121", "잡담 게시판", "/family/249/board/300121"],
-  ["고전/아케이드 / 커뮤니티", "family_249_300119", "고전 게임", "/family/249/board/300119"],
-  ["그란 투리스모", "family_500_100585", "그란 투리스모", "/family/500/board/100585"],
-  ["그란 투리스모 / 정보 게시판", "family_500_1001", "유저 뉴스", "/family/500/board/1001"],
-  ["그란 투리스모 / 커뮤니티", "family_500_320044", "자동차 갤러리", "/family/500/board/320044"],
-  ["뉴스/겜툰 / 비디오게임", "news_524", "PS4 / PS5", "/news/524"],
-  ["뉴스/겜툰 / 유저 동영상", "news_300537", "콘솔 영상", "/news/board/300537"],
-  ["뉴스/겜툰 / 유저 스크린샷", "news_300496", "콘솔 스샷", "/news/board/300496"],
-  ["뉴스/겜툰 / 유저정보", "news_1001", "콘솔", "/news/board/1001"],
-  ["던전 앤 파이터 루리웹 / 던전앤파이터", "family_496_102230", "던전앤파이터", "/family/496/board/102230"],
-  ["던전 앤 파이터 루리웹 / 던파 듀얼", "family_496_186024", "던파 듀얼", "/family/496/board/186024"],
-  ["던전 앤 파이터 루리웹 / 던파 모바일", "family_496_108216", "던파 모바일", "/family/496/board/108216"],
-  ["던전 앤 파이터 루리웹 / 커뮤니티", "family_496_300143", "유머 게시판", "/family/496/board/300143"],
-  ["데스티니 가디언즈 루리웹 / 데스티니", "family_4383_181510", "게임 이야기", "/family/4383/board/181510"],
-  ["데스티니 가디언즈 루리웹 / 커뮤니티", "family_4383_300143", "유머 게시판", "/family/4383/board/300143"],
-  ["동물의 숲 패밀리 / 놀러가요", "family_503_100403", "놀러가요", "/family/503/board/100403"],
-  ["동물의 숲 패밀리 / 놀러오세요", "family_503_100090", "놀러오세요", "/family/503/board/100090"],
-  ["동물의 숲 패밀리 / 모바일/ETC", "family_503_183669", "해피 홈", "/family/503/board/183669"],
-  ["동물의 숲 패밀리 / 모여봐요", "family_503_185109", "게임 이야기", "/family/503/board/185109"],
-  ["동물의 숲 패밀리 / 통신 게시판", "family_503_300517", "3DS", "/family/503/board/300517"],
-  ["동물의 숲 패밀리 / 튀어나와요", "family_503_180519", "튀어나와요", "/family/503/board/180519"],
-  ["드래곤 볼 / 드래곤볼", "family_504_102332", "드래곤볼", "/family/504/board/102332"],
-  ["디비전 루리웹 / 디비전", "family_492_181224", "이야기 게시판", "/family/492/board/181224"],
-  ["디비전 루리웹 / 디비전2", "family_492_184778", "디비전2", "/family/492/board/184778"],
-  ["디아블로 루리웹 / 디아블로4", "family_2086_185248", "이야기 게시판", "/family/2086/board/185248"],
-  ["디아블로 루리웹 / 이모탈", "family_2086_185621", "이야기 게시판", "/family/2086/board/185621"],
-  ["라스트에포크 루리웹 / 라스트에포크", "family_5482_186432", "전체 게시판", "/family/5482/board/186432"],
-  ["락스타 게임즈 루리웹 / GTA 시리즈", "family_4948_100446", "GTA 시리즈", "/family/4948/board/100446"],
-  ["락스타 게임즈 루리웹 / 그 외", "family_4948_100890", "레드데드리뎀션", "/family/4948/board/100890"],
-  ["락스타 게임즈 루리웹 / 레데리 2", "family_4948_184900", "레데리 2", "/family/4948/board/184900"],
-  ["러브 라이브", "family_3094_181035", "러브 라이브", "/family/3094/board/181035"],
-  ["러브 라이브 / 커뮤니티", "family_3094_300552", "자유 게시판", "/family/3094/board/300552"],
-  ["러브 라이브 / 콘솔/AC", "family_3094_182317", "콘솔/AC", "/family/3094/board/182317"],
-  ["로스트아크 루리웹 / 로아 게시판", "family_4659_182721", "이야기 게시판", "/family/4659/board/182721"],
-  ["로스트아크 루리웹 / 커뮤니티", "family_4659_300143", "유머 게시판", "/family/4659/board/300143"],
-  ["마영전 루리웹 / 뉴스/정보", "family_4853_300007", "뉴스 게시판", "/family/4853/board/300007"],
-  ["마영전 루리웹 / 마비노기 시리즈", "family_4853_186573", "빈딕투스: 디파잉 페이트", "/family/4853/board/186573"],
-  ["마영전 루리웹 / 마영전", "family_4853_101236", "이야기 게시판", "/family/4853/board/101236"],
-  ["만화 / 이야기 게시판", "family_212_300142", "질문 게시판", "/family/212/board/300142"],
-  ["만화 / 정보 게시판", "family_212_300277", "유저 정보", "/family/212/board/300277"],
-  ["메이플스토리 루리웹 / 그 외", "family_4773_183984", "메이플 월드", "/family/4773/board/183984"],
-  ["메이플스토리 루리웹 / 메이플", "family_4773_182199", "이야기 게시판", "/family/4773/board/182199"],
-  ["메이플스토리 루리웹 / 메이플 2", "family_4773_102937", "이야기 게시판", "/family/4773/board/102937"],
-  ["메탈 기어 솔리드 / MGS 외전", "family_507_102459", "MGS 외전", "/family/507/board/102459"],
-  ["메탈 기어 솔리드 / MGS 정규", "family_507_102113", "MGS 정규", "/family/507/board/102113"],
-  ["모바일 / 게임 게시판", "mobile_300059", "게임 이야기", "/mobile/board/300059"],
-  ["모바일 / 정보 게시판", "mobile_300008", "애플 정보", "/mobile/board/300008"],
-  ["몬스터 헌터 루리웹 / 몬헌 와일즈", "family_4442_300352", "헌터서클집회", "/family/4442/board/300352"],
-  ["몬스터 헌터 루리웹 / 커뮤니티", "family_4442_300143", "유머 게시판", "/family/4442/board/300143"],
-  ["무쌍 시리즈 / 외전", "family_510_186861", "무쌍: 어비스", "/family/510/board/186861"],
-  ["무쌍 시리즈 / 정규", "family_510_186830", "오리진", "/family/510/board/186830"],
-  ["배틀그라운드 / PC 게시판", "family_4384_320019", "PC 견적 문의", "/family/4384/board/320019"],
-  ["배틀그라운드 / 배그 게시판", "family_4384_184318", "배그 게시판", "/family/4384/board/184318"],
-  ["배틀그라운드 / 배그 모바일", "family_4384_184746", "이야기 게시판", "/family/4384/board/184746"],
-  ["배틀필드 루리웹 / 배틀필드", "family_5595_100219", "배틀필드", "/family/5595/board/100219"],
-  ["붉은사막 루리웹 / 붉은사막", "family_5614_185595", "붉은사막", "/family/5614/board/185595"],
-  ["사이버펑크2077 패밀리 / 이야기 게시판", "family_5214_184786", "이야기 게시판", "/family/5214/board/184786"],
-  ["소녀전선 / 소녀전선 시리즈", "family_4382_186571", "역붕괴", "/family/4382/board/186571"],
-  ["소녀전선 / 소전 게시판", "family_4382_184404", "소전 게시판", "/family/4382/board/184404"],
-  ["소녀전선 / 커뮤니티", "family_4382_300143", "유머 게시판", "/family/4382/board/300143"],
-  ["소울워커 루리웹 / 소울워커", "family_493_179945", "이야기 게시판", "/family/493/board/179945"],
-  ["소울워커 루리웹 / 커뮤니티", "family_493_300143", "유머 게시판", "/family/493/board/300143"],
-  ["슈퍼로봇대전 / SRW 커뮤니티", "family_511_300366", "아수라장", "/family/511/board/300366"],
-  ["슈퍼로봇대전 / 슈로대 모바일", "family_511_183793", "슈로대 모바일", "/family/511/board/183793"],
-  ["아이돌 마스터 / 모바일 아이마스", "family_3518_183740", "모바일 아이마스", "/family/3518/board/183740"],
-  ["아이돌 마스터 / 커뮤니티", "family_3518_300548", "자유 게시판", "/family/3518/board/300548"],
-  ["아이돌 마스터 / 콘솔 아이마스", "family_3518_101568", "콘솔 아이마스", "/family/3518/board/101568"],
-  ["아이온 루리웹 / 아이온", "family_5605_101668", "아이온", "/family/5605/board/101668"],
-  ["아이온 루리웹 / 아이온 2", "family_5605_187107", "아이온 2", "/family/5605/board/187107"],
-  ["애니/만화책 / 관련 게시판", "family_211_300557", "타입문", "/family/211/board/300557"],
-  ["애니/만화책 / 만화책/도서", "family_211_300067", "만화책 / 웹툰", "/family/211/board/300067"],
-  ["애니/만화책 / 애니메이션", "family_211_300073", "잡담 게시판", "/family/211/board/300073"],
-  ["애니/만화책 / 정보 게시판", "family_211_300015", "애니 정보", "/family/211/board/300015"],
-  ["에이펙스 레전드 루리웹 / 에이펙스 레전드", "family_5042_184999", "에이펙스 레전드", "/family/5042/board/184999"],
-  ["에이펙스 레전드 루리웹 / 정보", "family_5042_300007", "뉴스", "/family/5042/board/300007"],
-  ["오버워치 루리웹 / 오버워치", "family_1476_184032", "토론/이슈", "/family/1476/board/184032"],
-  ["오버워치 루리웹 / 커뮤니티", "family_1476_300143", "유머 게시판", "/family/1476/board/300143"],
-  ["우마무스메 패밀리 / 우마무스메", "family_5268_184773", "우마무스메", "/family/5268/board/184773"],
-  ["우마무스메 패밀리 / 우마무스메 콘솔", "family_5268_186546", "대감사제!", "/family/5268/board/186546"],
-  ["월드 오브 워쉽 루리웹 / 병과 게시판", "family_4804_300673", "구축함", "/family/4804/board/300673"],
-  ["월드 오브 워쉽 루리웹 / 자료실", "family_4804_300671", "워쉽 자료실", "/family/4804/board/300671"],
-  ["월드 오브 워쉽 루리웹 / 커뮤니티", "family_4804_181269", "이야기 게시판", "/family/4804/board/181269"],
-  ["월드 오브 워크래프트 루리웹 / WOW 게시판", "family_4454_100159", "이야기 게시판", "/family/4454/board/100159"],
-  ["월드 오브 워크래프트 루리웹 / 던전/PVP", "family_4454_300581", "레이드", "/family/4454/board/300581"],
-  ["월드 오브 워크래프트 루리웹 / 블리자드 게임", "family_4454_101296", "스타크래프트", "/family/4454/board/101296"],
-  ["월드 오브 워크래프트 루리웹 / 서버 게시판", "family_4454_300701", "아즈샤라", "/family/4454/board/300701"],
-  ["월드 오브 워크래프트 루리웹 / 자료실", "family_4454_300593", "애드온 자료실", "/family/4454/board/300593"],
-  ["월드 오브 워크래프트 루리웹 / 직업 게시판", "family_4454_300625", "전사", "/family/4454/board/300625"],
-  ["월드 오브 워크래프트 루리웹 / 커뮤니티", "family_4454_300143", "유머 게시판", "/family/4454/board/300143"],
-  ["월드 오브 탱크 루리웹 / 자료실", "family_4805_300672", "월탱 자료실", "/family/4805/board/300672"],
-  ["월드 오브 탱크 루리웹 / 커뮤니티", "family_4805_178322", "이야기 게시판", "/family/4805/board/178322"],
-  ["취미갤 / PC 갤러리", "hobby_320019", "PC조립 부품", "/hobby/board/320019"],
-  ["취미갤 / 게임", "hobby_300577", "리뷰&스토리", "/hobby/board/300577"],
-  ["취미갤 / 교통 / 자전거", "hobby_320109", "정보 게시판", "/hobby/board/320109"],
-  ["취미갤 / 레고/프라/피규어", "hobby_300118", "레고/옥스포드", "/hobby/board/300118"],
-  ["취미갤 / 방사진/음식/패션", "hobby_300116", "방사진/사무실", "/hobby/board/300116"],
-  ["취미갤 / 휴대폰 / AV", "hobby_300098", "디카 기기", "/hobby/board/300098"],
-  ["칼리스토 프로토콜 패밀리 / [리댁티드]", "family_5428_186767", "[리댁티드]", "/family/5428/board/186767"],
-  ["칼리스토 프로토콜 패밀리 / 칼리스토 프로토콜", "family_5428_186203", "칼리스토 프로토콜", "/family/5428/board/186203"],
-  ["캡콤 게임 루리웹 / 격투게임", "family_508_182821", "스트리트파이터", "/family/508/board/182821"],
-  ["캡콤 게임 루리웹 / 바이오하자드", "family_508_187029", "바하 레퀴엠", "/family/508/board/187029"],
-  ["캡콤 게임 루리웹 / 액션게임", "family_508_100261", "록맨", "/family/508/board/100261"],
-  ["커뮤니티 / 정보 게시판", "community_300018", "사정게", "/community/board/300018"],
-  ["콜 오브 듀티 루리웹 / COD 워존", "family_4916_185340", "COD 워존", "/family/4916/board/185340"],
-  ["콜 오브 듀티 루리웹 / 콜 오브 듀티", "family_4916_100370", "콘솔 게시판", "/family/4916/board/100370"],
-  ["테일즈 시리즈 / 시리즈 게시판", "family_516_185755", "어라이즈", "/family/516/board/185755"],
-  ["팀 닌자 루리웹 / 로닌/와룡/인왕", "family_5455_186534", "로닌", "/family/5455/board/186534"],
-  ["팀 닌자 루리웹 / 인왕 3", "family_5455_186940", "인왕 3", "/family/5455/board/186940"],
-  ["팀 닌자 루리웹 / 팀 닌자", "family_5455_101777", "DOA", "/family/5455/board/101777"],
-  ["파이널 판타지 루리웹 / 외전", "family_514_186412", "에버크라이시스", "/family/514/board/186412"],
-  ["파이널 판타지 루리웹 / 정규", "family_514_185327", "파판 7 RE", "/family/514/board/185327"],
-  ["패스 오브 엑자일 루리웹 / POE", "family_5076_181745", "POE", "/family/5076/board/181745"],
-  ["패스 오브 엑자일 루리웹 / POE 2", "family_5076_186769", "POE 2", "/family/5076/board/186769"],
-  ["포켓몬스터 루리웹 / WIFI 통신", "family_515_300390", "통신 게시판", "/family/515/board/300390"],
-  ["포켓몬스터 루리웹 / 레전드 Z-A", "family_515_185923", "레전드 Z-A", "/family/515/board/185923"],
-  ["포켓몬스터 루리웹 / 스칼렛/바이올렛", "family_515_184030", "스칼렛/바이올렛", "/family/515/board/184030"],
-  ["포켓몬스터 루리웹 / 커뮤니티", "family_515_300389", "자유 게시판", "/family/515/board/300389"],
-  ["포켓몬스터 루리웹 / 포켓몬 외전", "family_515_187190", "포코피아", "/family/515/board/187190"],
-  ["폴아웃 루리웹 / 커뮤니티", "family_4979_300143", "유머 게시판", "/family/4979/board/300143"],
-  ["폴아웃 루리웹 / 폴아웃 게시판", "family_4979_184906", "이야기 게시판", "/family/4979/board/184906"],
-  ["프라모델", "family_232_300079", "이야기 게시판", "/family/232/board/300079"],
-  ["프라모델 / 정보 게시판", "family_232_300016", "유저 정보", "/family/232/board/300016"],
-  ["프롬 소프트웨어 루리웹 / 블러드 본", "family_4892_182048", "블러드 본", "/family/4892/board/182048"],
-  ["프롬 소프트웨어 루리웹 / 세키로", "family_4892_184765", "세키로", "/family/4892/board/184765"],
-  ["프롬 소프트웨어 루리웹 / 소울 시리즈", "family_4892_183787", "다크 소울 3", "/family/4892/board/183787"],
-  ["프롬 소프트웨어 루리웹 / 아머드 코어", "family_4892_101995", "아머드 코어", "/family/4892/board/101995"],
-  ["프롬 소프트웨어 루리웹 / 엘든 링", "family_4892_185738", "엘든 링", "/family/4892/board/185738"],
-  ["피규어 / 관련 갤러리", "family_242_300118", "레고/옥스포드", "/family/242/board/300118"],
-  ["피규어 / 정보 게시판", "family_242_300017", "유저 정보", "/family/242/board/300017"],
-  ["피규어 / 피규어 게시판", "family_242_300085", "이야기 게시판", "/family/242/board/300085"],
-  ["피파온라인 루리웹 / 모바일 게임", "family_4749_186552", "FC 모바일", "/family/4749/board/186552"],
-  ["피파온라인 루리웹 / 커뮤니티", "family_4749_101249", "이야기 게시판", "/family/4749/board/101249"],
-  ["피파온라인 루리웹 / 콘솔게임", "family_4749_186425", "FC 게시판", "/family/4749/board/186425"],
-  ["하스스톤 루리웹 / 커뮤니티", "family_3110_300143", "유머 게시판", "/family/3110/board/300143"],
-  ["하스스톤 루리웹 / 하스스톤", "family_3110_180930", "이야기 게시판", "/family/3110/board/180930"],
-  ["히오스 루리웹 / 뉴스/정보", "family_4527_300007", "뉴스 게시판", "/family/4527/board/300007"],
-  ["히오스 루리웹 / 커뮤니티", "family_4527_300143", "유머 게시판", "/family/4527/board/300143"],
-  ["히오스 루리웹 / 히오스 게시판", "family_4527_181429", "이야기 게시판", "/family/4527/board/181429"]
-];
+function ruliwebExpandPreloadedBoardBlocks(blocks) {
+  var rows = [];
+  for (var i = 0; i < (blocks || []).length; i++) {
+    var block = blocks[i] || [];
+    var groupPrefix = block[0] ? String(block[0]).trim() : "";
+    var blockRows = Array.isArray(block[1]) ? block[1] : [];
+    for (var j = 0; j < blockRows.length; j++) {
+      var row = blockRows[j] || [];
+      var subgroup = row[0] ? String(row[0]).trim() : "";
+      rows.push([
+        subgroup ? (groupPrefix ? (groupPrefix + " / " + subgroup) : subgroup) : groupPrefix,
+        row[1],
+        row[2],
+        row[3]
+      ]);
+    }
+  }
+  return rows;
+}
+
+function ruliwebPreloadedFamilyRow(subgroup, familyId, boardId, title) {
+  var family = String(familyId == null ? "" : familyId).trim();
+  var board = String(boardId == null ? "" : boardId).trim();
+  return [
+    subgroup,
+    "family_" + family + "_" + board,
+    title,
+    "/family/" + encodeURIComponent(family) + "/board/" + encodeURIComponent(board)
+  ];
+}
+
+var RULIWEB_PRELOADED_BOARD_ROWS = ruliwebExpandPreloadedBoardBlocks([
+  ["LIVE", [
+    ["개설 신청", "userboard_700220", "지금 듣는 노래 게시판", "/userboard/board/700220"],
+  ]],
+  ["LOL 루리웹", [
+    ruliwebPreloadedFamilyRow("LOL 게시판", 4526, 300585, "매칭/모집"),
+    ruliwebPreloadedFamilyRow("기타", 4526, 300064, "웹툰 갤러리"),
+    ruliwebPreloadedFamilyRow("뉴스/정보", 4526, 300007, "뉴스 게시판"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 4526, 300143, "유머 게시판"),
+    ruliwebPreloadedFamilyRow("포지션 게시판", 4526, 300586, "TOP 포지션"),
+  ]],
+  ["PC", [
+    ["H/W 게시판", "pc_320019", "조립/견적", "/pc/board/320019"],
+    ["게임 게시판", "pc_300058", "EPIC/스팀/패키지", "/pc/board/300058"],
+  ]],
+  ["PC / 스샷", [
+    ["영상", "pc_300535", "패키지게임 스샷", "/pc/board/300535"],
+  ]],
+  ["PC", [
+    ["정보 게시판", "pc_300006", "PC 정보", "/pc/board/300006"],
+  ]],
+  ["PS4/5", [
+    ["게임 게시판", "ps_300421", "게임 이야기", "/ps/board/300421"],
+    ["리뷰 게시판", "ps_300577", "게임 소감/비평", "/ps/board/300577"],
+  ]],
+  ["PS4/5 / 스샷", [
+    ["영상", "ps_300496", "스크린샷", "/ps/board/300496"],
+  ]],
+  ["PS4/5", [
+    ["자료실", "ps_300432", "질문/요청", "/ps/board/300432"],
+    ["정보 게시판", "ps_300001", "유저 정보", "/ps/board/300001"],
+  ]],
+  ["SWITCH", [
+    ["게임 게시판", "nin_300051", "게임 이야기", "/nin/board/300051"],
+    ["리뷰 게시판", "nin_300577", "게임 소감/비평", "/nin/board/300577"],
+  ]],
+  ["SWITCH / 스샷", [
+    ["영상", "nin_300496", "스크린샷", "/nin/board/300496"],
+  ]],
+  ["SWITCH", [
+    ["정보 게시판", "nin_300004", "유저 정보", "/nin/board/300004"],
+  ]],
+  ["VR", [
+    ruliwebPreloadedFamilyRow("메타 퀘스트", 5342, 300777, "메타퀘스트3/3S"),
+    ["버튜버", "userboard_700037", "버튜버 게시판", "/userboard/board/700037"],
+    ruliwebPreloadedFamilyRow("정보 게시판", 5342, 300700, "버튜버 정보"),
+  ]],
+  ["XBO/SX", [
+    ["게임 게시판", "xbox_300047", "게임 이야기", "/xbox/board/300047"],
+    ["리뷰 게시판", "xbox_300577", "게임 소감/비평", "/xbox/board/300577"],
+  ]],
+  ["XBO/SX / 스샷", [
+    ["영상", "xbox_300496", "스크린샷", "/xbox/board/300496"],
+  ]],
+  ["XBO/SX", [
+    ["정보 게시판", "xbox_300003", "유저 정보", "/xbox/board/300003"],
+  ]],
+  ["검은사막 루리웹", [
+    ruliwebPreloadedFamilyRow("검은사막", 4653, 180450, "이야기 게시판"),
+    ruliwebPreloadedFamilyRow("검은사막 M", 4653, 184563, "이야기 게시판"),
+    ruliwebPreloadedFamilyRow("검은사막 콘솔", 4653, 185160, "이야기 게시판"),
+    ruliwebPreloadedFamilyRow("직업 게시판", 4653, 300600, "워리어"),
+    ruliwebPreloadedFamilyRow("커뮤/자료실", 4653, 300143, "유머 게시판"),
+  ]],
+  ["고전/아케이드", [
+    ruliwebPreloadedFamilyRow("PSV/PSP", 249, 300002, "유저 정보"),
+    ruliwebPreloadedFamilyRow("기타", 249, 300139, "네오지오"),
+    ruliwebPreloadedFamilyRow("닌텐도", 249, 300127, "패미컴"),
+    ruliwebPreloadedFamilyRow("닌텐도 3DS", 249, 300005, "유저 정보"),
+    ruliwebPreloadedFamilyRow("세가", 249, 300121, "잡담 게시판"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 249, 300119, "고전 게임"),
+  ]],
+  ["그란 투리스모", [
+    ruliwebPreloadedFamilyRow("", 500, 100585, "그란 투리스모"),
+    ruliwebPreloadedFamilyRow("정보 게시판", 500, 1001, "유저 뉴스"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 500, 320044, "자동차 갤러리"),
+  ]],
+  ["뉴스/겜툰", [
+    ["비디오게임", "news_524", "PS4 / PS5", "/news/524"],
+    ["유저 동영상", "news_300537", "콘솔 영상", "/news/board/300537"],
+    ["유저 스크린샷", "news_300496", "콘솔 스샷", "/news/board/300496"],
+    ["유저정보", "news_1001", "콘솔", "/news/board/1001"],
+  ]],
+  ["던전 앤 파이터 루리웹", [
+    ruliwebPreloadedFamilyRow("던전앤파이터", 496, 102230, "던전앤파이터"),
+    ruliwebPreloadedFamilyRow("던파 듀얼", 496, 186024, "던파 듀얼"),
+    ruliwebPreloadedFamilyRow("던파 모바일", 496, 108216, "던파 모바일"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 496, 300143, "유머 게시판"),
+  ]],
+  ["데스티니 가디언즈 루리웹", [
+    ruliwebPreloadedFamilyRow("데스티니", 4383, 181510, "게임 이야기"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 4383, 300143, "유머 게시판"),
+  ]],
+  ["동물의 숲 패밀리", [
+    ruliwebPreloadedFamilyRow("놀러가요", 503, 100403, "놀러가요"),
+    ruliwebPreloadedFamilyRow("놀러오세요", 503, 100090, "놀러오세요"),
+    ruliwebPreloadedFamilyRow("모바일/ETC", 503, 183669, "해피 홈"),
+    ruliwebPreloadedFamilyRow("모여봐요", 503, 185109, "게임 이야기"),
+    ruliwebPreloadedFamilyRow("통신 게시판", 503, 300517, "3DS"),
+    ruliwebPreloadedFamilyRow("튀어나와요", 503, 180519, "튀어나와요"),
+  ]],
+  ["드래곤 볼", [
+    ruliwebPreloadedFamilyRow("드래곤볼", 504, 102332, "드래곤볼"),
+  ]],
+  ["디비전 루리웹", [
+    ruliwebPreloadedFamilyRow("디비전", 492, 181224, "이야기 게시판"),
+    ruliwebPreloadedFamilyRow("디비전2", 492, 184778, "디비전2"),
+  ]],
+  ["디아블로 루리웹", [
+    ruliwebPreloadedFamilyRow("디아블로4", 2086, 185248, "이야기 게시판"),
+    ruliwebPreloadedFamilyRow("이모탈", 2086, 185621, "이야기 게시판"),
+  ]],
+  ["라스트에포크 루리웹", [
+    ruliwebPreloadedFamilyRow("라스트에포크", 5482, 186432, "전체 게시판"),
+  ]],
+  ["락스타 게임즈 루리웹", [
+    ruliwebPreloadedFamilyRow("GTA 시리즈", 4948, 100446, "GTA 시리즈"),
+    ruliwebPreloadedFamilyRow("그 외", 4948, 100890, "레드데드리뎀션"),
+    ruliwebPreloadedFamilyRow("레데리 2", 4948, 184900, "레데리 2"),
+  ]],
+  ["러브 라이브", [
+    ruliwebPreloadedFamilyRow("", 3094, 181035, "러브 라이브"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 3094, 300552, "자유 게시판"),
+    ruliwebPreloadedFamilyRow("콘솔/AC", 3094, 182317, "콘솔/AC"),
+  ]],
+  ["로스트아크 루리웹", [
+    ruliwebPreloadedFamilyRow("로아 게시판", 4659, 182721, "이야기 게시판"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 4659, 300143, "유머 게시판"),
+  ]],
+  ["마영전 루리웹", [
+    ruliwebPreloadedFamilyRow("뉴스/정보", 4853, 300007, "뉴스 게시판"),
+    ruliwebPreloadedFamilyRow("마비노기 시리즈", 4853, 186573, "빈딕투스: 디파잉 페이트"),
+    ruliwebPreloadedFamilyRow("마영전", 4853, 101236, "이야기 게시판"),
+  ]],
+  ["만화", [
+    ruliwebPreloadedFamilyRow("이야기 게시판", 212, 300142, "질문 게시판"),
+    ruliwebPreloadedFamilyRow("정보 게시판", 212, 300277, "유저 정보"),
+  ]],
+  ["메이플스토리 루리웹", [
+    ruliwebPreloadedFamilyRow("그 외", 4773, 183984, "메이플 월드"),
+    ruliwebPreloadedFamilyRow("메이플", 4773, 182199, "이야기 게시판"),
+    ruliwebPreloadedFamilyRow("메이플 2", 4773, 102937, "이야기 게시판"),
+  ]],
+  ["메탈 기어 솔리드", [
+    ruliwebPreloadedFamilyRow("MGS 외전", 507, 102459, "MGS 외전"),
+    ruliwebPreloadedFamilyRow("MGS 정규", 507, 102113, "MGS 정규"),
+  ]],
+  ["모바일", [
+    ["게임 게시판", "mobile_300059", "게임 이야기", "/mobile/board/300059"],
+    ["정보 게시판", "mobile_300008", "애플 정보", "/mobile/board/300008"],
+  ]],
+  ["몬스터 헌터 루리웹", [
+    ruliwebPreloadedFamilyRow("몬헌 와일즈", 4442, 300352, "헌터서클집회"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 4442, 300143, "유머 게시판"),
+  ]],
+  ["무쌍 시리즈", [
+    ruliwebPreloadedFamilyRow("외전", 510, 186861, "무쌍: 어비스"),
+    ruliwebPreloadedFamilyRow("정규", 510, 186830, "오리진"),
+  ]],
+  ["배틀그라운드", [
+    ruliwebPreloadedFamilyRow("PC 게시판", 4384, 320019, "PC 견적 문의"),
+    ruliwebPreloadedFamilyRow("배그 게시판", 4384, 184318, "배그 게시판"),
+    ruliwebPreloadedFamilyRow("배그 모바일", 4384, 184746, "이야기 게시판"),
+  ]],
+  ["배틀필드 루리웹", [
+    ruliwebPreloadedFamilyRow("배틀필드", 5595, 100219, "배틀필드"),
+  ]],
+  ["붉은사막 루리웹", [
+    ruliwebPreloadedFamilyRow("붉은사막", 5614, 185595, "붉은사막"),
+  ]],
+  ["사이버펑크2077 패밀리", [
+    ruliwebPreloadedFamilyRow("이야기 게시판", 5214, 184786, "이야기 게시판"),
+  ]],
+  ["소녀전선", [
+    ruliwebPreloadedFamilyRow("소녀전선 시리즈", 4382, 186571, "역붕괴"),
+    ruliwebPreloadedFamilyRow("소전 게시판", 4382, 184404, "소전 게시판"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 4382, 300143, "유머 게시판"),
+  ]],
+  ["소울워커 루리웹", [
+    ruliwebPreloadedFamilyRow("소울워커", 493, 179945, "이야기 게시판"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 493, 300143, "유머 게시판"),
+  ]],
+  ["슈퍼로봇대전", [
+    ruliwebPreloadedFamilyRow("SRW 커뮤니티", 511, 300366, "아수라장"),
+    ruliwebPreloadedFamilyRow("슈로대 모바일", 511, 183793, "슈로대 모바일"),
+  ]],
+  ["아이돌 마스터", [
+    ruliwebPreloadedFamilyRow("모바일 아이마스", 3518, 183740, "모바일 아이마스"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 3518, 300548, "자유 게시판"),
+    ruliwebPreloadedFamilyRow("콘솔 아이마스", 3518, 101568, "콘솔 아이마스"),
+  ]],
+  ["아이온 루리웹", [
+    ruliwebPreloadedFamilyRow("아이온", 5605, 101668, "아이온"),
+    ruliwebPreloadedFamilyRow("아이온 2", 5605, 187107, "아이온 2"),
+  ]],
+  ["애니/만화책", [
+    ruliwebPreloadedFamilyRow("관련 게시판", 211, 300557, "타입문"),
+    ruliwebPreloadedFamilyRow("만화책/도서", 211, 300067, "만화책 / 웹툰"),
+    ruliwebPreloadedFamilyRow("애니메이션", 211, 300073, "잡담 게시판"),
+    ruliwebPreloadedFamilyRow("정보 게시판", 211, 300015, "애니 정보"),
+  ]],
+  ["에이펙스 레전드 루리웹", [
+    ruliwebPreloadedFamilyRow("에이펙스 레전드", 5042, 184999, "에이펙스 레전드"),
+    ruliwebPreloadedFamilyRow("정보", 5042, 300007, "뉴스"),
+  ]],
+  ["오버워치 루리웹", [
+    ruliwebPreloadedFamilyRow("오버워치", 1476, 184032, "토론/이슈"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 1476, 300143, "유머 게시판"),
+  ]],
+  ["우마무스메 패밀리", [
+    ruliwebPreloadedFamilyRow("우마무스메", 5268, 184773, "우마무스메"),
+    ruliwebPreloadedFamilyRow("우마무스메 콘솔", 5268, 186546, "대감사제!"),
+  ]],
+  ["월드 오브 워쉽 루리웹", [
+    ruliwebPreloadedFamilyRow("병과 게시판", 4804, 300673, "구축함"),
+    ruliwebPreloadedFamilyRow("자료실", 4804, 300671, "워쉽 자료실"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 4804, 181269, "이야기 게시판"),
+  ]],
+  ["월드 오브 워크래프트 루리웹", [
+    ruliwebPreloadedFamilyRow("WOW 게시판", 4454, 100159, "이야기 게시판"),
+    ruliwebPreloadedFamilyRow("던전/PVP", 4454, 300581, "레이드"),
+    ruliwebPreloadedFamilyRow("블리자드 게임", 4454, 101296, "스타크래프트"),
+    ruliwebPreloadedFamilyRow("서버 게시판", 4454, 300701, "아즈샤라"),
+    ruliwebPreloadedFamilyRow("자료실", 4454, 300593, "애드온 자료실"),
+    ruliwebPreloadedFamilyRow("직업 게시판", 4454, 300625, "전사"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 4454, 300143, "유머 게시판"),
+  ]],
+  ["월드 오브 탱크 루리웹", [
+    ruliwebPreloadedFamilyRow("자료실", 4805, 300672, "월탱 자료실"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 4805, 178322, "이야기 게시판"),
+  ]],
+  ["취미갤", [
+    ["PC 갤러리", "hobby_320019", "PC조립 부품", "/hobby/board/320019"],
+    ["게임", "hobby_300577", "리뷰&스토리", "/hobby/board/300577"],
+  ]],
+  ["취미갤 / 교통", [
+    ["자전거", "hobby_320109", "정보 게시판", "/hobby/board/320109"],
+  ]],
+  ["취미갤", [
+    ["레고/프라/피규어", "hobby_300118", "레고/옥스포드", "/hobby/board/300118"],
+    ["방사진/음식/패션", "hobby_300116", "방사진/사무실", "/hobby/board/300116"],
+  ]],
+  ["취미갤 / 휴대폰", [
+    ["AV", "hobby_300098", "디카 기기", "/hobby/board/300098"],
+  ]],
+  ["칼리스토 프로토콜 패밀리", [
+    ruliwebPreloadedFamilyRow("[리댁티드]", 5428, 186767, "[리댁티드]"),
+    ruliwebPreloadedFamilyRow("칼리스토 프로토콜", 5428, 186203, "칼리스토 프로토콜"),
+  ]],
+  ["캡콤 게임 루리웹", [
+    ruliwebPreloadedFamilyRow("격투게임", 508, 182821, "스트리트파이터"),
+    ruliwebPreloadedFamilyRow("바이오하자드", 508, 187029, "바하 레퀴엠"),
+    ruliwebPreloadedFamilyRow("액션게임", 508, 100261, "록맨"),
+  ]],
+  ["커뮤니티", [
+    ["정보 게시판", "community_300018", "사정게", "/community/board/300018"],
+  ]],
+  ["콜 오브 듀티 루리웹", [
+    ruliwebPreloadedFamilyRow("COD 워존", 4916, 185340, "COD 워존"),
+    ruliwebPreloadedFamilyRow("콜 오브 듀티", 4916, 100370, "콘솔 게시판"),
+  ]],
+  ["테일즈 시리즈", [
+    ruliwebPreloadedFamilyRow("시리즈 게시판", 516, 185755, "어라이즈"),
+  ]],
+  ["팀 닌자 루리웹", [
+    ruliwebPreloadedFamilyRow("로닌/와룡/인왕", 5455, 186534, "로닌"),
+    ruliwebPreloadedFamilyRow("인왕 3", 5455, 186940, "인왕 3"),
+    ruliwebPreloadedFamilyRow("팀 닌자", 5455, 101777, "DOA"),
+  ]],
+  ["파이널 판타지 루리웹", [
+    ruliwebPreloadedFamilyRow("외전", 514, 186412, "에버크라이시스"),
+    ruliwebPreloadedFamilyRow("정규", 514, 185327, "파판 7 RE"),
+  ]],
+  ["패스 오브 엑자일 루리웹", [
+    ruliwebPreloadedFamilyRow("POE", 5076, 181745, "POE"),
+    ruliwebPreloadedFamilyRow("POE 2", 5076, 186769, "POE 2"),
+  ]],
+  ["포켓몬스터 루리웹", [
+    ruliwebPreloadedFamilyRow("WIFI 통신", 515, 300390, "통신 게시판"),
+    ruliwebPreloadedFamilyRow("레전드 Z-A", 515, 185923, "레전드 Z-A"),
+    ruliwebPreloadedFamilyRow("스칼렛/바이올렛", 515, 184030, "스칼렛/바이올렛"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 515, 300389, "자유 게시판"),
+    ruliwebPreloadedFamilyRow("포켓몬 외전", 515, 187190, "포코피아"),
+  ]],
+  ["폴아웃 루리웹", [
+    ruliwebPreloadedFamilyRow("커뮤니티", 4979, 300143, "유머 게시판"),
+    ruliwebPreloadedFamilyRow("폴아웃 게시판", 4979, 184906, "이야기 게시판"),
+  ]],
+  ["프라모델", [
+    ruliwebPreloadedFamilyRow("", 232, 300079, "이야기 게시판"),
+    ruliwebPreloadedFamilyRow("정보 게시판", 232, 300016, "유저 정보"),
+  ]],
+  ["프롬 소프트웨어 루리웹", [
+    ruliwebPreloadedFamilyRow("블러드 본", 4892, 182048, "블러드 본"),
+    ruliwebPreloadedFamilyRow("세키로", 4892, 184765, "세키로"),
+    ruliwebPreloadedFamilyRow("소울 시리즈", 4892, 183787, "다크 소울 3"),
+    ruliwebPreloadedFamilyRow("아머드 코어", 4892, 101995, "아머드 코어"),
+    ruliwebPreloadedFamilyRow("엘든 링", 4892, 185738, "엘든 링"),
+  ]],
+  ["피규어", [
+    ruliwebPreloadedFamilyRow("관련 갤러리", 242, 300118, "레고/옥스포드"),
+    ruliwebPreloadedFamilyRow("정보 게시판", 242, 300017, "유저 정보"),
+    ruliwebPreloadedFamilyRow("피규어 게시판", 242, 300085, "이야기 게시판"),
+  ]],
+  ["피파온라인 루리웹", [
+    ruliwebPreloadedFamilyRow("모바일 게임", 4749, 186552, "FC 모바일"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 4749, 101249, "이야기 게시판"),
+    ruliwebPreloadedFamilyRow("콘솔게임", 4749, 186425, "FC 게시판"),
+  ]],
+  ["하스스톤 루리웹", [
+    ruliwebPreloadedFamilyRow("커뮤니티", 3110, 300143, "유머 게시판"),
+    ruliwebPreloadedFamilyRow("하스스톤", 3110, 180930, "이야기 게시판"),
+  ]],
+  ["히오스 루리웹", [
+    ruliwebPreloadedFamilyRow("뉴스/정보", 4527, 300007, "뉴스 게시판"),
+    ruliwebPreloadedFamilyRow("커뮤니티", 4527, 300143, "유머 게시판"),
+    ruliwebPreloadedFamilyRow("히오스 게시판", 4527, 181429, "이야기 게시판"),
+  ]],
+]);
 
 function ruliwebBuildPreloadedBoards(rows) {
   var items = [];
@@ -305,6 +480,8 @@ var SITE = {
   "boardSettingsLargeThreshold": 256,
   "boardSettingsPageSize": 96,
   "boardAddMode": "url_title",
+  "hasFullBoardCatalog": true,
+  "supportsBoardCatalogSync": true,
   "defaultVisibleBoardIds": RULIWEB_DEFAULT_VISIBLE_BOARD_IDS,
   "hostAliases": [
     "m.ruliweb.com",
@@ -786,7 +963,7 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "m.ruliweb.com",
     name: "ruliweb",
-    description: "Unofficial Synura extension for Ruliweb mobile boards.",
+    description: "Unofficial Ruliweb extension",
     version: 0.1,
     api: 0,
     license: "Apache-2.0",

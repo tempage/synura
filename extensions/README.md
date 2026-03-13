@@ -30,13 +30,20 @@ public/extensions/
 
 ### Top-Level `extensions.json`
 
-Includes can use **relative paths** (recommended) or **absolute URLs**:
+The top-level file can contain root-level extensions and includes. Includes can
+use **relative paths** (recommended) or **absolute URLs**:
 
 ```json
 {
   "name": "Repository Name",
   "description": "Repository description",
   "version": 1.0,
+  "extensions": [
+    {
+      "name": "youtube",
+      "url": "https://raw.githubusercontent.com/.../youtube.js"
+    }
+  ],
   "includes": [
     "en_US/extensions.json",
     "ko_KR/extensions.json"
@@ -171,10 +178,10 @@ python3 generate_extensions_json.py
 ```
 
 This will:
-1. Scan all subdirectories in the repo root
+1. Scan root-level `.js` files and subdirectories in the repo root
 2. Extract metadata from each `SYNURA` object in `.js` files
 3. Generate `extensions.json` in each subdirectory
-4. Generate top-level `extensions.json` with includes
+4. Generate top-level `extensions.json` with root-level `extensions` and `includes`
 
 ## Allowed Hosting Domains
 

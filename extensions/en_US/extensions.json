@@ -16,22 +16,6 @@
         "video",
         "community"
       ]
-    },
-    {
-      "name": "test_youtube",
-      "description": "Unofficial YouTube extension with search, comments, and related videos.",
-      "version": 0.1,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/en_US/youtube.js",
-      "api": 0,
-      "domain": "m.youtube.com",
-      "author": "Synura Team",
-      "locale": "en_US",
-      "tags": [
-        "video",
-        "streaming",
-        "search",
-        "media"
-      ]
     }
   ]
 }

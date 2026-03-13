@@ -1,3 +1,4 @@
+// @ts-nocheck
 var SYNURA = {
   domain: "m.youtube.com",
   name: "test_youtube",
@@ -6,7 +7,7 @@ var SYNURA = {
   version: .1,
   api: 0,
   license: "Apache-2.0",
-  locale: "en_US",
+  locale: "",
   bypass: "chrome/android",
   deeplink: !0,
   tags: [ "video", "streaming", "search", "media" ],
@@ -14,21 +15,42 @@ var SYNURA = {
     return handler;
   }
 }, DEFAULT_QUERY = "technology", DEFAULT_HL = "en", DEFAULT_GL = "US", DEFAULT_CLIENT_NAME = "MWEB", DEFAULT_CLIENT_VERSION = "2.20260304.01.00", DEFAULT_API_KEY = "", YT_ORIGIN = "https://" + SYNURA.domain, QUICK_QUERIES = [ {
-  label: "Trending",
+  labelKey: "quick_query_trending",
   query: "trending videos"
 }, {
-  label: "Music",
+  labelKey: "quick_query_music",
   query: "latest music videos"
 }, {
-  label: "Gaming",
+  labelKey: "quick_query_gaming",
   query: "gaming highlights"
 }, {
-  label: "News",
+  labelKey: "quick_query_news",
   query: "world news live"
 }, {
-  label: "Coding",
+  labelKey: "quick_query_coding",
   query: "software engineering"
-} ], SEARCH_MENU_OPEN = "Open YouTube", POST_MENU_OPEN = "Open in Browser", POST_MENU_RELATED = "Open Related", POST_MENU_CHANNEL = "Open Channel", MENU_SETTINGS = "Settings", HOME_MENU_CHANNEL_LIST = "Channel List", CHANNEL_MENU_BOOKMARK = "Bookmark Channel", CHANNEL_MENU_UNBOOKMARK = "Remove Bookmark", CHANNEL_MENU_OPEN_BROWSER = "Open Channel in Browser", CHANNEL_MENU_ENABLE_VIDEOS = "Enable Videos", CHANNEL_MENU_ENABLE_STREAMS = "Enable Streams", ITEM_MENU_OPEN_BROWSER = "Open in Browser", ITEM_MENU_OPEN_VIDEO = "Open Video", ITEM_MENU_OPEN_CHANNEL = "Open Channel", ITEM_MENU_REMOVE_BOOKMARK = "Remove Bookmark", STARRED_CHANNELS_KEY = "youtube_starred_channels_v1", API_KEY_OVERRIDE_STORAGE_KEY = "youtube_api_key_override_v1", LANGUAGE_OVERRIDE_STORAGE_KEY = "youtube_language_override_v1", CHANNEL_LIST_CHUNK_SIZE_STORAGE_KEY = "youtube_channel_list_chunk_size_v1", INNERTUBE_CONFIG_CACHE_KEY = "youtube_innertube_config_v1", CHANNEL_PAGE_CACHE_TTL_MS = 3e5, CHANNEL_PAGE_CACHE_LIMIT = 24, DEFAULT_CHANNEL_LIST_CHUNK_SIZE = 16, CHANNEL_HOME_PREVIEW_MIN_ITEMS = 16, CHANNEL_HOME_PREVIEW_MAX_ITEMS = 32, CHANNEL_HOME_PREVIEW_MULTIPLIER = 1, innertubeConfigCache = null, channelPageCache = {}, channelPageCacheOrder = [], YOUTUBE_LANGUAGES = [ {
+} ], HOME_TRENDING_SEARCH_QUERIES = {
+  ar: "الفيديوهات الرائجة",
+  bn: "জনপ্রিয় ভিডিও",
+  "zh-CN": "热门 视频",
+  "zh-TW": "熱門 影片",
+  en: "trending videos",
+  fr: "videos tendance",
+  de: "trend videos",
+  hi: "ट्रेंडिंग वीडियो",
+  it: "video di tendenza",
+  id: "video trending",
+  ja: "人気 動画",
+  ko: "한국 인기 동영상",
+  pl: "popularne filmy",
+  pt: "videos em alta",
+  ru: "популярные видео",
+  es: "videos en tendencia",
+  th: "วิดีโอยอดนิยม",
+  tr: "trend videolar",
+  vi: "video thịnh hành",
+  ur: "ٹرینڈنگ ویڈیوز"
+}, SEARCH_MENU_OPEN = "menu_open_youtube", POST_MENU_OPEN = "menu_open_browser", POST_MENU_RELATED = "menu_open_related", POST_MENU_CHANNEL = "menu_open_channel", MENU_SETTINGS = "menu_settings", HOME_MENU_CHANNEL_LIST = "menu_channel_list", CHANNEL_MENU_BOOKMARK = "menu_bookmark_channel", CHANNEL_MENU_UNBOOKMARK = "menu_remove_bookmark", CHANNEL_MENU_OPEN_BROWSER = "menu_open_channel_browser", CHANNEL_MENU_ENABLE_VIDEOS = "menu_enable_videos", CHANNEL_MENU_ENABLE_STREAMS = "menu_enable_streams", ITEM_MENU_OPEN_BROWSER = "menu_open_browser", ITEM_MENU_OPEN_VIDEO = "menu_open_video", ITEM_MENU_OPEN_CHANNEL = "menu_open_channel", ITEM_MENU_REMOVE_BOOKMARK = "menu_remove_bookmark", BUTTON_SAVE = "button_save", BUTTON_CLEAR = "button_clear", BUTTON_CANCEL = "button_cancel", STARRED_CHANNELS_KEY = "youtube_starred_channels_v1", API_KEY_OVERRIDE_STORAGE_KEY = "youtube_api_key_override_v1", LANGUAGE_OVERRIDE_STORAGE_KEY = "youtube_language_override_v1", CHANNEL_LIST_CHUNK_SIZE_STORAGE_KEY = "youtube_channel_list_chunk_size_v1", INNERTUBE_CONFIG_CACHE_KEY = "youtube_innertube_config_v1", CHANNEL_PAGE_CACHE_TTL_MS = 3e5, CHANNEL_PAGE_CACHE_LIMIT = 24, DEFAULT_CHANNEL_LIST_CHUNK_SIZE = 16, CHANNEL_HOME_PREVIEW_MIN_ITEMS = 16, CHANNEL_HOME_PREVIEW_MAX_ITEMS = 32, CHANNEL_HOME_PREVIEW_MULTIPLIER = 1, innertubeConfigCache = null, channelPageCache = {}, channelPageCacheOrder = [], YOUTUBE_LANGUAGES = [ {
   code: "ar",
   label: "العربية",
   hl: "ar",
@@ -148,17 +170,30 @@ var SYNURA = {
   hl: "ur",
   gl: "PK",
   acceptLanguage: "ur-PK,ur;q=0.9,en-US;q=0.6,en;q=0.5"
-} ], HOME_SEARCH_APPBAR = {
-  type: "query",
-  label: "Search YouTube",
-  hint: "Search videos"
-}, listViewState = {}, postViewState = {}, handler = {
+} ], UI_STRING_KEYS = [ "quick_query_trending", "quick_query_music", "quick_query_gaming", "quick_query_news", "quick_query_coding", "menu_open_youtube", "menu_open_browser", "menu_open_related", "menu_open_channel", "menu_settings", "menu_channel_list", "menu_bookmark_channel", "menu_remove_bookmark", "menu_open_channel_browser", "menu_enable_videos", "menu_enable_streams", "menu_open_video", "button_save", "button_clear", "button_cancel", "title_starred_channels", "title_youtube", "title_related_videos", "title_channel", "title_browser", "title_search_results", "appbar_search_youtube", "appbar_search_videos_hint", "appbar_search_channel", "appbar_search_in_channel_hint", "loading_starred_channels", "loading_videos", "loading_channel_items", "label_loading", "label_youtube_user", "label_untitled", "label_live_stream", "label_saved_on", "label_bookmarked", "prompt_type_search_query", "snackbar_no_related_videos", "snackbar_removed_bookmark", "snackbar_bookmark_not_found", "snackbar_channel_bookmarked", "snackbar_channel_already_bookmarked", "snackbar_bookmark_removed", "snackbar_settings_saved", "snackbar_settings_cleared", "snackbar_channel_list_saved", "snackbar_no_starred_channels", "snackbar_all_channels_disabled", "snackbar_no_starred_channels_yet", "snackbar_no_results_in_channel", "snackbar_no_videos_or_streams_found", "snackbar_no_videos_found", "snackbar_no_live_streams_found", "snackbar_videos_and_streams_disabled", "snackbar_no_more_channel_items", "snackbar_no_more_results", "snackbar_no_more_related_videos", "snackbar_no_more_comments", "dialog_settings_message", "dialog_channel_list_message", "field_api_key", "field_language", "field_initial_channel_items", "fallback_channel_number", "error_could_not_open_channel", "error_could_not_find_channel", "error_could_not_find_video_id", "error_invalid_language_selection", "error_invalid_channel_items", "error_could_not_save_api_key", "error_could_not_clear_api_key", "error_could_not_save_channel_list_limit", "error_could_not_save_language", "error_could_not_clear_settings", "error_could_not_open_settings", "error_could_not_save_channel_list", "error_could_not_open_channel_list", "error_channel_load_failed", "error_could_not_load_full_channel_list", "error_could_not_load_more_channel_items", "error_search_failed", "error_could_not_load_more_videos", "error_could_not_load_related_videos", "error_failed_to_load_video", "error_could_not_load_more_comments" ], UI_STRINGS = {
+  en: [ "Trending", "Music", "Gaming", "News", "Coding", "Open YouTube", "Open in Browser", "Open Related", "Open Channel", "Settings", "Channel List", "Bookmark Channel", "Remove Bookmark", "Open Channel in Browser", "Show Videos", "Show Live Streams", "Open Video", "Save", "Clear", "Cancel", "Starred Channels", "YouTube", "Related Videos", "Channel", "Browser", "YouTube - {query}", "Search YouTube", "Search videos", "Search {channel}", "Search in this channel", "Loading starred channels...", "Loading videos...", "Loading channel videos and live streams...", "Loading...", "YouTube User", "Untitled", "Live stream", "Saved {date}", "Bookmarked", "Type a search query.", "No related videos available.", "Removed bookmark.", "Bookmark not found.", "Channel bookmarked.", "Channel already bookmarked.", "Bookmark removed.", "Settings saved. Pull to refresh.", "Settings cleared. Pull to refresh.", "Channel list saved.", "No starred channels.", "All channels are disabled. Open Channel List.", "No starred channels yet.", "No results in this channel for \"{query}\".", "No videos or live streams found.", "No videos found.", "No live streams found.", "Videos and live streams are disabled.", "No more channel items.", "No more results.", "No more related videos.", "No more comments.", "Update YouTube API key, language, and initial channel list limit.", "Enable or disable starred channels.", "API Key", "Language", "Initial Channel Items", "Channel {index}", "Could not open channel.", "Could not find channel.", "Could not find video id.", "Invalid language selection.", "Initial channel items must be 1 or higher.", "Could not save API key.", "Could not clear API key.", "Could not save channel list limit.", "Could not save language.", "Could not clear settings.", "Could not open settings.", "Could not save channel list.", "Could not open channel list.", "Channel load failed: {error}", "Could not load full channel list: {error}", "Could not load more channel items: {error}", "Search failed: {error}", "Could not load more videos: {error}", "Could not load related videos: {error}", "Failed to load video: {error}", "Could not load more comments: {error}" ],
+  ko: [ "인기", "음악", "게임", "뉴스", "코딩", "YouTube 열기", "브라우저에서 열기", "관련 영상 열기", "채널 열기", "설정", "채널 목록", "채널 북마크", "북마크 제거", "브라우저에서 채널 열기", "동영상 보기", "라이브 보기", "영상 열기", "저장", "초기화", "취소", "북마크한 채널", "YouTube", "관련 영상", "채널", "브라우저", "YouTube - {query}", "YouTube 검색", "영상 검색", "{channel} 검색", "이 채널에서 검색", "북마크한 채널을 불러오는 중...", "영상을 불러오는 중...", "채널 영상과 라이브를 불러오는 중...", "불러오는 중...", "YouTube 사용자", "제목 없음", "라이브", "저장일 {date}", "북마크", "검색어를 입력하세요.", "관련 영상이 없습니다.", "북마크를 제거했습니다.", "북마크를 찾을 수 없습니다.", "채널을 북마크했습니다.", "이미 북마크한 채널입니다.", "북마크를 제거했습니다.", "설정을 저장했습니다. 새로고침하세요.", "설정을 초기화했습니다. 새로고침하세요.", "채널 목록을 저장했습니다.", "북마크한 채널이 없습니다.", "모든 채널이 비활성화되어 있습니다. 채널 목록을 여세요.", "아직 북마크한 채널이 없습니다.", "\"{query}\"에 대한 채널 내 결과가 없습니다.", "동영상이나 라이브를 찾을 수 없습니다.", "동영상을 찾을 수 없습니다.", "라이브를 찾을 수 없습니다.", "동영상과 라이브가 모두 비활성화되어 있습니다.", "채널 항목이 더 없습니다.", "더 이상 결과가 없습니다.", "더 이상 관련 영상이 없습니다.", "더 이상 댓글이 없습니다.", "YouTube API 키, 언어, 초기 채널 항목 수를 설정합니다.", "북마크한 채널의 사용 여부를 설정합니다.", "API 키", "언어", "초기 채널 항목 수", "채널 {index}", "채널을 열 수 없습니다.", "채널을 찾을 수 없습니다.", "영상 ID를 찾을 수 없습니다.", "언어 선택이 올바르지 않습니다.", "초기 채널 항목 수는 1 이상이어야 합니다.", "API 키를 저장할 수 없습니다.", "API 키를 지울 수 없습니다.", "채널 목록 개수를 저장할 수 없습니다.", "언어를 저장할 수 없습니다.", "설정을 초기화할 수 없습니다.", "설정을 열 수 없습니다.", "채널 목록을 저장할 수 없습니다.", "채널 목록을 열 수 없습니다.", "채널 로드 실패: {error}", "전체 채널 목록을 불러올 수 없습니다: {error}", "채널 항목을 더 불러올 수 없습니다: {error}", "검색 실패: {error}", "영상을 더 불러올 수 없습니다: {error}", "관련 영상을 불러올 수 없습니다: {error}", "영상을 불러오지 못했습니다: {error}", "댓글을 더 불러올 수 없습니다: {error}" ],
+  es: [ "Tendencias", "Música", "Juegos", "Noticias", "Programación", "Abrir YouTube", "Abrir en el navegador", "Abrir relacionados", "Abrir canal", "Ajustes", "Lista de canales", "Guardar canal", "Quitar marcador", "Abrir canal en el navegador", "Mostrar videos", "Mostrar directos", "Abrir video", "Guardar", "Borrar", "Cancelar", "Canales guardados", "YouTube", "Videos relacionados", "Canal", "Navegador", "YouTube - {query}", "Buscar en YouTube", "Buscar videos", "Buscar en {channel}", "Buscar en este canal", "Cargando canales guardados...", "Cargando videos...", "Cargando videos y directos del canal...", "Cargando...", "Usuario de YouTube", "Sin título", "Directo", "Guardado {date}", "Guardado", "Escribe una búsqueda.", "No hay videos relacionados.", "Marcador eliminado.", "No se encontró el marcador.", "Canal guardado.", "El canal ya estaba guardado.", "Marcador eliminado.", "Ajustes guardados. Desliza para refrescar.", "Ajustes borrados. Desliza para refrescar.", "Lista de canales guardada.", "No hay canales guardados.", "Todos los canales están desactivados. Abre la Lista de canales.", "Todavía no hay canales guardados.", "No hay resultados en este canal para \"{query}\".", "No se encontraron videos ni directos.", "No se encontraron videos.", "No se encontraron directos.", "Los videos y directos están desactivados.", "No hay más elementos del canal.", "No hay más resultados.", "No hay más videos relacionados.", "No hay más comentarios.", "Actualiza la clave de la API de YouTube, el idioma y el límite inicial de elementos del canal.", "Activa o desactiva los canales guardados.", "Clave API", "Idioma", "Elementos iniciales del canal", "Canal {index}", "No se pudo abrir el canal.", "No se pudo encontrar el canal.", "No se pudo encontrar el id del video.", "Selección de idioma no válida.", "Los elementos iniciales del canal deben ser 1 o más.", "No se pudo guardar la clave API.", "No se pudo borrar la clave API.", "No se pudo guardar el límite de la lista de canales.", "No se pudo guardar el idioma.", "No se pudieron borrar los ajustes.", "No se pudieron abrir los ajustes.", "No se pudo guardar la lista de canales.", "No se pudo abrir la lista de canales.", "Error al cargar el canal: {error}", "No se pudo cargar la lista completa del canal: {error}", "No se pudieron cargar más elementos del canal: {error}", "Búsqueda fallida: {error}", "No se pudieron cargar más videos: {error}", "No se pudieron cargar los videos relacionados: {error}", "No se pudo cargar el video: {error}", "No se pudieron cargar más comentarios: {error}" ],
+  pt: [ "Em alta", "Música", "Jogos", "Notícias", "Programação", "Abrir YouTube", "Abrir no navegador", "Abrir relacionados", "Abrir canal", "Configurações", "Lista de canais", "Salvar canal", "Remover favorito", "Abrir canal no navegador", "Mostrar vídeos", "Mostrar transmissões", "Abrir vídeo", "Salvar", "Limpar", "Cancelar", "Canais salvos", "YouTube", "Vídeos relacionados", "Canal", "Navegador", "YouTube - {query}", "Pesquisar no YouTube", "Pesquisar vídeos", "Pesquisar em {channel}", "Pesquisar neste canal", "Carregando canais salvos...", "Carregando vídeos...", "Carregando vídeos e transmissões do canal...", "Carregando...", "Usuário do YouTube", "Sem título", "Transmissão ao vivo", "Salvo em {date}", "Salvo", "Digite uma busca.", "Nenhum vídeo relacionado disponível.", "Favorito removido.", "Favorito não encontrado.", "Canal salvo.", "O canal já estava salvo.", "Favorito removido.", "Configurações salvas. Puxe para atualizar.", "Configurações limpas. Puxe para atualizar.", "Lista de canais salva.", "Nenhum canal salvo.", "Todos os canais estão desativados. Abra a Lista de canais.", "Ainda não há canais salvos.", "Nenhum resultado neste canal para \"{query}\".", "Nenhum vídeo ou transmissão encontrado.", "Nenhum vídeo encontrado.", "Nenhuma transmissão encontrada.", "Vídeos e transmissões estão desativados.", "Não há mais itens do canal.", "Não há mais resultados.", "Não há mais vídeos relacionados.", "Não há mais comentários.", "Atualize a chave da API do YouTube, o idioma e o limite inicial de itens do canal.", "Ative ou desative os canais salvos.", "Chave da API", "Idioma", "Itens iniciais do canal", "Canal {index}", "Não foi possível abrir o canal.", "Não foi possível encontrar o canal.", "Não foi possível encontrar o id do vídeo.", "Seleção de idioma inválida.", "Os itens iniciais do canal devem ser 1 ou mais.", "Não foi possível salvar a chave da API.", "Não foi possível limpar a chave da API.", "Não foi possível salvar o limite da lista de canais.", "Não foi possível salvar o idioma.", "Não foi possível limpar as configurações.", "Não foi possível abrir as configurações.", "Não foi possível salvar a lista de canais.", "Não foi possível abrir a lista de canais.", "Falha ao carregar o canal: {error}", "Não foi possível carregar a lista completa do canal: {error}", "Não foi possível carregar mais itens do canal: {error}", "Falha na busca: {error}", "Não foi possível carregar mais vídeos: {error}", "Não foi possível carregar vídeos relacionados: {error}", "Não foi possível carregar o vídeo: {error}", "Não foi possível carregar mais comentários: {error}" ],
+  ja: [ "急上昇", "音楽", "ゲーム", "ニュース", "コーディング", "YouTubeを開く", "ブラウザで開く", "関連動画を開く", "チャンネルを開く", "設定", "チャンネル一覧", "チャンネルを保存", "ブックマークを削除", "ブラウザでチャンネルを開く", "動画を表示", "ライブ配信を表示", "動画を開く", "保存", "クリア", "キャンセル", "保存したチャンネル", "YouTube", "関連動画", "チャンネル", "ブラウザ", "YouTube - {query}", "YouTubeを検索", "動画を検索", "{channel} を検索", "このチャンネル内を検索", "保存したチャンネルを読み込み中...", "動画を読み込み中...", "チャンネルの動画とライブ配信を読み込み中...", "読み込み中...", "YouTubeユーザー", "無題", "ライブ配信", "{date} に保存", "保存済み", "検索語を入力してください。", "関連動画はありません。", "ブックマークを削除しました。", "ブックマークが見つかりません。", "チャンネルを保存しました。", "このチャンネルは既に保存されています。", "ブックマークを削除しました。", "設定を保存しました。引っ張って更新してください。", "設定をクリアしました。引っ張って更新してください。", "チャンネル一覧を保存しました。", "保存したチャンネルはありません。", "すべてのチャンネルが無効です。チャンネル一覧を開いてください。", "まだ保存したチャンネルはありません。", "このチャンネルで \"{query}\" の結果はありません。", "動画またはライブ配信が見つかりません。", "動画が見つかりません。", "ライブ配信が見つかりません。", "動画とライブ配信は無効です。", "これ以上チャンネル項目はありません。", "これ以上結果はありません。", "これ以上関連動画はありません。", "これ以上コメントはありません。", "YouTube APIキー、言語、初期チャンネル項目数を更新します。", "保存したチャンネルを有効または無効にします。", "APIキー", "言語", "初期チャンネル項目数", "チャンネル {index}", "チャンネルを開けませんでした。", "チャンネルが見つかりませんでした。", "動画IDが見つかりませんでした。", "無効な言語選択です。", "初期チャンネル項目数は1以上である必要があります。", "APIキーを保存できませんでした。", "APIキーをクリアできませんでした。", "チャンネル一覧の上限を保存できませんでした。", "言語を保存できませんでした。", "設定をクリアできませんでした。", "設定を開けませんでした。", "チャンネル一覧を保存できませんでした。", "チャンネル一覧を開けませんでした。", "チャンネルの読み込みに失敗しました: {error}", "チャンネル一覧全体を読み込めませんでした: {error}", "チャンネル項目をさらに読み込めませんでした: {error}", "検索に失敗しました: {error}", "動画をさらに読み込めませんでした: {error}", "関連動画を読み込めませんでした: {error}", "動画を読み込めませんでした: {error}", "コメントをさらに読み込めませんでした: {error}" ],
+  "zh-CN": [ "趋势", "音乐", "游戏", "新闻", "编程", "打开 YouTube", "在浏览器中打开", "打开相关视频", "打开频道", "设置", "频道列表", "收藏频道", "移除收藏", "在浏览器中打开频道", "显示视频", "显示直播", "打开视频", "保存", "清除", "取消", "已收藏频道", "YouTube", "相关视频", "频道", "浏览器", "YouTube - {query}", "搜索 YouTube", "搜索视频", "搜索 {channel}", "在此频道中搜索", "正在加载已收藏频道...", "正在加载视频...", "正在加载频道视频和直播...", "加载中...", "YouTube 用户", "无标题", "直播", "保存于 {date}", "已收藏", "请输入搜索内容。", "没有相关视频。", "已移除收藏。", "未找到收藏。", "已收藏频道。", "该频道已收藏。", "已移除收藏。", "设置已保存。请下拉刷新。", "设置已清除。请下拉刷新。", "频道列表已保存。", "没有已收藏频道。", "所有频道均已禁用。请打开频道列表。", "尚未收藏任何频道。", "此频道中没有 \"{query}\" 的结果。", "未找到视频或直播。", "未找到视频。", "未找到直播。", "视频和直播均已禁用。", "没有更多频道内容。", "没有更多结果。", "没有更多相关视频。", "没有更多评论。", "更新 YouTube API 密钥、语言和频道初始项目数。", "启用或禁用已收藏频道。", "API 密钥", "语言", "频道初始项目数", "频道 {index}", "无法打开频道。", "找不到频道。", "找不到视频 ID。", "语言选择无效。", "频道初始项目数必须大于等于 1。", "无法保存 API 密钥。", "无法清除 API 密钥。", "无法保存频道列表限制。", "无法保存语言。", "无法清除设置。", "无法打开设置。", "无法保存频道列表。", "无法打开频道列表。", "频道加载失败: {error}", "无法加载完整频道列表: {error}", "无法加载更多频道内容: {error}", "搜索失败: {error}", "无法加载更多视频: {error}", "无法加载相关视频: {error}", "无法加载视频: {error}", "无法加载更多评论: {error}" ],
+  de: [ "Trends", "Musik", "Gaming", "Nachrichten", "Programmierung", "YouTube öffnen", "Im Browser öffnen", "Ähnliche öffnen", "Kanal öffnen", "Einstellungen", "Kanalliste", "Kanal speichern", "Lesezeichen entfernen", "Kanal im Browser öffnen", "Videos anzeigen", "Livestreams anzeigen", "Video öffnen", "Speichern", "Zurücksetzen", "Abbrechen", "Gespeicherte Kanäle", "YouTube", "Ähnliche Videos", "Kanal", "Browser", "YouTube - {query}", "YouTube durchsuchen", "Videos suchen", "{channel} durchsuchen", "In diesem Kanal suchen", "Gespeicherte Kanäle werden geladen...", "Videos werden geladen...", "Kanalvideos und Livestreams werden geladen...", "Wird geladen...", "YouTube-Nutzer", "Ohne Titel", "Livestream", "Gespeichert am {date}", "Gespeichert", "Suchbegriff eingeben.", "Keine ähnlichen Videos verfügbar.", "Lesezeichen entfernt.", "Lesezeichen nicht gefunden.", "Kanal gespeichert.", "Kanal war bereits gespeichert.", "Lesezeichen entfernt.", "Einstellungen gespeichert. Zum Aktualisieren herunterziehen.", "Einstellungen zurückgesetzt. Zum Aktualisieren herunterziehen.", "Kanalliste gespeichert.", "Keine gespeicherten Kanäle.", "Alle Kanäle sind deaktiviert. Öffne die Kanalliste.", "Noch keine gespeicherten Kanäle.", "Keine Ergebnisse in diesem Kanal für \"{query}\".", "Keine Videos oder Livestreams gefunden.", "Keine Videos gefunden.", "Keine Livestreams gefunden.", "Videos und Livestreams sind deaktiviert.", "Keine weiteren Kanalinhalte.", "Keine weiteren Ergebnisse.", "Keine weiteren ähnlichen Videos.", "Keine weiteren Kommentare.", "YouTube-API-Schlüssel, Sprache und anfängliches Kanallimit aktualisieren.", "Gespeicherte Kanäle aktivieren oder deaktivieren.", "API-Schlüssel", "Sprache", "Anfängliche Kanalinhalte", "Kanal {index}", "Kanal konnte nicht geöffnet werden.", "Kanal konnte nicht gefunden werden.", "Video-ID konnte nicht gefunden werden.", "Ungültige Sprachauswahl.", "Anfängliche Kanalinhalte müssen 1 oder höher sein.", "API-Schlüssel konnte nicht gespeichert werden.", "API-Schlüssel konnte nicht gelöscht werden.", "Kanallistenlimit konnte nicht gespeichert werden.", "Sprache konnte nicht gespeichert werden.", "Einstellungen konnten nicht gelöscht werden.", "Einstellungen konnten nicht geöffnet werden.", "Kanalliste konnte nicht gespeichert werden.", "Kanalliste konnte nicht geöffnet werden.", "Kanal konnte nicht geladen werden: {error}", "Vollständige Kanalliste konnte nicht geladen werden: {error}", "Weitere Kanalinhalte konnten nicht geladen werden: {error}", "Suche fehlgeschlagen: {error}", "Weitere Videos konnten nicht geladen werden: {error}", "Ähnliche Videos konnten nicht geladen werden: {error}", "Video konnte nicht geladen werden: {error}", "Weitere Kommentare konnten nicht geladen werden: {error}" ],
+  hi: [ "ट्रेंडिंग", "संगीत", "गेमिंग", "समाचार", "कोडिंग", "YouTube खोलें", "ब्राउज़र में खोलें", "संबंधित खोलें", "चैनल खोलें", "सेटिंग्स", "चैनल सूची", "चैनल सहेजें", "बुकमार्क हटाएं", "ब्राउज़र में चैनल खोलें", "वीडियो दिखाएं", "लाइव स्ट्रीम दिखाएं", "वीडियो खोलें", "सहेजें", "साफ करें", "रद्द करें", "सहेजे गए चैनल", "YouTube", "संबंधित वीडियो", "चैनल", "ब्राउज़र", "YouTube - {query}", "YouTube खोजें", "वीडियो खोजें", "{channel} में खोजें", "इस चैनल में खोजें", "सहेजे गए चैनल लोड हो रहे हैं...", "वीडियो लोड हो रहे हैं...", "चैनल के वीडियो और लाइव स्ट्रीम लोड हो रहे हैं...", "लोड हो रहा है...", "YouTube उपयोगकर्ता", "बिना शीर्षक", "लाइव स्ट्रीम", "{date} को सहेजा गया", "सहेजा गया", "खोज लिखें।", "कोई संबंधित वीडियो उपलब्ध नहीं है।", "बुकमार्क हटा दिया गया।", "बुकमार्क नहीं मिला।", "चैनल सहेज लिया गया।", "चैनल पहले से सहेजा गया है।", "बुकमार्क हटा दिया गया।", "सेटिंग्स सहेज ली गईं। रीफ्रेश करने के लिए नीचे खींचें।", "सेटिंग्स साफ कर दी गईं। रीफ्रेश करने के लिए नीचे खींचें।", "चैनल सूची सहेज ली गई।", "कोई सहेजा गया चैनल नहीं है।", "सभी चैनल अक्षम हैं। चैनल सूची खोलें।", "अभी तक कोई चैनल सहेजा नहीं गया है।", "इस चैनल में \"{query}\" के लिए कोई परिणाम नहीं है।", "कोई वीडियो या लाइव स्ट्रीम नहीं मिली।", "कोई वीडियो नहीं मिला।", "कोई लाइव स्ट्रीम नहीं मिली।", "वीडियो और लाइव स्ट्रीम अक्षम हैं।", "और चैनल आइटम नहीं हैं।", "और परिणाम नहीं हैं।", "और संबंधित वीडियो नहीं हैं।", "और टिप्पणियां नहीं हैं।", "YouTube API कुंजी, भाषा और प्रारंभिक चैनल आइटम सीमा अपडेट करें।", "सहेजे गए चैनलों को सक्षम या अक्षम करें।", "API कुंजी", "भाषा", "प्रारंभिक चैनल आइटम", "चैनल {index}", "चैनल नहीं खोला जा सका।", "चैनल नहीं मिला।", "वीडियो आईडी नहीं मिली।", "अमान्य भाषा चयन।", "प्रारंभिक चैनल आइटम 1 या अधिक होने चाहिए।", "API कुंजी सहेजी नहीं जा सकी।", "API कुंजी साफ नहीं की जा सकी।", "चैनल सूची सीमा सहेजी नहीं जा सकी।", "भाषा सहेजी नहीं जा सकी।", "सेटिंग्स साफ नहीं की जा सकीं।", "सेटिंग्स नहीं खुल सकीं।", "चैनल सूची सहेजी नहीं जा सकी।", "चैनल सूची नहीं खुल सकी।", "चैनल लोड नहीं हो सका: {error}", "पूरी चैनल सूची लोड नहीं की जा सकी: {error}", "और चैनल आइटम लोड नहीं किए जा सके: {error}", "खोज विफल रही: {error}", "और वीडियो लोड नहीं किए जा सके: {error}", "संबंधित वीडियो लोड नहीं किए जा सके: {error}", "वीडियो लोड नहीं किया जा सका: {error}", "और टिप्पणियां लोड नहीं की जा सकीं: {error}" ],
+  ar: [ "الرائج", "الموسيقى", "الألعاب", "الأخبار", "البرمجة", "فتح YouTube", "فتح في المتصفح", "فتح المقاطع ذات الصلة", "فتح القناة", "الإعدادات", "قائمة القنوات", "حفظ القناة", "إزالة الإشارة المرجعية", "فتح القناة في المتصفح", "إظهار الفيديوهات", "إظهار البث المباشر", "فتح الفيديو", "حفظ", "مسح", "إلغاء", "القنوات المحفوظة", "YouTube", "الفيديوهات ذات الصلة", "القناة", "المتصفح", "YouTube - {query}", "البحث في YouTube", "البحث عن فيديوهات", "البحث في {channel}", "البحث في هذه القناة", "جارٍ تحميل القنوات المحفوظة...", "جارٍ تحميل الفيديوهات...", "جارٍ تحميل فيديوهات القناة والبث المباشر...", "جارٍ التحميل...", "مستخدم YouTube", "بدون عنوان", "بث مباشر", "تم الحفظ في {date}", "محفوظ", "اكتب عبارة البحث.", "لا توجد فيديوهات ذات صلة.", "تمت إزالة الإشارة المرجعية.", "لم يتم العثور على الإشارة المرجعية.", "تم حفظ القناة.", "القناة محفوظة بالفعل.", "تمت إزالة الإشارة المرجعية.", "تم حفظ الإعدادات. اسحب للتحديث.", "تم مسح الإعدادات. اسحب للتحديث.", "تم حفظ قائمة القنوات.", "لا توجد قنوات محفوظة.", "جميع القنوات معطلة. افتح قائمة القنوات.", "لا توجد قنوات محفوظة بعد.", "لا توجد نتائج في هذه القناة لـ \"{query}\".", "لم يتم العثور على فيديوهات أو بث مباشر.", "لم يتم العثور على فيديوهات.", "لم يتم العثور على بث مباشر.", "الفيديوهات والبث المباشر معطلة.", "لا توجد عناصر قناة أخرى.", "لا توجد نتائج أخرى.", "لا توجد فيديوهات ذات صلة أخرى.", "لا توجد تعليقات أخرى.", "حدّث مفتاح API لـ YouTube واللغة وحد العناصر الأولية للقناة.", "فعّل أو عطّل القنوات المحفوظة.", "مفتاح API", "اللغة", "عناصر القناة الأولية", "القناة {index}", "تعذر فتح القناة.", "تعذر العثور على القناة.", "تعذر العثور على معرّف الفيديو.", "اختيار لغة غير صالح.", "يجب أن تكون عناصر القناة الأولية 1 أو أكثر.", "تعذر حفظ مفتاح API.", "تعذر مسح مفتاح API.", "تعذر حفظ حد قائمة القنوات.", "تعذر حفظ اللغة.", "تعذر مسح الإعدادات.", "تعذر فتح الإعدادات.", "تعذر حفظ قائمة القنوات.", "تعذر فتح قائمة القنوات.", "فشل تحميل القناة: {error}", "تعذر تحميل قائمة القنوات الكاملة: {error}", "تعذر تحميل المزيد من عناصر القناة: {error}", "فشل البحث: {error}", "تعذر تحميل المزيد من الفيديوهات: {error}", "تعذر تحميل الفيديوهات ذات الصلة: {error}", "تعذر تحميل الفيديو: {error}", "تعذر تحميل المزيد من التعليقات: {error}" ],
+  id: [ "Trending", "Musik", "Game", "Berita", "Pemrograman", "Buka YouTube", "Buka di Browser", "Buka Terkait", "Buka Channel", "Setelan", "Daftar Channel", "Simpan Channel", "Hapus Bookmark", "Buka Channel di Browser", "Tampilkan Video", "Tampilkan Siaran Langsung", "Buka Video", "Simpan", "Bersihkan", "Batal", "Channel Tersimpan", "YouTube", "Video Terkait", "Channel", "Browser", "YouTube - {query}", "Cari di YouTube", "Cari video", "Cari di {channel}", "Cari di channel ini", "Memuat channel tersimpan...", "Memuat video...", "Memuat video dan siaran langsung channel...", "Memuat...", "Pengguna YouTube", "Tanpa Judul", "Siaran langsung", "Disimpan pada {date}", "Tersimpan", "Ketik kata kunci.", "Tidak ada video terkait.", "Bookmark dihapus.", "Bookmark tidak ditemukan.", "Channel disimpan.", "Channel sudah disimpan.", "Bookmark dihapus.", "Setelan disimpan. Tarik untuk memuat ulang.", "Setelan dibersihkan. Tarik untuk memuat ulang.", "Daftar channel disimpan.", "Tidak ada channel tersimpan.", "Semua channel dinonaktifkan. Buka Daftar Channel.", "Belum ada channel tersimpan.", "Tidak ada hasil di channel ini untuk \"{query}\".", "Tidak ditemukan video atau siaran langsung.", "Tidak ditemukan video.", "Tidak ditemukan siaran langsung.", "Video dan siaran langsung dinonaktifkan.", "Tidak ada item channel lagi.", "Tidak ada hasil lagi.", "Tidak ada video terkait lagi.", "Tidak ada komentar lagi.", "Perbarui kunci API YouTube, bahasa, dan batas item awal channel.", "Aktifkan atau nonaktifkan channel tersimpan.", "Kunci API", "Bahasa", "Item Awal Channel", "Channel {index}", "Tidak dapat membuka channel.", "Tidak dapat menemukan channel.", "Tidak dapat menemukan id video.", "Pilihan bahasa tidak valid.", "Item awal channel harus 1 atau lebih.", "Tidak dapat menyimpan kunci API.", "Tidak dapat menghapus kunci API.", "Tidak dapat menyimpan batas daftar channel.", "Tidak dapat menyimpan bahasa.", "Tidak dapat membersihkan setelan.", "Tidak dapat membuka setelan.", "Tidak dapat menyimpan daftar channel.", "Tidak dapat membuka daftar channel.", "Gagal memuat channel: {error}", "Tidak dapat memuat daftar channel lengkap: {error}", "Tidak dapat memuat item channel tambahan: {error}", "Pencarian gagal: {error}", "Tidak dapat memuat lebih banyak video: {error}", "Tidak dapat memuat video terkait: {error}", "Gagal memuat video: {error}", "Tidak dapat memuat lebih banyak komentar: {error}" ],
+  fr: [ "Tendances", "Musique", "Jeux", "Actualités", "Programmation", "Ouvrir YouTube", "Ouvrir dans le navigateur", "Ouvrir les vidéos liées", "Ouvrir la chaîne", "Paramètres", "Liste des chaînes", "Enregistrer la chaîne", "Supprimer le favori", "Ouvrir la chaîne dans le navigateur", "Afficher les vidéos", "Afficher les directs", "Ouvrir la vidéo", "Enregistrer", "Effacer", "Annuler", "Chaînes enregistrées", "YouTube", "Vidéos liées", "Chaîne", "Navigateur", "YouTube - {query}", "Rechercher sur YouTube", "Rechercher des vidéos", "Rechercher dans {channel}", "Rechercher dans cette chaîne", "Chargement des chaînes enregistrées...", "Chargement des vidéos...", "Chargement des vidéos et directs de la chaîne...", "Chargement...", "Utilisateur YouTube", "Sans titre", "Direct", "Enregistré le {date}", "Enregistré", "Saisissez une recherche.", "Aucune vidéo liée.", "Favori supprimé.", "Favori introuvable.", "Chaîne enregistrée.", "Cette chaîne est déjà enregistrée.", "Favori supprimé.", "Paramètres enregistrés. Tirez pour actualiser.", "Paramètres effacés. Tirez pour actualiser.", "Liste des chaînes enregistrée.", "Aucune chaîne enregistrée.", "Toutes les chaînes sont désactivées. Ouvrez la liste des chaînes.", "Aucune chaîne enregistrée pour le moment.", "Aucun résultat dans cette chaîne pour \"{query}\".", "Aucune vidéo ou direct trouvé.", "Aucune vidéo trouvée.", "Aucun direct trouvé.", "Les vidéos et les directs sont désactivés.", "Aucun autre élément de la chaîne.", "Aucun autre résultat.", "Aucune autre vidéo liée.", "Aucun autre commentaire.", "Mettez à jour la clé API YouTube, la langue et la limite initiale d'éléments de chaîne.", "Activez ou désactivez les chaînes enregistrées.", "Clé API", "Langue", "Éléments initiaux de la chaîne", "Chaîne {index}", "Impossible d'ouvrir la chaîne.", "Impossible de trouver la chaîne.", "Impossible de trouver l'identifiant de la vidéo.", "Sélection de langue invalide.", "Les éléments initiaux de la chaîne doivent être supérieurs ou égaux à 1.", "Impossible d'enregistrer la clé API.", "Impossible d'effacer la clé API.", "Impossible d'enregistrer la limite de la liste des chaînes.", "Impossible d'enregistrer la langue.", "Impossible d'effacer les paramètres.", "Impossible d'ouvrir les paramètres.", "Impossible d'enregistrer la liste des chaînes.", "Impossible d'ouvrir la liste des chaînes.", "Échec du chargement de la chaîne : {error}", "Impossible de charger la liste complète des chaînes : {error}", "Impossible de charger plus d'éléments de la chaîne : {error}", "Échec de la recherche : {error}", "Impossible de charger plus de vidéos : {error}", "Impossible de charger les vidéos liées : {error}", "Échec du chargement de la vidéo : {error}", "Impossible de charger plus de commentaires : {error}" ],
+  ru: [ "В тренде", "Музыка", "Игры", "Новости", "Программирование", "Открыть YouTube", "Открыть в браузере", "Открыть похожие", "Открыть канал", "Настройки", "Список каналов", "Сохранить канал", "Удалить закладку", "Открыть канал в браузере", "Показывать видео", "Показывать прямые эфиры", "Открыть видео", "Сохранить", "Очистить", "Отмена", "Сохраненные каналы", "YouTube", "Похожие видео", "Канал", "Браузер", "YouTube - {query}", "Поиск в YouTube", "Искать видео", "Искать в {channel}", "Искать в этом канале", "Загрузка сохраненных каналов...", "Загрузка видео...", "Загрузка видео и прямых эфиров канала...", "Загрузка...", "Пользователь YouTube", "Без названия", "Прямой эфир", "Сохранено {date}", "Сохранено", "Введите поисковый запрос.", "Нет похожих видео.", "Закладка удалена.", "Закладка не найдена.", "Канал сохранен.", "Канал уже сохранен.", "Закладка удалена.", "Настройки сохранены. Потяните для обновления.", "Настройки очищены. Потяните для обновления.", "Список каналов сохранен.", "Нет сохраненных каналов.", "Все каналы отключены. Откройте список каналов.", "Пока нет сохраненных каналов.", "В этом канале нет результатов по запросу \"{query}\".", "Видео или прямые эфиры не найдены.", "Видео не найдены.", "Прямые эфиры не найдены.", "Видео и прямые эфиры отключены.", "Больше нет элементов канала.", "Больше нет результатов.", "Больше нет похожих видео.", "Больше нет комментариев.", "Обновите ключ API YouTube, язык и начальный лимит элементов канала.", "Включайте или отключайте сохраненные каналы.", "Ключ API", "Язык", "Начальные элементы канала", "Канал {index}", "Не удалось открыть канал.", "Не удалось найти канал.", "Не удалось найти идентификатор видео.", "Недопустимый выбор языка.", "Начальные элементы канала должны быть не меньше 1.", "Не удалось сохранить ключ API.", "Не удалось очистить ключ API.", "Не удалось сохранить лимит списка каналов.", "Не удалось сохранить язык.", "Не удалось очистить настройки.", "Не удалось открыть настройки.", "Не удалось сохранить список каналов.", "Не удалось открыть список каналов.", "Не удалось загрузить канал: {error}", "Не удалось загрузить полный список каналов: {error}", "Не удалось загрузить дополнительные элементы канала: {error}", "Ошибка поиска: {error}", "Не удалось загрузить больше видео: {error}", "Не удалось загрузить похожие видео: {error}", "Не удалось загрузить видео: {error}", "Не удалось загрузить больше комментариев: {error}" ],
+  th: [ "มาแรง", "เพลง", "เกม", "ข่าว", "การเขียนโค้ด", "เปิด YouTube", "เปิดในเบราว์เซอร์", "เปิดรายการที่เกี่ยวข้อง", "เปิดช่อง", "การตั้งค่า", "รายการช่อง", "บันทึกช่อง", "ลบบุ๊กมาร์ก", "เปิดช่องในเบราว์เซอร์", "แสดงวิดีโอ", "แสดงไลฟ์สด", "เปิดวิดีโอ", "บันทึก", "ล้าง", "ยกเลิก", "ช่องที่บันทึกไว้", "YouTube", "วิดีโอที่เกี่ยวข้อง", "ช่อง", "เบราว์เซอร์", "YouTube - {query}", "ค้นหาใน YouTube", "ค้นหาวิดีโอ", "ค้นหาใน {channel}", "ค้นหาในช่องนี้", "กำลังโหลดช่องที่บันทึกไว้...", "กำลังโหลดวิดีโอ...", "กำลังโหลดวิดีโอและไลฟ์สดของช่อง...", "กำลังโหลด...", "ผู้ใช้ YouTube", "ไม่มีชื่อ", "ไลฟ์สด", "บันทึกเมื่อ {date}", "บันทึกแล้ว", "พิมพ์คำค้นหา", "ไม่มีวิดีโอที่เกี่ยวข้อง", "ลบบุ๊กมาร์กแล้ว", "ไม่พบบุ๊กมาร์ก", "บันทึกช่องแล้ว", "ช่องนี้ถูกบันทึกไว้แล้ว", "ลบบุ๊กมาร์กแล้ว", "บันทึกการตั้งค่าแล้ว ดึงเพื่อรีเฟรช", "ล้างการตั้งค่าแล้ว ดึงเพื่อรีเฟรช", "บันทึกรายการช่องแล้ว", "ไม่มีช่องที่บันทึกไว้", "ปิดใช้งานทุกช่องอยู่ เปิดรายการช่อง", "ยังไม่มีช่องที่บันทึกไว้", "ไม่พบผลลัพธ์ในช่องนี้สำหรับ \"{query}\"", "ไม่พบวิดีโอหรือไลฟ์สด", "ไม่พบวิดีโอ", "ไม่พบไลฟ์สด", "วิดีโอและไลฟ์สดถูกปิดใช้งาน", "ไม่มีรายการช่องเพิ่มเติม", "ไม่มีผลลัพธ์เพิ่มเติม", "ไม่มีวิดีโอที่เกี่ยวข้องเพิ่มเติม", "ไม่มีความคิดเห็นเพิ่มเติม", "อัปเดตคีย์ API ของ YouTube ภาษา และจำนวนรายการช่องเริ่มต้น", "เปิดหรือปิดใช้งานช่องที่บันทึกไว้", "คีย์ API", "ภาษา", "รายการช่องเริ่มต้น", "ช่อง {index}", "ไม่สามารถเปิดช่องได้", "ไม่พบช่อง", "ไม่พบรหัสวิดีโอ", "การเลือกภาษาไม่ถูกต้อง", "รายการช่องเริ่มต้นต้องมีค่าอย่างน้อย 1", "ไม่สามารถบันทึกคีย์ API ได้", "ไม่สามารถล้างคีย์ API ได้", "ไม่สามารถบันทึกขีดจำกัดรายการช่องได้", "ไม่สามารถบันทึกภาษาได้", "ไม่สามารถล้างการตั้งค่าได้", "ไม่สามารถเปิดการตั้งค่าได้", "ไม่สามารถบันทึกรายการช่องได้", "ไม่สามารถเปิดรายการช่องได้", "โหลดช่องไม่สำเร็จ: {error}", "ไม่สามารถโหลดรายการช่องทั้งหมดได้: {error}", "ไม่สามารถโหลดรายการช่องเพิ่มเติมได้: {error}", "การค้นหาล้มเหลว: {error}", "ไม่สามารถโหลดวิดีโอเพิ่มเติมได้: {error}", "ไม่สามารถโหลดวิดีโอที่เกี่ยวข้องได้: {error}", "โหลดวิดีโอไม่สำเร็จ: {error}", "ไม่สามารถโหลดความคิดเห็นเพิ่มเติมได้: {error}" ],
+}, UI_STRING_INDEX = function(keys) {
+  for (var map = {}, i = 0; i < keys.length; i++) map[keys[i]] = i;
+  return map;
+}(UI_STRING_KEYS), listViewState = {}, postViewState = {}, handler = {
   home: function() {
     openHomeView();
   },
   deeplink: function(url) {
     var videoId = parseVideoId(url);
-    return !!videoId && (openVideoView(videoId, "YouTube"), !0);
+    return !!videoId && (openVideoView(videoId, t("title_youtube")), !0);
   },
   resume: function(viewId, context) {
     if ("watch" === getString(context && context.kind)) return ensurePostState(viewId, context || {}), 
@@ -172,7 +207,7 @@ var SYNURA = {
       if ("QUERY" === event.eventId) {
         if ("home" === state.mode) {
           var homeQuery = cleanQuery(event.data && event.data.query);
-          return homeQuery ? void openSearchView(homeQuery) : void showSnackbar(viewId, "Type a search query.");
+          return homeQuery ? void openSearchView(homeQuery) : void showSnackbar(viewId, t("prompt_type_search_query"));
         }
         if ("channel" === state.mode) return state.channelQuery = cleanQuery(event.data && event.data.query), 
         void loadChannelFirstPage(viewId, !1);
@@ -182,27 +217,34 @@ var SYNURA = {
       }
       if ("SCROLL_TO_END" !== event.eventId) {
         if ("CLICK" === event.eventId) {
-          if ("home" === state.mode) return void (openChannelFromEventData(state, event.data) || showSnackbar(viewId, "Could not find channel."));
+          if ("home" === state.mode) {
+            if (isHomeTrendingState(state)) {
+              var homeVideoId = getString(event.data && event.data.videoId);
+              return homeVideoId || (homeVideoId = parseVideoId(getString(event.data && event.data.link))), 
+              homeVideoId ? void openVideoView(homeVideoId, getString(event.data && event.data.title) || t("title_youtube"), buildVideoOpenData(state, event.data)) : void showSnackbar(viewId, t("error_could_not_find_video_id"));
+            }
+            return void (openChannelFromEventData(state, event.data) || showSnackbar(viewId, t("error_could_not_find_channel")));
+          }
           var videoId = getString(event.data && event.data.videoId);
           return videoId || (videoId = parseVideoId(getString(event.data && event.data.link))), 
-          videoId ? void openVideoView(videoId, getString(event.data && event.data.title) || "YouTube", buildVideoOpenData(state, event.data)) : void showSnackbar(viewId, "Could not find video id.");
+          videoId ? void openVideoView(videoId, getString(event.data && event.data.title) || t("title_youtube"), buildVideoOpenData(state, event.data)) : void showSnackbar(viewId, t("error_could_not_find_video_id"));
         }
-        if ("ITEM_MENU_CLICK" !== event.eventId) "MENU_CLICK" !== event.eventId ? "AUTHOR_CLICK" === event.eventId && (openChannelFromEventData(state, event.data) || showSnackbar(viewId, "Could not find channel.")) : handleListMenu(viewId, state, getString(event.data && event.data.menu)); else {
+        if ("ITEM_MENU_CLICK" !== event.eventId) "MENU_CLICK" !== event.eventId ? "AUTHOR_CLICK" === event.eventId && (openChannelFromEventData(state, event.data) || showSnackbar(viewId, t("error_could_not_find_channel"))) : handleListMenu(viewId, state, getString(event.data && event.data.menu)); else {
           var itemMenu = getString(event.data && event.data.menu), itemLink = getString(event.data && event.data.link);
-          if (itemMenu === ITEM_MENU_OPEN_CHANNEL) return void (openChannelFromEventData(state, event.data) || showSnackbar(viewId, "Could not find channel."));
-          if (itemMenu === ITEM_MENU_REMOVE_BOOKMARK && "home" === state.mode) {
+          if (matchesUIString(itemMenu, ITEM_MENU_OPEN_CHANNEL)) return void (openChannelFromEventData(state, event.data) || showSnackbar(viewId, t("error_could_not_find_channel")));
+          if (matchesUIString(itemMenu, ITEM_MENU_REMOVE_BOOKMARK) && "home" === state.mode) {
             var homeChannel = resolveChannelFromListEvent(state, event.data), removed = removeStarredChannel(homeChannel.channelUrl, homeChannel.channelId);
-            return refreshHomeList(viewId), void showSnackbar(viewId, removed ? "Removed bookmark." : "Bookmark not found.");
+            return refreshHomeList(viewId), void showSnackbar(viewId, removed ? t("snackbar_removed_bookmark") : t("snackbar_bookmark_not_found"));
           }
-          if (itemMenu === ITEM_MENU_OPEN_BROWSER && itemLink) {
-            var browserTitle = "home" === state.mode || "channel" === state.mode ? getString(event.data && event.data.title) || "Channel" : "YouTube";
+          if (matchesUIString(itemMenu, ITEM_MENU_OPEN_BROWSER) && itemLink) {
+            var browserTitle = "channel" === state.mode || "home" === state.mode && !isHomeTrendingState(state) ? getString(event.data && event.data.title) || t("title_channel") : t("title_youtube");
             openBrowser(localizedURL(itemLink), browserTitle);
-          } else if (itemMenu === ITEM_MENU_OPEN_VIDEO) {
+          } else if (matchesUIString(itemMenu, ITEM_MENU_OPEN_VIDEO)) {
             var targetVideoId = parseVideoId(itemLink);
-            targetVideoId && openVideoView(targetVideoId, getString(event.data && event.data.title) || "YouTube", buildVideoOpenData(state, event.data));
+            targetVideoId && openVideoView(targetVideoId, getString(event.data && event.data.title) || t("title_youtube"), buildVideoOpenData(state, event.data));
           }
         }
-      } else "related" === state.mode ? loadMoreRelated(viewId) : "channel" === state.mode ? loadMoreChannel(viewId) : loadMoreSearch(viewId);
+      } else "related" === state.mode ? loadMoreRelated(viewId) : "home" === state.mode && isHomeTrendingState(state) ? loadMoreTrending(viewId) : "channel" === state.mode ? loadMoreChannel(viewId) : loadMoreSearch(viewId);
     } else "related" === state.mode ? refreshRelatedList(viewId) : "home" === state.mode ? refreshHomeList(viewId) : "channel" === state.mode ? loadChannelFirstPage(viewId, !0) : loadSearchFirstPage(viewId, state.query || DEFAULT_QUERY);
   },
   onPostEvent: function(event) {
@@ -210,75 +252,76 @@ var SYNURA = {
     if ("LOAD" !== event.eventId && "REFRESH" !== event.eventId) if ("SCROLL_TO_END" !== event.eventId) if ("SUBMIT" !== event.eventId) if ("ITEM_MENU_CLICK" !== event.eventId) {
       if ("MENU_CLICK" === event.eventId) {
         var menuName = getString(event.data && event.data.menu);
-        return menuName === MENU_SETTINGS ? void openSettingsDialog(viewId, state) : menuName === POST_MENU_OPEN ? void openBrowser(localizedURL(watchURL(state.videoId)), "YouTube") : menuName === POST_MENU_RELATED ? void openRelatedFromPost(viewId) : menuName === POST_MENU_CHANNEL ? void openChannelFromPostState(viewId) : void 0;
+        return matchesUIString(menuName, MENU_SETTINGS) ? void openSettingsDialog(viewId, state) : matchesUIString(menuName, POST_MENU_OPEN) ? void openBrowser(localizedURL(watchURL(state.videoId)), t("title_youtube")) : matchesUIString(menuName, POST_MENU_RELATED) ? void openRelatedFromPost(viewId) : matchesUIString(menuName, POST_MENU_CHANNEL) ? void openChannelFromPostState(viewId) : void 0;
       }
       "AUTHOR_CLICK" === event.eventId && openChannelFromPostState(viewId);
     } else {
       var menu = getString(event.data && event.data.menu), link = getString(event.data && event.data.link);
-      if (menu === ITEM_MENU_OPEN_VIDEO) {
+      if (matchesUIString(menu, ITEM_MENU_OPEN_VIDEO)) {
         var targetVideoId = parseVideoId(link);
-        targetVideoId && openVideoView(targetVideoId, getString(event.data && event.data.title) || "YouTube", event.data);
-      } else menu === ITEM_MENU_OPEN_BROWSER && link && openBrowser(localizedURL(link), "YouTube");
+        targetVideoId && openVideoView(targetVideoId, getString(event.data && event.data.title) || t("title_youtube"), event.data);
+      } else matchesUIString(menu, ITEM_MENU_OPEN_BROWSER) && link && openBrowser(localizedURL(link), t("title_youtube"));
     } else {
       var button = getString(event.data && event.data.button);
-      button === POST_MENU_OPEN ? openBrowser(localizedURL(watchURL(state.videoId)), "YouTube") : button === POST_MENU_RELATED && openRelatedFromPost(viewId);
+      matchesUIString(button, POST_MENU_OPEN) ? openBrowser(localizedURL(watchURL(state.videoId)), t("title_youtube")) : matchesUIString(button, POST_MENU_RELATED) && openRelatedFromPost(viewId);
     } else loadMoreComments(viewId); else loadWatchPost(viewId);
   }
 }, openHomeView = function() {
-  var result = synura.open({
+  var hasStarredChannels = loadStarredChannels().length > 0, result = synura.open({
     view: "/views/list",
     styles: {
-      title: "Starred Channels",
-      appbar: HOME_SEARCH_APPBAR,
+      title: hasStarredChannels ? t("title_starred_channels") : getHomeFallbackTitle(),
+      appbar: buildHomeSearchAppbar(),
       layout: "card",
-      pagination: !1,
+      pagination: !hasStarredChannels,
       menu: !0,
       media: !0,
       history: !0,
-      authorClickable: !1
+      authorClickable: !hasStarredChannels
     },
     models: {
       contents: [],
-      menus: [ HOME_MENU_CHANNEL_LIST, MENU_SETTINGS ],
-      snackbar: "Loading starred channels..."
+      menus: [ t(HOME_MENU_CHANNEL_LIST), t(MENU_SETTINGS) ],
+      snackbar: hasStarredChannels ? t("loading_starred_channels") : t("loading_videos")
     }
   }, {
     kind: "home"
   }, handler.onListEvent);
-  result.success && (listViewState[String(result.viewId)] = {
-    mode: "home",
-    title: "Starred Channels",
-    loaded: !1,
-    loading: !1,
-    continuation: "",
-    items: [],
-    apiCfg: defaultConfig(),
-    channelUrl: "",
-    channelId: "",
-    channelTitle: "",
-    channelAvatar: "",
-    channelMemo: "",
-    starred: !1,
-    enableVideos: !0,
-    enableStreams: !0,
-    continuationSource: "",
-    pendingItems: [],
-    channelTabFallbackPending: !1
-  });
+  if (result.success) {
+    var key = String(result.viewId), existing = listViewState[key] || {};
+    listViewState[key] = {
+      mode: "home",
+      title: t("title_starred_channels"),
+      loaded: !!existing.loaded,
+      loading: !!existing.loading,
+      continuation: existing.continuation || "",
+      items: existing.items || [],
+      apiCfg: existing.apiCfg || defaultConfig(),
+      channelUrl: "",
+      channelId: "",
+      channelTitle: "",
+      channelAvatar: "",
+      channelMemo: "",
+      starred: !1,
+      enableVideos: !0,
+      enableStreams: !0,
+      continuationSource: "",
+      pendingItems: existing.pendingItems || [],
+      channelTabFallbackPending: !!existing.channelTabFallbackPending,
+      homeFeedMode: existing.homeFeedMode || "",
+      homeQuery: existing.homeQuery || ""
+    };
+  }
 }, openSearchView = function(query) {
   var menuLabels = QUICK_QUERIES.map(function(item) {
-    return item.label;
+    return getQuickQueryLabel(item);
   });
-  menuLabels.push(SEARCH_MENU_OPEN), menuLabels.push(MENU_SETTINGS);
+  menuLabels.push(t(SEARCH_MENU_OPEN)), menuLabels.push(t(MENU_SETTINGS));
   var result = synura.open({
     view: "/views/list",
     styles: {
-      title: "YouTube",
-      appbar: {
-        type: "query",
-        label: "Search YouTube",
-        hint: "Search videos"
-      },
+      title: t("title_youtube"),
+      appbar: buildHomeSearchAppbar(),
       layout: "card",
       pagination: !0,
       menu: !0,
@@ -289,7 +332,7 @@ var SYNURA = {
     models: {
       contents: [],
       menus: menuLabels,
-      snackbar: "Loading videos..."
+      snackbar: t("loading_videos")
     }
   }, {
     kind: "search",
@@ -321,7 +364,7 @@ var SYNURA = {
 }, buildPostSeed = function(videoId, titleHint, data) {
   var seed = {
     videoId: getString(videoId),
-    title: getString(titleHint) || getString(data && data.title) || "YouTube",
+    title: getString(titleHint) || getString(data && data.title) || t("title_youtube"),
     author: getString(data && data.author),
     memo: getString(data && data.channelMemo) || getString(data && data.memo),
     avatar: getString(data && data.avatar) || getString(data && data.channelAvatar),
@@ -340,7 +383,7 @@ var SYNURA = {
 }, buildInitialPostModels = function(videoURL, seed) {
   var models = {
     link: videoURL,
-    author: seed.author || "Loading...",
+    author: seed.author || t("label_loading"),
     content: [ {
       type: "link",
       value: videoURL,
@@ -348,19 +391,19 @@ var SYNURA = {
       link: videoURL
     } ],
     comments: [],
-    menus: [ POST_MENU_OPEN, MENU_SETTINGS ],
-    buttons: [ POST_MENU_OPEN ]
+    menus: [ t(POST_MENU_OPEN), t(MENU_SETTINGS) ],
+    buttons: [ t(POST_MENU_OPEN) ]
   };
   return seed.memo && (models.memo = seed.memo), seed.avatar && (models.avatar = seed.avatar), 
   seed.date && (models.date = seed.date), seed.viewCount && (models.viewCount = seed.viewCount), 
   seed.likeCount && (models.likeCount = seed.likeCount), seed.dislikeCount && (models.dislikeCount = seed.dislikeCount), 
-  (seed.channelUrl || seed.channelId) && (models.menus = [ POST_MENU_OPEN, POST_MENU_CHANNEL, MENU_SETTINGS ]), 
+  (seed.channelUrl || seed.channelId) && (models.menus = [ t(POST_MENU_OPEN), t(POST_MENU_CHANNEL), t(MENU_SETTINGS) ]),
   models;
 }, openVideoView = function(videoId, titleHint, data) {
   var seed = buildPostSeed(videoId, titleHint, data), videoURL = localizedURL(watchURL(videoId)), result = synura.open({
     view: "/views/post",
     styles: {
-      title: seed.title || "YouTube",
+      title: seed.title || t("title_youtube"),
       menu: !0,
       authorClickable: !0
     },
@@ -403,7 +446,7 @@ var SYNURA = {
   var result = synura.open({
     view: "/views/list",
     styles: {
-      title: title || "Related Videos",
+      title: title || t("title_related_videos"),
       layout: "card",
       pagination: !0,
       menu: !0,
@@ -413,8 +456,8 @@ var SYNURA = {
     },
     models: {
       contents: items || [],
-      menus: [ POST_MENU_OPEN, MENU_SETTINGS ],
-      snackbar: items && items.length ? "" : "No related videos available."
+      menus: [ t(POST_MENU_OPEN), t(MENU_SETTINGS) ],
+      snackbar: items && items.length ? "" : t("snackbar_no_related_videos")
     }
   }, {
     kind: "related",
@@ -425,7 +468,7 @@ var SYNURA = {
     listViewState[key] = {
       mode: "related",
       parentVideoId: parentVideoId,
-      title: title || "Related Videos",
+      title: title || t("title_related_videos"),
       loaded: !!existing.loaded,
       loading: !!existing.loading,
       continuation: existing.continuation || continuation || "",
@@ -445,7 +488,7 @@ var SYNURA = {
   }
 }, openRelatedFromPost = function(viewId) {
   var state = postViewState[String(viewId)];
-  state && openRelatedList(state.videoId, "Related Videos", state.relatedItems || [], state.relatedContinuation || "", state.apiCfg || defaultConfig());
+  state && openRelatedList(state.videoId, t("title_related_videos"), state.relatedItems || [], state.relatedContinuation || "", state.apiCfg || defaultConfig());
 }, openChannelList = function(channelUrl, channelTitle, channelId, channelAvatar, channelMemo) {
   var normalizedUrl = normalizeChannelUrl(channelUrl);
   if (!normalizedUrl && channelId && (normalizedUrl = normalizeChannelUrl("/channel/" + channelId)), 
@@ -463,9 +506,9 @@ var SYNURA = {
   }, result = synura.open({
     view: "/views/list",
     styles: {
-      title: context.channelTitle || "Channel",
+      title: context.channelTitle || t("title_channel"),
       appbar: buildChannelAppbar({
-        channelTitle: context.channelTitle || "Channel",
+        channelTitle: context.channelTitle || t("title_channel"),
         channelQuery: ""
       }),
       layout: "card",
@@ -481,14 +524,14 @@ var SYNURA = {
         channelUrl: normalizedUrl,
         starred: starred
       }),
-      snackbar: "Loading channel videos and live streams..."
+      snackbar: t("loading_channel_items")
     }
   }, context, handler.onListEvent);
   if (!result.success) return !1;
   var key = String(result.viewId), existing = listViewState[key] || {};
   return listViewState[key] = {
     mode: "channel",
-    title: context.channelTitle || "Channel",
+    title: context.channelTitle || t("title_channel"),
     loaded: !!existing.loaded,
     loading: !!existing.loading,
     continuation: existing.continuation || "",
@@ -509,10 +552,10 @@ var SYNURA = {
   }, !0;
 }, openChannelFromPostState = function(viewId) {
   var state = postViewState[String(viewId)];
-  state && (state.channelUrl || state.channelId) ? openChannelList(state.channelUrl, state.channelTitle || "Channel", state.channelId, state.channelAvatar, state.channelMemo) || showSnackbar(viewId, "Could not open channel.") : showSnackbar(viewId, "Could not find channel.");
+  state && (state.channelUrl || state.channelId) ? openChannelList(state.channelUrl, state.channelTitle || t("title_channel"), state.channelId, state.channelAvatar, state.channelMemo) || showSnackbar(viewId, t("error_could_not_open_channel")) : showSnackbar(viewId, t("error_could_not_find_channel"));
 }, openChannelFromEventData = function(state, data) {
   var channel = resolveChannelFromListEvent(state, data);
-  return !(!channel.channelUrl && !channel.channelId) && openChannelList(channel.channelUrl, channel.channelTitle || channel.author || channel.title || "Channel", channel.channelId, channel.channelAvatar || channel.avatar, channel.channelMemo || channel.memo);
+  return !(!channel.channelUrl && !channel.channelId) && openChannelList(channel.channelUrl, channel.channelTitle || channel.author || channel.title || t("title_channel"), channel.channelId, channel.channelAvatar || channel.avatar, channel.channelMemo || channel.memo);
 }, buildVideoOpenData = function(state, data) {
   var out = {};
   if (data && "object" == typeof data) for (var key in data) Object.prototype.hasOwnProperty.call(data, key) && (out[key] = data[key]);
@@ -540,7 +583,7 @@ var SYNURA = {
   };
   !out.channelUrl && out.channelId && (out.channelUrl = normalizeChannelUrl("/channel/" + out.channelId));
   var link = getString(data && data.link);
-  if (!out.channelUrl && state && "home" === state.mode && (out.channelUrl = normalizeChannelUrl(link)), 
+  if (!out.channelUrl && state && "home" === state.mode && !isHomeTrendingState(state) && (out.channelUrl = normalizeChannelUrl(link)), 
   (!out.channelUrl || !out.channelId || !out.channelTitle) && state && Array.isArray(state.items)) for (var i = 0; i < state.items.length; i++) {
     var item = state.items[i] || {};
     if (getString(item.link) === link && (!out.author || !getString(item.author) || getString(item.author) === out.author)) {
@@ -554,18 +597,18 @@ var SYNURA = {
   return state && "channel" === state.mode && (out.channelUrl = out.channelUrl || normalizeChannelUrl(state.channelUrl), 
   out.channelId = out.channelId || getString(state.channelId), out.channelTitle = out.channelTitle || getString(state.channelTitle), 
   out.channelAvatar = out.channelAvatar || getString(state.channelAvatar), out.channelMemo = out.channelMemo || getString(state.channelMemo)), 
-  !out.channelTitle && state && "home" === state.mode && (out.channelTitle = getString(data && data.title)), 
+  !out.channelTitle && state && "home" === state.mode && !isHomeTrendingState(state) && (out.channelTitle = getString(data && data.title)), 
   out;
 }, buildChannelMenus = function(state) {
   var menus = [];
-  return state.channelUrl && menus.push(CHANNEL_MENU_OPEN_BROWSER), menus.push({
-    label: CHANNEL_MENU_ENABLE_VIDEOS,
+  return state.channelUrl && menus.push(t(CHANNEL_MENU_OPEN_BROWSER)), menus.push({
+    label: t(CHANNEL_MENU_ENABLE_VIDEOS),
     checked: normalizeEnabledFlag(state && state.enableVideos)
   }), menus.push({
-    label: CHANNEL_MENU_ENABLE_STREAMS,
+    label: t(CHANNEL_MENU_ENABLE_STREAMS),
     checked: normalizeEnabledFlag(state && state.enableStreams)
-  }), menus.push(state.starred ? CHANNEL_MENU_UNBOOKMARK : CHANNEL_MENU_BOOKMARK), 
-  menus.push(MENU_SETTINGS), menus;
+  }), menus.push(t(state.starred ? CHANNEL_MENU_UNBOOKMARK : CHANNEL_MENU_BOOKMARK)),
+  menus.push(t(MENU_SETTINGS)), menus;
 }, setChannelBookmark = function(viewId, state, shouldStar) {
   if (state && (state.channelUrl || state.channelId)) {
     var changed = !1;
@@ -580,63 +623,65 @@ var SYNURA = {
     synura.update(viewId, {
       models: {
         menus: buildChannelMenus(state),
-        snackbar: shouldStar ? changed ? "Channel bookmarked." : "Channel already bookmarked." : changed ? "Bookmark removed." : "Bookmark not found."
+        snackbar: shouldStar ? changed ? t("snackbar_channel_bookmarked") : t("snackbar_channel_already_bookmarked") : changed ? t("snackbar_bookmark_removed") : t("snackbar_bookmark_not_found")
       }
     }), refreshAllHomeLists();
-  } else showSnackbar(viewId, "Could not find channel.");
+  } else showSnackbar(viewId, t("error_could_not_find_channel"));
 }, openSettingsDialog = function(parentViewId, targetState) {
   var currentApiKey = loadApiKeyOverride(), currentLanguage = getCurrentLanguageSetting(), currentChannelChunkSize = loadChannelListChunkSize(), languageOptions = getLanguageOptions(), dialogViewId = 0, result = synura.open({
     view: "/dialogs/input",
     styles: {
-      title: "Settings",
-      message: "Update YouTube API key, language, and initial channel list limit.",
+      title: t(MENU_SETTINGS),
+      message: t("dialog_settings_message"),
       close: !0
     },
     models: {
       body: [ {
         type: "string",
         name: "apiKey",
-        label: "API Key",
+        label: t("field_api_key"),
         value: currentApiKey
       }, {
         type: "select",
         name: "language",
-        label: "Language",
+        label: t("field_language"),
         value: currentLanguage.label,
         options: languageOptions
       }, {
         type: "number",
         name: "channelChunkSize",
-        label: "Initial Channel Items",
+        label: t("field_initial_channel_items"),
         value: currentChannelChunkSize
       } ],
-      buttons: [ "Save", "Clear", "Cancel" ]
+      buttons: [ t(BUTTON_SAVE), t(BUTTON_CLEAR), t(BUTTON_CANCEL) ]
     }
   }, function(event) {
     if ("SUBMIT" === event.eventId) {
       var button = getString(event.data && event.data.button);
-      if ("Save" === button) {
+      if (matchesUIString(button, BUTTON_SAVE)) {
         var key = sanitizeApiKey(event.data && event.data.apiKey), languageCode = languageCodeFromOption(event.data && event.data.language), channelChunkSize = normalizeChannelListChunkSize(event.data && event.data.channelChunkSize, 0);
-        if (!languageCode) return void showSnackbar(parentViewId, "Invalid language selection.");
-        if (!channelChunkSize) return void showSnackbar(parentViewId, "Initial channel items must be 1 or higher.");
+        if (!languageCode) return void showSnackbar(parentViewId, t("error_invalid_language_selection"));
+        if (!channelChunkSize) return void showSnackbar(parentViewId, t("error_invalid_channel_items"));
         if (key) {
-          if (!saveApiKeyOverride(key)) return void showSnackbar(parentViewId, "Could not save API key.");
-        } else if (!clearApiKeyOverride()) return void showSnackbar(parentViewId, "Could not clear API key.");
+          if (!saveApiKeyOverride(key)) return void showSnackbar(parentViewId, t("error_could_not_save_api_key"));
+        } else if (!clearApiKeyOverride()) return void showSnackbar(parentViewId, t("error_could_not_clear_api_key"));
         return saveLanguageOverride(languageCode) ? saveChannelListChunkSize(channelChunkSize) ? (applySettingsToState(targetState), 
-        showSnackbar(parentViewId, "Settings saved. Pull to refresh."), void synura.close(dialogViewId)) : void showSnackbar(parentViewId, "Could not save channel list limit.") : void showSnackbar(parentViewId, "Could not save language.");
+        showSnackbar(parentViewId, t("snackbar_settings_saved")), void synura.close(dialogViewId)) : void showSnackbar(parentViewId, t("error_could_not_save_channel_list_limit")) : void showSnackbar(parentViewId, t("error_could_not_save_language"));
       }
-      return "Clear" === button ? clearApiKeyOverride() && clearLanguageOverride() && clearChannelListChunkSize() ? (applySettingsToState(targetState), 
-      showSnackbar(parentViewId, "Settings cleared. Pull to refresh."), void synura.close(dialogViewId)) : void showSnackbar(parentViewId, "Could not clear settings.") : void synura.close(dialogViewId);
+      return matchesUIString(button, BUTTON_CLEAR) ? clearApiKeyOverride() && clearLanguageOverride() && clearChannelListChunkSize() ? (applySettingsToState(targetState),
+      showSnackbar(parentViewId, t("snackbar_settings_cleared")), void synura.close(dialogViewId)) : void showSnackbar(parentViewId, t("error_could_not_clear_settings")) : void synura.close(dialogViewId);
     }
     "CLOSE" === event.eventId && synura.close(dialogViewId);
   });
-  result.success ? dialogViewId = result.viewId : showSnackbar(parentViewId, "Could not open settings.");
+  result.success ? dialogViewId = result.viewId : showSnackbar(parentViewId, t("error_could_not_open_settings"));
 }, applySettingsToState = function(state) {
   state && state.apiCfg && (state.apiCfg.apiKey = resolveApiKey(state.apiCfg.apiKey), 
   applyLocaleToConfig(state.apiCfg));
 }, buildChannelManagerFields = function(channels) {
   for (var fields = [], i = 0; i < channels.length; i++) {
-    var channel = channels[i] || {}, title = getString(channel.channelTitle) || getString(channel.channelUrl) || "Channel " + (i + 1), memo = getString(channel.channelMemo);
+    var channel = channels[i] || {}, title = getString(channel.channelTitle) || getString(channel.channelUrl) || t("fallback_channel_number", {
+      index: i + 1
+    }), memo = getString(channel.channelMemo);
     memo && (title = trimTo(title + " - " + memo, 120)), fields.push({
       type: "boolean",
       name: "enabled_" + i,
@@ -653,11 +698,11 @@ var SYNURA = {
 }, openChannelListManager = function(parentViewId) {
   var channels = loadStarredChannels();
   if (channels.length) {
-    var managerViewId = 0, managerButtons = [ "Save", "Enable All", "Disable All", "Delete Disabled", "Cancel" ], result = synura.open({
+    var managerViewId = 0, managerButtons = [ t(BUTTON_SAVE), t(BUTTON_CANCEL) ], result = synura.open({
       view: "/views/settings",
       styles: {
-        title: "Channel List",
-        message: "Enable, disable, or delete starred channels."
+        title: t(HOME_MENU_CHANNEL_LIST),
+        message: t("dialog_channel_list_message")
       },
       models: {
         body: buildChannelManagerFields(channels),
@@ -666,48 +711,24 @@ var SYNURA = {
     }, function(event) {
       if ("SUBMIT" === event.eventId) {
         var button = getString(event.data && event.data.button);
-        if ("Save" === button) return applyChannelManagerValues(channels, event.data), saveStarredChannels(channels) ? (refreshHomeList(parentViewId), 
-        showSnackbar(parentViewId, "Channel list saved."), void synura.close(managerViewId)) : void showSnackbar(managerViewId, "Could not save channel list.");
-        if ("Enable All" !== button && "Disable All" !== button) {
-          if ("Delete Disabled" === button) {
-            applyChannelManagerValues(channels, event.data);
-            for (var kept = [], removed = 0, j = 0; j < channels.length; j++) !1 !== channels[j].enabled ? kept.push(channels[j]) : removed++;
-            return removed ? saveStarredChannels(channels = kept) ? (refreshHomeList(parentViewId), 
-            channels.length ? void synura.update(managerViewId, {
-              models: {
-                body: buildChannelManagerFields(channels),
-                buttons: managerButtons,
-                snackbar: "Deleted " + removed + " channel(s)."
-              }
-            }) : (showSnackbar(parentViewId, "Deleted " + removed + " channel(s)."), void synura.close(managerViewId))) : void showSnackbar(managerViewId, "Could not delete channels.") : void showSnackbar(managerViewId, "No disabled channels to delete.");
-          }
-          synura.close(managerViewId);
-        } else {
-          for (var enabled = "Enable All" === button, i = 0; i < channels.length; i++) channels[i].enabled = enabled;
-          synura.update(managerViewId, {
-            models: {
-              body: buildChannelManagerFields(channels),
-              buttons: managerButtons,
-              snackbar: enabled ? "All channels enabled." : "All channels disabled."
-            }
-          });
-        }
+        if (matchesUIString(button, BUTTON_SAVE)) return applyChannelManagerValues(channels, event.data), saveStarredChannels(channels) ? (refreshHomeList(parentViewId),
+        showSnackbar(parentViewId, t("snackbar_channel_list_saved")), void synura.close(managerViewId)) : void showSnackbar(managerViewId, t("error_could_not_save_channel_list"));
+        synura.close(managerViewId);
       }
     });
-    result.success ? managerViewId = result.viewId : showSnackbar(parentViewId, "Could not open channel list.");
-  } else showSnackbar(parentViewId, "No starred channels.");
+    result.success ? managerViewId = result.viewId : showSnackbar(parentViewId, t("error_could_not_open_channel_list"));
+  } else showSnackbar(parentViewId, t("snackbar_no_starred_channels"));
 }, isMenuMatch = function(menu, label) {
-  var value = getString(menu), target = getString(label);
-  return !(!value || !target) && (value === target || value.indexOf(target) >= 0);
+  return matchesUIString(menu, label);
 }, handleListMenu = function(viewId, state, menu) {
-  if (menu) if (menu !== MENU_SETTINGS) if ("home" !== state.mode || menu !== HOME_MENU_CHANNEL_LIST) {
-    if ("channel" === state.mode) return menu === CHANNEL_MENU_OPEN_BROWSER && state.channelUrl ? void openBrowser(localizedURL(state.channelUrl), state.channelTitle || "Channel") : isMenuMatch(menu, CHANNEL_MENU_ENABLE_VIDEOS) ? (state.enableVideos = !normalizeEnabledFlag(state.enableVideos), 
+  if (menu) if (!matchesUIString(menu, MENU_SETTINGS)) if ("home" !== state.mode || !matchesUIString(menu, HOME_MENU_CHANNEL_LIST)) {
+    if ("channel" === state.mode) return matchesUIString(menu, CHANNEL_MENU_OPEN_BROWSER) && state.channelUrl ? void openBrowser(localizedURL(state.channelUrl), state.channelTitle || t("title_channel")) : isMenuMatch(menu, CHANNEL_MENU_ENABLE_VIDEOS) ? (state.enableVideos = !normalizeEnabledFlag(state.enableVideos),
     void loadChannelFirstPage(viewId, !1)) : isMenuMatch(menu, CHANNEL_MENU_ENABLE_STREAMS) ? (state.enableStreams = !normalizeEnabledFlag(state.enableStreams), 
-    void loadChannelFirstPage(viewId, !1)) : menu === CHANNEL_MENU_BOOKMARK ? void setChannelBookmark(viewId, state, !0) : menu === CHANNEL_MENU_UNBOOKMARK ? void setChannelBookmark(viewId, state, !1) : void 0;
-    if (menu !== SEARCH_MENU_OPEN) if (menu !== POST_MENU_OPEN || "related" !== state.mode) {
-      if ("search" === state.mode) for (var i = 0; i < QUICK_QUERIES.length; i++) if (QUICK_QUERIES[i].label === menu) return state.query = QUICK_QUERIES[i].query, 
+    void loadChannelFirstPage(viewId, !1)) : matchesUIString(menu, CHANNEL_MENU_BOOKMARK) ? void setChannelBookmark(viewId, state, !0) : matchesUIString(menu, CHANNEL_MENU_UNBOOKMARK) ? void setChannelBookmark(viewId, state, !1) : void 0;
+    if (!matchesUIString(menu, SEARCH_MENU_OPEN)) if (!matchesUIString(menu, POST_MENU_OPEN) || "related" !== state.mode) {
+      if ("search" === state.mode) for (var i = 0; i < QUICK_QUERIES.length; i++) if (matchesUIString(menu, QUICK_QUERIES[i].labelKey)) return state.query = QUICK_QUERIES[i].query,
       void loadSearchFirstPage(viewId, state.query);
-    } else openBrowser(localizedURL(watchURL(state.parentVideoId)), "YouTube"); else openBrowser(localizedURL(YT_ORIGIN + "/"), "YouTube");
+    } else openBrowser(localizedURL(watchURL(state.parentVideoId)), t("title_youtube")); else openBrowser(localizedURL(YT_ORIGIN + "/"), t("title_youtube"));
   } else openChannelListManager(viewId); else openSettingsDialog(viewId, state);
 }, ensureListState = function(viewId, context) {
   var key = String(viewId);
@@ -719,7 +740,7 @@ var SYNURA = {
     listViewState[key] = {
       mode: mode,
       parentVideoId: getString(context && context.videoId),
-      title: getString(context && context.title) || ("related" === mode ? "Related Videos" : "home" === mode ? "Starred Channels" : "channel" === mode ? "Channel" : "YouTube"),
+      title: getString(context && context.title) || ("related" === mode ? t("title_related_videos") : "home" === mode ? t("title_starred_channels") : "channel" === mode ? t("title_channel") : t("title_youtube")),
       query: getString(context && context.query) || DEFAULT_QUERY,
       loaded: !1,
       loading: !1,
@@ -737,9 +758,11 @@ var SYNURA = {
       enableStreams: normalizeEnabledFlag(context && context.enableStreams),
       continuationSource: getString(context && context.continuationSource),
       pendingItems: [],
-      channelTabFallbackPending: !1
+      channelTabFallbackPending: !1,
+      homeFeedMode: getString(context && context.homeFeedMode),
+      homeQuery: cleanQuery(context && context.homeQuery)
     }, "home" === mode && (listViewState[key].items = starredChannelsToListItems(loadStarredChannels()), 
-    listViewState[key].loaded = !0);
+    listViewState[key].loaded = !0, listViewState[key].homeFeedMode = "channels");
   }
   return listViewState[key];
 }, ensurePostState = function(viewId, context) {
@@ -767,27 +790,95 @@ var SYNURA = {
 }, renderRelatedList = function(viewId, state) {
   state.loaded = !0, synura.update(viewId, {
     styles: {
-      title: state.title || "Related Videos"
+      title: state.title || t("title_related_videos")
     },
     models: {
       contents: state.items || [],
-      menus: [ POST_MENU_OPEN, MENU_SETTINGS ],
-      snackbar: (state.items || []).length ? "" : "No related videos available."
+      menus: [ t(POST_MENU_OPEN), t(MENU_SETTINGS) ],
+      snackbar: (state.items || []).length ? "" : t("snackbar_no_related_videos")
     }
   });
 }, buildHomeSnackbar = function(allChannels, visibleItems) {
-  return visibleItems && visibleItems.length ? "" : allChannels && allChannels.length ? "All channels are disabled. Open Channel List." : "No starred channels yet.";
+  return visibleItems && visibleItems.length ? "" : allChannels && allChannels.length ? t("snackbar_all_channels_disabled") : t("snackbar_no_starred_channels_yet");
+}, getHomeFallbackLabel = function() {
+  return QUICK_QUERIES.length && QUICK_QUERIES[0] ? getQuickQueryLabel(QUICK_QUERIES[0]) : t("quick_query_trending");
+}, getHomeFallbackSearchQuery = function() {
+  var code = getCurrentUILanguageCode(), exact = getString(HOME_TRENDING_SEARCH_QUERIES[code]), primary = code.split("-")[0], fallback = getString(HOME_TRENDING_SEARCH_QUERIES[primary]), label = cleanQuery(getHomeFallbackLabel());
+  return cleanQuery(exact || fallback || label || QUICK_QUERIES.length && QUICK_QUERIES[0] && QUICK_QUERIES[0].query || DEFAULT_QUERY) || DEFAULT_QUERY;
+}, getHomeFallbackTitle = function() {
+  return t("title_search_results", {
+    query: getHomeFallbackLabel()
+  });
+}, isHomeTrendingState = function(state) {
+  return !!state && "home" === state.mode && "trending" === getString(state.homeFeedMode);
+}, loadHomeFallbackList = function(viewId, state) {
+  if (state && !state.loading) {
+    var keepItems = isHomeTrendingState(state), homeLabel = getHomeFallbackLabel(), homeQuery = getHomeFallbackSearchQuery();
+    state.loading = !0, state.mode = "home", state.homeFeedMode = "trending", state.homeQuery = homeLabel, 
+    state.query = homeQuery, state.pendingItems = [], state.continuation = "", keepItems || (state.items = []), 
+    synura.update(viewId, {
+      styles: {
+        title: getHomeFallbackTitle(),
+        appbar: buildHomeSearchAppbar(),
+        layout: "card",
+        pagination: !0,
+        menu: !0,
+        media: !0,
+        history: !0,
+        authorClickable: !0
+      },
+      models: {
+        contents: state.items || [],
+        menus: [ t(HOME_MENU_CHANNEL_LIST), t(MENU_SETTINGS) ],
+        snackbar: t("loading_videos")
+      }
+    });
+    try {
+      var page = fetchSearchPage(homeQuery);
+      state.items = page.items, state.continuation = page.continuation, state.apiCfg = page.apiCfg, 
+      state.loaded = !0, synura.update(viewId, {
+        styles: {
+          title: getHomeFallbackTitle(),
+          appbar: buildHomeSearchAppbar(),
+          layout: "card",
+          pagination: !0,
+          menu: !0,
+          media: !0,
+          history: !0,
+          authorClickable: !0
+        },
+        models: {
+          contents: page.items,
+          menus: [ t(HOME_MENU_CHANNEL_LIST), t(MENU_SETTINGS) ],
+          snackbar: page.items.length ? "" : t("snackbar_no_videos_found")
+        }
+      });
+    } catch (e) {
+      state.items = [], state.loaded = !0, showSnackbar(viewId, t("error_search_failed", {
+        error: e.toString()
+      }));
+    }
+    state.loading = !1;
+  }
 }, renderHomeList = function(viewId, state) {
   var allChannels = loadStarredChannels();
+  if (!allChannels.length) return void loadHomeFallbackList(viewId, state);
   state.items = starredChannelsToListItems(allChannels), state.loaded = !0, state.mode = "home", 
+  state.homeFeedMode = "channels", state.homeQuery = "", state.continuation = "", state.pendingItems = [], 
   synura.update(viewId, {
     styles: {
-      title: "Starred Channels",
-      appbar: HOME_SEARCH_APPBAR
+      title: t("title_starred_channels"),
+      appbar: buildHomeSearchAppbar(),
+      layout: "card",
+      pagination: !1,
+      menu: !0,
+      media: !0,
+      history: !0,
+      authorClickable: !1
     },
     models: {
       contents: state.items,
-      menus: [ HOME_MENU_CHANNEL_LIST, MENU_SETTINGS ],
+      menus: [ t(HOME_MENU_CHANNEL_LIST), t(MENU_SETTINGS) ],
       snackbar: buildHomeSnackbar(allChannels, state.items)
     }
   });
@@ -805,15 +896,19 @@ var SYNURA = {
 }, buildChannelAppbar = function(state) {
   return {
     type: "query",
-    label: "Search " + (getString(state && state.channelTitle) || "Channel"),
-    hint: cleanQuery(state && state.channelQuery) || "Search in this channel"
+    label: t("appbar_search_channel", {
+      channel: getString(state && state.channelTitle) || t("title_channel")
+    }),
+    hint: cleanQuery(state && state.channelQuery) || t("appbar_search_in_channel_hint")
   };
 }, buildChannelSnackbar = function(state) {
   if (state.items && state.items.length) return "";
   var channelQuery = cleanQuery(state && state.channelQuery);
-  if (channelQuery) return 'No results in this channel for "' + channelQuery + '".';
+  if (channelQuery) return t("snackbar_no_results_in_channel", {
+    query: channelQuery
+  });
   var videosEnabled = normalizeEnabledFlag(state && state.enableVideos), streamsEnabled = normalizeEnabledFlag(state && state.enableStreams);
-  return videosEnabled || streamsEnabled ? videosEnabled && streamsEnabled ? "No videos or live streams found." : videosEnabled ? "No videos found." : "No live streams found." : "Videos and live streams are disabled.";
+  return videosEnabled || streamsEnabled ? videosEnabled && streamsEnabled ? t("snackbar_no_videos_or_streams_found") : videosEnabled ? t("snackbar_no_videos_found") : t("snackbar_no_live_streams_found") : t("snackbar_videos_and_streams_disabled");
 }, splitBufferedItems = function(items, chunkSize) {
   var list = Array.isArray(items) ? items.slice() : [], size = Math.floor(getNumber(chunkSize));
   return size < 1 && (size = loadChannelListChunkSize()), {
@@ -829,7 +924,7 @@ var SYNURA = {
 }, renderChannelList = function(viewId, state) {
   synura.update(viewId, {
     styles: {
-      title: state.channelTitle || "Channel",
+      title: state.channelTitle || t("title_channel"),
       appbar: buildChannelAppbar(state)
     },
     models: {
@@ -862,10 +957,12 @@ var SYNURA = {
       !state.channelUrl && state.channelId && (state.channelUrl = normalizeChannelUrl("/channel/" + state.channelId)), 
       state.starred = isStarredChannel(state.channelUrl, state.channelId), renderChannelList(viewId, state);
     } catch (e) {
-      showSnackbar(viewId, "Channel load failed: " + e.toString());
+      showSnackbar(viewId, t("error_channel_load_failed", {
+        error: e.toString()
+      }));
     }
     state.loading = !1;
-  } else showSnackbar(viewId, "Could not find channel.");
+  } else showSnackbar(viewId, t("error_could_not_find_channel"));
 }, loadMoreChannel = function(viewId) {
   var state = listViewState[String(viewId)];
   if (state && !state.loading) {
@@ -876,7 +973,7 @@ var SYNURA = {
         append: pendingAppend,
         snackbar: ""
       }
-    }), void (state.pendingItems.length || state.continuation || state.channelTabFallbackPending || showSnackbar(viewId, "No more channel items."));
+    }), void (state.pendingItems.length || state.continuation || state.channelTabFallbackPending || showSnackbar(viewId, t("snackbar_no_more_channel_items")));
     if (state.continuation || state.channelTabFallbackPending) {
       state.loading = !0;
       try {
@@ -909,11 +1006,15 @@ var SYNURA = {
         synura.update(viewId, {
           models: {
             append: appended,
-            snackbar: appended.length ? "" : "No more channel items."
+            snackbar: appended.length ? "" : t("snackbar_no_more_channel_items")
           }
-        }), (appended.length || state.pendingItems.length || state.continuation || state.channelTabFallbackPending) && (state.continuation || state.pendingItems.length || state.channelTabFallbackPending) || showSnackbar(viewId, "No more channel items.");
+        }), (appended.length || state.pendingItems.length || state.continuation || state.channelTabFallbackPending) && (state.continuation || state.pendingItems.length || state.channelTabFallbackPending) || showSnackbar(viewId, t("snackbar_no_more_channel_items"));
       } catch (e) {
-        showSnackbar(viewId, loadingDeferredTabs ? "Could not load full channel list: " + e.toString() : "Could not load more channel items: " + e.toString());
+        showSnackbar(viewId, loadingDeferredTabs ? t("error_could_not_load_full_channel_list", {
+          error: e.toString()
+        }) : t("error_could_not_load_more_channel_items", {
+          error: e.toString()
+        }));
       }
       state.loading = !1;
     }
@@ -928,21 +1029,45 @@ var SYNURA = {
       var page = fetchSearchPage(query);
       state.mode = "search", state.query = query, state.items = page.items, state.continuation = page.continuation, 
       state.apiCfg = page.apiCfg, state.loaded = !0;
-      var title = "YouTube - " + query;
+      var title = t("title_search_results", {
+        query: query
+      });
       synura.update(viewId, {
         styles: {
           title: title
         },
         models: {
           contents: page.items,
-          snackbar: page.items.length ? "" : "No videos found."
+          snackbar: page.items.length ? "" : t("snackbar_no_videos_found")
         }
       });
     } catch (e) {
-      showSnackbar(viewId, "Search failed: " + e.toString());
+      showSnackbar(viewId, t("error_search_failed", {
+        error: e.toString()
+      }));
     }
     state.loading = !1;
   }
+}, loadMoreTrending = function(viewId) {
+  var state = listViewState[String(viewId)];
+  if (state && !state.loading && state.continuation) {
+    state.loading = !0;
+    try {
+      var page = fetchSearchContinuation(state.continuation, state.apiCfg);
+      state.continuation = page.continuation, state.items = state.items.concat(page.items), 
+      synura.update(viewId, {
+        models: {
+          append: page.items,
+          snackbar: page.items.length ? "" : t("snackbar_no_more_results")
+        }
+      }), page.items.length && state.continuation || showSnackbar(viewId, t("snackbar_no_more_results"));
+    } catch (e) {
+      showSnackbar(viewId, t("error_could_not_load_more_videos", {
+        error: e.toString()
+      }));
+    }
+    state.loading = !1;
+  } else state && state.loaded && showSnackbar(viewId, t("snackbar_no_more_results"));
 }, loadMoreSearch = function(viewId) {
   var state = listViewState[String(viewId)];
   if (state && !state.loading && state.continuation) {
@@ -953,11 +1078,13 @@ var SYNURA = {
       synura.update(viewId, {
         models: {
           append: page.items,
-          snackbar: page.items.length ? "" : "No more results."
+          snackbar: page.items.length ? "" : t("snackbar_no_more_results")
         }
-      }), page.items.length && state.continuation || showSnackbar(viewId, "No more results.");
+      }), page.items.length && state.continuation || showSnackbar(viewId, t("snackbar_no_more_results"));
     } catch (e) {
-      showSnackbar(viewId, "Could not load more videos: " + e.toString());
+      showSnackbar(viewId, t("error_could_not_load_more_videos", {
+        error: e.toString()
+      }));
     }
     state.loading = !1;
   }
@@ -979,11 +1106,13 @@ var SYNURA = {
       synura.update(viewId, {
         models: {
           append: page.items,
-          snackbar: page.items.length ? "" : "No more related videos."
+          snackbar: page.items.length ? "" : t("snackbar_no_more_related_videos")
         }
-      }), page.items.length && state.continuation || showSnackbar(viewId, "No more related videos.");
+      }), page.items.length && state.continuation || showSnackbar(viewId, t("snackbar_no_more_related_videos"));
     } catch (e) {
-      showSnackbar(viewId, "Could not load related videos: " + e.toString());
+      showSnackbar(viewId, t("error_could_not_load_related_videos", {
+        error: e.toString()
+      }));
     }
     state.loading = !1;
   }
@@ -1000,12 +1129,14 @@ var SYNURA = {
       state.comments = [], state.commentsContinuation = payload.commentsContinuation || "", 
       state.loaded = !0, synura.update(viewId, {
         styles: {
-          title: payload.title || "YouTube"
+          title: payload.title || t("title_youtube")
         },
         models: buildPostModels(payload, state)
       });
     } catch (e) {
-      showSnackbar(viewId, "Failed to load video: " + e.toString());
+      showSnackbar(viewId, t("error_failed_to_load_video", {
+        error: e.toString()
+      }));
     }
     state.loading = !1;
   }
@@ -1020,14 +1151,16 @@ var SYNURA = {
         models: {
           comments: state.comments,
           menus: buildPostMenus(state),
-          snackbar: page.comments.length ? "" : "No more comments."
+          snackbar: page.comments.length ? "" : t("snackbar_no_more_comments")
         }
-      }), page.comments.length && state.commentsContinuation || showSnackbar(viewId, "No more comments.");
+      }), page.comments.length && state.commentsContinuation || showSnackbar(viewId, t("snackbar_no_more_comments"));
     } catch (e) {
-      showSnackbar(viewId, "Could not load more comments: " + e.toString());
+      showSnackbar(viewId, t("error_could_not_load_more_comments", {
+        error: e.toString()
+      }));
     }
     state.loading = !1;
-  } else state && state.loaded && showSnackbar(viewId, "No more comments.");
+  } else state && state.loaded && showSnackbar(viewId, t("snackbar_no_more_comments"));
 }, buildPostModels = function(payload, state) {
   var content = [];
   content.push({
@@ -1048,16 +1181,16 @@ var SYNURA = {
     content: content,
     comments: state.comments,
     menus: buildPostMenus(state),
-    buttons: [ POST_MENU_OPEN, POST_MENU_RELATED ]
+    buttons: [ t(POST_MENU_OPEN), t(POST_MENU_RELATED) ]
   };
   return payload.channelMemo && (models.memo = payload.channelMemo), payload.channelAvatar && (models.avatar = payload.channelAvatar), 
   payload.date && (models.date = payload.date), payload.viewCount && (models.viewCount = payload.viewCount), 
   payload.likeCount && (models.likeCount = payload.likeCount), payload.dislikeCount && (models.dislikeCount = payload.dislikeCount), 
   models;
 }, buildPostMenus = function(state) {
-  var menus = [ POST_MENU_OPEN ];
-  return (state.relatedItems && state.relatedItems.length || state.relatedContinuation) && menus.push(POST_MENU_RELATED), 
-  (state.channelUrl || state.channelId) && menus.push(POST_MENU_CHANNEL), menus.push(MENU_SETTINGS), 
+  var menus = [ t(POST_MENU_OPEN) ];
+  return (state.relatedItems && state.relatedItems.length || state.relatedContinuation) && menus.push(t(POST_MENU_RELATED)),
+  (state.channelUrl || state.channelId) && menus.push(t(POST_MENU_CHANNEL)), menus.push(t(MENU_SETTINGS)),
   menus;
 }, fetchSearchPage = function(query) {
   var normalizedQuery = cleanQuery(query) || DEFAULT_QUERY, cachedCfg = loadInnertubeConfigCache();
@@ -1115,7 +1248,7 @@ var SYNURA = {
   var apiCfg = extractInnertubeConfig(html), videos = normalizeVideoItems(collectVideos(initialData), "");
   if ("streams" === tabName) for (var i = 0; i < videos.length; i++) {
     var item = videos[i] || {}, types = Array.isArray(item.types) ? item.types.slice() : [];
-    types.indexOf("stream") < 0 && types.push("stream"), item.types = types, item.memo || (item.memo = "Live stream"), 
+    types.indexOf("stream") < 0 && types.push("stream"), item.types = types, item.memo || (item.memo = t("label_live_stream")),
     videos[i] = item;
   }
   var channel = parseChannelMetadata(initialData, normalizedChannelUrl, channelId);
@@ -1351,7 +1484,7 @@ var SYNURA = {
   return response.text();
 }, parseWatchMetadata = function(initialData, fallbackVideoId) {
   var out = {
-    title: "YouTube",
+    title: t("title_youtube"),
     author: "",
     date: "",
     viewCount: "",
@@ -1407,7 +1540,7 @@ var SYNURA = {
     channelPath && (out.channelUrl = normalizeChannelUrl(channelPath));
   }
   return !out.channelUrl && out.channelId && (out.channelUrl = normalizeChannelUrl("/channel/" + out.channelId)), 
-  out.channelTitle = out.channelTitle || "Channel", out;
+  out.channelTitle = out.channelTitle || t("title_channel"), out;
 }, extractChannelHomePageFromHTML = function(html, normalizedChannelUrl, channelId, options, apiCfg) {
   var root = extractSelectedChannelTabContentFromHTML(html);
   if (!root) {
@@ -1470,7 +1603,7 @@ var SYNURA = {
   var fallback = collectVideos(section);
   return !maxItems || fallback.length <= maxItems ? fallback : fallback.slice(0, maxItems);
 }, pushImmediateVideoRenderers = function(node, out, limit) {
-  if (node && "object" == typeof node && !(limit && out.length >= limit || (node.videoWithContextRenderer ? out.push(node.videoWithContextRenderer) : node.compactVideoRenderer ? out.push(node.compactVideoRenderer) : node.gridVideoRenderer ? out.push(node.gridVideoRenderer) : node.endScreenVideoRenderer && out.push(node.endScreenVideoRenderer), 
+  if (node && "object" == typeof node && !(limit && out.length >= limit || (node.videoWithContextRenderer ? out.push(node.videoWithContextRenderer) : node.compactVideoRenderer ? out.push(node.compactVideoRenderer) : node.gridVideoRenderer ? out.push(node.gridVideoRenderer) : node.videoRenderer ? out.push(node.videoRenderer) : node.endScreenVideoRenderer && out.push(node.endScreenVideoRenderer), 
   limit && out.length >= limit))) {
     var richContent = getIn(node, [ "richItemRenderer", "content" ], null);
     richContent && pushImmediateVideoRenderers(richContent, out, limit);
@@ -1539,7 +1672,7 @@ var SYNURA = {
 }, toCommentItem = function(renderer, level) {
   return {
     link: "https://www.youtube.com/comment/" + getString(renderer.commentId),
-    author: textOf(renderer.authorText) || "YouTube User",
+    author: textOf(renderer.authorText) || t("label_youtube_user"),
     avatar: thumbnailFrom(renderer.authorThumbnail),
     date: textOf(renderer.publishedTimeText),
     likeCount: textOf(renderer.voteCount),
@@ -1555,7 +1688,7 @@ var SYNURA = {
 }, toVideoItem = function(renderer) {
   var videoId = getString(renderer.videoId) || getIn(renderer, [ "navigationEndpoint", "watchEndpoint", "videoId" ], "");
   if (!videoId) return null;
-  var channel = extractChannelInfoFromVideoRenderer(renderer), title = textOf(renderer.title) || textOf(renderer.headline) || "Untitled", author = textOf(renderer.shortBylineText) || textOf(renderer.longBylineText) || textOf(renderer.ownerText) || channel.channelTitle, viewCount = textOf(renderer.viewCountText) || textOf(renderer.shortViewCountText), likeCount = textOf(renderer.voteCount), date = textOf(renderer.publishedTimeText), duration = textOf(renderer.lengthText), metaParts = [];
+  var channel = extractChannelInfoFromVideoRenderer(renderer), title = textOf(renderer.title) || textOf(renderer.headline) || t("label_untitled"), author = textOf(renderer.shortBylineText) || textOf(renderer.longBylineText) || textOf(renderer.ownerText) || channel.channelTitle, viewCount = textOf(renderer.viewCountText) || textOf(renderer.shortViewCountText), likeCount = textOf(renderer.voteCount), date = textOf(renderer.publishedTimeText), duration = textOf(renderer.lengthText), metaParts = [];
   duration && metaParts.push(duration), viewCount && metaParts.push(viewCount), date && metaParts.push(date);
   var item = {
     link: watchURL(videoId),
@@ -1568,7 +1701,7 @@ var SYNURA = {
     mediaUrl: thumbnailFrom(renderer.thumbnail) || thumbnailFromVideoId(videoId),
     mediaType: "image",
     types: detectVideoItemTypes(renderer),
-    menus: [ ITEM_MENU_OPEN_BROWSER, ITEM_MENU_OPEN_VIDEO, ITEM_MENU_OPEN_CHANNEL ],
+    menus: [ t(ITEM_MENU_OPEN_BROWSER), t(ITEM_MENU_OPEN_VIDEO), t(ITEM_MENU_OPEN_CHANNEL) ],
     channelUrl: channel.channelUrl,
     channelId: channel.channelId,
     channelTitle: channel.channelTitle || author,
@@ -1601,7 +1734,7 @@ var SYNURA = {
 }, markItemsAsStream = function(items) {
   for (var out = [], i = 0; i < items.length; i++) {
     var item = cloneObject(items[i] || {}), types = Array.isArray(item.types) ? item.types.slice() : [ "video" ];
-    types.indexOf("stream") < 0 && types.push("stream"), item.types = types, item.memo || (item.memo = "Live stream"), 
+    types.indexOf("stream") < 0 && types.push("stream"), item.types = types, item.memo || (item.memo = t("label_live_stream")),
     out.push(item);
   }
   return out;
@@ -1638,7 +1771,8 @@ var SYNURA = {
 }, collectVideos = function(node) {
   var renderers = [];
   return collectRendererInstances(node, "videoWithContextRenderer", renderers), collectRendererInstances(node, "compactVideoRenderer", renderers), 
-  collectRendererInstances(node, "gridVideoRenderer", renderers), collectRendererInstances(node, "endScreenVideoRenderer", renderers), 
+  collectRendererInstances(node, "gridVideoRenderer", renderers), collectRendererInstances(node, "videoRenderer", renderers), 
+  collectRendererInstances(node, "endScreenVideoRenderer", renderers), 
   renderers;
 }, collectRendererInstances = function(node, rendererName, out) {
   if (node) if (Array.isArray(node)) for (var i = 0; i < node.length; i++) collectRendererInstances(node[i], rendererName, out); else if ("object" == typeof node) for (var key in node[rendererName] && out.push(node[rendererName]), 
@@ -2018,7 +2152,7 @@ var SYNURA = {
   synura.open({
     view: "/views/browser",
     styles: {
-      title: title || "Browser"
+      title: title || t("title_browser")
     },
     models: {
       url: url
@@ -2088,6 +2222,38 @@ var SYNURA = {
 }, getCurrentLanguageSetting = function() {
   var selected = findLanguageByCode(loadLanguageOverride()) || findLanguageByCode(loadRuntimeLanguageCode());
   return selected || (findLanguageByCode(DEFAULT_HL) || YOUTUBE_LANGUAGES[0]);
+}, getCurrentUILanguageCode = function() {
+  var current = getCurrentLanguageSetting(), code = normalizeLanguageCode(current && current.code);
+  return code || DEFAULT_HL;
+}, getUIStrings = function () {
+  var code = getCurrentUILanguageCode(), primary = code.split("-")[0];
+  return UI_STRINGS[code] || UI_STRINGS[primary] || UI_STRINGS.en || [];
+}, t = function (key, params) {
+  var id = getString(key), index = Object.prototype.hasOwnProperty.call(UI_STRING_INDEX, id) ? UI_STRING_INDEX[id] : -1, strings = getUIStrings(), base = UI_STRINGS.en || [], template = getString(strings && strings[index]) || getString(base[index]) || id;
+  return params && "object" == typeof params ? template.replace(/\{([a-zA-Z0-9_]+)\}/g, function (match, name) {
+    return getString(params[name]);
+  }) : template;
+}, getUIStringVariants = function (key) {
+  var id = getString(key), index = Object.prototype.hasOwnProperty.call(UI_STRING_INDEX, id) ? UI_STRING_INDEX[id] : -1, out = [], seen = {};
+  if (!id) return out;
+  for (var locale in UI_STRINGS) if (Object.prototype.hasOwnProperty.call(UI_STRINGS, locale)) {
+    var value = getString(UI_STRINGS[locale] && UI_STRINGS[locale][index]);
+    value && !seen[value] && (seen[value] = !0, out.push(value));
+  }
+  return out.length || (out.push(id), seen[id] = !0), out;
+}, matchesUIString = function(value, key) {
+  var text = getString(value);
+  if (!text) return !1;
+  for (var variants = getUIStringVariants(key), i = 0; i < variants.length; i++) if (text === variants[i] || text.indexOf(variants[i]) >= 0) return !0;
+  return !1;
+}, getQuickQueryLabel = function(item) {
+  return t(getString(item && item.labelKey));
+}, buildHomeSearchAppbar = function() {
+  return {
+    type: "query",
+    label: t("appbar_search_youtube"),
+    hint: t("appbar_search_videos_hint")
+  };
 }, getLanguageOptions = function() {
   for (var options = [], i = 0; i < YOUTUBE_LANGUAGES.length; i++) options.push(getString(YOUTUBE_LANGUAGES[i] && YOUTUBE_LANGUAGES[i].label));
   return options;
@@ -2295,12 +2461,14 @@ var SYNURA = {
   if (isNaN(date.getTime())) return "";
   var year = String(date.getFullYear()), month = String(date.getMonth() + 1), day = String(date.getDate());
   return month.length < 2 && (month = "0" + month), day.length < 2 && (day = "0" + day), 
-  "Saved " + year + "-" + month + "-" + day;
+  t("label_saved_on", {
+    date: year + "-" + month + "-" + day
+  });
 }, buildSavedChannelAuthor = function(channel) {
   var handle = extractChannelHandleFromUrl(channel && channel.channelUrl);
   if (handle) return handle;
   var channelId = getString(channel && channel.channelId);
-  return channelId || "Bookmarked";
+  return channelId || t("label_bookmarked");
 }, buildSavedChannelMemo = function(channel) {
   var parts = [], memo = getString(channel && channel.channelMemo), savedText = formatSavedChannelDate(channel && channel.savedAt);
   return memo && parts.push(memo), savedText && parts.push(savedText), parts.join(" - ");
@@ -2324,7 +2492,7 @@ var SYNURA = {
       memo: buildSavedChannelMemo(channel),
       mediaUrl: getString(channel.channelAvatar),
       mediaType: "image",
-      menus: [ ITEM_MENU_OPEN_BROWSER, ITEM_MENU_REMOVE_BOOKMARK ]
+      menus: [ t(ITEM_MENU_OPEN_BROWSER), t(ITEM_MENU_REMOVE_BOOKMARK) ]
     }));
   }
   return items;

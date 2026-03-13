@@ -16,6 +16,8 @@ var SITE = {
   "boardSettingsLargeThreshold": 256,
   "boardSettingsPageSize": 96,
   "boardAddMode": "url_title",
+  "hasFullBoardCatalog": false,
+  "supportsBoardCatalogSync": true,
   "defaultVisibleBoardIds": [
     "hot",
     "square",
@@ -414,14 +416,14 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "theqoo.net",
     name: "theqoo",
-    description: "Unofficial Synura extension for theqoo.net boards.",
+    description: "Unofficial theqoo.net extension",
     version: 0.1,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
     locale: "ko_KR",
     deeplink: true,
-    icon: "https://theqoo.net/favicon.ico",
+    icon: "https://theqoo.net/files/attach/xeicon/favicon.ico",
     main: null
 };
 

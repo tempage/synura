@@ -16,6 +16,8 @@ var SITE = {
   "boardSettingsLargeThreshold": 256,
   "boardSettingsPageSize": 96,
   "boardAddMode": "url_title",
+  "hasFullBoardCatalog": true,
+  "supportsBoardCatalogSync": false,
   "defaultVisibleBoardIds": [],
   "hostAliases": [
     "www.arca.live"
@@ -133,6 +135,7 @@ var SITE = {
       ".view"
     ],
     "listLikeCount": [
+      ".col-rate",
       ".col-vote",
       ".vote"
     ],
@@ -163,6 +166,7 @@ var SITE = {
       ".view"
     ],
     "postLikeCount": [
+      "#ratingUp",
       ".article-info .vote",
       ".vote"
     ],
@@ -236,11 +240,22 @@ SITE.matchPost = function (urlInfo) {
 SITE.buildNextPageUrl = function (match, currentUrl, nextPage) {
     return setPageParam(currentUrl, "p", nextPage);
 };
+SITE.isAuthRequiredResponse = function (url, status, html) {
+    var body = String(html || "").toLowerCase();
+    if (status === 429 || status === 430) {
+        return true;
+    }
+    return body.indexOf("id=\"hcaptcha-form\"") >= 0 ||
+        body.indexOf("window.hcaptchacallback") >= 0 ||
+        body.indexOf("class=\"h-captcha\"") >= 0 ||
+        body.indexOf("비정상적인 접속을 감지했습니다.") >= 0;
+};
 SITE.buildPostFetchUrls = function (match, currentUrl) {
     return [currentUrl];
 };
 SITE.buildBoardUrlFromId = function (boardId) {
-    return "";
+    var normalized = normalizeWhitespace(boardId);
+    return normalized ? ("https://" + SYNURA.domain + "/b/" + encodeURIComponent(normalized)) : "";
 };
 SITE.loadDynamicBoards = function () {
     return [];
@@ -288,26 +303,27 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "arca.live",
     name: "arca",
-    description: "Unofficial Synura extension for arca.live boards.",
+    description: "Unofficial arca.live extension",
     version: 0.1,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
     locale: "ko_KR",
     deeplink: true,
-    icon: "https://arca.live/favicon.ico",
+    icon: "https://arca.live/static/favicon-192.png",
     main: null
 };
 
 var LIST_LINK_ALLOW_PATTERNS = ["^https://arca\\.live/b/[^/]+/\\d+"];
 var LIST_LINK_SELECTORS = [".title.hybrid-title",".title","a[href]"];
 var LIST_TITLE_SELECTORS = [".title.hybrid-title",".title"];
+var LIST_TITLE_EXCLUDE_SELECTORS = [".comment-count",".info"];
 var LIST_AUTHOR_SELECTORS = [".user-info",".name",".author"];
 var LIST_AVATAR_SELECTORS = [];
 var LIST_DATE_SELECTORS = [".col-time time",".col-time","time"];
 var LIST_COMMENT_COUNT_SELECTORS = [".comment-count"];
 var LIST_VIEW_COUNT_SELECTORS = [".col-view",".view"];
-var LIST_LIKE_COUNT_SELECTORS = [".col-vote",".vote"];
+var LIST_LIKE_COUNT_SELECTORS = [".col-rate",".col-vote",".vote"];
 var LIST_CATEGORY_SELECTORS = [".badge",".category"];
 var LIST_IMAGE_SELECTORS = ["img"];
 
@@ -318,10 +334,11 @@ function extractListItem(row, baseUrl) {
     if (!link) return null;
 
     var title = firstNonEmpty([
-        textOfNodeWithoutSelectors(titleNode, LIST_COMMENT_COUNT_SELECTORS),
+        textOfNodeWithoutSelectors(titleNode, LIST_TITLE_EXCLUDE_SELECTORS),
         textOf(linkNode),
         textOf(row)
     ]);
+    title = normalizeWhitespace(String(title || "").replace(/\s*\[\d+\]\s*$/, ""));
     if (!title) return null;
 
     var commentCount = hideZeroCount(parseCount(firstText(row, LIST_COMMENT_COUNT_SELECTORS)));
@@ -349,7 +366,7 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount || viewCount || commentCount, 0),
-        coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        hotCount: toInt(likeCount, 0),
+        coldCount: 0
     };
 }

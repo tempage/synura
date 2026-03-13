@@ -13,9 +13,12 @@ var SITE = {
   "enableBoardDelete": true,
   "boardSettingsMenuLabel": "소모임",
   "boardSettingsTitle": "게시판 설정",
+  "dynamicBoardGroupLabel": "소모임",
   "boardSettingsLargeThreshold": 256,
   "boardSettingsPageSize": 96,
   "boardAddMode": "id_title",
+  "hasFullBoardCatalog": true,
+  "supportsBoardCatalogSync": false,
   "defaultVisibleBoardIds": [
     "fire",
     "free",
@@ -30,6 +33,12 @@ var SITE = {
     "ai",
     "git",
     "development"
+  ],
+  "defaultShowMediaBoardIds": [
+    "gallery"
+  ],
+  "defaultGalleryModeBoardIds": [
+    "gallery"
   ],
   "hostAliases": [
     "www.damoang.net"
@@ -87,8 +96,7 @@ var SITE = {
     },
     {
       "id": "gallery",
-      "title": "갤러리",
-      "showMedia": true
+      "title": "갤러리"
     },
     {
       "id": "giving",
@@ -638,7 +646,7 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "damoang.net",
     name: "damoang",
-    description: "Unofficial Synura extension for damoang.net boards.",
+    description: "Unofficial damoang.net extension",
     version: 0.5,
     api: 0,
     license: "Apache-2.0",
@@ -1218,19 +1226,14 @@ function damoangBuildBoardRoute(url, urlInfo, match) {
         seenLinks: items.map(function (item) { return item.link; }),
         lastPostId: damoangComputeLastPostId(items)
     };
+    var styles = buildBoardListStyles(boardTitle, match ? match.board : null, context.nextUrl);
+    styles.appbar = damoangBoardAppbar(searchField);
     return {
         kind: "board",
         url: url,
         viewData: {
             view: "/views/list",
-            styles: {
-                title: boardTitle,
-                layout: "card",
-                media: boardShowsMedia(match ? match.board : null),
-                menu: true,
-                pagination: true,
-                appbar: damoangBoardAppbar(searchField)
-            },
+            styles: styles,
             models: {
                 contents: items,
                 menus: getBoardMenus(context)

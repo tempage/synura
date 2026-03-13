@@ -1,5 +1,158 @@
 // @ts-nocheck
 
+// To refresh the preloaded Clien board catalog:
+// 1. Run `go run ./cmd/synurart -json -ext extensions/ko_KR/clien.js -e "eval JSON.stringify(SITE.loadDynamicBoards({allowNetwork:true,force:true}))"`.
+// 2. Convert the returned objects to `[id, title]` rows and replace `CLIEN_PRELOADED_DYNAMIC_BOARD_ROWS`.
+
+var CLIEN_PRELOADED_DYNAMIC_BOARD_ROWS = [
+  ["cm_car", "굴러간당"],
+  ["cm_iphonien", "아이포니앙"],
+  ["cm_stock", "주식한당"],
+  ["cm_mac", "MaClien"],
+  ["cm_japanlive", "일본산당"],
+  ["cm_bts", "방탄소년당"],
+  ["cm_app", "개발한당"],
+  ["cm_bike", "자전거당"],
+  ["cm_andro", "안드로메당"],
+  ["cm_ai", "AI당"],
+  ["cm_rowing", "노젓는당"],
+  ["cm_nas", "나스당"],
+  ["cm_girl", "소시당"],
+  ["cm_fish", "물고기당"],
+  ["cm_golf", "골프당"],
+  ["cm_mbike", "이륜차당"],
+  ["cm_dia", "디아블로당"],
+  ["cm_ebook", "e북본당"],
+  ["cm_keyboard", "키보드당"],
+  ["cm_baby", "육아당"],
+  ["cm_movie", "영화본당"],
+  ["cm_coffee", "클다방"],
+  ["cm_girlgroup", "걸그룹당"],
+  ["cm_venture", "창업한당"],
+  ["cm_oversea", "바다건너당"],
+  ["cm_test", "테스트당"],
+  ["cm_console", "콘솔한당"],
+  ["cm_pctuning", "PC튜닝한당"],
+  ["cm_photo", "찰칵찍당"],
+  ["cm_thinkpad", "빨콩이당"],
+  ["cm_applewatch", "사과시계당"],
+  ["cm_camp", "캠핑간당"],
+  ["cm_fisher", "도시어부당"],
+  ["cm_gym", "땀흘린당"],
+  ["cm_pic", "그림그린당"],
+  ["cm_rasp", "라즈베리파이당"],
+  ["cm_cat", "냐옹이당"],
+  ["cm_lego", "레고당"],
+  ["cm_3dmaking", "3D메이킹"],
+  ["cm_70", "X세대당"],
+  ["cm_adhd", "ADHD당"],
+  ["cm_aigurim", "AI그림당"],
+  ["cm_airplane", "날아간당"],
+  ["cm_badmin", "배드민턴당"],
+  ["cm_baseball", "야구당"],
+  ["cm_basket", "농구당"],
+  ["cm_bb", "블랙베리당"],
+  ["cm_bear", "곰돌이당"],
+  ["cm_beer", "비어있당"],
+  ["cm_billiards", "FM당구당"],
+  ["cm_blockchain", "블록체인당"],
+  ["cm_board", "보드게임당"],
+  ["cm_book", "활자중독당"],
+  ["cm_bowling", "볼링친당"],
+  ["cm_civilize", "문명하셨당"],
+  ["cm_classic", "클래시앙"],
+  ["cm_cook", "요리한당"],
+  ["cm_cookierun", "쿠키런당"],
+  ["cm_daegu", "대구당"],
+  ["cm_danger", "DANGER당"],
+  ["cm_dduk", "뚝딱뚝당"],
+  ["cm_dog", "개판이당"],
+  ["cm_dongsup", "동숲한당"],
+  ["cm_drone", "날아올랑"],
+  ["cm_ebicycle", "전기자전거당"],
+  ["cm_edc", "갖고다닌당"],
+  ["cm_eve", "이브한당"],
+  ["cm_fashion", "패셔니앙"],
+  ["cm_fm", "FM한당"],
+  ["cm_food", "맛있겠당"],
+  ["cm_formula1", "포뮬러당"],
+  ["cm_gemwar", "젬워한당"],
+  ["cm_glasses", "안경쓴당"],
+  ["cm_gta", "차턴당"],
+  ["cm_gun", "총쏜당"],
+  ["cm_hearth", "하스스톤한당"],
+  ["cm_heroes", "히어로즈한당"],
+  ["cm_instar", "인스타한당"],
+  ["cm_iot", "IoT당"],
+  ["cm_kara", "KARA당"],
+  ["cm_kordle", "꼬들한당"],
+  ["cm_ku", "덕질한당"],
+  ["cm_lang", "어학당"],
+  ["cm_leather", "가죽당"],
+  ["cm_linux", "리눅서당"],
+  ["cm_lol", "LOLien"],
+  ["cm_mabi", "Mabinogien"],
+  ["cm_main", "임시소모임"],
+  ["cm_midra", "미드당"],
+  ["cm_military", "밀리터리당"],
+  ["cm_mine", "땅판당"],
+  ["cm_monhunt", "헌팅한당"],
+  ["cm_mount", "오른당"],
+  ["cm_mtg", "MTG한당"],
+  ["cm_music", "소리당"],
+  ["cm_nokien", "노키앙"],
+  ["cm_note", "적는당"],
+  ["cm_onair", "방송한당"],
+  ["cm_picnic", "소풍간당"],
+  ["cm_plant", "심는당"],
+  ["cm_poe", "패스오브엑자일당"],
+  ["cm_redeem", "품앱이당"],
+  ["cm_rhythm", "리듬탄당"],
+  ["cm_running", "달린당"],
+  ["cm_sea", "Sea마당"],
+  ["cm_sim", "SimSim하당"],
+  ["cm_simsik", "심야식당"],
+  ["cm_slate", "윈태블릿당"],
+  ["cm_snow", "미끄러진당"],
+  ["cm_soccer", "축구당"],
+  ["cm_solo", "나혼자산당"],
+  ["cm_star", "스타한당"],
+  ["cm_steam", "스팀한당"],
+  ["cm_surfing", "파도탄당"],
+  ["cm_swim", "퐁당퐁당"],
+  ["cm_tennis", "테니스친당"],
+  ["cm_tiwatch", "공대시계당"],
+  ["cm_tour", "여행을떠난당"],
+  ["cm_tpad", "터치패드당"],
+  ["cm_twit", "트윗당"],
+  ["cm_vcoin", "가상화폐당"],
+  ["cm_vr", "VR당"],
+  ["cm_watch", "시계찬당"],
+  ["cm_webos", "WebOs당"],
+  ["cm_werule", "소셜게임한당"],
+  ["cm_whiskey", "위스키당"],
+  ["cm_wine", "와인마신당"],
+  ["cm_wow", "WOW당"],
+  ["cm_wp", "윈폰이당"]
+];
+
+function clienBuildPreloadedDynamicBoards() {
+    var items = [];
+    for (var i = 0; i < CLIEN_PRELOADED_DYNAMIC_BOARD_ROWS.length; i++) {
+        var row = CLIEN_PRELOADED_DYNAMIC_BOARD_ROWS[i] || [];
+        var id = row[0] ? String(row[0]).trim() : "";
+        var title = row[1] ? String(row[1]).trim() : "";
+        if (!id || !title) continue;
+        items.push({
+            id: id,
+            title: title,
+            description: title,
+            dynamic: true
+        });
+    }
+    return items;
+}
+
 var SITE = {
   "siteKey": "clien",
   "displayName": "클리앙",
@@ -13,10 +166,22 @@ var SITE = {
   "enableBoardDelete": true,
   "boardSettingsMenuLabel": "소모임",
   "boardSettingsTitle": "소모임/게시판 설정",
+  "dynamicBoardGroupLabel": "소모임",
+  "preferConfiguredDynamicBoardTitle": true,
+  "flattenCategoryGroupPaths": ["소모임"],
+  "flattenCategoryGroupPathsWithoutPrefix": ["소모임"],
   "boardSettingsLargeThreshold": 256,
   "boardSettingsPageSize": 96,
   "boardAddMode": "id_title",
+  "hasFullBoardCatalog": false,
+  "supportsBoardCatalogSync": true,
   "defaultVisibleBoardIds": [],
+  "defaultShowMediaBoardIds": [
+    "image"
+  ],
+  "defaultGalleryModeBoardIds": [
+    "image"
+  ],
   "hostAliases": [
     "clien.net",
     "www.clien.net"
@@ -338,10 +503,11 @@ SITE.loadDynamicBoards = function (options) {
     var cacheTsKey = cacheKey + ":ts";
     var cached = readStoredJson(cacheKey, []);
     var cachedTs = parseInt(String(localStorage.getItem(cacheTsKey) || "0"), 10) || 0;
+    var fallback = clienBuildPreloadedDynamicBoards();
     if (!force && Array.isArray(cached) && cached.length > 0 && (Date.now() - cachedTs) < 21600000) {
         return cached;
     }
-    if (!allowNetwork) return Array.isArray(cached) ? cached : [];
+    if (!allowNetwork) return Array.isArray(cached) && cached.length > 0 ? cached : fallback;
     try {
         var doc = fetchDocument(SITE.browserHomeUrl);
         var links = allNodes(doc, [".snb_groupmenu a.menu-list.somoim", "a.menu-list.somoim", "a[href^='/service/board/cm_']"]);
@@ -376,7 +542,7 @@ SITE.loadDynamicBoards = function (options) {
         }
     } catch (e) {
     }
-    return Array.isArray(cached) ? cached : [];
+    return Array.isArray(cached) && cached.length > 0 ? cached : fallback;
 };
 SITE.prepareBoardContext = function (context, items, match, url) {
     return context;
@@ -614,7 +780,7 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "m.clien.net",
     name: "clien",
-    description: "Unofficial Synura extension for Clien mobile boards.",
+    description: "Unofficial Clien extension",
     version: 0.5,
     api: 0,
     license: "Apache-2.0",
@@ -796,13 +962,7 @@ function clienBuildImageBoardRoute(url, match) {
         url: url,
         viewData: {
             view: "/views/list",
-            styles: {
-                title: title,
-                layout: "card",
-                media: boardShowsMedia(match ? match.board : null),
-                menu: true,
-                pagination: !!nextUrl
-            },
+            styles: buildBoardListStyles(title, match ? match.board : null, nextUrl),
             models: {
                 contents: items,
                 menus: getBoardMenus(context)

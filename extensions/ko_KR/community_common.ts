@@ -1,11 +1,14 @@
     // @ts-nocheck
 
     var DEFAULT_CACHE_TTL = SITE.defaultCacheTtlMs || 300000;
-    var CACHE_PREFIX = "community_route:" + SITE.siteKey + ":";
+    var CACHE_PREFIX="cr:"+SITE.siteKey+":"+(SITE.cp||"");
     var CACHE_TTL_KEY = "community_cache_ttl_ms:" + SITE.siteKey;
     var CACHE_SNACKBAR_KEY = "community_cache_snackbar:" + SITE.siteKey;
     var CATEGORY_TWO_CHAR_KEY = "community_category_two_char:" + SITE.siteKey;
+    var GALLERY_COLUMN_COUNT_KEY = "community_gallery_column_count:" + SITE.siteKey;
+    var BOARD_VIEW_SETTINGS_KEY = "community_board_view_settings:" + SITE.siteKey;
     var CACHE_SNACKBAR_MIN_AGE_MS = 10000;
+    var DEFAULT_GALLERY_COLUMN_COUNT = 3;
     var COOKIE_KEY = "community_cookie:" + SITE.siteKey;
     var CUSTOM_BOARDS_KEY = "community_custom_boards:" + SITE.siteKey;
     var VISIBLE_BOARDS_KEY = "community_visible_boards:" + SITE.siteKey;
@@ -18,8 +21,11 @@
     var MENU_HOME = "홈";
     var MENU_HOME_TOGGLE = "홈 추가";
     var MENU_HOME_REMOVE = "홈 해제";
+    var MENU_MEDIA_TOGGLE = "미디어 표시";
+    var MENU_GALLERY_MODE = "갤러리 모드";
     var MENU_SETTINGS = SITE.boardSettingsMenuLabel || "게시판 설정";
     var MENU_BOARD_SYNC = "게시판가져오기";
+    var BUTTON_OPEN_CATEGORY_HOME_WITHOUT_SYNC = "그대로 보기";
     var MENU_REORDER = "정렬";
     var MENU_CLI = "CLI";
     var BUTTON_REFRESH = "새로고침";
@@ -284,6 +290,56 @@
         localStorage.setItem(CATEGORY_TWO_CHAR_KEY, enabled ? "true" : "false");
     }
 
+    function getDefaultGalleryColumnCount() {
+        var parsed = parseInt(String(SITE.defaultGalleryColumnCount || DEFAULT_GALLERY_COLUMN_COUNT), 10);
+        return parsed > 0 ? parsed : DEFAULT_GALLERY_COLUMN_COUNT;
+    }
+
+    function getGalleryColumnCount() {
+        var raw = localStorage.getItem(GALLERY_COLUMN_COUNT_KEY);
+        if (raw === null || raw === undefined || raw === "") {
+            return getDefaultGalleryColumnCount();
+        }
+        var parsed = parseInt(String(raw), 10);
+        return parsed > 0 ? parsed : getDefaultGalleryColumnCount();
+    }
+
+    function setGalleryColumnCount(value) {
+        var parsed = parseInt(String(value || 0), 10);
+        localStorage.setItem(GALLERY_COLUMN_COUNT_KEY, String(parsed > 0 ? parsed : getDefaultGalleryColumnCount()));
+    }
+
+    function getBoardViewSettings() {
+        var stored = readStoredJson(BOARD_VIEW_SETTINGS_KEY, {});
+        return stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
+    }
+
+    function saveBoardViewSettings(settings) {
+        writeStoredJson(BOARD_VIEW_SETTINGS_KEY, settings || {});
+    }
+
+    function getBoardViewSettingRecord(boardId) {
+        var resolvedId = normalizeWhitespace(boardId);
+        if (!resolvedId) return {};
+        var settings = getBoardViewSettings();
+        var record = settings[resolvedId];
+        return record && typeof record === "object" && !Array.isArray(record) ? record : {};
+    }
+
+    function setBoardViewSetting(boardId, key, enabled) {
+        var resolvedId = normalizeWhitespace(boardId);
+        if (!resolvedId || !key) return {};
+        var settings = getBoardViewSettings();
+        var record = settings[resolvedId];
+        if (!record || typeof record !== "object" || Array.isArray(record)) {
+            record = {};
+        }
+        record[key] = !!enabled;
+        settings[resolvedId] = record;
+        saveBoardViewSettings(settings);
+        return record;
+    }
+
     function formatBoardListCategory(value) {
         var text = normalizeWhitespace(value);
         if (!text) return "";
@@ -479,15 +535,28 @@
                     force: force
                 })
                 : [];
-            dynamicBoards = dedupeBoards(Array.isArray(loaded) ? loaded : []);
+            dynamicBoards = setDynamicBoardsCache(Array.isArray(loaded) ? loaded : []);
             return dynamicBoards;
         } catch (e) {
             return Array.isArray(dynamicBoards) ? dynamicBoards : [];
         }
     }
 
+    function setDynamicBoardsCache(boards) {
+        dynamicBoards = dedupeBoards(boards || []);
+        return dynamicBoards;
+    }
+
+    function clearDynamicBoardsCache() {
+        dynamicBoards = null;
+    }
+
     function getSystemBoards() {
-        return dedupeBoards(defaultBoards.concat(getDynamicBoards()));
+        var dynamic = getDynamicBoards({ allowNetwork: false });
+        if (SITE.hasFullBoardCatalog && Array.isArray(dynamic) && dynamic.length > 0) {
+            return dedupeBoards(dynamic.concat(defaultBoards));
+        }
+        return dedupeBoards(defaultBoards.concat(dynamic));
     }
 
     function getAllBoards() {
@@ -809,10 +878,14 @@
         return false;
     }
 
+    function shouldCanonicalizeKnownHosts() {
+        return SITE.preserveAliasHostUrls !== true;
+    }
+
     function rewriteKnownHost(url) {
         var info = parseAbsoluteUrl(url);
         if (!info) return "";
-        if (isKnownHost(info.host)) {
+        if (isKnownHost(info.host) && shouldCanonicalizeKnownHosts()) {
             info.host = String(SYNURA.domain).toLowerCase();
         }
         return joinAbsoluteUrl(info);
@@ -842,7 +915,9 @@
         if (href.charAt(0) === "/") {
             return joinAbsoluteUrl({
                 scheme: base.scheme,
-                host: String(SYNURA.domain).toLowerCase(),
+                host: shouldCanonicalizeKnownHosts()
+                    ? String(SYNURA.domain).toLowerCase()
+                    : String(base.host || SYNURA.domain).toLowerCase(),
                 path: href,
                 query: "",
                 hash: ""
@@ -858,7 +933,7 @@
         var info = parseAbsoluteUrl(absolute);
         if (!info) return "";
         info.hash = "";
-        if (isKnownHost(info.host)) {
+        if (isKnownHost(info.host) && shouldCanonicalizeKnownHosts()) {
             info.host = String(SYNURA.domain).toLowerCase();
         }
         return joinAbsoluteUrl(info);
@@ -950,7 +1025,7 @@
     }
 
     function itemPreviewKey(link) {
-        return CACHE_PREFIX + "item:" + (normalizeUrl(link) || String(link || ""));
+        return CACHE_PREFIX + "i:" + (normalizeUrl(link) || String(link || ""));
     }
 
     function rememberItemPreview(item) {
@@ -1316,7 +1391,16 @@
 
     function detectBoardTitle(doc, board) {
         var titleNode = firstNode(doc, ["title"]);
-        var prefersConfigured = board && !board.dynamic;
+        var prefersConfigured = !!(
+            board && (
+                !board.dynamic ||
+                (
+                    SITE.preferConfiguredDynamicBoardTitle === true &&
+                    normalizeWhitespace(board.title || "") &&
+                    normalizeWhitespace(board.title || "") !== normalizeWhitespace(board.id || "")
+                )
+            )
+        );
         return firstNonEmpty([
             prefersConfigured ? board.title : "",
             cleanPageTitle(textOf(titleNode)),
@@ -1326,8 +1410,73 @@
         ]);
     }
 
+    function boardMatchesDefaultIds(boardId, ids) {
+        var resolvedId = normalizeWhitespace(boardId);
+        if (!resolvedId || !ids || !Array.isArray(ids)) return false;
+        for (var i = 0; i < ids.length; i++) {
+            if (normalizeWhitespace(ids[i]) === resolvedId) return true;
+        }
+        return false;
+    }
+
+    function resolveBoardPreferenceId(board) {
+        if (typeof board === "string") return normalizeWhitespace(board);
+        return normalizeWhitespace(board && board.id);
+    }
+
+    function resolveBoardPreferenceRecord(board) {
+        var boardId = resolveBoardPreferenceId(board);
+        if (!boardId) return null;
+        if (board && typeof board === "object" && board.id) return board;
+        return boardById(boardId) || { id: boardId };
+    }
+
+    function boardShowsMediaByDefault(board) {
+        var resolvedBoard = resolveBoardPreferenceRecord(board);
+        var boardId = resolveBoardPreferenceId(resolvedBoard);
+        if (!boardId) return false;
+        if (boardMatchesDefaultIds(boardId, SITE.defaultShowMediaBoardIds || [])) return true;
+        return !!(resolvedBoard && resolvedBoard.showMedia === true);
+    }
+
+    function boardUsesGalleryModeByDefault(board) {
+        var boardId = resolveBoardPreferenceId(board);
+        if (!boardId) return false;
+        return boardMatchesDefaultIds(boardId, SITE.defaultGalleryModeBoardIds || []);
+    }
+
     function boardShowsMedia(board) {
-        return !!(board && board.showMedia === true);
+        var resolvedBoard = resolveBoardPreferenceRecord(board);
+        var boardId = resolveBoardPreferenceId(resolvedBoard);
+        if (!boardId) return false;
+        var settings = getBoardViewSettingRecord(boardId);
+        if (Object.prototype.hasOwnProperty.call(settings, "show_media")) {
+            return !!settings.show_media;
+        }
+        return boardShowsMediaByDefault(resolvedBoard);
+    }
+
+    function boardUsesGalleryMode(board) {
+        var resolvedBoard = resolveBoardPreferenceRecord(board);
+        var boardId = resolveBoardPreferenceId(resolvedBoard);
+        if (!boardId) return false;
+        var settings = getBoardViewSettingRecord(boardId);
+        if (Object.prototype.hasOwnProperty.call(settings, "gallery_mode")) {
+            return !!settings.gallery_mode;
+        }
+        return boardUsesGalleryModeByDefault(resolvedBoard);
+    }
+
+    function buildBoardListStyles(title, board, hasNextUrl) {
+        var useGalleryMode = boardUsesGalleryMode(board);
+        return {
+            title: title,
+            layout: useGalleryMode ? "gallery" : "card",
+            columnCount: useGalleryMode ? getGalleryColumnCount() : undefined,
+            media: boardShowsMedia(board),
+            menu: true,
+            pagination: !!hasNextUrl
+        };
     }
 
     function isAllowedListLink(link, patterns) {
@@ -1603,6 +1752,44 @@
         };
     }
 
+    function resolveMenuBoard(state) {
+        var boardId = resolveMenuBoardId(state);
+        if (!boardId) return null;
+        return boardById(boardId) || {
+            id: boardId,
+            title: normalizeWhitespace(state && state.boardTitle ? state.boardTitle : boardId),
+            showMedia: false
+        };
+    }
+
+    function filterMenusByLabel(menus, excludedLabels) {
+        var out = [];
+        var excluded = excludedLabels || {};
+        for (var i = 0; i < (menus || []).length; i++) {
+            if (excluded[menuItemLabel(menus[i])]) continue;
+            out.push(menus[i]);
+        }
+        return out;
+    }
+
+    function buildBoardMediaToggleMenu(state) {
+        var board = resolveMenuBoard(state);
+        if (!board) return null;
+        return {
+            label: MENU_MEDIA_TOGGLE,
+            checked: boardShowsMedia(board)
+        };
+    }
+
+    function buildBoardGalleryToggleMenu(state) {
+        var board = resolveMenuBoard(state);
+        if (!board) return null;
+        return {
+            label: MENU_GALLERY_MODE,
+            checked: boardUsesGalleryMode(board)
+        };
+    }
+
     function getHomeMenus(isReorderable) {
         var menus = [];
         if (supportsCacheSettings()) menus.push(MENU_CACHE_SETTINGS);
@@ -1630,14 +1817,24 @@
             menus = SITE.buildBoardMenus ? (SITE.buildBoardMenus(menus, state || {}) || menus) : menus;
         } catch (e) {
         }
-        if (supportsCategoryBrowser() && !hasMenuItem(menus, MENU_ALL_BOARDS)) {
-            menus.push(MENU_ALL_BOARDS);
-        }
+        menus = filterMenusByLabel(menus, {
+            "브라우저로 보기": true,
+            "전체 게시판": true,
+            "미디어 표시": true,
+            "갤러리 모드": true,
+            "홈 추가": true
+        });
+        var ordered = [MENU_BROWSER];
+        var mediaToggle = buildBoardMediaToggleMenu(state);
+        if (mediaToggle) ordered.push(mediaToggle);
+        var galleryToggle = buildBoardGalleryToggleMenu(state);
+        if (galleryToggle) ordered.push(galleryToggle);
+        ordered = ordered.concat(menus);
         var boardToggle = buildBoardHomeToggleMenu(resolveMenuBoardId(state));
-        if (boardToggle && !hasMenuItem(menus, MENU_HOME_TOGGLE)) {
-            menus.push(boardToggle);
+        if (boardToggle) {
+            ordered.push(boardToggle);
         }
-        return menus;
+        return ordered;
     }
 
     function getPostMenus(state) {
@@ -1654,6 +1851,20 @@
             menus.push(boardToggle);
         }
         return menus;
+    }
+
+    function runSiteShowBoardSettings(parentViewId) {
+        try {
+            return SITE.showBoardSettings ? SITE.showBoardSettings(parentViewId || 0) : null;
+        } catch (e) {
+            if (parentViewId) {
+                synura.update(parentViewId, { models: { snackbar: e.toString() } });
+            }
+            return {
+                success: false,
+                error: e.toString()
+            };
+        }
     }
 
     function getCacheSettingsBody() {
@@ -1675,6 +1886,12 @@
                 name: "category_two_char",
                 label: "카테고리 2자",
                 value: getUseTwoCharCategory()
+            },
+            {
+                type: "number",
+                name: "gallery_column_count",
+                label: "갤러리 열 수",
+                value: getGalleryColumnCount()
             }
         ];
     }
@@ -1693,7 +1910,7 @@
             if (detail && detail !== cleanBoardGroupText(board.title || "") && detail !== "사용자 추가") {
                 return detail;
             }
-            return "동기화";
+            return cleanBoardGroupText(SITE.dynamicBoardGroupLabel || "") || "동기화";
         }
         return "";
     }
@@ -2003,10 +2220,45 @@
         return "게시판 URL을 입력하세요. 이름은 비워두면 자동으로 사용합니다.";
     }
 
+    function hasCachedDynamicBoardCatalog() {
+        if (!SITE.supportsBoardCatalogSync) return false;
+        var cached = getDynamicBoards({ allowNetwork: false });
+        return Array.isArray(cached) && cached.length > 0;
+    }
+
+    function shouldPromptBoardCatalogSync() {
+        return !!SITE.supportsBoardCatalogSync &&
+            !SITE.hasFullBoardCatalog &&
+            !hasCachedDynamicBoardCatalog();
+    }
+
+    function buildHomeModels(isReorderable, snackbar) {
+        homeBoards = getVisibleBoards();
+        rebuildBoardIndex();
+        return {
+            contents: buildHomeItems(getHomeEntries()),
+            menus: getHomeMenus(!!isReorderable),
+            snackbar: snackbar || ""
+        };
+    }
+
+    function createHomeContext(isReorderable) {
+        return {
+            kind: "home",
+            link: normalizeUrl(SITE.browserHomeUrl),
+            isReorderable: !!isReorderable
+        };
+    }
+
     function updateHomeAfterBoardMutation(homeViewId, snackbar) {
         if (!homeViewId) return;
         var homeState = getViewState(homeViewId);
-        updateViewFromRoute(homeViewId, createHomeRoute(!!(homeState && homeState.isReorderable), snackbar || ""));
+        if (!homeState || homeState.kind !== "home") return;
+        var isReorderable = !!homeState.isReorderable;
+        synura.update(homeViewId, {
+            models: buildHomeModels(isReorderable, snackbar || "")
+        });
+        setViewState(homeViewId, createHomeContext(isReorderable));
     }
 
     function resetBoardSettingsStorage() {
@@ -2050,6 +2302,32 @@
             var parentState = getViewState(parentViewId);
             updateViewFromRoute(parentViewId, createHomeRoute(!!(parentState && parentState.isReorderable), ""));
         }
+    }
+
+    function showCategoryBoardSyncPrompt(parentViewId, homeViewId) {
+        var context = {
+            from: "category_home_sync_prompt",
+            parentViewId: parentViewId || 0,
+            homeViewId: homeViewId || 0
+        };
+        var result = synura.open({
+            view: "/dialogs/input",
+            styles: {
+                title: MENU_ALL_BOARDS,
+                message: "캐시된 전체 게시판 목록이 없습니다. 지금 " + MENU_BOARD_SYNC + "를 실행할까요?",
+                close: true
+            },
+            models: {
+                body: [],
+                buttons: [MENU_BOARD_SYNC, BUTTON_OPEN_CATEGORY_HOME_WITHOUT_SYNC]
+            }
+        }, context, function (event) {
+            handler.onViewEvent(event);
+        });
+        if (result && result.success) {
+            setViewState(result.viewId, context);
+        }
+        return result;
     }
 
     function cliMessage(viewId, message) {
@@ -2303,7 +2581,7 @@
                 }
                 var status = response.status || 0;
                 var html = response.text();
-                if (shouldUseBrowserCookieAuth() && (isChallengeHtml(html) || isBrowserAuthRequiredStatus(status))) {
+                if (shouldUseBrowserCookieAuth() && isAuthRequiredResponse(fetchUrl, status, html)) {
                     throw makeAuthRequiredError(fetchUrl, status);
                 }
                 var key = CACHE_PREFIX + "cli_fetch:" + String(Date.now());
@@ -2423,6 +2701,14 @@
 
     function refreshBoardSettingsParent(viewId, snackbar) {
         if (!viewId) return;
+        try {
+            if (SITE.refreshBoardSettingsParent && SITE.refreshBoardSettingsParent(viewId, snackbar || "")) {
+                return;
+            }
+        } catch (e) {
+            synura.update(viewId, { models: { snackbar: e.toString() } });
+            return;
+        }
         var state = getViewState(viewId);
         if (state && state.kind === "board_settings_root") {
             refreshBoardSettingsRootView(viewId, state, snackbar || "");
@@ -2479,6 +2765,8 @@
     }
 
     function showBoardSettings(parentViewId) {
+        var customResult = runSiteShowBoardSettings(parentViewId || 0);
+        if (customResult) return customResult;
         if (shouldUseLargeBoardSettings()) {
             return openRoute(createBoardSettingsRootRoute(parentViewId || 0));
         }
@@ -2623,9 +2911,6 @@
     }
 
     function createHomeRoute(isReorderable, snackbar) {
-        homeBoards = getVisibleBoards();
-        rebuildBoardIndex();
-        var homeEntries = getHomeEntries();
         return {
             kind: "home",
             url: normalizeUrl(SITE.browserHomeUrl),
@@ -2638,17 +2923,9 @@
                     pagination: false,
                     reorderable: !!isReorderable
                 },
-                models: {
-                    contents: buildHomeItems(homeEntries),
-                    menus: getHomeMenus(isReorderable),
-                    snackbar: snackbar || ""
-                }
+                models: buildHomeModels(isReorderable, snackbar)
             },
-            context: {
-                kind: "home",
-                link: normalizeUrl(SITE.browserHomeUrl),
-                isReorderable: !!isReorderable
-            }
+            context: createHomeContext(isReorderable)
         };
     }
 
@@ -2673,6 +2950,19 @@
             (body.indexOf("window.location.replace") >= 0 && body.indexOf("document.cookie") >= 0);
     }
 
+    function isAuthRequiredResponse(url, status, html) {
+        try {
+            if (SITE.isAuthRequiredResponse) {
+                var custom = SITE.isAuthRequiredResponse(url, status, html);
+                if (custom === true || custom === false) {
+                    return !!custom;
+                }
+            }
+        } catch (e) {
+        }
+        return isChallengeHtml(html) || isBrowserAuthRequiredStatus(status);
+    }
+
     function fetchDocument(url) {
         var response = fetchWithLogging(url, buildFetchOptions());
         if (!response) {
@@ -2681,7 +2971,7 @@
 
         var status = response.status || 0;
         var html = response.text();
-        if (shouldUseBrowserCookieAuth() && (isChallengeHtml(html) || isBrowserAuthRequiredStatus(status))) {
+        if (shouldUseBrowserCookieAuth() && isAuthRequiredResponse(url, status, html)) {
             throw makeAuthRequiredError(url, status);
         }
 
@@ -2700,7 +2990,7 @@
 
         var status = response.status || 0;
         var html = response.text();
-        if (shouldUseBrowserCookieAuth() && (isChallengeHtml(html) || isBrowserAuthRequiredStatus(status))) {
+        if (shouldUseBrowserCookieAuth() && isAuthRequiredResponse(url, status, html)) {
             throw makeAuthRequiredError(url, status);
         }
 
@@ -2723,7 +3013,7 @@
         var status = response.status || 0;
         var html = response.text();
         var authRequired = shouldUseBrowserCookieAuth() &&
-            (isChallengeHtml(html) || isBrowserAuthRequiredStatus(status));
+            isAuthRequiredResponse(url, status, html);
         var restricted = !response.ok && (status === 401 || status === 403) && !isChallengeHtml(html);
         if (authRequired) {
             throw makeAuthRequiredError(url, status);
@@ -2805,6 +3095,8 @@
             kind: "board",
             link: url,
             boardId: match.board ? match.board.id : "",
+            boardTitle: match.board ? match.board.title : "",
+            boardUrl: match.board ? match.board.url : "",
             title: title,
             page: match.page || 1,
             nextUrl: nextUrl,
@@ -2820,13 +3112,7 @@
             url: url,
             viewData: {
                 view: "/views/list",
-                styles: {
-                    title: title,
-                    layout: "card",
-                    media: boardShowsMedia(match ? match.board : null),
-                    menu: true,
-                    pagination: !!nextUrl
-                },
+                styles: buildBoardListStyles(title, match ? match.board : null, nextUrl),
                 models: {
                     contents: items,
                     menus: getBoardMenus(context)
@@ -2862,6 +3148,10 @@
     var titleNode = firstNode(doc, ["title"]);
     var contentRoot = firstNode(doc, SITE.selectors.postContent);
     var content = parseDetails(contentRoot, url);
+    try {
+        if (SITE.filterPostContent) content = SITE.filterPostContent(content, url, doc, page, match) || content;
+    } catch (e) {
+    }
     var rememberedItem = getRememberedItemPreview(url);
     var schemaPost = detectSchemaPost(doc);
     var comments = parseComments(doc, url);
@@ -2939,11 +3229,20 @@
                     buttons: [BUTTON_REFRESH]
                 }
             },
-            context: {
+            context: (function () {
+                var context = {
                 kind: "post",
                 link: url,
-                boardId: match.board ? match.board.id : ""
-            }
+                boardId: match.board ? match.board.id : "",
+                boardTitle: match.board ? match.board.title : "",
+                boardUrl: match.board ? match.board.url : ""
+                };
+                try {
+                    context = SITE.preparePostContext ? (SITE.preparePostContext(context, match, url, doc, page) || context) : context;
+                } catch (e) {
+                }
+                return context;
+            })()
         };
         setCachedRoute("post", url, route);
         return route;
@@ -2964,6 +3263,8 @@
             kind: "board",
             link: url,
             boardId: board ? board.id : "",
+            boardTitle: board ? board.title : "",
+            boardUrl: board ? board.url : "",
             title: title,
             page: match && match.page ? match.page : 1,
             nextUrl: nextUrl,
@@ -2978,13 +3279,7 @@
             url: url,
             viewData: {
             view: "/views/list",
-            styles: {
-                title: title,
-                layout: "card",
-                media: boardShowsMedia(board),
-                menu: true,
-                pagination: !!nextUrl
-            },
+            styles: buildBoardListStyles(title, board, nextUrl),
             models: {
                 contents: [],
                 menus: getBoardMenus(context)
@@ -2996,6 +3291,17 @@
 
     function createPendingPostRoute(url, match) {
         var rememberedItem = getRememberedItemPreview(url);
+        var context = {
+            kind: "post",
+            link: url,
+            boardId: match && match.board ? match.board.id : "",
+            boardTitle: match && match.board ? match.board.title : "",
+            boardUrl: match && match.board ? match.board.url : ""
+        };
+        try {
+            context = SITE.preparePostContext ? (SITE.preparePostContext(context, match, url, null, null) || context) : context;
+        } catch (e) {
+        }
         return {
             kind: "post",
             url: url,
@@ -3023,11 +3329,7 @@
                     buttons: [BUTTON_REFRESH]
                 }
             },
-            context: {
-                kind: "post",
-                link: url,
-                boardId: match && match.board ? match.board.id : ""
-            }
+            context: context
         };
     }
 
@@ -3072,6 +3374,9 @@
             if (syntheticCategory === "home") return createCategoryHomeRoute(0);
             return createCategoryGroupRoute(syntheticCategory, 0);
         }
+
+        var customRoute = SITE.routeCustom ? SITE.routeCustom(normalized, info, !!force) : null;
+        if (customRoute) return customRoute;
 
         var postMatch = SITE.matchPost(info);
         if (postMatch) return routePostWithMatch(normalized, info, postMatch, !!force);
@@ -3606,13 +3911,55 @@
         };
     }
 
-    function buildCategoryBoardItem(board, visibleMap) {
+    function shouldForceFlattenCategoryGroup(node) {
+        if (!node || !node.path || !Array.isArray(SITE.flattenCategoryGroupPaths)) return false;
+        var normalizedPath = normalizeWhitespace(node.path);
+        for (var i = 0; i < SITE.flattenCategoryGroupPaths.length; i++) {
+            if (normalizeWhitespace(SITE.flattenCategoryGroupPaths[i]) === normalizedPath) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function shouldOmitFlattenedCategoryGroupPrefix(node) {
+        if (!node || !node.path || !Array.isArray(SITE.flattenCategoryGroupPathsWithoutPrefix)) return false;
+        var normalizedPath = normalizeWhitespace(node.path);
+        for (var i = 0; i < SITE.flattenCategoryGroupPathsWithoutPrefix.length; i++) {
+            if (normalizeWhitespace(SITE.flattenCategoryGroupPathsWithoutPrefix[i]) === normalizedPath) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function buildCategoryFlattenedBoardTitle(node, board) {
+        if (shouldOmitFlattenedCategoryGroupPrefix(node)) {
+            return normalizeWhitespace(board ? board.title : "");
+        }
+        var prefixParts = splitBoardGroupPath(node ? node.path : "");
+        var boardParts = splitBoardGroupPath(getBoardGroupPath(board));
+        var relativeParts = boardParts.slice(prefixParts.length);
+        var prefix = prefixParts.concat(relativeParts).join("/");
+        var title = normalizeWhitespace(board ? board.title : "");
+        if (!prefix) return title;
+        if (!title) return prefix;
+        return prefix === title ? prefix : (prefix + "/" + title);
+    }
+
+    function shouldFlattenCategoryGroup(node) {
+        if (!node || !node.path) return false;
+        if (shouldForceFlattenCategoryGroup(node)) return true;
+        return node.groups.length === 0 && node.boards.length > 0 && node.boards.length < 5;
+    }
+
+    function buildCategoryBoardItem(board, visibleMap, titleOverride) {
         var isVisible = isBoardVisible(board.id, visibleMap);
         var categoryPath = getBoardGroupPath(board);
         return {
             id: board.id,
             link: board.url,
-            title: board.title,
+            title: normalizeWhitespace(titleOverride || board.title),
             description: board.description || board.url.replace(/^https?:\/\//, ""),
             category: categoryPath,
             author: "",
@@ -3631,10 +3978,22 @@
         var items = [];
         var visibleMap = getAllBoardsVisibility();
         for (var i = 0; i < node.groups.length; i++) {
-            items.push(buildCategoryGroupItem(node.groups[i], tree));
+            var child = node.groups[i];
+            if (shouldFlattenCategoryGroup(child)) {
+                var flattenedBoards = collectCategoryNodeBoards(child, []);
+                for (var j = 0; j < flattenedBoards.length; j++) {
+                    items.push(buildCategoryBoardItem(
+                        flattenedBoards[j],
+                        visibleMap,
+                        buildCategoryFlattenedBoardTitle(child, flattenedBoards[j])
+                    ));
+                }
+                continue;
+            }
+            items.push(buildCategoryGroupItem(child, tree));
         }
-        for (var j = 0; j < node.boards.length; j++) {
-            items.push(buildCategoryBoardItem(node.boards[j], visibleMap));
+        for (var k = 0; k < node.boards.length; k++) {
+            items.push(buildCategoryBoardItem(node.boards[k], visibleMap));
         }
         return items;
     }
@@ -3718,6 +4077,23 @@
 
     function refreshCategoryView(viewId, state, snackbar) {
         updateViewFromRoute(viewId, createCategoryRouteFromState(state), snackbar || "");
+    }
+
+    function openCategoryHomeFromMenu(viewId, state) {
+        try {
+            if (SITE.openCategoryHomeFromMenu && SITE.openCategoryHomeFromMenu(viewId || 0, state || null)) {
+                return;
+            }
+        } catch (e) {
+            synura.update(viewId, { models: { snackbar: e.toString() } });
+            return;
+        }
+        var homeViewId = state && state.kind === "home" ? viewId : 0;
+        if (shouldPromptBoardCatalogSync()) {
+            showCategoryBoardSyncPrompt(viewId || 0, homeViewId);
+            return;
+        }
+        openRoute(createCategoryHomeRoute(homeViewId));
     }
 
     function toggleCategoryHomeShortcut(path) {
@@ -3842,6 +4218,11 @@
                     : createCategoryGroupRoute(syntheticCategory, 0));
             }
 
+            var customRoute = SITE.routeCustom ? SITE.routeCustom(normalized, info, !!force) : null;
+            if (customRoute) {
+                return openRoute(customRoute);
+            }
+
             var postMatch = SITE.matchPost(info);
             if (postMatch) {
                 return openLoadingRoute(
@@ -3903,6 +4284,9 @@
     function refreshCurrentView(viewId) {
         var state = getViewState(viewId);
         try {
+            if (SITE.refreshView && SITE.refreshView(viewId, state || null)) {
+                return;
+            }
             if (!state || !state.kind || state.kind === "home") {
                 updateViewFromRoute(viewId, createHomeRoute(!!(state && state.isReorderable), "새로고침 완료"));
                 return;
@@ -4015,7 +4399,74 @@
         updateHomeAfterBoardMutation(homeViewId, snackbar || "");
     }
 
+    function refreshBoardViewPreferenceState(viewId, state) {
+        var board = resolveMenuBoard(state);
+        if (!board) {
+            synura.update(viewId, { models: { snackbar: "게시판을 찾지 못했습니다." } });
+            return;
+        }
+        synura.update(viewId, {
+            styles: buildBoardListStyles((state && state.title) || board.title || SITE.displayName, board, state && state.nextUrl),
+            models: {
+                menus: getBoardMenus(state),
+                snackbar: ""
+            }
+        });
+    }
+
+    function handleBoardMediaToggleMenu(viewId, state) {
+        var board = resolveMenuBoard(state);
+        if (!board) {
+            synura.update(viewId, { models: { snackbar: "게시판을 찾지 못했습니다." } });
+            return true;
+        }
+        var nextEnabled = !boardShowsMedia(board);
+        setBoardViewSetting(board.id, "show_media", nextEnabled);
+        if (nextEnabled) {
+            synura.update(viewId, {
+                styles: {
+                    media: true
+                },
+                models: {
+                    menus: getBoardMenus(state),
+                    snackbar: ""
+                }
+            });
+        } else {
+            synura.update(viewId, {
+                styles: {
+                    media: false
+                },
+                models: {
+                    menus: getBoardMenus(state),
+                    snackbar: ""
+                }
+            });
+        }
+        return true;
+    }
+
+    function handleBoardGalleryModeToggleMenu(viewId, state) {
+        var board = resolveMenuBoard(state);
+        if (!board) {
+            synura.update(viewId, { models: { snackbar: "게시판을 찾지 못했습니다." } });
+            return true;
+        }
+        var nextEnabled = !boardUsesGalleryMode(board);
+        setBoardViewSetting(board.id, "gallery_mode", nextEnabled);
+        refreshBoardViewPreferenceState(viewId, state);
+        return true;
+    }
+
     function handleBoardHomeToggleMenu(viewId, state) {
+        try {
+            if (SITE.handleBoardHomeToggleMenu && SITE.handleBoardHomeToggleMenu(viewId, state || null)) {
+                return true;
+            }
+        } catch (e) {
+            synura.update(viewId, { models: { snackbar: e.toString() } });
+            return true;
+        }
         var boardId = resolveMenuBoardId(state);
         if (!boardId) {
             synura.update(viewId, { models: { snackbar: "게시판을 찾지 못했습니다." } });
@@ -4286,6 +4737,7 @@
 
         if (button === "저장") {
             var ttlMinutes = parseInt(String(event.data ? event.data.ttl : 0), 10);
+            var galleryColumnCount = parseInt(String(event.data ? event.data.gallery_column_count : 0), 10);
             if (isNaN(ttlMinutes) || ttlMinutes <= 0) {
                 synura.update(viewId, {
                     models: {
@@ -4294,9 +4746,18 @@
                 });
                 return;
             }
+            if (isNaN(galleryColumnCount) || galleryColumnCount <= 0) {
+                synura.update(viewId, {
+                    models: {
+                        snackbar: "갤러리 열 수는 1 이상이어야 합니다."
+                    }
+                });
+                return;
+            }
             setCacheTTL(ttlMinutes * 60000);
             setShowCacheSnackbar(!!(event.data && event.data.show_snackbar));
             setUseTwoCharCategory(!(event.data && event.data.category_two_char === false));
+            setGalleryColumnCount(galleryColumnCount);
             synura.close(viewId);
             if (parentViewId) {
                 synura.update(parentViewId, {
@@ -4312,6 +4773,7 @@
             localStorage.removeItem(CACHE_TTL_KEY);
             localStorage.removeItem(CACHE_SNACKBAR_KEY);
             localStorage.removeItem(CATEGORY_TWO_CHAR_KEY);
+            localStorage.removeItem(GALLERY_COLUMN_COUNT_KEY);
             synura.update(viewId, {
                 models: {
                     body: getCacheSettingsBody(),
@@ -4528,6 +4990,43 @@
         updateHomeAfterBoardMutation(homeViewId, message);
     }
 
+    function handleCategoryBoardSyncPromptSubmit(viewId, event) {
+        var button = event.data ? event.data.button : "";
+        var homeViewId = event.context ? event.context.homeViewId : 0;
+
+        if (button === MENU_BOARD_SYNC) {
+            var items;
+            try {
+                items = getDynamicBoards({ allowNetwork: true, force: true });
+            } catch (e) {
+                synura.update(viewId, { models: { snackbar: e.toString() } });
+                return;
+            }
+
+            homeBoards = getVisibleBoards();
+            rebuildBoardIndex();
+            synura.close(viewId);
+            refreshAnyHomeView(homeViewId, "");
+
+            var openResult = openRoute(createCategoryHomeRoute(homeViewId));
+            var message = items.length > 0
+                ? ("게시판 " + items.length + "개를 가져왔습니다.")
+                : "가져올 게시판이 없습니다.";
+            if (openResult && openResult.success) {
+                synura.update(openResult.viewId, { models: { snackbar: message } });
+            }
+            return;
+        }
+
+        if (button === BUTTON_OPEN_CATEGORY_HOME_WITHOUT_SYNC) {
+            synura.close(viewId);
+            openRoute(createCategoryHomeRoute(homeViewId));
+            return;
+        }
+
+        synura.close(viewId);
+    }
+
 
     var handler = {
         home: function () {
@@ -4615,6 +5114,11 @@
                 return;
             }
 
+            if (context && context.from === "category_home_sync_prompt" && event.eventId === "SUBMIT") {
+                handleCategoryBoardSyncPromptSubmit(viewId, event);
+                return;
+            }
+
             if (context && context.from === "cache_settings" && event.eventId === "SUBMIT") {
                 handleCacheSettingsSubmit(viewId, event);
                 return;
@@ -4695,7 +5199,11 @@
                     var isReorderable = !state.isReorderable;
                     updateViewFromRoute(viewId, createHomeRoute(isReorderable, isReorderable ? "순서 변경이 활성화되었습니다." : "순서 변경이 비활성화되었습니다."));
                 } else if (menu === MENU_ALL_BOARDS && state && (state.kind === "home" || state.kind === "board" || state.kind === "post")) {
-                    openRoute(createCategoryHomeRoute(state.kind === "home" ? viewId : 0));
+                    openCategoryHomeFromMenu(viewId, state);
+                } else if (menu === MENU_MEDIA_TOGGLE && state && state.kind === "board") {
+                    handleBoardMediaToggleMenu(viewId, state);
+                } else if (menu === MENU_GALLERY_MODE && state && state.kind === "board") {
+                    handleBoardGalleryModeToggleMenu(viewId, state);
                 } else if (menu === MENU_HOME_TOGGLE && state && (state.kind === "board" || state.kind === "post")) {
                     handleBoardHomeToggleMenu(viewId, state);
                 } else if (menu === MENU_BROWSER) {

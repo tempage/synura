@@ -386,6 +386,8 @@ var SITE = {
   "boardSettingsLargeThreshold": 256,
   "boardSettingsPageSize": 96,
   "boardAddMode": "url_title",
+  "hasFullBoardCatalog": true,
+  "supportsBoardCatalogSync": true,
   "defaultVisibleBoardIds": [
     "ppomppu",
     "freeboard",
@@ -397,6 +399,12 @@ var SITE = {
     "pmarket3",
     "coupon",
     "stock"
+  ],
+  "defaultShowMediaBoardIds": [
+    "ppomppu",
+    "ppomppu4",
+    "ppomppu8",
+    "freeboard"
   ],
   "hostAliases": [
     "ppomppu.co.kr",
@@ -783,7 +791,7 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "m.ppomppu.co.kr",
     name: "ppomppu",
-    description: "Unofficial Synura extension for Ppomppu mobile boards.",
+    description: "Unofficial Ppomppu extension",
     version: 0.1,
     api: 0,
     license: "Apache-2.0",

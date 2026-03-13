@@ -16,6 +16,8 @@ var SITE = {
   "boardSettingsLargeThreshold": 256,
   "boardSettingsPageSize": 96,
   "boardAddMode": "url_title",
+  "hasFullBoardCatalog": false,
+  "supportsBoardCatalogSync": true,
   "defaultVisibleBoardIds": [],
   "hostAliases": [
     "pann.nate.com"
@@ -115,10 +117,12 @@ var SITE = {
       ".reply"
     ],
     "listViewCount": [
+      ".sub .num:first-of-type",
       ".info .view",
       ".view"
     ],
     "listLikeCount": [
+      ".sub .num:last-of-type",
       ".info .like",
       ".like"
     ],
@@ -142,15 +146,29 @@ var SITE = {
       ".nick"
     ],
     "postDate": [
+      ".pann-title .writer .sub:first-of-type .num",
+      ".writer .sub:first-of-type .num",
       ".writer .date",
       ".info .date",
       ".date"
     ],
     "postViewCount": [
+      ".pann-title .writer > .sub:nth-of-type(2) .num",
+      ".writer > .sub:nth-of-type(2) .num",
+      ".pann-title .writer .sub + .sub .num",
+      ".writer .sub + .sub .num",
+      ".pann-title .writer .sub:last-of-type .num",
+      ".writer .sub:last-of-type .num",
+      ".pann-title .writer .sub:last-of-type .num:first-of-type",
+      ".writer .sub:last-of-type .num:first-of-type",
       ".under-info .view",
       ".view"
     ],
     "postLikeCount": [
+      "#R_cnt > span:last-child",
+      ".updown .btnbox.up .count > span:last-child",
+      ".pann-title .writer .sub:last-of-type .num:last-of-type",
+      ".writer .sub:last-of-type .num:last-of-type",
       ".under-info .like",
       ".like"
     ],
@@ -181,11 +199,14 @@ var SITE = {
       ".txt"
     ],
     "commentDate": [
+      "dt em:last-of-type",
       "dt em",
+      "dt .num",
       ".date",
       "time"
     ],
     "commentLikeCount": [
+      "span[id^='R_cnt_']",
       "span[id^='G_cnt_']",
       ".like",
       ".recommend"
@@ -373,8 +394,152 @@ SITE.routeBoardCustom = function (url, urlInfo, match, force) {
 SITE.routePostCustom = function (url, urlInfo, match, force) {
     return null;
 };
+function pannParseHtml(html) {
+    try {
+        return new DOMParser().parseFromString(String(html || ""), "text/html");
+    } catch (e) {
+        return null;
+    }
+}
+function pannExtractSectionHtml(html, marker) {
+    var source = String(html || "");
+    if (!source) return "";
+
+    var start = source.indexOf(String(marker || ""));
+    if (start < 0) return "";
+
+    var divStart = source.lastIndexOf("<div", start);
+    if (divStart < 0) divStart = start;
+
+    var end = source.length;
+    var endTokens = [
+        '<div class="paging"',
+        '<div class="navi-btn-bot"',
+        '<script ',
+        "</body>"
+    ];
+    for (var j = 0; j < endTokens.length; j++) {
+        var index = source.indexOf(endTokens[j], divStart);
+        if (index >= 0 && index < end) end = index;
+    }
+
+    return source.substring(divStart, end);
+}
+function pannCommentRows(doc) {
+    return allNodes(doc, [
+        "#listDiv dl",
+        ".reply-list.reply-best dl",
+        ".reply-list.view-best dl",
+        ".reply-list dl"
+    ]);
+}
+function pannCommentContentNode(row) {
+    return firstNode(row, [
+        "dd.userText",
+        "dd:not(.updown):not(.btn)",
+        "dd:not(.btn)",
+        "dd"
+    ]);
+}
+function pannBuildComment(row, postUrl, index) {
+    var contentNode = pannCommentContentNode(row);
+    var content = parseDetails(contentNode, postUrl);
+    if (!content || content.length === 0) {
+        var text = firstText(row, [
+            "dd.userText",
+            "dd:not(.updown):not(.btn)",
+            "dd:not(.btn)",
+            "dd"
+        ]);
+        if (text) {
+            content = [{
+                type: "text",
+                value: text
+            }];
+        }
+    }
+    if (!content || content.length === 0) return null;
+
+    var likeCount = hideZeroCount(parseCount(firstText(row, [
+        "dd.updown span[id^='R_cnt_']",
+        "span[id^='R_cnt_']",
+        ".btnbox.up span:last-child",
+        ".up .count + span",
+        ".like",
+        ".recommend"
+    ])));
+    var dislikeCount = hideZeroCount(parseCount(firstText(row, [
+        "dd.updown span[id^='O_cnt_']",
+        "span[id^='O_cnt_']"
+    ])));
+
+    return {
+        link: postUrl + "#comment-" + (index + 1),
+        author: firstAuthorText(row, SITE.selectors.commentAuthor),
+        avatar: imageUrlFromNode(firstNode(row, SITE.selectors.commentAvatar || SITE.selectors.commentAuthor), postUrl),
+        content: content,
+        date: firstText(row, SITE.selectors.commentDate),
+        likeCount: likeCount,
+        dislikeCount: dislikeCount,
+        level: detectCommentLevel(row),
+        menus: [],
+        hotCount: toInt(likeCount, 0),
+        coldCount: toInt(dislikeCount || likeCount, 0)
+    };
+}
+function pannParseCommentsFromDoc(doc, postUrl) {
+    var rows = pannCommentRows(doc);
+    var out = [];
+    for (var i = 0; i < rows.length; i++) {
+        var item = pannBuildComment(rows[i], postUrl, i);
+        if (item) out.push(item);
+    }
+    return out;
+}
+function pannParseCommentsFromHtmlSection(sectionHtml, postUrl) {
+    var source = String(sectionHtml || "");
+    if (!source) return [];
+
+    var blocks = source.match(/<dl\b[\s\S]*?<\/dl>/g) || [];
+    var out = [];
+    for (var i = 0; i < blocks.length; i++) {
+        var rowDoc = pannParseHtml("<div>" + blocks[i] + "</div>");
+        var row = firstNode(rowDoc, ["dl"]);
+        var item = pannBuildComment(row, postUrl, out.length);
+        if (item) out.push(item);
+    }
+    return out;
+}
+function pannParseReplyPage(html, postUrl) {
+    var source = String(html || "");
+    var comments = pannParseCommentsFromHtmlSection(pannExtractSectionHtml(source, 'id="listDiv"'), postUrl);
+
+    if (comments.length === 0) {
+        comments = pannParseCommentsFromHtmlSection(pannExtractSectionHtml(source, 'class="reply-list reply-best"'), postUrl);
+    }
+    if (comments.length === 0) {
+        comments = pannParseCommentsFromHtmlSection(pannExtractSectionHtml(source, 'class="reply-list view-best"'), postUrl);
+    }
+    if (comments.length === 0) {
+        var doc = pannParseHtml(source);
+        comments = pannParseCommentsFromDoc(doc, postUrl);
+    }
+
+    var maxPage = 1;
+    var pageRegex = /[?&]vPage=(\d+)/g;
+    var match = null;
+    while ((match = pageRegex.exec(source))) {
+        var pageNo = parseInt(String(match[1] || "0"), 10);
+        if (pageNo > maxPage) maxPage = pageNo;
+    }
+
+    return {
+        comments: comments,
+        maxPage: maxPage
+    };
+}
 SITE.parseComments = function (doc, postUrl) {
-    return parseGenericComments(doc, postUrl);
+    return pannParseCommentsFromDoc(doc, postUrl);
 };
 SITE.fetchPostComments = function (match, url, doc, page, comments) {
     function pannReplyViewUrl(pageNo) {
@@ -401,13 +566,13 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
     function pannFetchReplyPage(pageNo) {
         var response = fetchWithLogging(pannReplyViewUrl(pageNo), buildFetchOptions());
         if (!response || !response.ok) return null;
-        return response.dom("text/html");
+        return pannParseReplyPage(response.text(), url);
     }
 
     function pannDecorateComments(list, pageNo) {
         var out = [];
         for (var i = 0; i < (list || []).length; i++) {
-            var item = deepClone(list[i]);
+            var item = list[i];
             if (!item) continue;
             item.link = url + "#reply-" + pageNo + "-" + (i + 1);
             out.push(item);
@@ -415,29 +580,21 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         return out;
     }
 
-    var firstDoc = pannFetchReplyPage(1);
-    if (!firstDoc) return comments;
+    var firstPage = pannFetchReplyPage(1);
+    if (!firstPage) return comments;
 
     var out = [];
     var seenPages = { "1": true };
-    out = out.concat(pannDecorateComments(parseComments(firstDoc, url), 1));
+    out = out.concat(pannDecorateComments(firstPage.comments, 1));
 
-    var maxPage = 1;
-    var pageLinks = allNodes(firstDoc, ["a[href*='/talk/reply/view']"]);
-    for (var i = 0; i < pageLinks.length; i++) {
-        var href = ensureAbsoluteUrl(attrOf(pageLinks[i], "href"), pannReplyViewUrl(1));
-        var info = parseAbsoluteUrl(href);
-        if (!info) continue;
-        var pageValue = parseInt(String(queryValue(info.query, "vPage") || "0"), 10);
-        if (pageValue > maxPage) maxPage = pageValue;
-    }
+    var maxPage = firstPage.maxPage || 1;
 
     for (var pageNo = 2; pageNo <= maxPage; pageNo++) {
         if (seenPages[String(pageNo)]) continue;
         seenPages[String(pageNo)] = true;
-        var doc = pannFetchReplyPage(pageNo);
-        if (!doc) continue;
-        out = out.concat(pannDecorateComments(parseComments(doc, url), pageNo));
+        var replyPage = pannFetchReplyPage(pageNo);
+        if (!replyPage) continue;
+        out = out.concat(pannDecorateComments(replyPage.comments, pageNo));
     }
 
     return out.length > 0 ? out : comments;
@@ -452,7 +609,7 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "m.pann.nate.com",
     name: "pann",
-    description: "Unofficial Synura extension for Nate Pann mobile boards.",
+    description: "Unofficial Nate Pann extension",
     version: 0.1,
     api: 0,
     license: "Apache-2.0",
@@ -470,8 +627,8 @@ var LIST_AUTHOR_SELECTORS = [".writer",".nick"];
 var LIST_AVATAR_SELECTORS = [];
 var LIST_DATE_SELECTORS = [".info .date",".date"];
 var LIST_COMMENT_COUNT_SELECTORS = [".count",".reply"];
-var LIST_VIEW_COUNT_SELECTORS = [".info .view",".view"];
-var LIST_LIKE_COUNT_SELECTORS = [".info .like",".like"];
+var LIST_VIEW_COUNT_SELECTORS = [".sub .num:first-of-type",".info .view",".view"];
+var LIST_LIKE_COUNT_SELECTORS = [".sub .num:last-of-type",".info .like",".like"];
 var LIST_CATEGORY_SELECTORS = [".tit .cate",".cate",".category"];
 var LIST_IMAGE_SELECTORS = ["img"];
 
@@ -489,7 +646,7 @@ function extractListItem(row, baseUrl) {
     if (!title) return null;
 
     var commentCount = hideZeroCount(parseCount(firstText(row, LIST_COMMENT_COUNT_SELECTORS)));
-    var viewCount = parseCount(firstText(row, LIST_VIEW_COUNT_SELECTORS));
+    var viewCount = hideZeroCount(parseCount(firstText(row, LIST_VIEW_COUNT_SELECTORS)));
     var likeCount = hideZeroCount(parseCount(firstText(row, LIST_LIKE_COUNT_SELECTORS)));
     var author = firstAuthorText(row, LIST_AUTHOR_SELECTORS);
     var category = firstText(row, LIST_CATEGORY_SELECTORS);
