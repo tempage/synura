@@ -88,7 +88,7 @@ if (response.status >= 300 && response.status < 400) {
 ```
 
 ### DOM API
-Objects returned by `response.dom()` or `document.querySelector` provide a subset of the standard DOM API.
+Objects returned by `response.dom()`, `new DOMParser().parseFromString(...)`, or element query methods provide a subset of the standard DOM API.
 
 #### `Element`
 -   **Properties**:
@@ -110,14 +110,14 @@ Objects returned by `response.dom()` or `document.querySelector` provide a subse
     -   `nodeType` (Number): `1` (Element) or `3` (Text).
 
 -   **Methods**:
-    -   `getAttribute(name)`: Returns attribute value or empty string.
+    -   `getAttribute(name)`: Returns the attribute value, or `null` if the attribute does not exist. For HTML documents, attribute name matching is case-insensitive.
     -   `hasAttribute(name)`: Returns `true` if the attribute exists, `false` otherwise.
     -   `querySelector(selector)`: Returns the first matching child element.
     -   `querySelectorAll(selector)`: Returns a NodeList of matching child elements.
     -   `remove()`: Removes the element from its parent.
     -   `cloneNode(deep)`: Returns a clone of the node. If `deep` is true, the descendants are also cloned.
 
-#### `Document` (from `dom()`)
+#### `Document` (from `dom()` or `DOMParser`)
 -   `querySelector(selector)`
 -   `querySelectorAll(selector)`
 

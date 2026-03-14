@@ -26,7 +26,6 @@ var SITE = {
   ],
   "challengeMarkers": [
     "에펨코리아 보안 시스템",
-    "help@fmkorea.com",
     "/mc/mc.php"
   ],
   "titleSuffixes": [
@@ -109,26 +108,35 @@ var SITE = {
   ],
   "selectors": {
     "boardTitle": [
+      ".bd_tl h1 a",
       ".board_title",
       ".cate_title",
       "title"
     ],
     "listRows": [
+      ".bd_tb_lst tbody tr:not(.notice)",
+      ".bd_lst tbody tr:not(.notice)",
       "li.li",
       ".bd_lst li"
     ],
     "listLink": [
+      "td.title > a[href]",
+      "td.title a[href]",
       "h3.title a",
+      "h3 a",
       "a[href]"
     ],
     "listTitle": [
+      "td.title",
       "h3.title",
+      "h3",
       ".title"
     ],
     "listAuthor": [
       ".author"
     ],
     "listDate": [
+      ".time",
       ".regdate",
       ".date"
     ],
@@ -137,19 +145,23 @@ var SITE = {
       ".replyNum"
     ],
     "listViewCount": [
+      "td.m_no:not(.m_no_voted)",
       ".readed_count",
       ".readedCount"
     ],
     "listLikeCount": [
+      ".m_no_voted",
       ".voted_count",
       ".voteNum"
     ],
     "listCategory": [
+      ".cate",
       ".category"
     ],
     "listImage": [
       "img.thumb",
-      "img"
+      ".thumb img",
+      ".title img"
     ],
     "postTitle": [
       ".np_18px_span",
@@ -349,13 +361,40 @@ SITE.routePostCustom = function (url, urlInfo, match, force) {
     return null;
 };
 SITE.parseComments = function (doc, postUrl) {
-    return parseGenericComments(doc, postUrl);
+    return fmkoreaParseComments(doc, postUrl);
 };
 SITE.fetchPostComments = function (match, url, doc, page, comments) {
     return comments;
 };
+SITE.preparePostContext = function (context, match, url, doc, page) {
+    if (!doc) return context;
+
+    var comments = fmkoreaParseComments(doc, url);
+    var currentCommentPage = fmkoreaParseCommentPageFromUrl(url);
+    var latestCommentPage = currentCommentPage > 0
+        ? currentCommentPage
+        : fmkoreaDetectLatestCommentPage(doc, page && page.response ? page.response.text() : "");
+    var loadedCommentLinks = {};
+
+    for (var i = 0; i < comments.length; i++) {
+        var link = normalizeWhitespace(comments[i] && comments[i].link || "");
+        if (!link) continue;
+        loadedCommentLinks[link] = true;
+    }
+
+    context.fmkoreaCanonicalPostUrl = fmkoreaCanonicalPostUrl(url);
+    context.fmkoreaCommentMid = fmkoreaCommentMid(match, url);
+    context.fmkoreaCommentCursorPage = currentCommentPage > 0
+        ? Math.max(0, currentCommentPage - 1)
+        : Math.max(0, latestCommentPage);
+    context.fmkoreaLoadedComments = comments;
+    context.fmkoreaLoadedCommentLinks = loadedCommentLinks;
+    return context;
+};
 SITE.handleViewEvent = function (viewId, event, state, context) {
-    return false;
+    if (!state || state.kind !== "post") return false;
+    if (!event || event.eventId !== "SCROLL_TO_END") return false;
+    return fmkoreaAppendOlderComments(viewId, state);
 };
 SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
     return false;
@@ -379,16 +418,296 @@ var LIST_LINK_ALLOW_PATTERNS = [
     "^https://(?:www|m)\\.fmkorea\\.com/(?:[A-Za-z0-9_]+/)?\\d+(?:\\?|$)",
     "^https://(?:www|m)\\.fmkorea\\.com/index\\.php\\?[^#]*document_srl=\\d+(?:[&#]|$)"
 ];
-var LIST_LINK_SELECTORS = ["h3.title a","a[href]"];
-var LIST_TITLE_SELECTORS = ["h3.title",".title"];
-var LIST_AUTHOR_SELECTORS = [".author"];
+var LIST_ROW_SELECTORS = SITE.selectors && SITE.selectors.listRows ? SITE.selectors.listRows : ["li.li",".bd_lst li"];
+var LIST_LINK_SELECTORS = SITE.selectors && SITE.selectors.listLink ? SITE.selectors.listLink : ["h3.title a","h3 a","a[href]"];
+var LIST_TITLE_SELECTORS = SITE.selectors && SITE.selectors.listTitle ? SITE.selectors.listTitle : ["h3.title","h3",".title"];
+var LIST_AUTHOR_SELECTORS = SITE.selectors && SITE.selectors.listAuthor ? SITE.selectors.listAuthor : [".author"];
 var LIST_AVATAR_SELECTORS = [];
-var LIST_DATE_SELECTORS = [".regdate",".date"];
-var LIST_COMMENT_COUNT_SELECTORS = [".comment_count",".replyNum"];
-var LIST_VIEW_COUNT_SELECTORS = [".readed_count",".readedCount"];
-var LIST_LIKE_COUNT_SELECTORS = [".voted_count",".voteNum"];
-var LIST_CATEGORY_SELECTORS = [".category"];
-var LIST_IMAGE_SELECTORS = ["img.thumb","img"];
+var LIST_DATE_SELECTORS = SITE.selectors && SITE.selectors.listDate ? SITE.selectors.listDate : [".regdate",".date"];
+var LIST_COMMENT_COUNT_SELECTORS = SITE.selectors && SITE.selectors.listCommentCount ? SITE.selectors.listCommentCount : [".comment_count",".replyNum"];
+var LIST_VIEW_COUNT_SELECTORS = SITE.selectors && SITE.selectors.listViewCount ? SITE.selectors.listViewCount : [".readed_count",".readedCount"];
+var LIST_LIKE_COUNT_SELECTORS = SITE.selectors && SITE.selectors.listLikeCount ? SITE.selectors.listLikeCount : [".voted_count",".voteNum"];
+var LIST_CATEGORY_SELECTORS = SITE.selectors && SITE.selectors.listCategory ? SITE.selectors.listCategory : [".category"];
+var LIST_IMAGE_SELECTORS = SITE.selectors && SITE.selectors.listImage ? SITE.selectors.listImage : ["img.thumb",".thumb img",".title img"];
+
+function fmkoreaFindInfoSpan(row, iconClass) {
+    if (!row || !row.querySelectorAll || !iconClass) return null;
+    var infos = row.querySelectorAll(".info");
+    for (var i = 0; i < infos.length; i++) {
+        var childNodes = infos[i] && infos[i].childNodes ? infos[i].childNodes : [];
+        for (var j = 0; j < childNodes.length; j++) {
+            var child = childNodes[j];
+            if (!child || String(child.tagName || "").toUpperCase() !== "SPAN") continue;
+            var icon = child.querySelector("i");
+            var className = normalizeWhitespace(icon && icon.className || "");
+            if (className && className.indexOf(iconClass) >= 0) return child;
+        }
+    }
+    return null;
+}
+
+function fmkoreaInfoText(row, iconClass) {
+    var span = fmkoreaFindInfoSpan(row, iconClass);
+    return firstNonEmpty([
+        textOfNodeWithoutSelectors(span, ["i","span"]),
+        textOfNodeWithoutSelectors(span, ["i"]),
+        textOf(span)
+    ]);
+}
+
+function fmkoreaMetricRankValue(value) {
+    var normalized = normalizeWhitespace(value).replace(/,/g, "");
+    if (!normalized) return 0;
+
+    var plainMatch = normalized.match(/^(-?\d+(?:\.\d+)?)$/);
+    if (plainMatch) {
+        var plainValue = parseFloat(plainMatch[1]);
+        return isNaN(plainValue) ? 0 : Math.round(plainValue);
+    }
+
+    var unitMatch = normalized.match(/^(-?\d+(?:\.\d+)?)([천만억])$/);
+    if (unitMatch) {
+        var amount = parseFloat(unitMatch[1]);
+        if (!isNaN(amount)) {
+            var unit = unitMatch[2];
+            var multiplier = unit === "억" ? 100000000 : unit === "만" ? 10000 : 1000;
+            return Math.round(amount * multiplier);
+        }
+    }
+
+    return toInt(normalized, 0);
+}
+
+function fmkoreaCanonicalPostUrl(postUrl) {
+    var normalized = normalizeUrl(postUrl) || ensureAbsoluteUrl(postUrl, SITE.browserHomeUrl) || "";
+    var info = parseAbsoluteUrl(normalized);
+    var match = info && SITE.matchPost ? SITE.matchPost(info) : null;
+    if (!match || !match.postId) return normalized ? normalized.replace(/#.*$/, "") : "";
+
+    var boardId = normalizeWhitespace(match.board && match.board.id || "");
+    if (boardId.indexOf("slug_") === 0) {
+        return "https://" + SYNURA.domain + "/" + encodeURIComponent(boardId.substring(5)) + "/" + encodeURIComponent(match.postId);
+    }
+    if (boardId.indexOf("mid_") === 0) {
+        return "https://" + SYNURA.domain + "/index.php?mid=" + encodeURIComponent(boardId.substring(4)) + "&document_srl=" + encodeURIComponent(match.postId);
+    }
+    return "https://" + SYNURA.domain + "/index.php?document_srl=" + encodeURIComponent(match.postId);
+}
+
+function fmkoreaCommentMid(match, postUrl) {
+    var boardId = normalizeWhitespace(match && match.board && match.board.id || "");
+    if (boardId.indexOf("slug_") === 0) return boardId.substring(5);
+    if (boardId.indexOf("mid_") === 0) return boardId.substring(4);
+
+    var info = parseAbsoluteUrl(postUrl);
+    if (!info) return "";
+
+    var mid = normalizeWhitespace(queryValue(info.query, "mid"));
+    if (mid) return mid;
+
+    var parts = pathSegments(info.path);
+    if (parts.length >= 1 && parts[0] && !/^\d+$/.test(parts[0])) return parts[0];
+    return "";
+}
+
+function fmkoreaPostIdFromUrl(postUrl) {
+    var info = parseAbsoluteUrl(postUrl);
+    var match = info && SITE.matchPost ? SITE.matchPost(info) : null;
+    return normalizeWhitespace(match && match.postId || "");
+}
+
+function fmkoreaParseCommentPageFromUrl(postUrl) {
+    var info = parseAbsoluteUrl(postUrl);
+    if (!info) return 0;
+    return queryInt(info.query, "cpage", 0);
+}
+
+function fmkoreaDetectLatestCommentPage(doc, html) {
+    var source = String(html || "");
+    var matched = source.match(/window\.document_cpage\s*=\s*(\d+)/);
+    if (matched && matched[1]) {
+        var fromScript = parseInt(matched[1], 10);
+        if (!isNaN(fromScript) && fromScript > 0) return fromScript;
+    }
+
+    var pager = firstNode(doc, [
+        "#cmtPosition .bd_pg",
+        ".fdb_lst .bd_pg",
+        "#comment .bd_pg"
+    ]);
+    if (!pager) return 0;
+
+    var maxPage = 0;
+    var anchors = pager.querySelectorAll ? pager.querySelectorAll("a,strong,.this") : [];
+    for (var i = 0; i < anchors.length; i++) {
+        var text = normalizeWhitespace(textOf(anchors[i]));
+        if (!/^\d+$/.test(text)) continue;
+        var pageNo = parseInt(text, 10);
+        if (!isNaN(pageNo) && pageNo > maxPage) maxPage = pageNo;
+    }
+    return maxPage;
+}
+
+function fmkoreaExtractCommentId(row) {
+    var raw = firstNonEmpty([
+        attrOf(row, "id"),
+        attrOf(firstNode(row, [".member_plate"]), "data-comment_srl"),
+        attrOf(firstNode(row, [".copy-button"]), "data-clipboard-text"),
+        attrOf(firstNode(row, [".copy-button"]), "href"),
+        attrOf(firstNode(row, [".findComment"]), "href"),
+        attrOf(firstNode(row, [".findParent"]), "href")
+    ]);
+    if (!raw) return "";
+
+    var matched = raw.match(/comment[_-](\d+)/);
+    if (matched && matched[1]) return matched[1];
+
+    matched = raw.match(/\/(\d+)#comment/i);
+    if (matched && matched[1]) return matched[1];
+
+    return /^\d+$/.test(raw) ? raw : "";
+}
+
+function fmkoreaDetectCommentLevel(row) {
+    var cls = attrOf(row, "class");
+    if (/\bre\b/i.test(cls)) return 1;
+
+    var style = attrOf(row, "style");
+    var matched = style.match(/margin-left\s*:\s*(\d+)/i);
+    if (matched && matched[1]) {
+        var amount = parseInt(matched[1], 10);
+        if (!isNaN(amount) && amount > 0) return 1;
+    }
+    return 0;
+}
+
+function fmkoreaParseComments(doc, postUrl) {
+    var rows = allNodes(doc, SITE.selectors.commentRows);
+    var comments = [];
+    var canonicalPostUrl = fmkoreaCanonicalPostUrl(postUrl) || (normalizeUrl(postUrl) || ensureAbsoluteUrl(postUrl, SITE.browserHomeUrl) || "");
+
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var contentRoot = firstNode(row, SITE.selectors.commentContent);
+        var content = parseDetails(contentRoot, canonicalPostUrl);
+        if (!content || content.length === 0) {
+            var rawText = firstText(row, SITE.selectors.commentContent);
+            if (rawText) content = [{ type: "text", value: rawText }];
+        }
+        if (!content || content.length === 0) continue;
+
+        var likeCount = hideZeroCount(parseCount(firstText(row, SITE.selectors.commentLikeCount)));
+        var dislikeCount = hideZeroCount(parseCount(firstText(row, [".blamed_count"])));
+        var commentId = fmkoreaExtractCommentId(row);
+
+        comments.push({
+            link: commentId
+                ? (canonicalPostUrl + "#comment_" + commentId)
+                : (canonicalPostUrl + "#comment-" + (i + 1)),
+            author: firstAuthorText(row, SITE.selectors.commentAuthor),
+            avatar: imageUrlFromNode(firstNode(row, SITE.selectors.commentAvatar || SITE.selectors.commentAuthor), canonicalPostUrl),
+            content: content,
+            date: firstText(row, SITE.selectors.commentDate),
+            likeCount: likeCount,
+            dislikeCount: dislikeCount,
+            level: fmkoreaDetectCommentLevel(row),
+            menus: [],
+            hotCount: fmkoreaMetricRankValue(likeCount),
+            coldCount: fmkoreaMetricRankValue(dislikeCount || likeCount)
+        });
+    }
+
+    return comments;
+}
+
+function fmkoreaBuildCommentPageUrlFromState(state, pageNo) {
+    var currentPage = parseInt(String(pageNo || 0), 10);
+    if (!(currentPage > 0)) return "";
+
+    var canonicalPostUrl = normalizeUrl(state && state.fmkoreaCanonicalPostUrl || state && state.link || "") || "";
+    if (!canonicalPostUrl) return "";
+
+    return setPageParam(canonicalPostUrl, "cpage", currentPage);
+}
+
+function fmkoreaAppendOlderComments(viewId, state) {
+    var nextPage = parseInt(String(state && state.fmkoreaCommentCursorPage || 0), 10);
+    if (!(nextPage > 0)) {
+        synura.update(viewId, { models: { snackbar: "더 불러올 댓글이 없습니다." } });
+        return true;
+    }
+
+    var targetUrl = fmkoreaBuildCommentPageUrlFromState(state, nextPage);
+    if (!targetUrl) {
+        synura.update(viewId, { models: { snackbar: "댓글 페이지 URL을 만들지 못했습니다." } });
+        return true;
+    }
+
+    try {
+        var page = fetchPostPage(targetUrl);
+        var fetchedComments = fmkoreaParseComments(page.doc, targetUrl);
+        var seen = state.fmkoreaLoadedCommentLinks || {};
+        var loaded = Array.isArray(state.fmkoreaLoadedComments) ? state.fmkoreaLoadedComments.slice() : [];
+        var appendCount = 0;
+
+        for (var i = 0; i < fetchedComments.length; i++) {
+            var item = fetchedComments[i];
+            var link = normalizeWhitespace(item && item.link || "");
+            if (!link || seen[link]) continue;
+            seen[link] = true;
+            loaded.push(item);
+            appendCount += 1;
+        }
+
+        state.fmkoreaLoadedComments = loaded;
+        state.fmkoreaLoadedCommentLinks = seen;
+        state.fmkoreaCommentCursorPage = Math.max(0, nextPage - 1);
+        setViewState(viewId, state);
+
+        synura.update(viewId, {
+            models: {
+                comments: loaded,
+                snackbar: appendCount > 0 ? "" : (state.fmkoreaCommentCursorPage > 0 ? "중복 댓글을 건너뛰었습니다." : "더 불러올 댓글이 없습니다.")
+            }
+        });
+    } catch (e) {
+        synura.update(viewId, { models: { snackbar: String(e || "") } });
+    }
+    return true;
+}
+
+function parseFmkoreaBoardItems(doc, baseUrl) {
+    var root = fmkoreaParseBoardRoot(doc);
+    var rows = allNodes(root, LIST_ROW_SELECTORS);
+    if (!rows || rows.length === 0) return [];
+
+    var items = [];
+    var seen = {};
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var item = extractListItem(row, baseUrl);
+        if (!item || !item.link || seen[item.link]) continue;
+
+        seen[item.link] = true;
+        item.category = formatBoardListCategory(item.category || "");
+        items.push(item);
+    }
+
+    return items;
+}
+
+function fmkoreaParseBoardRoot(input) {
+    // FMKorea uses different board-list routes: some paths are parsed from a DOM
+    // document directly, while regular board pages also flow through the raw-HTML hook.
+    if (input && typeof input.querySelectorAll === "function") {
+        return input;
+    }
+    try {
+        return new DOMParser().parseFromString(String(input || ""), "text/html");
+    } catch (e) {
+        return null;
+    }
+}
 
 function extractListItem(row, baseUrl) {
     var linkNode = firstNode(row, LIST_LINK_SELECTORS);
@@ -398,28 +717,49 @@ function extractListItem(row, baseUrl) {
 
     var title = firstNonEmpty([
         textOfNodeWithoutSelectors(titleNode, LIST_COMMENT_COUNT_SELECTORS),
+        textOfNodeWithoutSelectors(linkNode, LIST_COMMENT_COUNT_SELECTORS),
         textOf(linkNode),
         textOf(row)
     ]);
     if (!title) return null;
 
     var commentCount = hideZeroCount(parseCount(firstText(row, LIST_COMMENT_COUNT_SELECTORS)));
-    var viewCount = parseCount(firstText(row, LIST_VIEW_COUNT_SELECTORS));
-    var likeCount = hideZeroCount(parseCount(firstText(row, LIST_LIKE_COUNT_SELECTORS)));
-    var author = firstAuthorText(row, LIST_AUTHOR_SELECTORS);
-    var category = firstText(row, LIST_CATEGORY_SELECTORS);
+    var viewCount = firstNonEmpty([
+        hideZeroCount(parseCount(firstText(row, LIST_VIEW_COUNT_SELECTORS))),
+        hideZeroCount(fmkoreaInfoText(row, "fa-eye"))
+    ]);
+    var likeCount = firstNonEmpty([
+        hideZeroCount(parseCount(firstText(row, LIST_LIKE_COUNT_SELECTORS))),
+        hideZeroCount(fmkoreaInfoText(row, "fa-star"))
+    ]);
+    var author = firstNonEmpty([
+        firstAuthorText(row, LIST_AUTHOR_SELECTORS),
+        fmkoreaInfoText(row, "fa-user")
+    ]);
+    var category = firstNonEmpty([
+        firstText(row, LIST_CATEGORY_SELECTORS),
+        fmkoreaInfoText(row, "fa-bars")
+    ]);
+    var date = firstNonEmpty([
+        firstText(row, LIST_DATE_SELECTORS),
+        fmkoreaInfoText(row, "fa-clock-o")
+    ]);
     var avatarSourceSelectors = LIST_AVATAR_SELECTORS.length > 0 ? LIST_AVATAR_SELECTORS : LIST_AUTHOR_SELECTORS;
     var avatar = imageUrlFromNode(firstNode(row, avatarSourceSelectors), baseUrl);
     var mediaUrl = imageUrlFromNode(firstNode(row, LIST_IMAGE_SELECTORS), baseUrl);
     var types = [];
     if (mediaUrl) types.push("image");
 
+    if (!author && !date && !category && row && row.outerHTML && typeof console !== "undefined" && console && typeof console.log === "function") {
+        console.log("FMK_DEBUG_ROW:" + row.outerHTML);
+    }
+
     return {
         link: normalizeUrl(link) || link,
         title: title,
         author: author,
         avatar: avatar,
-        date: firstText(row, LIST_DATE_SELECTORS),
+        date: date,
         category: category,
         commentCount: commentCount,
         viewCount: viewCount,
@@ -428,7 +768,12 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount || viewCount || commentCount, 0),
-        coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        hotCount: fmkoreaMetricRankValue(likeCount || viewCount || commentCount),
+        coldCount: fmkoreaMetricRankValue(viewCount || likeCount || commentCount)
     };
 }
+
+SITE.parseBoardItemsCustom = parseFmkoreaBoardItems;
+SITE.parseBoardItemsFromHtml = function (html, baseUrl) {
+    return parseFmkoreaBoardItems(fmkoreaParseBoardRoot(html), baseUrl);
+};

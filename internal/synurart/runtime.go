@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -74,6 +75,7 @@ type Runtime struct {
 	nodeObjects    map[*html.Node]*goja.Object
 	nextNodeID     int64
 	fetchTimeout   time.Duration
+	fetchOverrides map[string]string
 }
 
 // New creates a runtime with built-in Synura globals.
@@ -123,6 +125,7 @@ func NewWithOptions(out, errOut io.Writer, opts Options) (*Runtime, error) {
 		nodeObjects:    make(map[*html.Node]*goja.Object),
 		nextNodeID:     1,
 		fetchTimeout:   defaultFetchTimeout,
+		fetchOverrides: make(map[string]string),
 	}
 	r.installGlobals()
 	return r, nil
@@ -172,11 +175,7 @@ func (r *Runtime) SetLocale(raw string) error {
 		return err
 	}
 	r.locale = normalized
-	if nav := r.vm.Get("navigator"); nav != nil && !goja.IsUndefined(nav) && !goja.IsNull(nav) {
-		if obj := nav.ToObject(r.vm); obj != nil {
-			_ = obj.Set("language", normalized)
-		}
-	}
+	r.syncNavigator()
 	return nil
 }
 
@@ -202,6 +201,7 @@ func (r *Runtime) LoadExtension(path string) error {
 	if _, err := r.vm.RunScript(abs, string(body)); err != nil {
 		return fmt.Errorf("evaluate extension: %w", err)
 	}
+	r.syncNavigator()
 	return nil
 }
 
@@ -319,6 +319,41 @@ func (r *Runtime) ClearSessionStorage() {
 	r.sessionStorage = make(map[string]any)
 }
 
+// FetchOverridesSnapshot returns a copy of the URL-to-file override map.
+func (r *Runtime) FetchOverridesSnapshot() map[string]string {
+	m := make(map[string]string, len(r.fetchOverrides))
+	for k, v := range r.fetchOverrides {
+		m[k] = v
+	}
+	return m
+}
+
+// SetFetchOverride registers one exact URL match to a local file.
+func (r *Runtime) SetFetchOverride(rawURL, filePath string) error {
+	normalizedURL, err := normalizeFetchOverrideURL(rawURL)
+	if err != nil {
+		return err
+	}
+	absPath, err := filepath.Abs(strings.TrimSpace(filePath))
+	if err != nil {
+		return fmt.Errorf("resolve file path: %w", err)
+	}
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return fmt.Errorf("stat file: %w", err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("file path is a directory: %s", absPath)
+	}
+	r.fetchOverrides[normalizedURL] = absPath
+	return nil
+}
+
+// ClearFetchOverrides removes all runtime fetch overrides.
+func (r *Runtime) ClearFetchOverrides() {
+	r.fetchOverrides = make(map[string]string)
+}
+
 func (r *Runtime) replaceLocalStorage(next map[string]string) error {
 	if next == nil {
 		next = make(map[string]string)
@@ -348,6 +383,18 @@ func (r *Runtime) installNavigator() {
 	navigator := r.vm.NewObject()
 	_ = navigator.Set("language", r.Locale())
 	_ = r.vm.Set("navigator", navigator)
+}
+
+func (r *Runtime) syncNavigator() {
+	nav := r.vm.Get("navigator")
+	if nav == nil || goja.IsUndefined(nav) || goja.IsNull(nav) {
+		return
+	}
+	obj := nav.ToObject(r.vm)
+	if obj == nil {
+		return
+	}
+	_ = obj.Set("language", r.Locale())
 }
 
 func normalizeLocale(raw string) (string, error) {
@@ -928,6 +975,10 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 	if err := r.validateFetchDomain(urlStr); err != nil {
 		return r.errorFetchResponse(err.Error())
 	}
+	normalizedURL, err := normalizeFetchOverrideURL(urlStr)
+	if err != nil {
+		return r.errorFetchResponse(err.Error())
+	}
 
 	options := map[string]any{}
 	if len(call.Arguments) > 1 && !goja.IsUndefined(call.Argument(1)) && !goja.IsNull(call.Argument(1)) {
@@ -955,23 +1006,7 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 		}
 	}
 
-	resp, err := fetch.Do(fetch.Request{
-		Method:  method,
-		URL:     urlStr,
-		Headers: headers,
-		Body:    []byte(body),
-		Bypass:  bypass,
-		Timeout: r.fetchTimeout,
-		// Synurart fetch intentionally exposes 3xx responses to extensions.
-		// Redirect-following flags such as `followRedirects` or `redirect: "follow"`
-		// are ignored by design; extensions must handle redirect responses explicitly.
-		FollowRedirects: false,
-		OnProgress: func(current, total int64) {
-			if progressFn != nil {
-				_, _ = progressFn(goja.Undefined(), r.vm.ToValue(current), r.vm.ToValue(total))
-			}
-		},
-	})
+	resp, err := r.fetchResponse(urlStr, normalizedURL, method, headers, []byte(body), bypass, progressFn)
 	if err != nil {
 		if r.jsonMode {
 			r.jsonLog(map[string]any{"type": "error", "message": fmt.Sprintf("fetch error: %v", err)})
@@ -1023,6 +1058,60 @@ func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 		}
 	}
 	return response
+}
+
+func (r *Runtime) fetchResponse(
+	urlStr string,
+	normalizedURL string,
+	method string,
+	headers http.Header,
+	body []byte,
+	bypass string,
+	progressFn goja.Callable,
+) (*fetch.Response, error) {
+	if filePath, ok := r.fetchOverrides[normalizedURL]; ok {
+		return r.fetchOverrideResponse(urlStr, filePath, progressFn)
+	}
+
+	return fetch.Do(fetch.Request{
+		Method:  method,
+		URL:     urlStr,
+		Headers: headers,
+		Body:    body,
+		Bypass:  bypass,
+		Timeout: r.fetchTimeout,
+		// Synurart fetch intentionally exposes 3xx responses to extensions.
+		// Redirect-following flags such as `followRedirects` or `redirect: "follow"`
+		// are ignored by design; extensions must handle redirect responses explicitly.
+		FollowRedirects: false,
+		OnProgress: func(current, total int64) {
+			if progressFn != nil {
+				_, _ = progressFn(goja.Undefined(), r.vm.ToValue(current), r.vm.ToValue(total))
+			}
+		},
+	})
+}
+
+func (r *Runtime) fetchOverrideResponse(urlStr, filePath string, progressFn goja.Callable) (*fetch.Response, error) {
+	body, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("read override file: %w", err)
+	}
+	if progressFn != nil {
+		_, _ = progressFn(goja.Undefined(), r.vm.ToValue(int64(len(body))), r.vm.ToValue(int64(len(body))))
+	}
+
+	headers := make(http.Header)
+	headers.Set("Content-Type", guessContentType(filePath))
+
+	return &fetch.Response{
+		StatusCode:  http.StatusOK,
+		Status:      "200 OK",
+		URL:         urlStr,
+		Headers:     headers,
+		Body:        body,
+		NetworkTime: 0,
+	}, nil
 }
 
 func (r *Runtime) validateFetchDomain(rawURL string) error {
@@ -1144,6 +1233,32 @@ func normalizeHost(input string) string {
 	}
 
 	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(s)), ".")
+}
+
+func normalizeFetchOverrideURL(rawURL string) (string, error) {
+	trimmed := strings.TrimSpace(rawURL)
+	if trimmed == "" {
+		return "", errors.New("fetch url is required")
+	}
+	if strings.HasPrefix(trimmed, "//") {
+		trimmed = "https:" + trimmed
+	}
+	u, err := url.Parse(trimmed)
+	if err != nil {
+		return "", fmt.Errorf("invalid fetch url: %w", err)
+	}
+	if normalizeHost(u.Host) == "" {
+		return "", errors.New("fetch url must be absolute with a host")
+	}
+	return u.String(), nil
+}
+
+func guessContentType(filePath string) string {
+	contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(filePath)))
+	if strings.TrimSpace(contentType) != "" {
+		return contentType
+	}
+	return "application/octet-stream"
 }
 
 func (r *Runtime) errorFetchResponse(message string) goja.Value {

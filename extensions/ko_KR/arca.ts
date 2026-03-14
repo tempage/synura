@@ -287,9 +287,219 @@ SITE.routeBoardCustom = function (url, urlInfo, match, force) {
 SITE.routePostCustom = function (url, urlInfo, match, force) {
     return null;
 };
+function arcaAttachImageHeaders(details, refererUrl) {
+    var referer = normalizeUrl(refererUrl) || "";
+    var cookie = getSavedCookie();
+    if (!details || !details.length) return details || [];
+    for (var i = 0; i < details.length; i++) {
+        var item = details[i];
+        var value = normalizeUrl(item && item.value) || "";
+        if (!item || item.type !== "image" || !/^https?:\/\//i.test(value)) continue;
+        var headers = item.headers || {};
+        if (referer && !headers.Referer && !headers.referer) headers.Referer = referer;
+        if (cookie && !headers.Cookie && !headers.cookie) headers.Cookie = cookie;
+        item.headers = headers;
+    }
+    return details;
+}
+function arcaTrimText(value) {
+    return String(value == null ? "" : value)
+        .replace(/\r/g, "")
+        .replace(/^[\s\u00a0]+|[\s\u00a0]+$/g, "");
+}
+function arcaLineLooksLikeDate(line, dateText) {
+    var normalized = normalizeWhitespace(line);
+    if (!normalized) return false;
+    if (dateText && normalized === normalizeWhitespace(dateText)) return true;
+    return /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?$/.test(normalized) ||
+        /^\d{1,2}:\d{2}(?::\d{2})?$/.test(normalized);
+}
+function arcaStripCommentText(value, dateText) {
+    var lines = String(value == null ? "" : value).replace(/\r/g, "").split(/\n/);
+    var kept = [];
+    var skippedDate = false;
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        var normalized = normalizeWhitespace(line);
+        if (!normalized) {
+            if (kept.length > 0 && i < lines.length - 1) kept.push("");
+            continue;
+        }
+        if (!skippedDate && arcaLineLooksLikeDate(normalized, dateText)) {
+            skippedDate = true;
+            continue;
+        }
+        if (/^(?:펼쳐보기\s*[▼▽]?|접기\s*[▲△]?)$/.test(normalized)) continue;
+        kept.push(arcaTrimText(line));
+    }
+    return arcaTrimText(kept.join("\n").replace(/\n{3,}/g, "\n\n"));
+}
+function arcaCommentBodyNode(row) {
+    return firstNode(row, [
+        ".comment-content .message",
+        ".comment-content .fr-view",
+        ".comment-content .body",
+        ".comment-content",
+        ".content .message",
+        ".content .fr-view",
+        ".message",
+        ".fr-view",
+        ".content"
+    ]);
+}
+function arcaSanitizeCommentRoot(row) {
+    var root = arcaCommentBodyNode(row);
+    if (!root || !root.cloneNode) return root;
+    var clone = root.cloneNode(true);
+    var selectors = [
+        ".user-info",
+        ".profile",
+        ".avatar",
+        ".author",
+        ".name",
+        ".info",
+        ".meta",
+        ".comment-info",
+        ".comment-header",
+        ".comment-control",
+        ".control",
+        ".buttons",
+        ".btn-area",
+        ".reply-menu",
+        "time",
+        ".date",
+        ".comment-date",
+        ".comment-time",
+        "button"
+    ];
+    for (var i = 0; i < selectors.length; i++) {
+        var nodes = clone.querySelectorAll(selectors[i]);
+        for (var j = 0; j < nodes.length; j++) {
+            var node = nodes[j];
+            if (node && node.parentNode) node.parentNode.removeChild(node);
+        }
+    }
+    return clone;
+}
+function arcaLooksLikeProfileLink(item, author) {
+    var href = normalizeWhitespace(item && item.link);
+    if (!/\/u\/@/i.test(href)) return false;
+    var text = normalizeWhitespace(item && item.value);
+    var normalizedAuthor = normalizeWhitespace(author);
+    return !normalizedAuthor || text === normalizedAuthor;
+}
+function arcaLooksLikeLeadingProfileLink(details, index, item, author, dateText) {
+    if (!arcaLooksLikeProfileLink(item, author)) return false;
+    var next = index + 1 < details.length ? details[index + 1] : null;
+    var next2 = index + 2 < details.length ? details[index + 2] : null;
+    if (next && next.type === "text" && arcaLineLooksLikeDate(next.value, dateText)) return true;
+    if (next && next.type === "image" && next2 && next2.type === "text" && arcaLineLooksLikeDate(next2.value, dateText)) return true;
+    return normalizeWhitespace(item && item.value) === normalizeWhitespace(author);
+}
+function arcaLooksLikeLeadingAvatar(details, index, item, avatar, dateText) {
+    if (!item || item.type !== "image") return false;
+    var value = normalizeWhitespace(item.value);
+    var normalizedAvatar = normalizeWhitespace(avatar);
+    if (normalizedAvatar && value && value === normalizedAvatar) return true;
+    var prev = index > 0 ? details[index - 1] : null;
+    var next = index + 1 < details.length ? details[index + 1] : null;
+    if (prev && prev.type === "link" && arcaLooksLikeProfileLink(prev, "") && next && next.type === "text") {
+        return arcaLineLooksLikeDate(next.value, dateText);
+    }
+    return false;
+}
+function arcaCloneDetail(item) {
+    var copy = {};
+    for (var key in item) {
+        if (!Object.prototype.hasOwnProperty.call(item, key)) continue;
+        copy[key] = item[key];
+    }
+    return copy;
+}
+function arcaCleanCommentDetails(details, author, avatar, dateText) {
+    var cleaned = [];
+    var seenMedia = {};
+    for (var i = 0; i < (details || []).length; i++) {
+        var item = details[i];
+        if (!item || !item.type) continue;
+        var type = String(item.type);
+        if (cleaned.length === 0 && type === "link" && arcaLooksLikeLeadingProfileLink(details, i, item, author, dateText)) {
+            continue;
+        }
+        if (cleaned.length === 0 && type === "image" && arcaLooksLikeLeadingAvatar(details, i, item, avatar, dateText)) {
+            continue;
+        }
+        var copy = arcaCloneDetail(item);
+        if (type === "text") {
+            copy.value = arcaStripCommentText(copy.value, dateText);
+            if (!copy.value) continue;
+            cleaned.push(copy);
+            continue;
+        }
+        if (type === "image" || type === "video") {
+            var key = type + "|" + normalizeWhitespace(copy.value);
+            if (!copy.value || seenMedia[key]) continue;
+            seenMedia[key] = true;
+            cleaned.push(copy);
+            continue;
+        }
+        if (type === "link" && !normalizeWhitespace(copy.value) && !normalizeWhitespace(copy.link)) continue;
+        cleaned.push(copy);
+    }
+    return cleaned;
+}
 SITE.parseComments = function (doc, postUrl) {
-    return parseGenericComments(doc, postUrl);
+    var rows = allNodes(doc, SITE.selectors.commentRows);
+    var comments = [];
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var author = firstAuthorText(row, SITE.selectors.commentAuthor);
+        var avatar = imageUrlFromNode(firstNode(row, [
+            ".user-info img",
+            ".profile img",
+            ".avatar img",
+            ".thumb img",
+            ".comment-profile img",
+            ".comment-avatar img"
+        ]), postUrl);
+        var dateText = firstNonEmpty([
+            attrOf(firstNode(row, ["time"]), "datetime"),
+            firstText(row, SITE.selectors.commentDate)
+        ]);
+        var contentRoot = arcaSanitizeCommentRoot(row);
+        var content = arcaCleanCommentDetails(parseDetails(contentRoot, postUrl), author, avatar, dateText);
+        if ((!content || content.length === 0) && contentRoot) {
+            var fallback = arcaStripCommentText(textOf(contentRoot), dateText);
+            if (fallback) content = [{ type: "text", value: fallback }];
+        }
+        if (!content || content.length === 0) continue;
+        content = arcaAttachImageHeaders(content, postUrl);
+
+        var likeCount = hideZeroCount(parseCount(firstText(row, SITE.selectors.commentLikeCount)));
+        var rowId = firstNonEmpty([
+            attrOf(row, "id"),
+            attrOf(row, "data-id"),
+            attrOf(row, "data-comment-id"),
+            attrOf(row, "data-comment-sn"),
+            "comment-" + (i + 1)
+        ]);
+        comments.push({
+            link: postUrl + "#" + rowId,
+            author: author,
+            avatar: avatar,
+            content: content,
+            date: firstText(row, SITE.selectors.commentDate),
+            likeCount: likeCount,
+            dislikeCount: "",
+            level: detectCommentLevel(row),
+            menus: [],
+            hotCount: toInt(likeCount, 0),
+            coldCount: 0
+        });
+    }
+    return comments;
 };
+SITE.filterPostContent = arcaAttachImageHeaders;
 SITE.fetchPostComments = function (match, url, doc, page, comments) {
     return comments;
 };

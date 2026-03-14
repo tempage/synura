@@ -947,8 +947,38 @@ SITE.routeBoardCustom = function (url, urlInfo, match, force) {
 SITE.routePostCustom = function (url, urlInfo, match, force) {
     return null;
 };
+function ruliwebParseComments(doc, postUrl) {
+    var rows = allNodes(doc, SITE.selectors.commentRows);
+    var comments = [];
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var contentRoot = firstNode(row, SITE.selectors.commentContent);
+        var content = parseDetails(contentRoot, postUrl);
+        if (!content || content.length === 0) {
+            var rawText = firstText(row, SITE.selectors.commentContent);
+            if (rawText) content = [{ type: "text", value: rawText }];
+        }
+        if (!content || content.length === 0) continue;
+
+        var likeCount = hideZeroCount(parseCount(firstText(row, SITE.selectors.commentLikeCount)));
+        comments.push({
+            link: postUrl + "#comment-" + (i + 1),
+            author: firstAuthorText(row, SITE.selectors.commentAuthor),
+            avatar: imageUrlFromNode(firstNode(row, SITE.selectors.commentAvatar || SITE.selectors.commentAuthor), postUrl),
+            content: content,
+            date: firstText(row, SITE.selectors.commentDate),
+            likeCount: likeCount,
+            dislikeCount: "",
+            level: detectCommentLevel(row),
+            menus: [],
+            hotCount: toInt(likeCount, 0),
+            coldCount: toInt(likeCount, 0)
+        });
+    }
+    return comments;
+}
 SITE.parseComments = function (doc, postUrl) {
-    return parseGenericComments(doc, postUrl);
+    return ruliwebParseComments(doc, postUrl);
 };
 SITE.fetchPostComments = function (match, url, doc, page, comments) {
     return comments;

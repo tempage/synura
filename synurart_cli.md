@@ -16,7 +16,9 @@ It is the fastest way to validate extension behavior without launching the mobil
 
 `localStorage` is persisted automatically in `.synurart/local_storage.json`, namespaced by the loaded extension's absolute path. Each extension reload restores its last saved `localStorage` snapshot before the JS file is evaluated.
 
-The runtime exposes the same browser-like `navigator.language` global as Synura extensions. In `synurart`, it defaults to `en-US` and can be changed with `locale <tag>`.
+The runtime exposes the same browser-like `navigator` globals as Synura extensions.
+
+- `navigator.language` defaults to `en-US` and can be changed with `locale <tag>`.
 
 ## Network Host Rule
 
@@ -79,6 +81,9 @@ If your environment merges streams, parse line-by-line JSON and ignore optional 
 | `load <path> [--no-home]` | Reset runtime, load extension, optional `home()` call. |
 | `timeout [duration]` | Show or set fetch timeout (`10s`, `500ms`, `2.5`). |
 | `locale [tag]` | Show or set `navigator.language` (`ko-KR`, `pt-BR`, `en-US`). |
+| `mapurl <url> <file>` | Map one exact fetch URL to a local file for the current runtime. |
+| `mapurl list` | Show current URL-to-file overrides. |
+| `mapurl clear` | Clear all URL-to-file overrides. |
 | `views` / `ls` | Show stack summary and active view. |
 | `v [id]` | Show stack summary, or show one view JSON + render when `id` is given. |
 | `view <id>` | Show one view JSON + render output. |
@@ -118,6 +123,9 @@ If your environment merges streams, parse line-by-line JSON and ignore optional 
 - `{"type":"render","viewId":1,"path":"...","models":{...},"styles":{...},"rendered":{...}}`
 - `{"type":"timeout","timeout":"10s","seconds":10}`
 - `{"type":"locale","locale":"ko-KR"}`
+- `{"type":"mapurl","overrides":{"https://...":"/abs/path/file.html"}}`
+- `{"type":"mapurl_set","url":"https://...","file":"fixture.html"}`
+- `{"type":"mapurl_cleared"}`
 - `{"type":"storage","local":{...},"session":{...}}`
 - `{"type":"storage_cleared","local":true,"session":false}`
 - `{"type":"eval","result":...}`
@@ -192,6 +200,27 @@ printf 'views\ntap index 1\nviews\nquit\n' | \
   go run ./cmd/synurart -json -ext extensions/basic/list.js
 ```
 
+## `mapurl` Use Case
+
+`mapurl` is useful when a site blocks direct fetches in normal HTTP clients, but you can save the fully rendered page from Chrome and replay it inside `synurart`.
+
+Example with a saved page:
+
+```bash
+go run ./cmd/synurart
+# then type:
+load /path/to/extension.js
+mapurl https://example.com/page /path/to/saved-page.html
+deeplink https://example.com/page
+```
+
+What this does:
+
+- Any extension `fetch("https://example.com/page")` during this runtime returns the local file body.
+- The response still looks like the original URL to the extension.
+- Only exact URL matches are overridden.
+- Overrides are not persisted; `load ...` creates a fresh runtime and clears them.
+
 ## Input Parsing Rules
 
 - Quote text with spaces: `query 1 "hello world"`
@@ -208,5 +237,6 @@ printf 'views\ntap index 1\nviews\nquit\n' | \
 
 - `load` creates a fresh runtime (view IDs restart from `1`).
 - `timeout` and `locale` values are preserved when reloading via `load`.
+- `mapurl` overrides are runtime-only and are cleared by `load`.
 - `render` and `tap ... [id]` default to the current top view when ID is omitted.
 - Pretty render output is specialized for: list, post, chat, browser, markdown, source, settings, editor, simple, input dialog, confirmation dialog.

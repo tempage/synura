@@ -386,19 +386,6 @@ function dcBuildBoardPageUrl(kind, slug, page) {
   return page > 1 ? setPageParam(listUrl, "page", page) : listUrl;
 }
 
-function dcBuildPostUrl(kind, slug, postId, page) {
-  var listUrl = dcBuildBoardListUrl(kind, slug);
-  if (!listUrl || !postId) return "";
-  var info = parseAbsoluteUrl(listUrl);
-  if (!info) return "";
-  if (info.path.indexOf("/board/") === 0) {
-    return DC_BOARD_BASE_URL + encodeURIComponent(normalizeWhitespace(slug)) + "/" + encodeURIComponent(String(postId))
-      + (page > 1 ? ("?page=" + encodeURIComponent(String(page))) : "");
-  }
-  return listUrl + "/" + encodeURIComponent(String(postId))
-    + (page > 1 ? ("?page=" + encodeURIComponent(String(page))) : "");
-}
-
 function dcListField(row, index, selectors) {
   var mobileValue = firstText(row, [".ginfo li:nth-child(" + String(index) + ")"]);
   if (mobileValue) return mobileValue;
@@ -1583,9 +1570,40 @@ function dcHandleViewEvent(viewId, event, state) {
   return false;
 }
 
-SITE.filterPostContent = function (content, url) {
-  return dcAttachImageHeaders(content, url);
-};
+function dcParseComments(doc, postUrl) {
+  var rows = allNodes(doc, SITE.selectors.commentRows);
+  var comments = [];
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var contentRoot = firstNode(row, SITE.selectors.commentContent);
+    var content = parseDetails(contentRoot, postUrl);
+    if (!content || content.length === 0) {
+      var rawText = firstText(row, SITE.selectors.commentContent);
+      if (rawText) content = [{ type: "text", value: rawText }];
+    }
+    if (!content || content.length === 0) continue;
+
+    var likeCount = hideZeroCount(parseCount(firstText(row, SITE.selectors.commentLikeCount)));
+    comments.push({
+      link: postUrl + "#comment-" + (i + 1),
+      author: firstAuthorText(row, SITE.selectors.commentAuthor),
+      avatar: imageUrlFromNode(firstNode(row, SITE.selectors.commentAvatar || SITE.selectors.commentAuthor), postUrl),
+      content: content,
+      date: firstText(row, SITE.selectors.commentDate),
+      likeCount: likeCount,
+      dislikeCount: "",
+      level: detectCommentLevel(row),
+      menus: [],
+      hotCount: toInt(likeCount, 0),
+      coldCount: toInt(likeCount, 0)
+    });
+  }
+  return comments;
+}
+
+SITE.parseComments = dcParseComments;
+
+SITE.filterPostContent = dcAttachImageHeaders;
 
 SITE.matchBoard = function (urlInfo) {
   var parts = pathSegments(urlInfo.path);
@@ -1695,21 +1713,13 @@ SITE.buildNextPageUrl = function (match, currentUrl, nextPage) {
   return dcBuildBoardPageUrl(match.board.kind, match.board.slug, nextPage);
 };
 
-SITE.loadDynamicBoards = function (options) {
-  return dcLoadDynamicBoards(options || {});
-};
+SITE.loadDynamicBoards = dcLoadDynamicBoards;
 
-SITE.routeCustom = function (url, urlInfo, force) {
-  return dcRouteCustom(url, urlInfo, force);
-};
+SITE.routeCustom = dcRouteCustom;
 
-SITE.openCategoryHomeFromMenu = function (viewId, state) {
-  return dcOpenCategoryHomeFromMenu(viewId, state);
-};
+SITE.openCategoryHomeFromMenu = dcOpenCategoryHomeFromMenu;
 
-SITE.showBoardSettings = function (parentViewId) {
-  return dcShowBoardSettings(parentViewId);
-};
+SITE.showBoardSettings = dcShowBoardSettings;
 
 SITE.refreshView = function (viewId, state) {
   if (!state) return false;
@@ -1726,18 +1736,10 @@ SITE.refreshView = function (viewId, state) {
   return false;
 };
 
-SITE.refreshBoardSettingsParent = function (viewId, snackbar) {
-  return dcRefreshBoardSettingsParent(viewId, snackbar);
-};
+SITE.refreshBoardSettingsParent = dcRefreshBoardSettingsParent;
 
-SITE.handleBoardHomeToggleMenu = function (viewId, state) {
-  return dcHandleBoardHomeToggleMenu(viewId, state);
-};
+SITE.handleBoardHomeToggleMenu = dcHandleBoardHomeToggleMenu;
 
-SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
-  return dcHandleBoardSettingsRootEvent(viewId, event, state);
-};
+SITE.handleBoardSettingsRootEvent = dcHandleBoardSettingsRootEvent;
 
-SITE.handleViewEvent = function (viewId, event, state) {
-  return dcHandleViewEvent(viewId, event, state);
-};
+SITE.handleViewEvent = dcHandleViewEvent;

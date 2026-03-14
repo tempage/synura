@@ -351,6 +351,8 @@ func runCommand(state *shellState, args []string) error {
 		} else {
 			fmt.Printf("%s %s\n", dim("locale:"), c(locale, cBrightYellow))
 		}
+	case "mapurl":
+		return handleMapURLCommand(rt, args[1:])
 	case "storage":
 		return handleStorageCommand(rt, args[1:])
 	case "eval":
@@ -521,6 +523,63 @@ func handleStorageCommand(rt *synurart.Runtime, args []string) error {
 		return nil
 	default:
 		return fmt.Errorf("usage: storage [local|session] | storage clear [local|session|all]")
+	}
+}
+
+func handleMapURLCommand(rt *synurart.Runtime, args []string) error {
+	const usage = "usage: mapurl <url> <file> | mapurl list | mapurl clear"
+	if len(args) == 0 {
+		return fmt.Errorf(usage)
+	}
+
+	switch strings.ToLower(args[0]) {
+	case "list":
+		if len(args) != 1 {
+			return fmt.Errorf(usage)
+		}
+		overrides := rt.FetchOverridesSnapshot()
+		if jsonMode {
+			jsonOut(map[string]any{"type": "mapurl", "overrides": overrides})
+			return nil
+		}
+		if len(overrides) == 0 {
+			fmt.Printf("%s %s\n", dim("url overrides:"), dim("(none)"))
+			return nil
+		}
+		urls := make([]string, 0, len(overrides))
+		for rawURL := range overrides {
+			urls = append(urls, rawURL)
+		}
+		sort.Strings(urls)
+		fmt.Printf("%s\n", dim("url overrides:"))
+		for _, rawURL := range urls {
+			fmt.Printf("  %s -> %s\n", c(rawURL, cBrightCyan), overrides[rawURL])
+		}
+		return nil
+	case "clear":
+		if len(args) != 1 {
+			return fmt.Errorf(usage)
+		}
+		rt.ClearFetchOverrides()
+		if jsonMode {
+			jsonOut(map[string]any{"type": "mapurl_cleared"})
+			return nil
+		}
+		fmt.Printf("%s %s\n", dim("cleared url overrides:"), c("all", cBrightYellow))
+		return nil
+	default:
+		if len(args) != 2 {
+			return fmt.Errorf(usage)
+		}
+		if err := rt.SetFetchOverride(args[0], args[1]); err != nil {
+			return err
+		}
+		if jsonMode {
+			jsonOut(map[string]any{"type": "mapurl_set", "url": args[0], "file": args[1]})
+			return nil
+		}
+		fmt.Printf("%s %s -> %s\n", dim("mapped url:"), c(args[0], cBrightCyan), args[1])
+		return nil
 	}
 }
 
@@ -1576,6 +1635,9 @@ func printHelp() {
 		{"load <path> [--no-home]", "Load extension file into fresh runtime"},
 		{"timeout [duration]", "Show or set fetch timeout (default 10s)"},
 		{"locale [tag]", "Show or set navigator.language (for example ko-KR)"},
+		{"mapurl <url> <file>", "Map one fetch URL to a local file for this runtime"},
+		{"mapurl list", "Show runtime URL-to-file fetch overrides"},
+		{"mapurl clear", "Clear runtime URL-to-file fetch overrides"},
 		{"views | ls", "Show view stack and top view render"},
 		{"v [id]", "Show stack, or show one view JSON + render when id is given"},
 		{"view <id>", "Show view data JSON + render"},

@@ -35,6 +35,7 @@ var replCommandSuggestions = []string{
 	"c",
 	"close",
 	"timeout",
+	"mapurl",
 	"storage",
 	"eval",
 }
