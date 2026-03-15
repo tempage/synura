@@ -36,6 +36,43 @@
     var homeBoards = defaultBoards.slice();
     var dynamicBoards = null;
 
+    function cloneSelectorValue(value) {
+        if (Array.isArray(value)) return value.slice();
+        if (value && typeof value === "object") return cloneSelectorMap(value);
+        return value;
+    }
+
+    function cloneSelectorMap(map) {
+        var out = {};
+        var source = map && typeof map === "object" ? map : {};
+        var keys = Object.keys(source);
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            var value = source[key];
+            if (value === undefined) continue;
+            out[key] = cloneSelectorValue(value);
+        }
+        return out;
+    }
+
+    function mergeSelectorMaps(base, override) {
+        var out = cloneSelectorMap(base || {});
+        if (!override || typeof override !== "object") return out;
+        var keys = Object.keys(override);
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            var value = override[key];
+            if (value === undefined) continue;
+            out[key] = cloneSelectorValue(value);
+        }
+        return out;
+    }
+
+    var baseSelectors = cloneSelectorMap(SITE.selectors || {});
+    var selectorContextStack = [];
+    var activeSelectorProfiles = [cloneSelectorMap(baseSelectors)];
+    var activeSelectorProfileIndex = 0;
+
     function normalizeWhitespace(value) {
         return String(value == null ? "" : value)
             .replace(/\u00a0/g, " ")
@@ -74,6 +111,213 @@
             if (nextValue !== undefined) out[key] = nextValue;
         }
         return Object.keys(out).length ? out : undefined;
+    }
+
+    function selectorScopedValue(value, kind) {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+        if (
+            Object.prototype.hasOwnProperty.call(value, "default") ||
+            Object.prototype.hasOwnProperty.call(value, "board") ||
+            Object.prototype.hasOwnProperty.call(value, "post") ||
+            Object.prototype.hasOwnProperty.call(value, "comment")
+        ) {
+            var merged = {};
+            if (value.default && typeof value.default === "object") {
+                merged = mergeSelectorMaps(merged, value.default);
+            }
+            if (kind && value[kind] && typeof value[kind] === "object") {
+                merged = mergeSelectorMaps(merged, value[kind]);
+            }
+            return Object.keys(merged).length > 0 ? merged : null;
+        }
+        return cloneSelectorMap(value);
+    }
+
+    function pushSelectorProfileRefs(out, value, kind) {
+        if (value == null) return out;
+        if (typeof value === "string") {
+            out.push(value);
+            return out;
+        }
+        if (Array.isArray(value)) {
+            for (var i = 0; i < value.length; i++) {
+                pushSelectorProfileRefs(out, value[i], kind);
+            }
+            return out;
+        }
+        if (typeof value === "object") {
+            if (kind && Object.prototype.hasOwnProperty.call(value, kind)) {
+                return pushSelectorProfileRefs(out, value[kind], kind);
+            }
+            if (Object.prototype.hasOwnProperty.call(value, "default")) {
+                return pushSelectorProfileRefs(out, value.default, kind);
+            }
+        }
+        return out;
+    }
+
+    function dedupeSelectorProfileRefs(values) {
+        var out = [];
+        var seen = {};
+        for (var i = 0; i < (values || []).length; i++) {
+            var key = normalizeWhitespace(values[i]);
+            if (!key || seen[key]) continue;
+            seen[key] = true;
+            out.push(key);
+        }
+        return out;
+    }
+
+    function selectorProfileRefsForContext(match, url, kind, doc) {
+        var out = [];
+        var board = match && match.board ? match.board : null;
+        try {
+            if (SITE.resolveSelectorProfiles) {
+                pushSelectorProfileRefs(out, SITE.resolveSelectorProfiles(match, url, kind, doc), kind);
+            }
+        } catch (e) {
+        }
+        if (board) {
+            pushSelectorProfileRefs(out, board.selectorProfiles || board.selectorProfile, kind);
+        }
+        if (SITE.selectorProfilesByBoard && board && SITE.selectorProfilesByBoard[board.id]) {
+            pushSelectorProfileRefs(out, SITE.selectorProfilesByBoard[board.id], kind);
+        }
+        return dedupeSelectorProfileRefs(out);
+    }
+
+    function selectorOverridesForContext(match, url, kind, doc) {
+        var board = match && match.board ? match.board : null;
+        var merged = {};
+        var applied = false;
+
+        function applyOverride(value) {
+            var override = selectorScopedValue(value, kind);
+            if (!override || Object.keys(override).length === 0) return;
+            merged = mergeSelectorMaps(merged, override);
+            applied = true;
+        }
+
+        if (board && board.selectors) applyOverride(board.selectors);
+        if (SITE.selectorsByBoard && board && SITE.selectorsByBoard[board.id]) {
+            applyOverride(SITE.selectorsByBoard[board.id]);
+        }
+        if (SITE.selectorsByKind && kind && SITE.selectorsByKind[kind]) {
+            applyOverride(SITE.selectorsByKind[kind]);
+        }
+        try {
+            if (SITE.resolveSelectorOverrides) {
+                applyOverride(SITE.resolveSelectorOverrides(match, url, kind, doc));
+            }
+        } catch (e) {
+        }
+
+        return applied ? merged : null;
+    }
+
+    function selectorProfilesForContext(match, url, kind, doc) {
+        var refs = selectorProfileRefsForContext(match, url, kind, doc);
+        var overrides = selectorOverridesForContext(match, url, kind, doc);
+        var profiles = [];
+
+        function buildProfile(profileMap) {
+            var merged = mergeSelectorMaps(baseSelectors, profileMap);
+            if (overrides) merged = mergeSelectorMaps(merged, overrides);
+            return merged;
+        }
+
+        for (var i = 0; i < refs.length; i++) {
+            var profileMap = SITE.selectorProfiles && SITE.selectorProfiles[refs[i]]
+                ? SITE.selectorProfiles[refs[i]]
+                : null;
+            if (!profileMap || typeof profileMap !== "object") continue;
+            profiles.push(buildProfile(profileMap));
+        }
+
+        profiles.push(buildProfile({}));
+        return profiles.length > 0 ? profiles : [cloneSelectorMap(baseSelectors)];
+    }
+
+    function setActiveSelectorProfiles(profiles, index) {
+        activeSelectorProfiles = profiles && profiles.length > 0 ? profiles : [cloneSelectorMap(baseSelectors)];
+        var parsedIndex = parseInt(String(index || 0), 10);
+        activeSelectorProfileIndex = !isNaN(parsedIndex) && parsedIndex >= 0 && parsedIndex < activeSelectorProfiles.length ? parsedIndex : 0;
+    }
+
+    function currentSelectorProfile() {
+        return activeSelectorProfiles[activeSelectorProfileIndex] || activeSelectorProfiles[0] || cloneSelectorMap(baseSelectors);
+    }
+
+    function refreshSelectorContext() {
+        var current = selectorContextStack.length > 0 ? selectorContextStack[selectorContextStack.length - 1] : null;
+        if (!current) {
+            setActiveSelectorProfiles([cloneSelectorMap(baseSelectors)], 0);
+            return;
+        }
+        var profiles = selectorProfilesForContext(current.match, current.url, current.kind, current.doc);
+        setActiveSelectorProfiles(profiles, current.profileIndex || 0);
+    }
+
+    function withSelectorContext(match, url, kind, doc, fn) {
+        selectorContextStack.push({
+            match: match || null,
+            url: url || "",
+            kind: kind || "",
+            doc: doc || null,
+            profileIndex: 0
+        });
+        refreshSelectorContext();
+        try {
+            return fn();
+        } finally {
+            selectorContextStack.pop();
+            refreshSelectorContext();
+        }
+    }
+
+    function withSelectorProfileIndex(index, fn) {
+        var current = selectorContextStack.length > 0 ? selectorContextStack[selectorContextStack.length - 1] : null;
+        var previousIndex = activeSelectorProfileIndex;
+        var nextIndex = parseInt(String(index || 0), 10);
+        if (isNaN(nextIndex) || nextIndex < 0 || nextIndex >= activeSelectorProfiles.length) {
+            nextIndex = 0;
+        }
+        activeSelectorProfileIndex = nextIndex;
+        if (current) current.profileIndex = nextIndex;
+        try {
+            return fn();
+        } finally {
+            activeSelectorProfileIndex = previousIndex;
+            if (current) current.profileIndex = previousIndex;
+        }
+    }
+
+    function selectorProfiles(kind) {
+        if (activeSelectorProfiles && activeSelectorProfiles.length > 0) return activeSelectorProfiles;
+        return [cloneSelectorMap(baseSelectors)];
+    }
+
+    function selectorList(key, fallback) {
+        var selectors = SITE.selectors || {};
+        var value = selectors[key];
+        if (Array.isArray(value)) return value;
+        if (Array.isArray(fallback)) return fallback.slice();
+        return [];
+    }
+
+    try {
+        Object.defineProperty(SITE, "selectors", {
+            configurable: true,
+            enumerable: true,
+            get: function () {
+                return currentSelectorProfile();
+            },
+            set: function (value) {
+                baseSelectors = cloneSelectorMap(value || {});
+                refreshSelectorContext();
+            }
+        });
+    } catch (e) {
     }
 
     function markdownQuoteText(value) {
@@ -151,6 +395,7 @@
         var id = normalizeWhitespace(raw.id);
         var title = normalizeWhitespace(raw.title);
         var url = normalizeUrl(raw.url) || ensureAbsoluteUrl(raw.url, SITE.browserHomeUrl);
+        var selectors = cloneSelectorMap(raw.selectors || {});
         if (!url && id && SITE.buildBoardUrlFromId) {
             try {
                 var builtUrl = SITE.buildBoardUrlFromId(id);
@@ -167,7 +412,10 @@
             group: normalizeWhitespace(raw.group || ""),
             showMedia: !!((flags && flags.showMedia) || raw.showMedia),
             custom: !!((flags && flags.custom) || raw.custom),
-            dynamic: !!((flags && flags.dynamic) || raw.dynamic)
+            dynamic: !!((flags && flags.dynamic) || raw.dynamic),
+            selectorProfile: normalizeWhitespace(raw.selectorProfile || ""),
+            selectorProfiles: raw.selectorProfiles,
+            selectors: Object.keys(selectors).length > 0 ? selectors : undefined
         };
     }
 
@@ -491,37 +739,6 @@
         saveBoardOrder(nextOrder);
     }
 
-    function saveBoardOrderWithDisplayedSubset(displayedIds) {
-        if (!supportsBoardReorder()) return;
-        if (!Array.isArray(displayedIds) || displayedIds.length === 0) return;
-
-        var normalizedDisplayed = [];
-        var displayedSet = {};
-        for (var i = 0; i < displayedIds.length; i++) {
-            var displayedId = normalizeWhitespace(displayedIds[i]);
-            if (!displayedId || displayedSet[displayedId]) continue;
-            displayedSet[displayedId] = true;
-            normalizedDisplayed.push(displayedId);
-        }
-        if (normalizedDisplayed.length === 0) return;
-
-        var allBoards = getSortedBoards();
-        var nextOrder = [];
-        var cursor = 0;
-        for (var j = 0; j < allBoards.length; j++) {
-            var boardId = normalizeWhitespace(allBoards[j] ? allBoards[j].id : "");
-            if (!boardId) continue;
-            if (displayedSet[boardId]) {
-                nextOrder.push(normalizedDisplayed[cursor] || boardId);
-                cursor += 1;
-            } else {
-                nextOrder.push(boardId);
-            }
-        }
-        saveBoardOrder(nextOrder);
-        return nextOrder;
-    }
-
     function getDynamicBoards(options) {
         var allowNetwork = !!(options && options.allowNetwork);
         var force = !!(options && options.force);
@@ -616,16 +833,6 @@
         });
         otherBoards.sort(compareBoardSettingsBoards);
         return knownBoards.concat(otherBoards);
-    }
-
-    function ensureBoardOrderIncludes(boardId) {
-        if (!supportsBoardReorder()) return;
-        var id = normalizeWhitespace(boardId);
-        if (!id) return;
-        var order = getBoardOrder();
-        if (order.indexOf(id) >= 0) return;
-        order.push(id);
-        saveBoardOrder(order);
     }
 
     function moveBoardOrderToEnd(boardId) {
@@ -1586,10 +1793,10 @@
         return textOf(cloned);
     }
 
-    function parseBoardItems(doc, baseUrl) {
+    function parseBoardItemsWithCurrentSelectors(doc, baseUrl, match, boardPage) {
         if (SITE.parseBoardItemsCustom) {
             try {
-                var customItems = SITE.parseBoardItemsCustom(doc, baseUrl);
+                var customItems = SITE.parseBoardItemsCustom(doc, baseUrl, match, boardPage);
                 if (customItems && customItems.length > 0) return customItems;
             } catch (e) {
             }
@@ -1605,6 +1812,81 @@
             items.push(item);
         }
         return items;
+    }
+
+    function parseBoardItems(doc, baseUrl, match, boardPage) {
+        var profiles = selectorProfiles("board");
+        var fallbackItems = [];
+        var fallbackProfileIndex = 0;
+        for (var i = 0; i < profiles.length; i++) {
+            var items = withSelectorProfileIndex(i, function () {
+                return parseBoardItemsWithCurrentSelectors(doc, baseUrl, match, boardPage) || [];
+            });
+            items = filterItemsForBoard(items, match);
+            if (i === 0) {
+                fallbackItems = items || [];
+                fallbackProfileIndex = i;
+            }
+            if (items && items.length > 0) {
+                return {
+                    items: items,
+                    profileIndex: i
+                };
+            }
+        }
+        return {
+            items: fallbackItems || [],
+            profileIndex: fallbackProfileIndex
+        };
+    }
+
+    function parseBoardItemsFromHtmlWithProfiles(html, baseUrl, match, boardPage) {
+        var profiles = selectorProfiles("board");
+        var fallbackItems = [];
+        var fallbackProfileIndex = 0;
+        for (var i = 0; i < profiles.length; i++) {
+            var items = withSelectorProfileIndex(i, function () {
+                return SITE.parseBoardItemsFromHtml ? (SITE.parseBoardItemsFromHtml(html, baseUrl, match, boardPage) || []) : [];
+            });
+            items = filterItemsForBoard(items, match);
+            if (i === 0) {
+                fallbackItems = items || [];
+                fallbackProfileIndex = i;
+            }
+            if (items && items.length > 0) {
+                return {
+                    items: items,
+                    profileIndex: i
+                };
+            }
+        }
+        return {
+            items: fallbackItems || [],
+            profileIndex: fallbackProfileIndex
+        };
+    }
+
+    function choosePostSelectorProfileIndex(doc) {
+        var profiles = selectorProfiles("post");
+        var bestIndex = 0;
+        var bestScore = -1;
+
+        for (var i = 0; i < profiles.length; i++) {
+            var score = withSelectorProfileIndex(i, function () {
+                var total = 0;
+                if (firstNode(doc, SITE.selectors.postContent)) total += 8;
+                if (firstText(doc, SITE.selectors.postTitle)) total += 4;
+                if (firstText(doc, SITE.selectors.postAuthor)) total += 2;
+                if (firstText(doc, SITE.selectors.postDate)) total += 1;
+                return total;
+            });
+            if (score > bestScore) {
+                bestScore = score;
+                bestIndex = i;
+            }
+        }
+
+        return bestIndex;
     }
 
     function filterItemsForBoard(items, match) {
@@ -1806,7 +2088,7 @@
     }
 
     function getPostMenus(state) {
-        var menus = [MENU_BROWSER, MENU_HOME];
+        var menus = [MENU_BROWSER];
         try {
             menus = SITE.buildPostMenus ? (SITE.buildPostMenus(menus, state || {}) || menus) : menus;
         } catch (e) {
@@ -2781,34 +3063,6 @@
         return result;
     }
 
-    function showBoardRemoveDialog(parentViewId, homeViewId, boardId, boardTitle) {
-        var context = {
-            from: "board_remove_confirm",
-            parentViewId: parentViewId || 0,
-            homeViewId: homeViewId || 0,
-            boardId: normalizeWhitespace(boardId),
-            boardTitle: normalizeWhitespace(boardTitle)
-        };
-        var result = synura.open({
-            view: "/dialogs/input",
-            styles: {
-                title: "게시판 삭제",
-                message: normalizeWhitespace(boardTitle) + " 게시판을 삭제할까요?",
-                close: true
-            },
-            models: {
-                body: [],
-                buttons: ["삭제"]
-            }
-        }, context, function (event) {
-            handler.onViewEvent(event);
-        });
-        if (result && result.success) {
-            setViewState(result.viewId, context);
-        }
-        return result;
-    }
-
     function showBoardAddDialog(parentViewId, homeViewId) {
         var context = {
             from: "board_add_dialog",
@@ -3038,182 +3292,201 @@
     }
 
     function routeBoardWithMatch(url, urlInfo, match, force) {
-        try {
-            var customBoardRoute = SITE.routeBoardCustom ? SITE.routeBoardCustom(url, urlInfo, match, !!force) : null;
-            if (customBoardRoute) {
-                return customBoardRoute;
-            }
-        } catch (e) {
-        }
-
-        var boardPage = fetchBoardPage(url);
-        var doc = boardPage.doc;
-        var items = SITE.parseBoardItemsFromHtml
-            ? SITE.parseBoardItemsFromHtml(boardPage.html, url)
-            : parseBoardItems(doc, url);
-        items = filterItemsForBoard(items, match);
-        var title = detectBoardTitle(doc, match.board);
-        var nextUrl = SITE.buildNextPageUrl(match, url, (match.page || 1) + 1);
-        var seenLinks = [];
-        for (var i = 0; i < items.length; i++) {
-            seenLinks.push(items[i].link);
-        }
-
-        var context = {
-            kind: "board",
-            link: url,
-            boardId: match.board ? match.board.id : "",
-            boardTitle: match.board ? match.board.title : "",
-            boardUrl: match.board ? match.board.url : "",
-            title: title,
-            page: match.page || 1,
-            nextUrl: nextUrl,
-            seenLinks: seenLinks
-        };
-        try {
-            context = SITE.prepareBoardContext ? (SITE.prepareBoardContext(context, items, match, url) || context) : context;
-        } catch (e) {
-        }
-
-        var route = {
-            kind: "board",
-            url: url,
-            viewData: {
-                view: "/views/list",
-                styles: buildBoardListStyles(title, match ? match.board : null, nextUrl),
-                models: {
-                    contents: items,
-                    menus: getBoardMenus(context)
+        return withSelectorContext(match, url, "board", null, function () {
+            try {
+                var customBoardRoute = SITE.routeBoardCustom ? SITE.routeBoardCustom(url, urlInfo, match, !!force) : null;
+                if (customBoardRoute) {
+                    return customBoardRoute;
                 }
-            },
-            context: context
-        };
-        return route;
+            } catch (e) {
+            }
+
+            var boardPage = fetchBoardPage(url);
+            var doc = boardPage.doc;
+
+            return withSelectorContext(match, url, "board", doc, function () {
+                var parsedItems = SITE.parseBoardItemsFromHtml
+                    ? parseBoardItemsFromHtmlWithProfiles(boardPage.html, url, match, boardPage)
+                    : parseBoardItems(doc, url, match, boardPage);
+                if ((!parsedItems || !parsedItems.items || parsedItems.items.length === 0) && SITE.parseBoardItemsFromHtml) {
+                    parsedItems = parseBoardItems(doc, url, match, boardPage);
+                }
+                parsedItems = parsedItems || { items: [], profileIndex: 0 };
+
+                return withSelectorProfileIndex(parsedItems.profileIndex || 0, function () {
+                    var items = parsedItems.items || [];
+                    var title = detectBoardTitle(doc, match.board);
+                    var nextUrl = SITE.buildNextPageUrl(match, url, (match.page || 1) + 1);
+                    var seenLinks = [];
+                    for (var i = 0; i < items.length; i++) {
+                        seenLinks.push(items[i].link);
+                    }
+
+                    var context = {
+                        kind: "board",
+                        link: url,
+                        boardId: match.board ? match.board.id : "",
+                        boardTitle: match.board ? match.board.title : "",
+                        boardUrl: match.board ? match.board.url : "",
+                        title: title,
+                        page: match.page || 1,
+                        nextUrl: nextUrl,
+                        seenLinks: seenLinks
+                    };
+                    try {
+                        context = SITE.prepareBoardContext ? (SITE.prepareBoardContext(context, items, match, url) || context) : context;
+                    } catch (e) {
+                    }
+
+                    return {
+                        kind: "board",
+                        url: url,
+                        viewData: {
+                            view: "/views/list",
+                            styles: buildBoardListStyles(title, match ? match.board : null, nextUrl),
+                            models: {
+                                contents: items,
+                                menus: getBoardMenus(context)
+                            }
+                        },
+                        context: context
+                    };
+                });
+            });
+        });
     }
 
     function routePostWithMatch(url, urlInfo, match, force) {
-        if (!force) {
-            var cached = getCachedRoute("post", url);
-            if (cached && cached.route) {
-                cached.route.context = cached.route.context || {};
-                cached.route.context.cachedAt = cached.timestamp || 0;
-                return cached.route;
-            }
-        }
-
-        try {
-            var customPostRoute = SITE.routePostCustom ? SITE.routePostCustom(url, urlInfo, match, !!force) : null;
-            if (customPostRoute) {
-                setCachedRoute("post", url, customPostRoute);
-                return customPostRoute;
-            }
-        } catch (e) {
-        }
-
-    var fetched = fetchPostPageWithCandidates(match, url);
-    var page = fetched.page;
-    var doc = page.doc;
-    var titleNode = firstNode(doc, ["title"]);
-    var contentRoot = firstNode(doc, SITE.selectors.postContent);
-    var content = parseDetails(contentRoot, url);
-    try {
-        if (SITE.filterPostContent) content = SITE.filterPostContent(content, url, doc, page, match) || content;
-    } catch (e) {
-    }
-    var rememberedItem = getRememberedItemPreview(url);
-    var schemaPost = detectSchemaPost(doc);
-    var comments = parseComments(doc, url);
-    try {
-        var fetchedComments = SITE.fetchPostComments ? SITE.fetchPostComments(match, url, doc, page, comments) : null;
-        if (Array.isArray(fetchedComments) && fetchedComments.length > 0) {
-            comments = fetchedComments;
-        }
-    } catch (e) {
-    }
-    if (!content || content.length === 0) {
-        if (schemaPost && schemaPost.articleBody) {
-            content = [{
-                type: "text",
-                value: schemaPost.articleBody
-            }];
-        } else {
-            content = [{
-                type: "text",
-                value: page.restricted ? "로그인이 필요합니다." : "본문을 가져오지 못했습니다."
-            }];
-        }
-    }
-
-        var route = {
-            kind: "post",
-            url: url,
-            viewData: {
-                view: "/views/post",
-                styles: {
-                    title: firstNonEmpty([
-                        preferLongerText(
-                            cleanPageTitle(firstText(doc, SITE.selectors.postTitle)),
-                            rememberedItem ? cleanPageTitle(rememberedItem.title) : ""
-                        ),
-                        cleanPageTitle(schemaPost ? schemaPost.headline : ""),
-                        cleanPageTitle(textOf(titleNode)),
-                        rememberedItem ? cleanPageTitle(rememberedItem.title) : "",
-                        match.board ? match.board.title : "",
-                        SITE.displayName
-                    ]),
-                    menu: true
-                },
-                models: {
-                    author: firstNonEmpty([
-                        cleanSingleLineField(firstAuthorText(doc, SITE.selectors.postAuthor), 80),
-                        schemaPost ? schemaPost.author : "",
-                        rememberedItem ? rememberedItem.author : ""
-                    ]),
-                    avatar: firstNonEmpty([
-                        imageUrlFromNode(firstNode(doc, SITE.selectors.postAvatar || SITE.selectors.postAuthor), url),
-                        rememberedItem ? rememberedItem.avatar : ""
-                    ]),
-                    date: firstNonEmpty([
-                        cleanSingleLineField(firstText(doc, SITE.selectors.postDate), 40),
-                        schemaPost ? schemaPost.datePublished : "",
-                        rememberedItem ? rememberedItem.date : ""
-                    ]),
-                    category: firstNonEmpty([
-                        cleanSingleLineField(firstText(doc, SITE.selectors.postCategory), 60),
-                        rememberedItem ? rememberedItem.category : ""
-                    ]),
-                    viewCount: firstNonEmpty([
-                        parseCount(firstText(doc, SITE.selectors.postViewCount)),
-                        rememberedItem ? rememberedItem.viewCount : ""
-                    ]),
-                    likeCount: hideZeroCount(firstNonEmpty([
-                        parseCount(firstText(doc, SITE.selectors.postLikeCount)),
-                        rememberedItem ? rememberedItem.likeCount : ""
-                    ])),
-                    content: content,
-                    comments: comments,
-                    link: url,
-                    menus: getPostMenus(match),
-                    buttons: [BUTTON_REFRESH]
+        return withSelectorContext(match, url, "post", null, function () {
+            if (!force) {
+                var cached = getCachedRoute("post", url);
+                if (cached && cached.route) {
+                    cached.route.context = cached.route.context || {};
+                    cached.route.context.cachedAt = cached.timestamp || 0;
+                    return cached.route;
                 }
-            },
-            context: (function () {
-                var context = {
-                kind: "post",
-                link: url,
-                boardId: match.board ? match.board.id : "",
-                boardTitle: match.board ? match.board.title : "",
-                boardUrl: match.board ? match.board.url : ""
-                };
-                try {
-                    context = SITE.preparePostContext ? (SITE.preparePostContext(context, match, url, doc, page) || context) : context;
-                } catch (e) {
+            }
+
+            try {
+                var customPostRoute = SITE.routePostCustom ? SITE.routePostCustom(url, urlInfo, match, !!force) : null;
+                if (customPostRoute) {
+                    setCachedRoute("post", url, customPostRoute);
+                    return customPostRoute;
                 }
-                return context;
-            })()
-        };
-        setCachedRoute("post", url, route);
-        return route;
+            } catch (e) {
+            }
+
+            var fetched = fetchPostPageWithCandidates(match, url);
+            var page = fetched.page;
+            var doc = page.doc;
+
+            return withSelectorContext(match, url, "post", doc, function () {
+                var profileIndex = choosePostSelectorProfileIndex(doc);
+                return withSelectorProfileIndex(profileIndex, function () {
+                    var titleNode = firstNode(doc, ["title"]);
+                    var contentRoot = firstNode(doc, SITE.selectors.postContent);
+                    var content = parseDetails(contentRoot, url);
+                    try {
+                        if (SITE.filterPostContent) content = SITE.filterPostContent(content, url, doc, page, match) || content;
+                    } catch (e) {
+                    }
+                    var rememberedItem = getRememberedItemPreview(url);
+                    var schemaPost = detectSchemaPost(doc);
+                    var comments = parseComments(doc, url);
+                    try {
+                        var fetchedComments = SITE.fetchPostComments ? SITE.fetchPostComments(match, url, doc, page, comments) : null;
+                        if (Array.isArray(fetchedComments) && fetchedComments.length > 0) {
+                            comments = fetchedComments;
+                        }
+                    } catch (e) {
+                    }
+                    if (!content || content.length === 0) {
+                        if (schemaPost && schemaPost.articleBody) {
+                            content = [{
+                                type: "text",
+                                value: schemaPost.articleBody
+                            }];
+                        } else {
+                            content = [{
+                                type: "text",
+                                value: page.restricted ? "로그인이 필요합니다." : "본문을 가져오지 못했습니다."
+                            }];
+                        }
+                    }
+
+                    var route = {
+                        kind: "post",
+                        url: url,
+                        viewData: {
+                            view: "/views/post",
+                            styles: {
+                                title: firstNonEmpty([
+                                    preferLongerText(
+                                        cleanPageTitle(firstText(doc, SITE.selectors.postTitle)),
+                                        rememberedItem ? cleanPageTitle(rememberedItem.title) : ""
+                                    ),
+                                    cleanPageTitle(schemaPost ? schemaPost.headline : ""),
+                                    cleanPageTitle(textOf(titleNode)),
+                                    rememberedItem ? cleanPageTitle(rememberedItem.title) : "",
+                                    match.board ? match.board.title : "",
+                                    SITE.displayName
+                                ]),
+                                menu: true
+                            },
+                            models: {
+                                author: firstNonEmpty([
+                                    cleanSingleLineField(firstAuthorText(doc, SITE.selectors.postAuthor), 80),
+                                    schemaPost ? schemaPost.author : "",
+                                    rememberedItem ? rememberedItem.author : ""
+                                ]),
+                                avatar: firstNonEmpty([
+                                    imageUrlFromNode(firstNode(doc, SITE.selectors.postAvatar || SITE.selectors.postAuthor), url),
+                                    rememberedItem ? rememberedItem.avatar : ""
+                                ]),
+                                date: firstNonEmpty([
+                                    cleanSingleLineField(firstText(doc, SITE.selectors.postDate), 40),
+                                    schemaPost ? schemaPost.datePublished : "",
+                                    rememberedItem ? rememberedItem.date : ""
+                                ]),
+                                category: firstNonEmpty([
+                                    cleanSingleLineField(firstText(doc, SITE.selectors.postCategory), 60),
+                                    rememberedItem ? rememberedItem.category : ""
+                                ]),
+                                viewCount: firstNonEmpty([
+                                    parseCount(firstText(doc, SITE.selectors.postViewCount)),
+                                    rememberedItem ? rememberedItem.viewCount : ""
+                                ]),
+                                likeCount: hideZeroCount(firstNonEmpty([
+                                    parseCount(firstText(doc, SITE.selectors.postLikeCount)),
+                                    rememberedItem ? rememberedItem.likeCount : ""
+                                ])),
+                                content: content,
+                                comments: comments,
+                                link: url,
+                                menus: getPostMenus(match),
+                                buttons: [BUTTON_REFRESH]
+                            }
+                        },
+                        context: (function () {
+                            var context = {
+                            kind: "post",
+                            link: url,
+                            boardId: match.board ? match.board.id : "",
+                            boardTitle: match.board ? match.board.title : "",
+                            boardUrl: match.board ? match.board.url : ""
+                            };
+                            try {
+                                context = SITE.preparePostContext ? (SITE.preparePostContext(context, match, url, doc, page) || context) : context;
+                            } catch (e) {
+                            }
+                            return context;
+                        })()
+                    };
+                    setCachedRoute("post", url, route);
+                    return route;
+                });
+            });
+        });
     }
 
     function createPendingBoardRoute(url, match) {
@@ -3532,55 +3805,6 @@
         homeBoards = getVisibleBoards();
         rebuildBoardIndex();
         return board;
-    }
-
-    function setBoardsVisible(boardIds, visible) {
-        var ids = [];
-        var seen = {};
-        for (var i = 0; i < (boardIds || []).length; i++) {
-            var id = normalizeWhitespace(boardIds[i]);
-            if (!id || seen[id]) continue;
-            seen[id] = true;
-            ids.push(id);
-        }
-        if (ids.length === 0) {
-            return {
-                changedCount: 0,
-                totalCount: 0
-            };
-        }
-
-        var visibleMap = getAllBoardsVisibility();
-        var changedCount = 0;
-        var moveToEndIds = [];
-        for (var j = 0; j < ids.length; j++) {
-            var boardId = ids[j];
-            var nextVisible = !!visible;
-            if (isBoardVisible(boardId, visibleMap) === nextVisible) continue;
-            visibleMap[boardId] = nextVisible;
-            changedCount += 1;
-            if (nextVisible && shouldAppendEnabledBoardToHomeOrder(boardId)) {
-                moveToEndIds.push(boardId);
-            }
-        }
-
-        if (changedCount === 0) {
-            return {
-                changedCount: 0,
-                totalCount: ids.length
-            };
-        }
-
-        saveVisibleMap(visibleMap);
-        for (var k = 0; k < moveToEndIds.length; k++) {
-            moveBoardOrderToEnd(moveToEndIds[k]);
-        }
-        homeBoards = getVisibleBoards();
-        rebuildBoardIndex();
-        return {
-            changedCount: changedCount,
-            totalCount: ids.length
-        };
     }
 
     function splitBoardGroupPath(groupPath) {
@@ -3967,7 +4191,7 @@
     }
 
     function buildCategoryRouteMenus(node, tree) {
-        var menus = node && node.path ? [MENU_BROWSER] : [MENU_HOME, MENU_BROWSER];
+        var menus = [MENU_BROWSER];
         if (node && node.path) {
             menus.unshift({
                 label: MENU_HOME_TOGGLE,
@@ -4583,7 +4807,6 @@
 
         var newIndex = event.data ? parseInt(String(event.data._newIndex), 10) : -1;
         if (!(oldIndex >= 0) || isNaN(newIndex) || newIndex < 0) return;
-        if (newIndex < 0) newIndex = 0;
         if (newIndex >= homeEntries.length) newIndex = homeEntries.length - 1;
         if (newIndex === oldIndex) return;
 
@@ -4931,33 +5154,6 @@
         updateHomeAfterBoardMutation(homeViewId, message);
     }
 
-    function handleBoardRemoveSubmit(viewId, event) {
-        var button = event.data ? event.data.button : "";
-        if (button !== "삭제") {
-            synura.close(viewId);
-            return;
-        }
-
-        var boardId = event.context ? event.context.boardId : "";
-        var boardTitle = event.context ? event.context.boardTitle : "";
-        if (!boardId || !removeCustomBoard(boardId)) {
-            synura.close(viewId);
-            return;
-        }
-
-        homeBoards = getVisibleBoards();
-        rebuildBoardIndex();
-        synura.close(viewId);
-
-        var settingsViewId = event.context ? event.context.parentViewId : 0;
-        var homeViewId = event.context ? event.context.homeViewId : 0;
-        var message = "게시판이 삭제되었습니다: " + (boardTitle || boardId);
-        if (settingsViewId) {
-            refreshBoardSettingsParent(settingsViewId, message);
-        }
-        updateHomeAfterBoardMutation(homeViewId, message);
-    }
-
     function handleCategoryBoardSyncPromptSubmit(viewId, event) {
         var button = event.data ? event.data.button : "";
         var homeViewId = event.context ? event.context.homeViewId : 0;
@@ -5074,11 +5270,6 @@
 
             if (context && context.from === "board_delete_settings" && event.eventId === "SUBMIT") {
                 handleBoardDeleteSubmit(viewId, event);
-                return;
-            }
-
-            if (context && context.from === "board_remove_confirm" && event.eventId === "SUBMIT") {
-                handleBoardRemoveSubmit(viewId, event);
                 return;
             }
 

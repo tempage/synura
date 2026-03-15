@@ -804,26 +804,36 @@ var LIST_CATEGORY_SELECTORS = [".list_category",".category","[data-role='list-ca
 var LIST_IMAGE_SELECTORS = ["img[src]"];
 
 function extractListItem(row, baseUrl) {
-    var linkNode = firstNode(row, LIST_LINK_SELECTORS);
-    var titleNode = firstNode(row, LIST_TITLE_SELECTORS);
-    var link = extractListLink(row, baseUrl, LIST_LINK_SELECTORS, LIST_LINK_ALLOW_PATTERNS);
+    var linkSelectors = selectorList("listLink", LIST_LINK_SELECTORS);
+    var titleSelectors = selectorList("listTitle", LIST_TITLE_SELECTORS);
+    var commentCountSelectors = selectorList("listCommentCount", LIST_COMMENT_COUNT_SELECTORS);
+    var viewCountSelectors = selectorList("listViewCount", LIST_VIEW_COUNT_SELECTORS);
+    var likeCountSelectors = selectorList("listLikeCount", LIST_LIKE_COUNT_SELECTORS);
+    var authorSelectors = selectorList("listAuthor", LIST_AUTHOR_SELECTORS);
+    var avatarSelectors = selectorList("listAvatar", LIST_AVATAR_SELECTORS);
+    var imageSelectors = selectorList("listImage", LIST_IMAGE_SELECTORS);
+    var categorySelectors = selectorList("listCategory", LIST_CATEGORY_SELECTORS);
+    var dateSelectors = selectorList("listDate", LIST_DATE_SELECTORS);
+    var linkNode = firstNode(row, linkSelectors);
+    var titleNode = firstNode(row, titleSelectors);
+    var link = extractListLink(row, baseUrl, linkSelectors, LIST_LINK_ALLOW_PATTERNS);
     if (!link) return null;
 
     var title = firstNonEmpty([
-        textOfNodeWithoutSelectors(titleNode, LIST_COMMENT_COUNT_SELECTORS),
+        textOfNodeWithoutSelectors(titleNode, commentCountSelectors),
         textOf(linkNode),
         textOf(row)
     ]);
     if (!title) return null;
 
-    var commentCount = hideZeroCount(parseCount(firstText(row, LIST_COMMENT_COUNT_SELECTORS)));
-    var viewCount = parseCount(firstText(row, LIST_VIEW_COUNT_SELECTORS));
-    var likeCount = hideZeroCount(parseCount(firstText(row, LIST_LIKE_COUNT_SELECTORS)));
-    var author = firstAuthorText(row, LIST_AUTHOR_SELECTORS);
-    var category = firstText(row, LIST_CATEGORY_SELECTORS);
-    var avatarSourceSelectors = LIST_AVATAR_SELECTORS.length > 0 ? LIST_AVATAR_SELECTORS : LIST_AUTHOR_SELECTORS;
+    var commentCount = hideZeroCount(parseCount(firstText(row, commentCountSelectors)));
+    var viewCount = parseCount(firstText(row, viewCountSelectors));
+    var likeCount = hideZeroCount(parseCount(firstText(row, likeCountSelectors)));
+    var author = firstAuthorText(row, authorSelectors);
+    var category = firstText(row, categorySelectors);
+    var avatarSourceSelectors = avatarSelectors.length > 0 ? avatarSelectors : authorSelectors;
     var avatar = imageUrlFromNode(firstNode(row, avatarSourceSelectors), baseUrl);
-    var mediaUrl = imageUrlFromNode(firstNode(row, LIST_IMAGE_SELECTORS), baseUrl);
+    var mediaUrl = imageUrlFromNode(firstNode(row, imageSelectors), baseUrl);
     var types = [];
     if (mediaUrl) types.push("image");
 
@@ -832,7 +842,7 @@ function extractListItem(row, baseUrl) {
         title: title,
         author: author,
         avatar: avatar,
-        date: firstText(row, LIST_DATE_SELECTORS),
+        date: firstText(row, dateSelectors),
         category: category,
         commentCount: commentCount,
         viewCount: viewCount,
@@ -853,11 +863,11 @@ function clienImageBoardPage(match) {
 }
 
 function clienImageBoardLink(row, baseUrl) {
-    return extractListLink(row, baseUrl, [
+    return extractListLink(row, baseUrl, selectorList("listLink", [
         "a.card_subject",
         "a.card_image",
         "a[href*='/service/board/image/']"
-    ], LIST_LINK_ALLOW_PATTERNS);
+    ]), LIST_LINK_ALLOW_PATTERNS);
 }
 
 function clienExtractImageBoardItem(row, baseUrl) {
@@ -866,33 +876,61 @@ function clienExtractImageBoardItem(row, baseUrl) {
     var link = clienImageBoardLink(row, baseUrl);
     if (!link) return null;
 
+    var titleSelectors = selectorList("listTitle", [
+        "a.card_subject span[title]",
+        "a.card_subject",
+        ".card_subject",
+        ".card_preview span"
+    ]);
+    var commentCountSelectors = selectorList("listCommentCount", [
+        ".list_reply",
+        "[data-role='ele-after']"
+    ]);
+    var viewCountSelectors = selectorList("listViewCount", [
+        ".list_time .hit",
+        ".hit"
+    ]);
+    var likeCountSelectors = selectorList("listLikeCount", [
+        ".list_symph",
+        "[data-role='list-like-count']"
+    ]);
+    var dateSelectors = selectorList("listDate", [
+        ".list_time span:last-child",
+        ".list_time > span:not(.hit)",
+        ".list_time",
+        ".list_date",
+        "time",
+        "[data-role='list-date']"
+    ]);
+    var authorSelectors = selectorList("listAuthor", [
+        ".list_author .nickname",
+        ".list_author",
+        "[data-author-id]"
+    ]);
+    var imageSelectors = selectorList("listImage", [
+        ".card_image img",
+        ".img_box img",
+        "[data-role='card-content'] img"
+    ]);
     var title = firstNonEmpty([
-        attrOf(firstNode(row, ["a.card_subject span[title]"]), "title"),
-        textOfNodeWithoutSelectors(firstNode(row, ["a.card_subject"]), [".card_preview"]),
-        firstText(row, ["a.card_subject span", ".card_subject", ".card_preview span"])
+        attrOf(firstNode(row, [titleSelectors[0]]), "title"),
+        textOfNodeWithoutSelectors(firstNode(row, [firstNonEmpty([titleSelectors[1], titleSelectors[0]])]), [".card_preview"]),
+        firstText(row, titleSelectors)
     ]);
     if (!title) return null;
 
     var commentCount = hideZeroCount(parseCount(firstNonEmpty([
         attrOf(row, "data-comment-count"),
-        firstText(row, [".list_reply", "[data-role='ele-after']"])
+        firstText(row, commentCountSelectors)
     ])));
-    var viewCount = parseCount(firstText(row, [".list_time .hit", ".hit"]));
-    var likeCount = hideZeroCount(parseCount(firstText(row, [".list_symph", "[data-role='list-like-count']"])));
-    var date = firstNonEmpty([
-        firstText(row, [".list_time span:last-child"]),
-        firstText(row, [".list_time > span:not(.hit)"]),
-        firstText(row, LIST_DATE_SELECTORS)
-    ]);
+    var viewCount = parseCount(firstText(row, viewCountSelectors));
+    var likeCount = hideZeroCount(parseCount(firstText(row, likeCountSelectors)));
+    var date = firstText(row, dateSelectors);
     var author = firstNonEmpty([
-        firstText(row, [".list_author .nickname", ".list_author"]),
+        firstText(row, authorSelectors),
         attrOf(row, "data-author-id")
     ]);
-    var mediaUrl = imageUrlFromNode(firstNode(row, [
-        ".card_image img",
-        ".img_box img",
-        "[data-role='card-content'] img"
-    ]), baseUrl);
+    var mediaUrl = imageUrlFromNode(firstNode(row, imageSelectors), baseUrl);
     var types = [];
     if (mediaUrl) types.push("image");
 
@@ -916,11 +954,11 @@ function clienExtractImageBoardItem(row, baseUrl) {
 }
 
 function clienParseImageBoardItems(doc, baseUrl) {
-    var rows = allNodes(doc, [
+    var rows = allNodes(doc, selectorList("listRows", [
         ".card_item[data-role='list-row']",
         "[data-role='list-row'].card_item",
         "[data-role='list-row']"
-    ]);
+    ]));
     var items = [];
     var seen = {};
     for (var i = 0; i < rows.length; i++) {
@@ -931,6 +969,60 @@ function clienParseImageBoardItems(doc, baseUrl) {
     }
     return items;
 }
+
+SITE.selectorProfiles = SITE.selectorProfiles || {};
+SITE.selectorProfiles.clien_image_board = {
+    listRows: [
+        ".card_item[data-role='list-row']",
+        "[data-role='list-row'].card_item",
+        "[data-role='list-row']"
+    ],
+    listLink: [
+        "a.card_subject",
+        "a.card_image",
+        "a[href*='/service/board/image/']"
+    ],
+    listTitle: [
+        "a.card_subject span[title]",
+        "a.card_subject",
+        ".card_subject",
+        ".card_preview span"
+    ],
+    listAuthor: [
+        ".list_author .nickname",
+        ".list_author",
+        "[data-author-id]"
+    ],
+    listDate: [
+        ".list_time span:last-child",
+        ".list_time > span:not(.hit)",
+        ".list_time",
+        ".list_date",
+        "time",
+        "[data-role='list-date']"
+    ],
+    listCommentCount: [
+        ".list_reply",
+        "[data-role='ele-after']"
+    ],
+    listViewCount: [
+        ".list_time .hit",
+        ".hit"
+    ],
+    listLikeCount: [
+        ".list_symph",
+        "[data-role='list-like-count']"
+    ],
+    listImage: [
+        ".card_image img",
+        ".img_box img",
+        "[data-role='card-content'] img"
+    ]
+};
+SITE.selectorProfilesByBoard = SITE.selectorProfilesByBoard || {};
+SITE.selectorProfilesByBoard.image = {
+    board: ["clien_image_board"]
+};
 
 function clienBuildImageBoardRoute(url, match) {
     var doc = fetchDocument(url);

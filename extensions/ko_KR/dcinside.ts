@@ -6,18 +6,6 @@ var DC_BOARD_BASE_URL = DC_BASE_URL + "/board/";
 var DC_MINI_BASE_URL = DC_BASE_URL + "/mini/";
 var DC_PERSON_BASE_URL = DC_BASE_URL + "/person/";
 
-var DC_LEGACY_VISIBLE_BOARD_IDS = [
-  "board:baseball_new11",
-  "board:bitcoins",
-  "board:football_new6",
-  "board:leagueoflegends2",
-  "board:ib_new",
-  "board:stock_new2",
-  "board:fantasy_new",
-  "mini:vtubersnipe",
-  "person:starhanae"
-];
-
 var DC_DEFAULT_BOARD_DESCRIPTION = "홈 기본 갤러리";
 
 function dcBoardEntry(slug, title, group, description) {
@@ -125,130 +113,63 @@ var SITE = {
   "boards": DC_SYSTEM_BOARDS,
   "selectors": {
     "boardTitle": [
-      ".board-tit",
-      ".page_head h2",
-      ".gallname",
-      ".title_head",
-      "title"
+      ".gall-tit"
     ],
     "listRows": [
-      "tr.ub-content.us-post",
-      ".gall-detail-lnktb"
+      ".gall-detail-lst > li"
     ],
     "listLink": [
-      "td.gall_tit a",
       "a.lt"
     ],
     "listTitle": [
-      "td.gall_tit a",
-      ".subjectin",
-      ".subject"
+      ".subjectin"
     ],
-    "listAuthor": [
-      "td.gall_writer .nickname",
-      "td.gall_writer b",
-      "td.gall_writer"
-    ],
-    "listDate": [
-      "td.gall_date"
-    ],
+    "listAuthor": [],
+    "listAvatar": [],
+    "listDate": [],
     "listCommentCount": [
-      "a.reply_numbox .reply_num",
-      "a.rt .ct",
-      ".ct"
+      "a.rt .ct"
     ],
-    "listViewCount": [
-      "td.gall_count"
-    ],
-    "listLikeCount": [
-      "td.gall_recommend"
-    ],
-    "listCategory": [
-      "td.gall_subject",
-      ".issue",
-      ".icon_notice"
-    ],
+    "listViewCount": [],
+    "listLikeCount": [],
+    "listCategory": [],
     "listImage": [
-      ".thum-img img",
-      "img"
+      ".thum-img img"
     ],
     "postTitle": [
-      ".gallview_head .tit",
-      ".tit",
-      ".title_subject",
-      "h1",
-      "title"
+      ".gallview-tit-box .tit"
     ],
     "postAuthor": [
-      ".gallview-tit-box .ginfo2 li:first-child",
-      ".gallview_head .gall_writer .nickname",
-      ".gallview_head .gall_writer",
-      ".gallview_head .nickname",
-      ".nickname",
-      ".writer"
+      ".gallview-tit-box .ginfo2 li:first-child"
     ],
+    "postAvatar": [],
     "postDate": [
-      ".gallview-tit-box .ginfo2 li:nth-child(2)",
-      ".gallview_head .gall_date",
-      ".gallview_head .ginfo .date_time",
-      ".date_time",
-      ".gall_date",
-      ".date"
+      ".gallview-tit-box .ginfo2 li:nth-child(2)"
     ],
     "postViewCount": [
-      ".gall-thum-btm .ginfo2 li:first-child",
-      ".gallview_head .gall_count",
-      ".gallview_head .ginfo .hit",
-      ".gall_count",
-      ".hit"
+      ".gall-thum-btm .ginfo2 li:first-child"
     ],
     "postLikeCount": [
-      ".gall-thum-btm .ginfo2 li:nth-child(2)",
-      ".gallview_head .gall_recommend",
-      ".gall_recommend",
-      ".recommend .num",
-      ".up_num",
-      ".recommend_num"
+      ".gall-thum-btm .ginfo2 li:nth-child(2)"
     ],
-    "postCategory": [
-      ".gallview_head .gall_subject",
-      ".icon_notice",
-      ".minor_head"
-    ],
+    "postCategory": [],
     "postContent": [
-      ".write_div",
-      ".view_content_wrap",
-      ".thum-txtin",
-      ".view_content"
+      ".thum-txtin"
     ],
     "commentRows": [
-      ".all-comment-lst li.comment",
-      ".all-comment-lst li.comment-add",
-      ".all-comment-lst li",
-      ".comment_wrap .comment_box .comment",
-      ".comment_wrap .comment_box li",
-      ".comment_box li",
-      ".comment_list li"
+      ".all-comment-lst li"
     ],
     "commentAuthor": [
-      ".nickname",
-      ".nick",
-      ".name"
+      ".nick"
     ],
+    "commentAvatar": [],
     "commentContent": [
-      ".comment_txt",
-      ".usertxt",
-      ".txt",
-      ".comment"
+      ".txt"
     ],
     "commentDate": [
-      ".date_time",
       ".date"
     ],
-    "commentLikeCount": [
-      ".up_num",
-      ".recommend_num"
-    ],
+    "commentLikeCount": [],
     "commentLevel": []
   },
   "commentLevelAttrs": []
@@ -268,65 +189,6 @@ var SYNURA = {
   main: null
 };
 
-function dcMigrateDefaultHomeBoards() {
-  if (typeof localStorage === "undefined" || !localStorage) return;
-
-  var migrationKey = "dcinside_home_migration";
-  if (String(localStorage.getItem(migrationKey) || "") === "1") return;
-
-  function readJson(key, fallbackValue) {
-    var raw = localStorage.getItem(key);
-    if (!raw) return fallbackValue;
-    try {
-      var parsed = JSON.parse(raw);
-      return parsed === null || parsed === undefined ? fallbackValue : parsed;
-    } catch (e) {
-      return fallbackValue;
-    }
-  }
-
-  var visibleKey = "community_visible_boards:dcinside";
-  var orderKey = "community_board_order:dcinside";
-  var visibleMap = readJson(visibleKey, {});
-  var order = readJson(orderKey, []);
-
-  if (!visibleMap || typeof visibleMap !== "object" || Array.isArray(visibleMap)) {
-    visibleMap = {};
-  }
-  if (!Array.isArray(order)) {
-    order = [];
-  }
-
-  for (var i = 0; i < DC_DEFAULT_VISIBLE_BOARD_IDS.length; i++) {
-    visibleMap[DC_DEFAULT_VISIBLE_BOARD_IDS[i]] = true;
-  }
-  for (var j = 0; j < DC_LEGACY_VISIBLE_BOARD_IDS.length; j++) {
-    visibleMap[DC_LEGACY_VISIBLE_BOARD_IDS[j]] = false;
-  }
-
-  var nextOrder = [];
-  var seen = {};
-  function pushOrderId(rawId) {
-    var id = String(rawId || "").trim();
-    if (!id || seen[id]) return;
-    seen[id] = true;
-    nextOrder.push(id);
-  }
-
-  for (var k = 0; k < DC_DEFAULT_VISIBLE_BOARD_IDS.length; k++) {
-    pushOrderId(DC_DEFAULT_VISIBLE_BOARD_IDS[k]);
-  }
-  for (var m = 0; m < order.length; m++) {
-    pushOrderId(order[m]);
-  }
-
-  localStorage.setItem(visibleKey, JSON.stringify(visibleMap));
-  localStorage.setItem(orderKey, JSON.stringify(nextOrder));
-  localStorage.setItem(migrationKey, "1");
-}
-
-dcMigrateDefaultHomeBoards();
-
 var DC_DISCOVERED_BOARDS_KEY = "dcinside_discovered_boards";
 var DC_DISCOVERED_BOARDS_META_KEY = "dcinside_discovered_boards_meta";
 var DC_CATEGORY_ROOTS_KEY = "dcinside_category_roots_v1";
@@ -335,12 +197,44 @@ var DC_CATEGORY_BROWSER_PAGE_SIZE = 200;
 var DC_CATEGORY_HOME_URL = DC_BASE_URL + "/galltotal";
 var dcCategoryRootCache = null;
 var dcCategoryBoardCache = {};
+var DC_CATEGORY_SCOPE_SELECTOR = ".left_content,.cate-box,.cate_wrap,.gall-total-lst,.gall-total";
+var DC_CATEGORY_FALLBACK_SCOPE_SELECTOR = ".content_box,.content,.cont,main,#container";
 var DC_CATEGORY_ROOT_SPECS = [
   { key: "category", title: "갤러리", url: DC_BASE_URL + "/category" },
   { key: "mcategory", title: "마이너갤", url: DC_BASE_URL + "/mcategory" },
   { key: "micategory", title: "미니갤", url: DC_BASE_URL + "/micategory" },
   { key: "prcategory", title: "인물갤", url: DC_BASE_URL + "/prcategory" }
 ];
+var DC_LINK_SELECTOR = "a[href]";
+
+function dcQuerySelectorGroup(root, selectorGroup) {
+  if (!root || !root.querySelectorAll || !selectorGroup) return [];
+  var selectors = String(selectorGroup || "").split(",");
+  var out = [];
+  for (var i = 0; i < selectors.length; i++) {
+    var selector = String(selectors[i] || "").replace(/^\s+|\s+$/g, "");
+    if (!selector) continue;
+    var matches = root.querySelectorAll(selector);
+    if (!matches || matches.length === 0) continue;
+    for (var j = 0; j < matches.length; j++) {
+      out.push(matches[j]);
+    }
+  }
+  return out;
+}
+
+function dcCollectScopedAnchors(doc, linkSelector) {
+  if (!doc || !doc.querySelectorAll || !linkSelector) return [];
+  var groups = [DC_CATEGORY_SCOPE_SELECTOR, DC_CATEGORY_FALLBACK_SCOPE_SELECTOR];
+  for (var g = 0; g < groups.length; g++) {
+    var scopes = dcQuerySelectorGroup(doc, groups[g]);
+    for (var i = 0; i < scopes.length; i++) {
+      var anchors = dcQuerySelectorGroup(scopes[i], linkSelector);
+      if (anchors && anchors.length > 0) return anchors;
+    }
+  }
+  return dcQuerySelectorGroup(doc, linkSelector);
+}
 
 function dcNormalizeBoardKind(kind) {
   return kind === "mini" || kind === "person" ? kind : "board";
@@ -386,6 +280,33 @@ function dcBuildBoardPageUrl(kind, slug, page) {
   return page > 1 ? setPageParam(listUrl, "page", page) : listUrl;
 }
 
+function dcAttachImageHeaders(details, refererUrl) {
+  var referer=normalizeUrl(refererUrl)||normalizeUrl(SITE.browserHomeUrl)||"";
+  if(!referer||!details||!details.length)return details||[];
+  for(var i=0;i<details.length;i++){
+    var item = details[i];
+    var value = normalizeUrl(item && item.value) || normalizeUrl(item && item.link) || "";
+    var info = parseAbsoluteUrl(value);
+    var host = info && info.host ? String(info.host).toLowerCase() : "";
+    if(!item||item.type!=="image"||!host||!/(^|\.)(dcinside\.co\.kr|dcinside\.com)$/.test(host)) continue;
+    var headers = item.headers || {};
+    if(!headers.Referer&&!headers.referer) headers.Referer = referer;
+    item.headers = headers;
+  }
+
+  return details;
+}
+
+function dcAttachCommentImageHeaders(comments, refererUrl) {
+  var out = comments || [];
+  for (var i = 0; i < out.length; i++) {
+    var comment = out[i];
+    if (!comment || !Array.isArray(comment.content)) continue;
+    comment.content = dcAttachImageHeaders(comment.content, refererUrl);
+  }
+  return out;
+}
+
 function dcListField(row, index, selectors) {
   var mobileValue = firstText(row, [".ginfo li:nth-child(" + String(index) + ")"]);
   if (mobileValue) return mobileValue;
@@ -394,18 +315,6 @@ function dcListField(row, index, selectors) {
 
 function dcMobileListAuthor(row, authorSelectors) {
   return normalizeWhitespace(dcListField(row, 1, authorSelectors || []));
-}
-
-function dcAttachImageHeaders(details, refererUrl) {
-  var referer=normalizeUrl(refererUrl)||"";
-  if(!referer||!details||!details.length)return details||[];
-  for(var i=0;i<details.length;i++){
-    var item = details[i];
-    if(!item||item.type!=="image"||!/^https:\/\/dc(?:img|cdn)\d+\.dcinside\.co\.kr\/viewimage/i.test(normalizeUrl(item.value)||"")) continue;
-    if(!item.headers||!item.headers.Referer&&!item.headers.referer)item.headers={Referer:referer};
-  }
-
-  return details;
 }
 
 function extractListItem(row, baseUrl) {
@@ -461,6 +370,8 @@ function extractListItem(row, baseUrl) {
 function dcKnownBoardById(boardId) {
   var normalizedId = normalizeWhitespace(boardId);
   if (!normalizedId) return null;
+  var known = boardById(normalizedId);
+  if (known) return known;
   var boards = getAllBoards();
   for (var i = 0; i < boards.length; i++) {
     if (boards[i].id === normalizedId) return boards[i];
@@ -468,27 +379,27 @@ function dcKnownBoardById(boardId) {
   return null;
 }
 
-function dcCreateBoard(kind, slug, fallbackTitle, description, group) {
+function dcCreateBoard(kind, slug, fallbackTitle, description, group, known, skipLookup) {
   var normalizedKind = dcNormalizeBoardKind(kind);
   var normalizedSlug = normalizeWhitespace(slug);
   if (!normalizedSlug) return null;
   var id = dcMakeBoardKey(normalizedKind, normalizedSlug);
-  var known = dcKnownBoardById(id);
+  var board = known || (!skipLookup ? dcKnownBoardById(id) : null);
   return {
     id: id,
     kind: normalizedKind,
     slug: normalizedSlug,
-    title: normalizeWhitespace(fallbackTitle || (known ? known.title : "") || normalizedSlug),
+    title: normalizeWhitespace(fallbackTitle || (board ? board.title : "") || normalizedSlug),
     url: normalizeUrl(dcBuildBoardListUrl(normalizedKind, normalizedSlug)) || dcBuildBoardListUrl(normalizedKind, normalizedSlug),
-    description: normalizeWhitespace(description || (known ? known.description : "") || dcBoardKindLabel(normalizedKind)),
-    group: normalizeWhitespace(group || (known ? known.group : "")),
-    showMedia: !!(known && known.showMedia),
-    custom: !!(known && known.custom),
-    dynamic: !!(known && known.dynamic)
+    description: normalizeWhitespace(description || (board ? board.description : "") || dcBoardKindLabel(normalizedKind)),
+    group: normalizeWhitespace(group || (board ? board.group : "")),
+    showMedia: !!(board && board.showMedia),
+    custom: !!(board && board.custom),
+    dynamic: !!(board && board.dynamic)
   };
 }
 
-function dcBoardFromUrl(rawUrl, fallbackTitle, description, group) {
+function dcBoardFromUrl(rawUrl, fallbackTitle, description, group, knownBoards) {
   var normalized = normalizeUrl(rawUrl);
   if (!normalized) return null;
   var info = parseAbsoluteUrl(normalized);
@@ -505,7 +416,7 @@ function dcBoardFromUrl(rawUrl, fallbackTitle, description, group) {
   } else if (info.path === "/person/board/lists" || info.path === "/person/board/lists/") {
     kind = "person";
     slug = normalizeWhitespace(queryValue(info.query, "id"));
-  } else if (parts.length === 2 && parts[0] === "board" && !/^\d+$/.test(parts[1])) {
+  } else if (parts.length === 2 && parts[0] === "board" && parts[1] !== "view" && parts[1] !== "lists") {
     slug = normalizeWhitespace(parts[1]);
   } else if (parts.length === 2 && parts[0] === "mini" && parts[1] !== "board") {
     kind = "mini";
@@ -517,7 +428,9 @@ function dcBoardFromUrl(rawUrl, fallbackTitle, description, group) {
     return null;
   }
 
-  return dcCreateBoard(kind, slug, fallbackTitle, description, group);
+  if (!slug) return null;
+  var id = dcMakeBoardKey(kind, slug);
+  return dcCreateBoard(kind, slug, fallbackTitle, description, group, knownBoards ? knownBoards[id] : null, !!knownBoards);
 }
 
 function dcGetDiscoveredBoardsMeta() {
@@ -581,22 +494,132 @@ function dcCleanBoardGroupLabel(value) {
     .trim();
 }
 
-function dcExtractBoardsFromDocument(doc, baseUrl, description, group, bucket) {
-  var anchors = doc.querySelectorAll("a[href]");
+function dcSectionTitleText(section) {
+  return dcCleanBoardGroupLabel(firstNonEmpty([
+    firstText(section, [".md-tit-box .md-tit", ".md-tit", "h3"]),
+    firstText(section, [".tit-box .tit", ".tit"])
+  ]));
+}
+
+function dcFindCategoryRootListAnchors(doc) {
+  if (!doc || !doc.querySelectorAll) return [];
+  var sections = doc.querySelectorAll("section.grid");
+  for (var i = 0; i < sections.length; i++) {
+    var title = dcSectionTitleText(sections[i]);
+    if (title.indexOf("카테고리") < 0) continue;
+    var anchors = sections[i].querySelectorAll(".gall-lst a");
+    if (anchors && anchors.length > 0) return anchors;
+  }
+  return doc.querySelectorAll(".gall-lst a");
+}
+
+function dcFindCategoryBoardListAnchors(doc) {
+  if (!doc || !doc.querySelectorAll) return [];
+  var sections = doc.querySelectorAll("section.grid");
+  var fallback = [];
+  for (var i = 0; i < sections.length; i++) {
+    var anchors = sections[i].querySelectorAll(".gall-lst a");
+    if (!anchors || anchors.length === 0) continue;
+    var title = dcSectionTitleText(sections[i]);
+    if (title.indexOf("전체") === 0) return anchors;
+    if (anchors.length > fallback.length) fallback = anchors;
+  }
+  return fallback.length > 0 ? fallback : doc.querySelectorAll(".gall-lst a");
+}
+
+function dcSimpleBoardAnchorTitle(anchor) {
+  return dcCleanBoardAnchorText(textOf(anchor));
+}
+
+function dcDecodeUrlSegment(value) {
+  var raw = normalizeWhitespace(value);
+  if (!raw) return "";
+  try {
+    return normalizeWhitespace(decodeURIComponent(raw));
+  } catch (e) {
+    return raw;
+  }
+}
+
+function dcFastCategoryBoardFromAnchor(anchor, description, group, knownBoards) {
+  var href = normalizeUrl(attrOf(anchor, "href")) || ensureAbsoluteUrl(attrOf(anchor, "href"), DC_BASE_URL);
+  if (!href) return null;
+
+  var kind = "";
+  var slug = "";
+  if (href.indexOf(DC_BOARD_BASE_URL) === 0) {
+    kind = "board";
+    slug = href.substring(DC_BOARD_BASE_URL.length);
+  } else if (href.indexOf(DC_MINI_BASE_URL) === 0) {
+    kind = "mini";
+    slug = href.substring(DC_MINI_BASE_URL.length);
+  } else if (href.indexOf(DC_PERSON_BASE_URL) === 0) {
+    kind = "person";
+    slug = href.substring(DC_PERSON_BASE_URL.length);
+  } else {
+    return dcBoardFromUrl(href, dcSimpleBoardAnchorTitle(anchor), description, group, knownBoards);
+  }
+
+  slug = dcDecodeUrlSegment(String(slug || "").split(/[\/?#]/)[0]);
+  if (!slug) return null;
+
+  var id = dcMakeBoardKey(kind, slug);
+  var known = knownBoards ? knownBoards[id] : null;
+  return {
+    id: id,
+    kind: kind,
+    slug: slug,
+    title: normalizeWhitespace(dcSimpleBoardAnchorTitle(anchor) || (known ? known.title : "") || slug),
+    url: href,
+    description: normalizeWhitespace(description || (known ? known.description : "") || dcBoardKindLabel(kind)),
+    group: normalizeWhitespace(group || (known ? known.group : "")),
+    showMedia: !!(known && known.showMedia),
+    custom: !!(known && known.custom),
+    dynamic: !!(known && known.dynamic)
+  };
+}
+
+function dcAppendCategoryBoardsFromAnchors(anchors, description, group, bucket, knownBoards) {
+  var added = 0;
   for (var i = 0; i < anchors.length; i++) {
-    var board = dcBoardFromUrl(attrOf(anchors[i], "href"), dcExtractBoardAnchorTitle(anchors[i]), description, group);
+    var board = dcFastCategoryBoardFromAnchor(anchors[i], description, group, knownBoards);
     if (!board) continue;
-    if (!board.title || board.title === board.slug) {
-      board.title = dcExtractBoardAnchorTitle(anchors[i]) || board.slug;
-    }
-    if (description && !board.description) {
-      board.description = description;
-    }
-    if (group && !board.group) {
-      board.group = dcCleanBoardGroupLabel(group);
+    if (!bucket[board.id]) {
+      bucket[board.id] = board;
+      added += 1;
+      continue;
     }
     bucket[board.id] = mergeBoardRecords(board, bucket[board.id]);
   }
+  return added;
+}
+
+function dcAppendBoardsFromAnchors(anchors, description, group, bucket, knownBoards, titleExtractor) {
+  var added = 0;
+  var extractTitle = typeof titleExtractor === "function" ? titleExtractor : dcExtractBoardAnchorTitle;
+  for (var i = 0; i < anchors.length; i++) {
+    var board = dcBoardFromUrl(attrOf(anchors[i], "href"), extractTitle(anchors[i]), description, group, knownBoards);
+    if (!board) continue;
+    bucket[board.id] = mergeBoardRecords(board, bucket[board.id]);
+    added += 1;
+  }
+  return added;
+}
+
+function dcExtractBoardsFromDocument(doc, baseUrl, description, group, bucket) {
+  var info = parseAbsoluteUrl(baseUrl);
+  var path = info ? info.path : "";
+  var knownBoards = boardIndex || {};
+  if (/^\/(category|mcategory|micategory|prcategory)\/\d+\/?$/.test(path)) {
+    var categoryAnchors = dcFindCategoryBoardListAnchors(doc);
+    if (categoryAnchors && categoryAnchors.length > 0) {
+      dcAppendCategoryBoardsFromAnchors(categoryAnchors, description, group, bucket, knownBoards);
+      return;
+    }
+  }
+  var anchors = dcCollectScopedAnchors(doc, DC_LINK_SELECTOR);
+  if (dcAppendBoardsFromAnchors(anchors, description, group, bucket, knownBoards) > 0) return;
+  dcAppendBoardsFromAnchors(dcQuerySelectorGroup(doc, DC_LINK_SELECTOR), description, group, bucket, knownBoards);
 }
 
 function mergeBoardRecords(preferred, fallback) {
@@ -617,7 +640,7 @@ function mergeBoardRecords(preferred, fallback) {
 }
 
 function dcExtractCategoryDiscoveryEntries(doc) {
-  var anchors = doc.querySelectorAll("a[href]");
+  var anchors = dcCollectScopedAnchors(doc, DC_LINK_SELECTOR);
   var seen = {};
   var out = [];
   for (var i = 0; i < anchors.length; i++) {
@@ -739,8 +762,18 @@ function dcLoadDynamicBoards(options) {
   }
 }
 
+function dcCloneJson(value, fallbackValue) {
+  var fallback = fallbackValue === undefined ? null : fallbackValue;
+  if (value === undefined || value === null) return fallback;
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (e) {
+    return fallback;
+  }
+}
+
 function dcNormalizeCategoryRootCache(cache) {
-  var next = deepClone(cache || {});
+  var next = dcCloneJson(cache, {});
   if (!next || typeof next !== "object") next = {};
   if (!next.roots || typeof next.roots !== "object") next.roots = {};
   return next;
@@ -771,9 +804,10 @@ function dcGetCategoryRootSpec(rootKey) {
   return null;
 }
 
-function dcGetCachedCategoryRootEntries(rootKey) {
+function dcGetCachedCategoryRootEntries(rootKey, allowStale) {
   var entry = dcGetCategoryRootCache().roots[normalizeWhitespace(rootKey)] || {};
-  return Array.isArray(entry.categories) ? deepClone(entry.categories) : [];
+  if (!allowStale && (!entry.fetchedAt || Date.now() - entry.fetchedAt >= DC_DISCOVERED_BOARDS_MAX_AGE)) return [];
+  return Array.isArray(entry.categories) ? dcCloneJson(entry.categories, []) : [];
 }
 
 function dcSaveCachedCategoryRootEntries(rootKey, categories) {
@@ -784,7 +818,7 @@ function dcSaveCachedCategoryRootEntries(rootKey, categories) {
     key: normalized,
     title: spec ? spec.title : normalized,
     url: spec ? spec.url : "",
-    categories: deepClone(categories || []),
+    categories: dcCloneJson(categories, []),
     fetchedAt: Date.now()
   };
   dcSaveCategoryRootCache(cache);
@@ -793,7 +827,7 @@ function dcSaveCachedCategoryRootEntries(rootKey, categories) {
 function dcExtractCategoryRootEntries(doc, rootKey) {
   var normalizedRootKey = normalizeWhitespace(rootKey);
   var expectedPrefix = "/" + normalizedRootKey + "/";
-  var anchors = doc.querySelectorAll("a[href]");
+  var anchors = dcFindCategoryRootListAnchors(doc);
   var seen = {};
   var entries = [];
 
@@ -851,7 +885,7 @@ function dcGetCachedCategoryBoardRecord(rootKey, categoryId) {
 
 function dcSetCachedCategoryBoardRecord(record) {
   if (!record || !record.key) return null;
-  dcCategoryBoardCache[record.key] = deepClone(record);
+  dcCategoryBoardCache[record.key] = record;
   return dcCategoryBoardCache[record.key];
 }
 
@@ -901,7 +935,6 @@ function dcFetchCategoryBoardRecord(rootKey, categoryId) {
     throw new Error((meta.title || spec.title) + " 게시판을 가져오지 못했습니다.");
   }
 
-  dcMergeDiscoveredBoards(boards, dcHasFreshFullDiscoveredBoards() ? "full" : "");
   return dcSetCachedCategoryBoardRecord({
     key: normalizeWhitespace(rootKey) + ":" + normalizeWhitespace(categoryId),
     rootKey: normalizeWhitespace(rootKey),
@@ -916,7 +949,7 @@ function dcFetchCategoryBoardRecord(rootKey, categoryId) {
 
 function dcEnsureCategoryBoardRecord(rootKey, categoryId) {
   var cached = dcGetCachedCategoryBoardRecord(rootKey, categoryId);
-  if (cached && Array.isArray(cached.boards) && cached.boards.length > 0) return deepClone(cached);
+  if (cached && Array.isArray(cached.boards) && cached.boards.length > 0) return cached;
   return dcFetchCategoryBoardRecord(rootKey, categoryId);
 }
 
@@ -928,11 +961,11 @@ function dcBuildCategoryHomeItems() {
   var specs = dcGetCategoryRootSpecs();
   var items = [];
   for (var i = 0; i < specs.length; i++) {
-    var cachedCount = dcGetCachedCategoryRootEntries(specs[i].key).length;
+    var cachedCount = dcGetCachedCategoryRootEntries(specs[i].key, true).length;
     items.push({
       id: specs[i].key,
       title: specs[i].title,
-      description: cachedCount > 0 ? ("카테고리 " + cachedCount + "개") : "카테고리 목록",
+      description: cachedCount > 0 ? ("카테고리 " + cachedCount + "개") : "탭해서 카테고리 보기",
       category: specs[i].url.replace(/^https?:\/\//, ""),
       author: "",
       date: "",
@@ -1008,7 +1041,7 @@ function dcBuildSettingsRootItems() {
   var specs = dcGetCategoryRootSpecs();
   var items = [];
   for (var i = 0; i < specs.length; i++) {
-    var categoryCount = dcGetCachedCategoryRootEntries(specs[i].key).length;
+    var categoryCount = dcGetCachedCategoryRootEntries(specs[i].key, true).length;
     items.push({
       id: specs[i].key,
       title: specs[i].title,
@@ -1077,7 +1110,7 @@ function dcCreateCategoryHomeRoute(homeViewId) {
       },
       models: {
         contents: dcBuildCategoryHomeItems(),
-        menus: [MENU_BOARD_SYNC, MENU_HOME, MENU_BROWSER]
+        menus: [MENU_HOME, MENU_BROWSER]
       }
     },
     context: {
@@ -1388,10 +1421,6 @@ function dcImportCategoryBrowser(state) {
 
 function dcOpenCategoryHomeFromMenu(viewId, state) {
   var homeViewId = state && state.kind === "home" ? viewId : 0;
-  if (shouldPromptBoardCatalogSync()) {
-    showCategoryBoardSyncPrompt(viewId || 0, homeViewId);
-    return true;
-  }
   openRoute(dcCreateCategoryHomeRoute(homeViewId));
   return true;
 }
@@ -1576,7 +1605,7 @@ function dcParseComments(doc, postUrl) {
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     var contentRoot = firstNode(row, SITE.selectors.commentContent);
-    var content = parseDetails(contentRoot, postUrl);
+    var content = dcAttachImageHeaders(parseDetails(contentRoot, postUrl), postUrl);
     if (!content || content.length === 0) {
       var rawText = firstText(row, SITE.selectors.commentContent);
       if (rawText) content = [{ type: "text", value: rawText }];
@@ -1602,6 +1631,10 @@ function dcParseComments(doc, postUrl) {
 }
 
 SITE.parseComments = dcParseComments;
+
+SITE.fetchPostComments = function (match, url, doc, page, comments) {
+  return dcAttachCommentImageHeaders(comments, url);
+};
 
 SITE.filterPostContent = dcAttachImageHeaders;
 
@@ -1634,7 +1667,7 @@ SITE.matchBoard = function (urlInfo) {
       };
     }
   }
-  if (parts.length === 2 && parts[0] === "board" && !/^\d+$/.test(parts[1])) {
+  if (parts.length === 2 && parts[0] === "board" && parts[1] !== "view" && parts[1] !== "lists") {
     return {
       board: dcCreateBoard("board", parts[1], "", dcBoardKindLabel("board")),
       page: queryInt(urlInfo.query, "page", 1)
@@ -1657,7 +1690,7 @@ SITE.matchBoard = function (urlInfo) {
 
 SITE.matchPost = function (urlInfo) {
   var parts = pathSegments(urlInfo.path);
-  if (parts.length >= 3 && parts[0] === "board" && !/^\d+$/.test(parts[1]) && /^\d+$/.test(parts[2])) {
+  if (parts.length >= 3 && parts[0] === "board" && parts[1] !== "view" && parts[1] !== "lists" && /^\d+$/.test(parts[2])) {
     return {
       board: dcCreateBoard("board", parts[1], "", dcBoardKindLabel("board")),
       postId: parts[2]

@@ -1178,35 +1178,35 @@ function extractTableRowItem(row, baseUrl) {
 function parseRuliwebBoardItems(doc, baseUrl) {
     var rows = allNodes(doc, SITE.selectors.listRows);
     if (!rows || rows.length === 0) return [];
+    var linkSelectors = selectorList("listLink", LIST_LINK_SELECTORS);
+    var titleSelectors = selectorList("listTitle", LIST_TITLE_SELECTORS);
+    var commentCountSelectors = selectorList("listCommentCount", LIST_COMMENT_COUNT_SELECTORS);
+    var authorSelectors = selectorList("listAuthor", LIST_AUTHOR_SELECTORS);
+    var likeCountSelectors = selectorList("listLikeCount", LIST_LIKE_COUNT_SELECTORS);
+    var viewCountSelectors = selectorList("listViewCount", LIST_VIEW_COUNT_SELECTORS);
+    var dateSelectors = selectorList("listDate", LIST_DATE_SELECTORS);
+    var categorySelectors = selectorList("listCategory", LIST_CATEGORY_SELECTORS);
     var items = [];
     var seen = {};
     for (var i = 0; i < rows.length; i++) {
         var row = rows[i];
         var subjectCell = firstNode(row, [".subject"]);
-        var linkNode = firstNode(row, ["td.subject a[href]", ".subject_link.deco", "a[href*='/read/']"]);
+        var linkNode = firstNode(row, linkSelectors);
         var link = ensureAbsoluteUrl(attrOf(linkNode, "href"), baseUrl);
         if (!isAllowedListLink(link, LIST_LINK_ALLOW_PATTERNS)) continue;
-        var titleNode = firstNode(row, [
-            "td.subject strong.text_over",
-            "td.subject span.text_over",
-            "td.subject .subject.text_over",
-            "td.subject .text_over",
-            ".subject_link.deco strong",
-            ".subject_link.deco span.text_over",
-            ".subject_link.deco"
-        ]);
+        var titleNode = firstNode(row, titleSelectors);
         var title = firstNonEmpty([
-            textOfNodeWithoutSelectors(titleNode, LIST_COMMENT_COUNT_SELECTORS),
-            textOfNodeWithoutSelectors(linkNode, LIST_COMMENT_COUNT_SELECTORS),
+            textOfNodeWithoutSelectors(titleNode, commentCountSelectors),
+            textOfNodeWithoutSelectors(linkNode, commentCountSelectors),
             textOf(subjectCell)
         ]);
         if (!title) continue;
-        var commentNode = firstNode(row, LIST_COMMENT_COUNT_SELECTORS);
-        var authorCell = firstNode(row, LIST_AUTHOR_SELECTORS);
-        var likeCell = firstNode(row, LIST_LIKE_COUNT_SELECTORS);
-        var viewCell = firstNode(row, LIST_VIEW_COUNT_SELECTORS);
-        var dateCell = firstNode(row, LIST_DATE_SELECTORS);
-        var categoryCell = firstNode(row, LIST_CATEGORY_SELECTORS);
+        var commentNode = firstNode(row, commentCountSelectors);
+        var authorCell = firstNode(row, authorSelectors);
+        var likeCell = firstNode(row, likeCountSelectors);
+        var viewCell = firstNode(row, viewCountSelectors);
+        var dateCell = firstNode(row, dateSelectors);
+        var categoryCell = firstNode(row, categorySelectors);
         var mediaUrl = imageUrlFromNode(subjectCell, baseUrl);
         var types = [];
         if (mediaUrl) types.push("image");
@@ -1235,28 +1235,38 @@ function parseRuliwebBoardItems(doc, baseUrl) {
 }
 
 function extractListItem(row, baseUrl) {
-    var linkNode = firstNode(row, LIST_LINK_SELECTORS);
-    var titleNode = firstNode(row, LIST_TITLE_SELECTORS);
+    var linkSelectors = selectorList("listLink", LIST_LINK_SELECTORS);
+    var titleSelectors = selectorList("listTitle", LIST_TITLE_SELECTORS);
+    var commentCountSelectors = selectorList("listCommentCount", LIST_COMMENT_COUNT_SELECTORS);
+    var viewCountSelectors = selectorList("listViewCount", LIST_VIEW_COUNT_SELECTORS);
+    var likeCountSelectors = selectorList("listLikeCount", LIST_LIKE_COUNT_SELECTORS);
+    var authorSelectors = selectorList("listAuthor", LIST_AUTHOR_SELECTORS);
+    var avatarSelectors = selectorList("listAvatar", LIST_AVATAR_SELECTORS);
+    var imageSelectors = selectorList("listImage", LIST_IMAGE_SELECTORS);
+    var categorySelectors = selectorList("listCategory", LIST_CATEGORY_SELECTORS);
+    var dateSelectors = selectorList("listDate", LIST_DATE_SELECTORS);
+    var linkNode = firstNode(row, linkSelectors);
+    var titleNode = firstNode(row, titleSelectors);
     var tableRowItem = extractTableRowItem(row, baseUrl);
     if (tableRowItem) return tableRowItem;
-    var link = extractListLink(row, baseUrl, LIST_LINK_SELECTORS, LIST_LINK_ALLOW_PATTERNS);
+    var link = extractListLink(row, baseUrl, linkSelectors, LIST_LINK_ALLOW_PATTERNS);
     if (!link) return null;
 
     var title = firstNonEmpty([
-        textOfNodeWithoutSelectors(titleNode, LIST_COMMENT_COUNT_SELECTORS),
+        textOfNodeWithoutSelectors(titleNode, commentCountSelectors),
         textOf(linkNode),
         textOf(row)
     ]);
     if (!title) return null;
 
-    var commentCount = hideZeroCount(parseCount(firstText(row, LIST_COMMENT_COUNT_SELECTORS)));
-    var viewCount = parseCount(firstText(row, LIST_VIEW_COUNT_SELECTORS));
-    var likeCount = hideZeroCount(parseCount(firstText(row, LIST_LIKE_COUNT_SELECTORS)));
-    var author = firstAuthorText(row, LIST_AUTHOR_SELECTORS);
-    var category = firstText(row, LIST_CATEGORY_SELECTORS);
-    var avatarSourceSelectors = LIST_AVATAR_SELECTORS.length > 0 ? LIST_AVATAR_SELECTORS : LIST_AUTHOR_SELECTORS;
+    var commentCount = hideZeroCount(parseCount(firstText(row, commentCountSelectors)));
+    var viewCount = parseCount(firstText(row, viewCountSelectors));
+    var likeCount = hideZeroCount(parseCount(firstText(row, likeCountSelectors)));
+    var author = firstAuthorText(row, authorSelectors);
+    var category = firstText(row, categorySelectors);
+    var avatarSourceSelectors = avatarSelectors.length > 0 ? avatarSelectors : authorSelectors;
     var avatar = imageUrlFromNode(firstNode(row, avatarSourceSelectors), baseUrl);
-    var mediaUrl = imageUrlFromNode(firstNode(row, LIST_IMAGE_SELECTORS), baseUrl);
+    var mediaUrl = imageUrlFromNode(firstNode(row, imageSelectors), baseUrl);
     var types = [];
     if (mediaUrl) types.push("image");
 
@@ -1265,7 +1275,7 @@ function extractListItem(row, baseUrl) {
         title: title,
         author: author,
         avatar: avatar,
-        date: firstText(row, LIST_DATE_SELECTORS),
+        date: firstText(row, dateSelectors),
         category: category,
         commentCount: commentCount,
         viewCount: viewCount,

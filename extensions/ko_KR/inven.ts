@@ -3,7 +3,7 @@
 var SITE = {
   "siteKey": "inven",
   "displayName": "인벤",
-  "browserHomeUrl": "https://m.inven.co.kr/board/powerbbs.php?come_idx=2097",
+  "browserHomeUrl": "https://www.inven.co.kr/board/webzine/2097?iskin=webzine",
   "browserCookieAuth": false,
   "minimumHomeBoards": 10,
   "defaultCacheTtlMs": 300000,
@@ -19,70 +19,67 @@ var SITE = {
   "hasFullBoardCatalog": false,
   "supportsBoardCatalogSync": true,
   "defaultVisibleBoardIds": [],
-  "hostAliases": [
-    "inven.co.kr",
-    "www.inven.co.kr"
-  ],
+  "hostAliases": [],
   "challengeMarkers": [],
   "titleSuffixes": [
     " - 인벤",
     " : 인벤"
   ],
   "linkAllowPatterns": [
-    "^https://m\\.inven\\.co\\.kr/board/[^/]+/\\d+/\\d+"
+    "^https://www\\.inven\\.co\\.kr/board/[^/]+/\\d+/\\d+"
   ],
   "listBoardQueryParam": "",
   "boards": [
     {
       "id": "come_2097",
       "title": "오픈이슈갤러리",
-      "url": "/board/powerbbs.php?come_idx=2097",
+      "url": "/board/webzine/2097",
       "description": "대표 이슈 게시판"
     },
     {
       "id": "come_2631",
       "title": "PC 견적 게시판",
-      "url": "/board/powerbbs.php?come_idx=2631"
+      "url": "/board/webzine/2631"
     },
     {
       "id": "come_2898",
       "title": "코스프레 갤러리",
-      "url": "/board/powerbbs.php?come_idx=2898"
+      "url": "/board/webzine/2898"
     },
     {
       "id": "come_3499",
       "title": "(19)무인도는 첨이지?",
-      "url": "/board/powerbbs.php?come_idx=3499"
+      "url": "/board/webzine/3499"
     },
     {
       "id": "come_3715",
       "title": "지름/개봉 갤러리",
-      "url": "/board/powerbbs.php?come_idx=3715"
+      "url": "/board/webzine/3715"
     },
     {
       "id": "come_1565",
       "title": "게이머 토론장",
-      "url": "/board/powerbbs.php?come_idx=1565"
+      "url": "/board/webzine/1565"
     },
     {
       "id": "come_1288",
       "title": "게임 추천/소감",
-      "url": "/board/powerbbs.php?come_idx=1288"
+      "url": "/board/webzine/1288"
     },
     {
       "id": "come_3558",
       "title": "무엇이든 물어보세요",
-      "url": "/board/powerbbs.php?come_idx=3558"
+      "url": "/board/webzine/3558"
     },
     {
       "id": "come_762",
       "title": "최근 논란중인 이야기",
-      "url": "/board/powerbbs.php?come_idx=762"
+      "url": "/board/webzine/762"
     },
     {
       "id": "come_2887",
       "title": "카툰 갤러리",
-      "url": "/board/powerbbs.php?come_idx=2887"
+      "url": "/board/webzine/2887"
     }
   ],
   "selectors": {
@@ -92,20 +89,35 @@ var SITE = {
       "title"
     ],
     "listRows": [
+      ".board-list table tbody tr",
+      "section.mo-board-list li.list"
+    ],
+    "listLink": [
+      "a.subject-link",
       "a.contentLink"
     ],
-    "listLink": [],
     "listTitle": [
+      ".subject-link",
       ".subject",
       ".tit"
     ],
     "listAuthor": [
+      ".layerNickName",
       ".nick"
     ],
+    "listAvatar": [
+      ".user-icon img",
+      ".nick .icon img",
+      ".nick img"
+    ],
     "listDate": [
+      ".time",
       ".date"
     ],
     "listCommentCount": [
+      ".con-comment",
+      ".com-btn .num",
+      ".num",
       ".cmt",
       ".comment"
     ],
@@ -116,37 +128,49 @@ var SITE = {
       ".reco"
     ],
     "listCategory": [
+      ".category",
+      ".in-cate",
       ".cate"
     ],
     "listImage": [
       "img"
     ],
     "postTitle": [
+      ".articleTitle h1",
       "#articleSubject",
       "h1",
       "title"
     ],
     "postAuthor": [
+      ".articleWriter",
+      ".articleWriter span",
       "#article-writer",
       ".article-writer",
       ".writer",
       ".nick"
     ],
     "postDate": [
+      ".articleDate",
       ".date",
       "time"
     ],
     "postViewCount": [
+      ".articleHit",
       ".hit"
     ],
     "postLikeCount": [
+      "#bbsRecommendNum1",
       ".reco"
     ],
     "postCategory": [
+      ".articleCategory",
       ".boardName",
       ".cate"
     ],
     "postContent": [
+      "#powerbbsContent",
+      ".contentBody #powerbbsContent",
+      ".articleContent",
       ".bbs-con.articleContent.boardContent",
       ".articleContent.boardContent",
       ".boardContent"
@@ -197,15 +221,34 @@ var SITE = {
     "come_2887": "창작"
   }
 };
-SITE.matchBoard = function (urlInfo) {
+function invenBoardUrlFromComeIdx(comeIdx) {
+    var normalized = normalizeWhitespace(String(comeIdx || "")).replace(/^come_/, "");
+    if (!normalized) return "";
+    return "https://" + SYNURA.domain + "/board/webzine/" + encodeURIComponent(normalized) + "?iskin=webzine";
+}
+function invenComeIdxFromUrlInfo(urlInfo) {
+    if (!urlInfo) return "";
     if (urlInfo.path === "/board/powerbbs.php") {
-        var comeIdx = queryValue(urlInfo.query, "come_idx");
-        if (comeIdx) {
-            return {
-                board: ensureBoard("come_" + comeIdx, "https://" + SYNURA.domain + "/board/powerbbs.php?come_idx=" + comeIdx, "게시판 " + comeIdx),
-                page: queryInt(urlInfo.query, "p", 1)
-            };
-        }
+        return normalizeWhitespace(queryValue(urlInfo.query, "come_idx"));
+    }
+    var parts = pathSegments(urlInfo.path);
+    if (parts.length >= 3 && parts[0] === "board" && parts[1] === "webzine" && /^\d+$/.test(parts[2])) {
+        return parts[2];
+    }
+    return "";
+}
+function invenBoardPageParamName(url) {
+    var info = parseAbsoluteUrl(url || "");
+    if (info && /^\/board\/webzine\/\d+/.test(info.path)) return "page";
+    return "p";
+}
+SITE.matchBoard = function (urlInfo) {
+    var comeIdx = invenComeIdxFromUrlInfo(urlInfo);
+    if (comeIdx) {
+        return {
+            board: ensureBoard("come_" + comeIdx, invenBoardUrlFromComeIdx(comeIdx), "게시판 " + comeIdx),
+            page: queryInt(urlInfo.query, "page", queryInt(urlInfo.query, "p", 1))
+        };
     }
     return null;
 };
@@ -213,19 +256,22 @@ SITE.matchPost = function (urlInfo) {
     var parts = pathSegments(urlInfo.path);
     if (parts.length >= 4 && parts[0] === "board" && /^\d+$/.test(parts[2]) && /^\d+$/.test(parts[3])) {
         return {
-            board: ensureBoard("come_" + parts[2], "https://" + SYNURA.domain + "/board/powerbbs.php?come_idx=" + parts[2], "게시판 " + parts[2]),
+            board: ensureBoard("come_" + parts[2], invenBoardUrlFromComeIdx(parts[2]), "게시판 " + parts[2]),
             postId: parts[3]
         };
     }
     return null;
 };
 SITE.buildNextPageUrl = function (match, currentUrl, nextPage) {
-    return setPageParam(currentUrl, "p", nextPage);
+    var baseUrl = currentUrl || (match && match.board ? match.board.url : "");
+    return setPageParam(baseUrl, invenBoardPageParamName(baseUrl), nextPage);
 };
 SITE.buildPostFetchUrls = function (match, currentUrl) {
     return [currentUrl];
 };
 SITE.buildBoardUrlFromId = function (boardId) {
+    var match = normalizeWhitespace(String(boardId || "")).match(/^come_(\d+)$/);
+    if (match) return invenBoardUrlFromComeIdx(match[1]);
     return "";
 };
 SITE.loadDynamicBoards = function (options) {
@@ -251,14 +297,17 @@ SITE.loadDynamicBoards = function (options) {
     if (!allowNetwork) return Array.isArray(cached) ? cached : [];
     try {
         var doc = fetchDocument(SITE.browserHomeUrl);
-        var links = allNodes(doc, ["a[href*='powerbbs.php?come_idx=']"]);
+        var links = allNodes(doc, [
+            "a[href*='powerbbs.php?come_idx=']",
+            "a[href*='/board/webzine/']"
+        ]);
         var items = [];
         var seen = {};
         for (var i = 0; i < links.length; i++) {
             var href = ensureAbsoluteUrl(attrOf(links[i], "href"), SITE.browserHomeUrl);
             var info = parseAbsoluteUrl(href);
             if (!info) continue;
-            var comeIdx = queryValue(info.query, "come_idx");
+            var comeIdx = invenComeIdxFromUrlInfo(info);
             if (!comeIdx || seen[comeIdx]) continue;
             var title = normalizeWhitespace(textOf(links[i]));
             if (!title || skip[title]) continue;
@@ -266,7 +315,7 @@ SITE.loadDynamicBoards = function (options) {
             items.push({
                 id: "come_" + comeIdx,
                 title: title,
-                url: "https://" + SYNURA.domain + "/board/powerbbs.php?come_idx=" + encodeURIComponent(comeIdx),
+                url: invenBoardUrlFromComeIdx(comeIdx),
                 description: title,
                 group: inferBoardGroupFromContext(links[i]),
                 dynamic: true
@@ -308,22 +357,49 @@ SITE.routeBoardCustom = function (url, urlInfo, match, force) {
 SITE.routePostCustom = function (url, urlInfo, match, force) {
     return null;
 };
+SITE.filterPostContent = function (content, url, doc) {
+    var contentNode = doc ? doc.querySelector("#powerbbsContent") : null;
+    if (!contentNode) return content;
+    var reparsed = parseMarkupDetails(String(contentNode.innerHTML || ""), url);
+    return reparsed && reparsed.length > 0 ? reparsed : content;
+};
 function invenParseComments(doc, postUrl) {
     var rows = allNodes(doc, SITE.selectors.commentRows);
     var comments = [];
     for (var i = 0; i < rows.length; i++) {
         var row = rows[i];
+        var rowId = normalizeWhitespace(firstNonEmpty([
+            attrOf(row, "data-comment-sn"),
+            attrOf(row, "data-cmtidx"),
+            attrOf(row, "id")
+        ]));
+        var commentIdMatch = rowId.match(/(\d+)/);
+        var commentId = commentIdMatch && commentIdMatch[1] ? commentIdMatch[1] : "";
+        var rowClass = attrOf(row, "class");
+        var isBlind = /\bblindCmt\b/i.test(rowClass);
+        var isDeleted = /\bdeleteCmt\b/i.test(rowClass);
         var contentRoot = firstNode(row, SITE.selectors.commentContent);
-        var content = parseDetails(contentRoot, postUrl);
+        var content = isBlind ? [{ type: "text", value: "블라인드된 댓글입니다." }] : parseDetails(contentRoot, postUrl);
         if (!content || content.length === 0) {
             var rawText = firstText(row, SITE.selectors.commentContent);
             if (rawText) content = [{ type: "text", value: rawText }];
+        }
+        if (isDeleted && content && content.length > 0) {
+            if (content[0] && content[0].type === "text") {
+                content = content.slice();
+                content[0] = {
+                    type: "text",
+                    value: "[삭제됨] " + normalizeWhitespace(content[0].value || "")
+                };
+            } else {
+                content = [{ type: "text", value: "[삭제됨]" }].concat(content);
+            }
         }
         if (!content || content.length === 0) continue;
 
         var likeCount = hideZeroCount(parseCount(firstText(row, SITE.selectors.commentLikeCount)));
         comments.push({
-            link: postUrl + "#comment-" + (i + 1),
+            link: postUrl + "#comment-" + (commentId || String(i + 1)),
             author: firstAuthorText(row, SITE.selectors.commentAuthor),
             avatar: imageUrlFromNode(firstNode(row, SITE.selectors.commentAvatar || SITE.selectors.commentAuthor), postUrl),
             content: content,
@@ -333,7 +409,8 @@ function invenParseComments(doc, postUrl) {
             level: detectCommentLevel(row),
             menus: [],
             hotCount: toInt(likeCount, 0),
-            coldCount: toInt(likeCount, 0)
+            coldCount: toInt(likeCount, 0),
+            _invenDedupKey: commentId ? "comment:" + commentId : ""
         });
     }
     return comments;
@@ -352,6 +429,90 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         var numericMatch = html.match(numeric);
         if (numericMatch && numericMatch[1]) return normalizeWhitespace(numericMatch[1]);
         return "";
+    }
+
+    function invenExtractCommentId(rawValue) {
+        var raw = normalizeWhitespace(rawValue);
+        if (!raw) return "";
+        var matched = raw.match(/(\d+)/);
+        return matched && matched[1] ? matched[1] : raw;
+    }
+
+    function invenBuildCommentLink(commentId) {
+        var normalized = invenExtractCommentId(commentId);
+        return url + "#comment-" + (normalized || "0");
+    }
+
+    function invenBuildCommentPlaceholder(text) {
+        return [{ type: "text", value: normalizeWhitespace(text) }];
+    }
+
+    function invenPrefixCommentContent(content, prefix) {
+        var normalizedPrefix = normalizeWhitespace(prefix);
+        var out = Array.isArray(content) ? content.slice() : [];
+        if (!normalizedPrefix) return out;
+        if (out.length > 0 && out[0] && out[0].type === "text") {
+            out[0] = {
+                type: "text",
+                value: normalizedPrefix + " " + normalizeWhitespace(out[0].value || "")
+            };
+            return out;
+        }
+        out.unshift({ type: "text", value: normalizedPrefix });
+        return out;
+    }
+
+    function invenResolveCommentAvatar(rawValue) {
+        var raw = normalizeWhitespace(rawValue);
+        if (!raw || raw === "0") return "";
+        return normalizeUrl(raw) || ensureAbsoluteUrl(raw, url) || raw;
+    }
+
+    function invenPadSortNumber(value) {
+        var text = String(parseInt(String(value || "0"), 10) || 0);
+        while (text.length < 12) text = "0" + text;
+        return text;
+    }
+
+    function invenGroupSortValue(titleNum) {
+        return titleNum === 0 ? 1000000000 : Math.max(1, titleNum);
+    }
+
+    function invenBuildCommentRequestOptions(titles) {
+        var options = buildFetchOptions();
+        if (!options.headers) options.headers = {};
+        options.method = "POST";
+        options.headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8";
+        options.headers["X-Requested-With"] = "XMLHttpRequest";
+        options.headers["Referer"] = url;
+        options.headers["Origin"] = "https://www.inven.co.kr";
+        options.body = [
+            "comeidx=" + encodeURIComponent(comeIdx),
+            "articlecode=" + encodeURIComponent(articleCode),
+            "cmtcodes=" + encodeURIComponent(customNum),
+            "titles=" + encodeURIComponent(normalizeWhitespace(titles || "")),
+            "listoption=" + encodeURIComponent("date"),
+            "commentPos=" + encodeURIComponent(commentPos),
+            "iskin=" + encodeURIComponent(iskin),
+            "date=" + encodeURIComponent(String(Date.now()))
+        ].join("&");
+        return options;
+    }
+
+    function invenFetchCommentPayload(titles) {
+        var response = fetchWithLogging("https://www.inven.co.kr/common/board/comment.json.php", invenBuildCommentRequestOptions(titles));
+        if (!response || !response.ok) return null;
+        var rawText = response.text();
+        if (!rawText) return null;
+        var parsedData = null;
+        try {
+            parsedData = JSON.parse(rawText);
+        } catch (e) {
+        }
+        return {
+            rawText: rawText,
+            data: parsedData
+        };
     }
 
     function invenCollectHtmlCandidates(value, bucket, depth) {
@@ -386,9 +547,9 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
                     break;
                 }
                 var decodeParser = new DOMParser();
-                var decodeDoc = decodeParser.parseFromString("<div id='synura-inven-comment-decode'>" + source + "</div>", "text/html");
-                var decodeRoot = decodeDoc.querySelector("#synura-inven-comment-decode") || decodeDoc.body;
-                var decoded = decodeRoot ? String(decodeRoot.textContent || "") : "";
+                var decodeDoc = decodeParser.parseFromString("<textarea id='synura-inven-comment-decode'>" + source + "</textarea>", "text/html");
+                var decodeRoot = decodeDoc.querySelector("#synura-inven-comment-decode");
+                var decoded = decodeRoot ? String(decodeRoot.value || decodeRoot.textContent || "") : "";
                 if (!decoded || decoded === source) break;
                 source = decoded;
             }
@@ -400,31 +561,99 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         return parseMarkupDetails(source, url);
     }
 
-    function invenParseJsonComments(data) {
+    function invenGroupTitleNum(group) {
+        var raw = firstNonEmpty([
+            group && group.__attr__ ? group.__attr__.titlenum : "",
+            group ? group.titlenum : ""
+        ]);
+        var parsed = parseInt(String(raw || ""), 10);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+
+    function invenCollectPendingTitles(data, seen) {
         var groups = data && Array.isArray(data.commentlist) ? data.commentlist : [];
         var out = [];
         for (var i = 0; i < groups.length; i++) {
+            var titleNum = invenGroupTitleNum(groups[i]);
+            if (!(titleNum > 0) || seen[String(titleNum)]) continue;
             var rows = groups[i] && Array.isArray(groups[i].list) ? groups[i].list : [];
-            for (var j = 0; j < rows.length; j++) {
-                var row = rows[j] || {};
-                var attr = row.__attr__ || {};
-                var commentId = normalizeWhitespace(firstNonEmpty([attr.cmtidx, row.cmtidx]));
-                var parentId = normalizeWhitespace(firstNonEmpty([attr.cmtpidx, row.cmtpidx]));
-                var content = invenParseCommentContent(row.o_comment);
-                if (!commentId || !content || content.length === 0) continue;
-                var likeCount = hideZeroCount(parseCount(firstNonEmpty([row.o_recommend, row.recommend, row.like])));
-                out.push({
-                    link: url + "#comment-" + commentId,
-                    author: normalizeWhitespace(firstNonEmpty([row.o_name, row.name, row.nick])),
-                    content: content,
-                    date: normalizeWhitespace(firstNonEmpty([row.o_date, row.date])),
-                    likeCount: likeCount,
-                    dislikeCount: parseCount(firstNonEmpty([row.o_notrecommend, row.notrecommend, row.dislike])),
-                    level: parentId && commentId && parentId !== commentId ? 1 : 0,
-                    menus: [],
-                    hotCount: toInt(likeCount, 0),
-                    coldCount: 0
-                });
+            if (rows.length > 0) continue;
+            out.push(String(titleNum));
+        }
+        out.sort(function (left, right) {
+            return parseInt(left, 10) - parseInt(right, 10);
+        });
+        return out;
+    }
+
+    function invenOrderedCommentGroups(data) {
+        var groups = data && Array.isArray(data.commentlist) ? data.commentlist.slice() : [];
+        groups.sort(function (left, right) {
+            var leftNum = invenGroupTitleNum(left);
+            var rightNum = invenGroupTitleNum(right);
+            if (leftNum === 0 && rightNum === 0) return 0;
+            if (leftNum === 0) return 1;
+            if (rightNum === 0) return -1;
+            return leftNum - rightNum;
+        });
+        return groups;
+    }
+
+    function invenParseJsonCommentRow(row, sortKey) {
+        var item = row || {};
+        var attr = item.__attr__ || {};
+        var commentId = invenExtractCommentId(firstNonEmpty([attr.cmtidx, item.cmtidx]));
+        if (!commentId) return null;
+
+        var parentId = invenExtractCommentId(firstNonEmpty([attr.cmtpidx, item.cmtpidx]));
+        var state = normalizeWhitespace(firstNonEmpty([attr.state, item.state])).toUpperCase();
+        var content = state === "B"
+            ? invenBuildCommentPlaceholder("블라인드된 댓글입니다.")
+            : invenParseCommentContent(firstNonEmpty([item.o_comment, item.comment]));
+        if ((!content || content.length === 0) && state === "N") {
+            content = invenBuildCommentPlaceholder("삭제된 댓글입니다.");
+        }
+        if (!content || content.length === 0) return null;
+        if (state === "N") {
+            content = invenPrefixCommentContent(content, "[삭제됨]");
+        }
+
+        var likeCount = hideZeroCount(parseCount(firstNonEmpty([item.o_recommend, item.recommend, item.like])));
+        var dislikeCount = hideZeroCount(parseCount(firstNonEmpty([item.o_notrecommend, item.notrecommend, item.dislike])));
+
+        return {
+            link: invenBuildCommentLink(commentId),
+            author: normalizeWhitespace(firstNonEmpty([item.o_name, item.name, item.nick])),
+            avatar: invenResolveCommentAvatar(firstNonEmpty([item.o_icon, item.icon])),
+            content: content,
+            date: normalizeWhitespace(firstNonEmpty([item.o_date, item.date])),
+            likeCount: likeCount,
+            dislikeCount: dislikeCount,
+            level: parentId && parentId !== commentId ? 1 : 0,
+            menus: [],
+            hotCount: toInt(likeCount, 0),
+            coldCount: toInt(dislikeCount, 0),
+            _invenDedupKey: "comment:" + commentId,
+            _invenSortKey: normalizeWhitespace(sortKey)
+        };
+    }
+
+    function invenParseJsonComments(data) {
+        var out = [];
+        var bestRows = data && data.bestcomment && Array.isArray(data.bestcomment.list) ? data.bestcomment.list : [];
+        for (var i = 0; i < bestRows.length; i++) {
+            var bestItem = invenParseJsonCommentRow(bestRows[i], "0:" + invenPadSortNumber(i));
+            if (bestItem) out.push(bestItem);
+        }
+
+        var groups = invenOrderedCommentGroups(data);
+        for (var j = 0; j < groups.length; j++) {
+            var rows = groups[j] && Array.isArray(groups[j].list) ? groups[j].list : [];
+            var groupTitleNum = invenGroupTitleNum(groups[j]);
+            var groupSortKey = "1:" + invenPadSortNumber(invenGroupSortValue(groupTitleNum)) + ":";
+            for (var k = 0; k < rows.length; k++) {
+                var commentItem = invenParseJsonCommentRow(rows[k], groupSortKey + invenPadSortNumber(k));
+                if (commentItem) out.push(commentItem);
             }
         }
         return out;
@@ -440,22 +669,33 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         var out = [];
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i];
+            var rowId = invenExtractCommentId(firstNonEmpty([
+                attrOf(row, "data-comment-sn"),
+                attrOf(row, "data-cmtidx"),
+                attrOf(row, "id")
+            ]));
+            var rowClass = attrOf(row, "class");
+            var state = /\bblindCmt\b/i.test(rowClass) ? "B" : (/\bdeleteCmt\b/i.test(rowClass) ? "N" : "");
             var contentRoot = row.querySelector("div.comment > span.content") ||
                 row.querySelector("div.comment .content") ||
                 row.querySelector("div.comment") ||
                 row.querySelector(".content");
-            var content = parseDetails(contentRoot, url);
+            var content = state === "B" ? invenBuildCommentPlaceholder("블라인드된 댓글입니다.") : parseDetails(contentRoot, url);
             if ((!content || content.length === 0) && contentRoot) {
                 var text = normalizeWhitespace(contentRoot.textContent || "");
                 if (text) content = [{ type: "text", value: text }];
             }
+            if (state === "N" && content && content.length > 0) {
+                content = invenPrefixCommentContent(content, "[삭제됨]");
+            }
             if (!content || content.length === 0) continue;
-            var authorNode = row.querySelector(".nickname, .nick, .writer, .name");
-            var dateNode = row.querySelector(".date, time");
-            var likeNode = row.querySelector(".reco, .recommend, .dice");
+            var authorNode = firstNode(row, SITE.selectors.commentAuthor);
+            var dateNode = firstNode(row, SITE.selectors.commentDate);
+            var likeNode = firstNode(row, SITE.selectors.commentLikeCount);
             out.push({
-                link: url + "#comment-" + (i + 1),
+                link: invenBuildCommentLink(rowId || String(i + 1)),
                 author: normalizeWhitespace(authorNode ? authorNode.textContent : ""),
+                avatar: imageUrlFromNode(firstNode(row, SITE.selectors.commentAvatar || SITE.selectors.commentAuthor), url),
                 content: content,
                 date: normalizeWhitespace(dateNode ? dateNode.textContent : ""),
                 likeCount: hideZeroCount(parseCount(normalizeWhitespace(likeNode ? likeNode.textContent : ""))),
@@ -463,10 +703,33 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
                 level: row.classList && row.classList.contains("reply") ? 1 : 0,
                 menus: [],
                 hotCount: 0,
-                coldCount: 0
+                coldCount: 0,
+                _invenDedupKey: rowId ? "comment:" + rowId : ""
             });
         }
         return out;
+    }
+
+    function invenCommentDedupKey(item) {
+        if (item && item._invenDedupKey) return normalizeWhitespace(item._invenDedupKey);
+        var link = normalizeWhitespace(item && item.link ? item.link : "");
+        if (/#comment-\d+$/i.test(link)) return link;
+        return [
+            normalizeWhitespace(item && item.author ? item.author : ""),
+            normalizeWhitespace(item && item.date ? item.date : ""),
+            normalizeWhitespace(item && item.content && item.content[0] ? item.content[0].value : "")
+        ].join("|");
+    }
+
+    function invenSortComments(items) {
+        return (items || []).slice().sort(function (left, right) {
+            var leftKey = normalizeWhitespace(left && left._invenSortKey ? left._invenSortKey : "");
+            var rightKey = normalizeWhitespace(right && right._invenSortKey ? right._invenSortKey : "");
+            if (leftKey && rightKey && leftKey !== rightKey) return leftKey < rightKey ? -1 : 1;
+            if (leftKey && !rightKey) return -1;
+            if (!leftKey && rightKey) return 1;
+            return 0;
+        });
     }
 
     function invenDedupComments(items) {
@@ -475,17 +738,38 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         for (var i = 0; i < (items || []).length; i++) {
             var item = items[i];
             if (!item) continue;
-            var key = [
-                normalizeWhitespace(item.author || ""),
-                normalizeWhitespace(item.date || ""),
-                normalizeWhitespace(item.content && item.content[0] ? item.content[0].value : "")
-            ].join("|");
+            var key = invenCommentDedupKey(item);
             if (!key || seen[key]) continue;
             seen[key] = true;
-            item.link = url + "#comment-" + (out.length + 1);
+            if (!item.link) item.link = url + "#comment-" + (out.length + 1);
+            if (item._invenDedupKey) delete item._invenDedupKey;
+            if (item._invenSortKey) delete item._invenSortKey;
             out.push(item);
         }
         return out;
+    }
+
+    function invenFetchAllCommentPayloads() {
+        var payloads = [];
+        var fetchedTitles = {};
+        var initialPayload = invenFetchCommentPayload("");
+        if (!initialPayload) return payloads;
+
+        payloads.push(initialPayload);
+        if (!initialPayload.data) return payloads;
+
+        for (var round = 0; round < 8; round++) {
+            var pendingTitles = invenCollectPendingTitles(payloads[payloads.length - 1].data, fetchedTitles);
+            if (pendingTitles.length === 0) break;
+            for (var i = 0; i < pendingTitles.length; i++) {
+                fetchedTitles[pendingTitles[i]] = true;
+            }
+            var nextPayload = invenFetchCommentPayload(pendingTitles.join("|"));
+            if (!nextPayload) break;
+            payloads.push(nextPayload);
+            if (!nextPayload.data) break;
+        }
+        return payloads;
     }
 
     var comeIdx = invenExtractSettingValue("comeidx") || (match && match.board ? String(match.board.id || "").replace(/^come_/, "") : "");
@@ -495,43 +779,26 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
     var iskin = invenExtractSettingValue("iskin") || "webzine";
     if (!comeIdx || !articleCode || !customNum) return comments;
 
-    var options = buildFetchOptions();
-    if (!options.headers) options.headers = {};
-    options.method = "POST";
-    options.headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8";
-    options.headers["X-Requested-With"] = "XMLHttpRequest";
-    options.headers["Referer"] = url;
-    options.headers["Origin"] = "https://www.inven.co.kr";
-    options.body = [
-        "comeidx=" + encodeURIComponent(comeIdx),
-        "articlecode=" + encodeURIComponent(articleCode),
-        "cmtcodes=" + encodeURIComponent(customNum),
-        "titles=",
-        "listoption=" + encodeURIComponent("date"),
-        "commentPos=" + encodeURIComponent(commentPos),
-        "iskin=" + encodeURIComponent(iskin),
-        "date=" + encodeURIComponent(String(Date.now()))
-    ].join("&");
+    var payloads = invenFetchAllCommentPayloads();
+    if (!payloads || payloads.length === 0) return comments;
 
-    var response = fetchWithLogging("https://www.inven.co.kr/common/board/comment.json.php", options);
-    if (!response || !response.ok) return comments;
-
-    var rawText = response.text();
-    if (!rawText) return comments;
-    var parsedData = null;
-    try {
-        parsedData = JSON.parse(rawText);
-    } catch (e) {
-    }
-
-    if (parsedData) {
-        var parsedComments = invenDedupComments(invenParseJsonComments(parsedData));
-        if (parsedComments.length > 0) return parsedComments;
-    }
-
+    var parsedComments = [];
     var htmlCandidates = [];
-    if (parsedData) invenCollectHtmlCandidates(parsedData, htmlCandidates, 0);
-    if (htmlCandidates.length === 0) htmlCandidates.push(rawText);
+    for (var payloadIndex = 0; payloadIndex < payloads.length; payloadIndex++) {
+        var payload = payloads[payloadIndex];
+        if (!payload) continue;
+        if (payload.data) {
+            parsedComments = parsedComments.concat(invenParseJsonComments(payload.data));
+            invenCollectHtmlCandidates(payload.data, htmlCandidates, 0);
+        } else if (payload.rawText) {
+            htmlCandidates.push(payload.rawText);
+        }
+    }
+
+    parsedComments = invenDedupComments(invenSortComments(parsedComments));
+    if (parsedComments.length > 0) return parsedComments;
+
+    if (htmlCandidates.length === 0 && payloads[0] && payloads[0].rawText) htmlCandidates.push(payloads[0].rawText);
 
     var out = [];
     for (var i = 0; i < htmlCandidates.length; i++) {
@@ -548,20 +815,20 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 };
 
 var SYNURA = {
-    domain: "m.inven.co.kr",
+    domain: "www.inven.co.kr",
     name: "inven",
     description: "Unofficial Inven extension",
     version: 0.1,
     api: 0,
     license: "Apache-2.0",
-    bypass: "chrome/android",
+    bypass: "chrome/windows",
     locale: "ko_KR",
     deeplink: true,
-    icon: "https://m.inven.co.kr/favicon.ico",
+    icon: "https://www.inven.co.kr/favicon.ico",
     main: null
 };
 
-var LIST_LINK_ALLOW_PATTERNS = ["^https://m\\.inven\\.co\\.kr/board/[^/]+/\\d+/\\d+"];
+var LIST_LINK_ALLOW_PATTERNS = ["^https://www\\.inven\\.co\\.kr/board/[^/]+/\\d+/\\d+"];
 var LIST_LINK_SELECTORS = [];
 var LIST_TITLE_SELECTORS = [".subject",".tit"];
 var LIST_AUTHOR_SELECTORS = [".nick"];
@@ -574,26 +841,39 @@ var LIST_CATEGORY_SELECTORS = [".cate"];
 var LIST_IMAGE_SELECTORS = ["img"];
 
 function extractListItem(row, baseUrl) {
-    var linkNode = firstNode(row, LIST_LINK_SELECTORS);
-    var titleNode = firstNode(row, LIST_TITLE_SELECTORS);
-    var link = extractListLink(row, baseUrl, LIST_LINK_SELECTORS, LIST_LINK_ALLOW_PATTERNS);
+    var linkSelectors = selectorList("listLink", LIST_LINK_SELECTORS);
+    var titleSelectors = selectorList("listTitle", LIST_TITLE_SELECTORS);
+    var commentCountSelectors = selectorList("listCommentCount", LIST_COMMENT_COUNT_SELECTORS);
+    var viewCountSelectors = selectorList("listViewCount", LIST_VIEW_COUNT_SELECTORS);
+    var likeCountSelectors = selectorList("listLikeCount", LIST_LIKE_COUNT_SELECTORS);
+    var authorSelectors = selectorList("listAuthor", LIST_AUTHOR_SELECTORS);
+    var avatarSelectors = selectorList("listAvatar", LIST_AVATAR_SELECTORS);
+    var imageSelectors = selectorList("listImage", LIST_IMAGE_SELECTORS);
+    var categorySelectors = selectorList("listCategory", LIST_CATEGORY_SELECTORS);
+    var dateSelectors = selectorList("listDate", LIST_DATE_SELECTORS);
+    var linkNode = firstNode(row, linkSelectors);
+    var titleNode = firstNode(row, titleSelectors);
+    var link = extractListLink(row, baseUrl, linkSelectors, LIST_LINK_ALLOW_PATTERNS);
     if (!link) return null;
 
     var title = firstNonEmpty([
-        textOfNodeWithoutSelectors(titleNode, LIST_COMMENT_COUNT_SELECTORS),
+        textOfNodeWithoutSelectors(titleNode, commentCountSelectors),
         textOf(linkNode),
         textOf(row)
     ]);
     if (!title) return null;
 
-    var commentCount = hideZeroCount(parseCount(firstText(row, LIST_COMMENT_COUNT_SELECTORS)));
-    var viewCount = parseCount(firstText(row, LIST_VIEW_COUNT_SELECTORS));
-    var likeCount = hideZeroCount(parseCount(firstText(row, LIST_LIKE_COUNT_SELECTORS)));
-    var author = firstAuthorText(row, LIST_AUTHOR_SELECTORS);
-    var category = firstText(row, LIST_CATEGORY_SELECTORS);
-    var avatarSourceSelectors = LIST_AVATAR_SELECTORS.length > 0 ? LIST_AVATAR_SELECTORS : LIST_AUTHOR_SELECTORS;
+    var commentCount = hideZeroCount(parseCount(firstText(row, commentCountSelectors)));
+    var viewCount = parseCount(firstText(row, viewCountSelectors));
+    var likeCount = hideZeroCount(parseCount(firstText(row, likeCountSelectors)));
+    var author = firstAuthorText(row, authorSelectors);
+    var category = firstText(row, categorySelectors);
+    if (category && title.indexOf(category) === 0) {
+        title = normalizeWhitespace(title.slice(category.length));
+    }
+    var avatarSourceSelectors = avatarSelectors.length > 0 ? avatarSelectors : authorSelectors;
     var avatar = imageUrlFromNode(firstNode(row, avatarSourceSelectors), baseUrl);
-    var mediaUrl = imageUrlFromNode(firstNode(row, LIST_IMAGE_SELECTORS), baseUrl);
+    var mediaUrl = imageUrlFromNode(firstNode(row, imageSelectors), baseUrl);
     var types = [];
     if (mediaUrl) types.push("image");
 
@@ -602,7 +882,7 @@ function extractListItem(row, baseUrl) {
         title: title,
         author: author,
         avatar: avatar,
-        date: firstText(row, LIST_DATE_SELECTORS),
+        date: firstText(row, dateSelectors),
         category: category,
         commentCount: commentCount,
         viewCount: viewCount,

@@ -3,7 +3,6 @@ module github.com/ivere27/synura
 go 1.24.0
 
 require (
-	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/bogdanfinn/fhttp v0.5.34
 	github.com/bogdanfinn/tls-client v1.9.2
 	github.com/dop251/goja v0.0.0-20260226184354-913bd86fb70c
@@ -13,7 +12,6 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.1.1 // indirect
-	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/bogdanfinn/utls v1.6.5 // indirect
 	github.com/cloudflare/circl v1.5.0 // indirect
 	github.com/dlclark/regexp2 v1.11.4 // indirect

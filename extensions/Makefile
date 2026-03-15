@@ -1,7 +1,9 @@
 TSC ?= tsc
 TSC_FLAGS ?= --target ES2018 --module none --lib ES2018,DOM --skipLibCheck --pretty false --removeComments --noEmitOnError
 TERSER ?= terser
-TERSER_FLAGS ?= -c -m --ecma 2018
+TERSER_FLAGS ?= --ecma 2018
+TERSER_COMPRESS_FLAGS ?= toplevel=true
+TERSER_MANGLE_FLAGS ?= toplevel=true,reserved=[SYNURA,SITE]
 MINIFY ?= 1
 SIZE_WARNING_BYTES ?= 131072
 
@@ -46,7 +48,7 @@ define compile_js
 	@mv $@.tmp $@
 	@if [ "$(MINIFY)" = "1" ]; then \
 		if command -v "$(TERSER)" >/dev/null 2>&1; then \
-			"$(TERSER)" $(TERSER_FLAGS) "$@" -o "$@.tmp"; \
+			"$(TERSER)" "$@" $(TERSER_FLAGS) --compress "$(TERSER_COMPRESS_FLAGS)" --mangle "$(TERSER_MANGLE_FLAGS)" -o "$@.tmp"; \
 		else \
 			echo "Error: MINIFY=1 but terser is not installed. Install terser or run make MINIFY=0." >&2; \
 			exit 1; \

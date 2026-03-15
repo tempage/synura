@@ -633,26 +633,36 @@ var LIST_CATEGORY_SELECTORS = [".tit .cate",".cate",".category"];
 var LIST_IMAGE_SELECTORS = ["img"];
 
 function extractListItem(row, baseUrl) {
-    var linkNode = firstNode(row, LIST_LINK_SELECTORS);
-    var titleNode = firstNode(row, LIST_TITLE_SELECTORS);
-    var link = extractListLink(row, baseUrl, LIST_LINK_SELECTORS, LIST_LINK_ALLOW_PATTERNS);
+    var linkSelectors = selectorList("listLink", LIST_LINK_SELECTORS);
+    var titleSelectors = selectorList("listTitle", LIST_TITLE_SELECTORS);
+    var commentCountSelectors = selectorList("listCommentCount", LIST_COMMENT_COUNT_SELECTORS);
+    var viewCountSelectors = selectorList("listViewCount", LIST_VIEW_COUNT_SELECTORS);
+    var likeCountSelectors = selectorList("listLikeCount", LIST_LIKE_COUNT_SELECTORS);
+    var authorSelectors = selectorList("listAuthor", LIST_AUTHOR_SELECTORS);
+    var avatarSelectors = selectorList("listAvatar", LIST_AVATAR_SELECTORS);
+    var imageSelectors = selectorList("listImage", LIST_IMAGE_SELECTORS);
+    var categorySelectors = selectorList("listCategory", LIST_CATEGORY_SELECTORS);
+    var dateSelectors = selectorList("listDate", LIST_DATE_SELECTORS);
+    var linkNode = firstNode(row, linkSelectors);
+    var titleNode = firstNode(row, titleSelectors);
+    var link = extractListLink(row, baseUrl, linkSelectors, LIST_LINK_ALLOW_PATTERNS);
     if (!link) return null;
 
     var title = firstNonEmpty([
-        textOfNodeWithoutSelectors(titleNode, LIST_COMMENT_COUNT_SELECTORS),
+        textOfNodeWithoutSelectors(titleNode, commentCountSelectors),
         textOf(linkNode),
         textOf(row)
     ]);
     if (!title) return null;
 
-    var commentCount = hideZeroCount(parseCount(firstText(row, LIST_COMMENT_COUNT_SELECTORS)));
-    var viewCount = hideZeroCount(parseCount(firstText(row, LIST_VIEW_COUNT_SELECTORS)));
-    var likeCount = hideZeroCount(parseCount(firstText(row, LIST_LIKE_COUNT_SELECTORS)));
-    var author = firstAuthorText(row, LIST_AUTHOR_SELECTORS);
-    var category = firstText(row, LIST_CATEGORY_SELECTORS);
-    var avatarSourceSelectors = LIST_AVATAR_SELECTORS.length > 0 ? LIST_AVATAR_SELECTORS : LIST_AUTHOR_SELECTORS;
+    var commentCount = hideZeroCount(parseCount(firstText(row, commentCountSelectors)));
+    var viewCount = hideZeroCount(parseCount(firstText(row, viewCountSelectors)));
+    var likeCount = hideZeroCount(parseCount(firstText(row, likeCountSelectors)));
+    var author = firstAuthorText(row, authorSelectors);
+    var category = firstText(row, categorySelectors);
+    var avatarSourceSelectors = avatarSelectors.length > 0 ? avatarSelectors : authorSelectors;
     var avatar = imageUrlFromNode(firstNode(row, avatarSourceSelectors), baseUrl);
-    var mediaUrl = imageUrlFromNode(firstNode(row, LIST_IMAGE_SELECTORS), baseUrl);
+    var mediaUrl = imageUrlFromNode(firstNode(row, imageSelectors), baseUrl);
     var types = [];
     if (mediaUrl) types.push("image");
 
@@ -661,7 +671,7 @@ function extractListItem(row, baseUrl) {
         title: title,
         author: author,
         avatar: avatar,
-        date: firstText(row, LIST_DATE_SELECTORS),
+        date: firstText(row, dateSelectors),
         category: category,
         commentCount: commentCount,
         viewCount: viewCount,

@@ -10,7 +10,7 @@ var SYNURA = {
   locale: "",
   bypass: "chrome/android",
   deeplink: !0,
-  tags: [ "video", "streaming", "search", "media" ],
+  tags: [ "video", "streaming", "search" ],
   get main() {
     return handler;
   }
@@ -50,7 +50,74 @@ var SYNURA = {
   tr: "trend videolar",
   vi: "video thịnh hành",
   ur: "ٹرینڈنگ ویڈیوز"
-}, SEARCH_MENU_OPEN = "menu_open_youtube", POST_MENU_OPEN = "menu_open_browser", POST_MENU_RELATED = "menu_open_related", POST_MENU_CHANNEL = "menu_open_channel", MENU_SETTINGS = "menu_settings", HOME_MENU_CHANNEL_LIST = "menu_channel_list", CHANNEL_MENU_BOOKMARK = "menu_bookmark_channel", CHANNEL_MENU_UNBOOKMARK = "menu_remove_bookmark", CHANNEL_MENU_OPEN_BROWSER = "menu_open_channel_browser", CHANNEL_MENU_ENABLE_VIDEOS = "menu_enable_videos", CHANNEL_MENU_ENABLE_STREAMS = "menu_enable_streams", ITEM_MENU_OPEN_BROWSER = "menu_open_browser", ITEM_MENU_OPEN_VIDEO = "menu_open_video", ITEM_MENU_OPEN_CHANNEL = "menu_open_channel", ITEM_MENU_REMOVE_BOOKMARK = "menu_remove_bookmark", BUTTON_SAVE = "button_save", BUTTON_CLEAR = "button_clear", BUTTON_CANCEL = "button_cancel", STARRED_CHANNELS_KEY = "youtube_starred_channels_v1", API_KEY_OVERRIDE_STORAGE_KEY = "youtube_api_key_override_v1", LANGUAGE_OVERRIDE_STORAGE_KEY = "youtube_language_override_v1", CHANNEL_LIST_CHUNK_SIZE_STORAGE_KEY = "youtube_channel_list_chunk_size_v1", INNERTUBE_CONFIG_CACHE_KEY = "youtube_innertube_config_v1", CHANNEL_PAGE_CACHE_TTL_MS = 3e5, CHANNEL_PAGE_CACHE_LIMIT = 24, DEFAULT_CHANNEL_LIST_CHUNK_SIZE = 16, CHANNEL_HOME_PREVIEW_MIN_ITEMS = 16, CHANNEL_HOME_PREVIEW_MAX_ITEMS = 32, CHANNEL_HOME_PREVIEW_MULTIPLIER = 1, innertubeConfigCache = null, channelPageCache = {}, channelPageCacheOrder = [], YOUTUBE_LANGUAGES = [ {
+}, SEARCH_MENU_OPEN = "menu_open_youtube", POST_MENU_OPEN = "menu_open_browser", POST_MENU_RELATED = "menu_open_related", POST_MENU_CHANNEL = "menu_open_channel", MENU_SETTINGS = "menu_settings", HOME_MENU_CHANNEL_LIST = "menu_channel_list", CHANNEL_MENU_BOOKMARK = "menu_bookmark_channel", CHANNEL_MENU_UNBOOKMARK = "menu_remove_bookmark", CHANNEL_MENU_OPEN_BROWSER = "menu_open_channel_browser", CHANNEL_MENU_ENABLE_VIDEOS = "menu_enable_videos", CHANNEL_MENU_ENABLE_STREAMS = "menu_enable_streams", ITEM_MENU_OPEN_BROWSER = "menu_open_browser", ITEM_MENU_OPEN_VIDEO = "menu_open_video", ITEM_MENU_OPEN_CHANNEL = "menu_open_channel", ITEM_MENU_REMOVE_BOOKMARK = "menu_remove_bookmark", BUTTON_SAVE = "button_save", BUTTON_CLEAR = "button_clear", BUTTON_CANCEL = "button_cancel", VIDEO_SORT_DATE = "date", VIDEO_SORT_VIEWS = "views", VIDEO_SORT_STARRED = "starred", VIDEO_SORT_IDS = [ VIDEO_SORT_DATE, VIDEO_SORT_VIEWS, VIDEO_SORT_STARRED ], VIDEO_SORT_LABELS = {
+  date: {
+    ar: "الأحدث",
+    bn: "সর্বশেষ",
+    "zh-CN": "最新",
+    "zh-TW": "最新",
+    en: "Latest",
+    fr: "Plus récentes",
+    de: "Neueste",
+    hi: "नवीनतम",
+    it: "Più recenti",
+    id: "Terbaru",
+    ja: "新しい順",
+    ko: "최신순",
+    pl: "Najnowsze",
+    pt: "Mais recentes",
+    ru: "Новые",
+    es: "Más recientes",
+    th: "ล่าสุด",
+    tr: "En yeni",
+    vi: "Mới nhất",
+    ur: "تازہ ترین"
+  },
+  views: {
+    ar: "الشائع",
+    bn: "জনপ্রিয়",
+    "zh-CN": "热门",
+    "zh-TW": "熱門",
+    en: "Popular",
+    fr: "Populaires",
+    de: "Beliebt",
+    hi: "लोकप्रिय",
+    it: "Popolari",
+    id: "Populer",
+    ja: "人気順",
+    ko: "인기순",
+    pl: "Popularne",
+    pt: "Populares",
+    ru: "Популярные",
+    es: "Populares",
+    th: "ยอดนิยม",
+    tr: "Popüler",
+    vi: "Phổ biến",
+    ur: "مقبول"
+  },
+  starred: {
+    ar: "القنوات المحفوظة أولاً",
+    bn: "সংরক্ষিত চ্যানেল আগে",
+    "zh-CN": "已收藏频道优先",
+    "zh-TW": "已收藏頻道優先",
+    en: "Starred Channels First",
+    fr: "Chaînes enregistrées d'abord",
+    de: "Gespeicherte Kanäle zuerst",
+    hi: "सहेजे गए चैनल पहले",
+    it: "Canali salvati prima",
+    id: "Channel tersimpan lebih dulu",
+    ja: "保存したチャンネルを優先",
+    ko: "북마크한 채널 우선",
+    pl: "Najpierw zapisane kanały",
+    pt: "Canais salvos primeiro",
+    ru: "Сначала сохранённые каналы",
+    es: "Canales guardados primero",
+    th: "ช่องที่บันทึกไว้ก่อน",
+    tr: "Kaydedilen kanallar önce",
+    vi: "Ưu tiên kênh đã lưu",
+    ur: "محفوظ چینلز پہلے"
+  }
+}, STARRED_CHANNELS_KEY = "youtube_starred_channels_v1", API_KEY_OVERRIDE_STORAGE_KEY = "youtube_api_key_override_v1", LANGUAGE_OVERRIDE_STORAGE_KEY = "youtube_language_override_v1", CHANNEL_LIST_CHUNK_SIZE_STORAGE_KEY = "youtube_channel_list_chunk_size_v1", INNERTUBE_CONFIG_CACHE_KEY = "youtube_innertube_config_v1", CHANNEL_PAGE_CACHE_TTL_MS = 3e5, CHANNEL_PAGE_CACHE_LIMIT = 24, DEFAULT_CHANNEL_LIST_CHUNK_SIZE = 16, CHANNEL_HOME_PREVIEW_MIN_ITEMS = 16, CHANNEL_HOME_PREVIEW_MAX_ITEMS = 32, CHANNEL_HOME_PREVIEW_MULTIPLIER = 1, innertubeConfigCache = null, channelPageCache = {}, channelPageCacheOrder = [], YOUTUBE_LANGUAGES = [ {
   code: "ar",
   label: "العربية",
   hl: "ar",
@@ -207,12 +274,12 @@ var SYNURA = {
       if ("QUERY" === event.eventId) {
         if ("home" === state.mode) {
           var homeQuery = cleanQuery(event.data && event.data.query);
-          return homeQuery ? void openSearchView(homeQuery) : void showSnackbar(viewId, t("prompt_type_search_query"));
+          return void openSearchView(homeQuery || getHomeFallbackSearchQuery());
         }
         if ("channel" === state.mode) return state.channelQuery = cleanQuery(event.data && event.data.query), 
         void loadChannelFirstPage(viewId, !1);
         if ("search" !== state.mode) return;
-        var query = cleanQuery(event.data && event.data.query) || DEFAULT_QUERY;
+        var query = cleanQuery(event.data && event.data.query) || getHomeFallbackSearchQuery();
         return state.query = query, void loadSearchFirstPage(viewId, query);
       }
       if ("SCROLL_TO_END" !== event.eventId) {
@@ -252,7 +319,7 @@ var SYNURA = {
     if ("LOAD" !== event.eventId && "REFRESH" !== event.eventId) if ("SCROLL_TO_END" !== event.eventId) if ("SUBMIT" !== event.eventId) if ("ITEM_MENU_CLICK" !== event.eventId) {
       if ("MENU_CLICK" === event.eventId) {
         var menuName = getString(event.data && event.data.menu);
-        return matchesUIString(menuName, MENU_SETTINGS) ? void openSettingsDialog(viewId, state) : matchesUIString(menuName, POST_MENU_OPEN) ? void openBrowser(localizedURL(watchURL(state.videoId)), t("title_youtube")) : matchesUIString(menuName, POST_MENU_RELATED) ? void openRelatedFromPost(viewId) : matchesUIString(menuName, POST_MENU_CHANNEL) ? void openChannelFromPostState(viewId) : void 0;
+        return matchesUIString(menuName, POST_MENU_OPEN) ? void openBrowser(localizedURL(watchURL(state.videoId)), t("title_youtube")) : matchesUIString(menuName, POST_MENU_RELATED) ? void openRelatedFromPost(viewId) : matchesUIString(menuName, POST_MENU_CHANNEL) ? void openChannelFromPostState(viewId) : void 0;
       }
       "AUTHOR_CLICK" === event.eventId && openChannelFromPostState(viewId);
     } else {
@@ -305,6 +372,7 @@ var SYNURA = {
       starred: !1,
       enableVideos: !0,
       enableStreams: !0,
+      videoSort: normalizeVideoSort(existing.videoSort),
       continuationSource: "",
       pendingItems: existing.pendingItems || [],
       channelTabFallbackPending: !!existing.channelTabFallbackPending,
@@ -313,10 +381,6 @@ var SYNURA = {
     };
   }
 }, openSearchView = function(query) {
-  var menuLabels = QUICK_QUERIES.map(function(item) {
-    return getQuickQueryLabel(item);
-  });
-  menuLabels.push(t(SEARCH_MENU_OPEN)), menuLabels.push(t(MENU_SETTINGS));
   var result = synura.open({
     view: "/views/list",
     styles: {
@@ -331,7 +395,7 @@ var SYNURA = {
     },
     models: {
       contents: [],
-      menus: menuLabels,
+      menus: buildSearchMenus(null),
       snackbar: t("loading_videos")
     }
   }, {
@@ -356,6 +420,7 @@ var SYNURA = {
       starred: !1,
       enableVideos: !0,
       enableStreams: !0,
+      videoSort: normalizeVideoSort(existing.videoSort),
       continuationSource: "",
       pendingItems: [],
       channelTabFallbackPending: !1
@@ -391,13 +456,13 @@ var SYNURA = {
       link: videoURL
     } ],
     comments: [],
-    menus: [ t(POST_MENU_OPEN), t(MENU_SETTINGS) ],
+    menus: [ t(POST_MENU_OPEN) ],
     buttons: [ t(POST_MENU_OPEN) ]
   };
   return seed.memo && (models.memo = seed.memo), seed.avatar && (models.avatar = seed.avatar), 
   seed.date && (models.date = seed.date), seed.viewCount && (models.viewCount = seed.viewCount), 
   seed.likeCount && (models.likeCount = seed.likeCount), seed.dislikeCount && (models.dislikeCount = seed.dislikeCount), 
-  (seed.channelUrl || seed.channelId) && (models.menus = [ t(POST_MENU_OPEN), t(POST_MENU_CHANNEL), t(MENU_SETTINGS) ]),
+  (seed.channelUrl || seed.channelId) && (models.menus = [ t(POST_MENU_OPEN), t(POST_MENU_CHANNEL) ]),
   models;
 }, openVideoView = function(videoId, titleHint, data) {
   var seed = buildPostSeed(videoId, titleHint, data), videoURL = localizedURL(watchURL(videoId)), result = synura.open({
@@ -456,7 +521,7 @@ var SYNURA = {
     },
     models: {
       contents: items || [],
-      menus: [ t(POST_MENU_OPEN), t(MENU_SETTINGS) ],
+      menus: buildRelatedMenus(null),
       snackbar: items && items.length ? "" : t("snackbar_no_related_videos")
     }
   }, {
@@ -482,6 +547,7 @@ var SYNURA = {
       starred: !1,
       enableVideos: !0,
       enableStreams: !0,
+      videoSort: normalizeVideoSort(existing.videoSort),
       continuationSource: "",
       pendingItems: []
     };
@@ -522,7 +588,8 @@ var SYNURA = {
       contents: [],
       menus: buildChannelMenus({
         channelUrl: normalizedUrl,
-        starred: starred
+        starred: starred,
+        videoSort: VIDEO_SORT_DATE
       }),
       snackbar: t("loading_channel_items")
     }
@@ -546,6 +613,7 @@ var SYNURA = {
     starred: void 0 === existing.starred ? starred : !!existing.starred,
     enableVideos: void 0 === existing.enableVideos || normalizeEnabledFlag(existing.enableVideos),
     enableStreams: void 0 === existing.enableStreams || normalizeEnabledFlag(existing.enableStreams),
+    videoSort: normalizeVideoSort(existing.videoSort),
     continuationSource: existing.continuationSource || "",
     pendingItems: existing.pendingItems || [],
     channelTabFallbackPending: void 0 !== existing.channelTabFallbackPending && !!existing.channelTabFallbackPending
@@ -601,14 +669,14 @@ var SYNURA = {
   out;
 }, buildChannelMenus = function(state) {
   var menus = [];
-  return state.channelUrl && menus.push(t(CHANNEL_MENU_OPEN_BROWSER)), menus.push({
+  return state.channelUrl && menus.push(t(CHANNEL_MENU_OPEN_BROWSER)), menus = menus.concat(buildVideoSortMenus(state && state.videoSort)), menus.push({
     label: t(CHANNEL_MENU_ENABLE_VIDEOS),
     checked: normalizeEnabledFlag(state && state.enableVideos)
   }), menus.push({
     label: t(CHANNEL_MENU_ENABLE_STREAMS),
     checked: normalizeEnabledFlag(state && state.enableStreams)
-  }), menus.push(t(state.starred ? CHANNEL_MENU_UNBOOKMARK : CHANNEL_MENU_BOOKMARK)),
-  menus.push(t(MENU_SETTINGS)), menus;
+  }), menus.push(t(state.starred ? CHANNEL_MENU_UNBOOKMARK : CHANNEL_MENU_BOOKMARK)), 
+  menus;
 }, setChannelBookmark = function(viewId, state, shouldStar) {
   if (state && (state.channelUrl || state.channelId)) {
     var changed = !1;
@@ -721,7 +789,12 @@ var SYNURA = {
 }, isMenuMatch = function(menu, label) {
   return matchesUIString(menu, label);
 }, handleListMenu = function(viewId, state, menu) {
-  if (menu) if (!matchesUIString(menu, MENU_SETTINGS)) if ("home" !== state.mode || !matchesUIString(menu, HOME_MENU_CHANNEL_LIST)) {
+  if (menu) {
+    if ("home" === state.mode && matchesUIString(menu, MENU_SETTINGS)) return void openSettingsDialog(viewId, state);
+    if ("home" === state.mode && matchesUIString(menu, HOME_MENU_CHANNEL_LIST)) return void openChannelListManager(viewId);
+    var selectedVideoSort = getVideoSortFromMenu(menu);
+    if (selectedVideoSort && isSortableVideoListState(state)) return state.videoSort = selectedVideoSort, 
+    void applyVideoSortSelection(viewId, state);
     if ("channel" === state.mode) return matchesUIString(menu, CHANNEL_MENU_OPEN_BROWSER) && state.channelUrl ? void openBrowser(localizedURL(state.channelUrl), state.channelTitle || t("title_channel")) : isMenuMatch(menu, CHANNEL_MENU_ENABLE_VIDEOS) ? (state.enableVideos = !normalizeEnabledFlag(state.enableVideos),
     void loadChannelFirstPage(viewId, !1)) : isMenuMatch(menu, CHANNEL_MENU_ENABLE_STREAMS) ? (state.enableStreams = !normalizeEnabledFlag(state.enableStreams), 
     void loadChannelFirstPage(viewId, !1)) : matchesUIString(menu, CHANNEL_MENU_BOOKMARK) ? void setChannelBookmark(viewId, state, !0) : matchesUIString(menu, CHANNEL_MENU_UNBOOKMARK) ? void setChannelBookmark(viewId, state, !1) : void 0;
@@ -729,7 +802,7 @@ var SYNURA = {
       if ("search" === state.mode) for (var i = 0; i < QUICK_QUERIES.length; i++) if (matchesUIString(menu, QUICK_QUERIES[i].labelKey)) return state.query = QUICK_QUERIES[i].query,
       void loadSearchFirstPage(viewId, state.query);
     } else openBrowser(localizedURL(watchURL(state.parentVideoId)), t("title_youtube")); else openBrowser(localizedURL(YT_ORIGIN + "/"), t("title_youtube"));
-  } else openChannelListManager(viewId); else openSettingsDialog(viewId, state);
+  }
 }, ensureListState = function(viewId, context) {
   var key = String(viewId);
   if (!listViewState[key]) {
@@ -756,6 +829,7 @@ var SYNURA = {
       starred: isStarredChannel(channelUrl, channelId),
       enableVideos: normalizeEnabledFlag(context && context.enableVideos),
       enableStreams: normalizeEnabledFlag(context && context.enableStreams),
+      videoSort: normalizeVideoSort(context && context.videoSort),
       continuationSource: getString(context && context.continuationSource),
       pendingItems: [],
       channelTabFallbackPending: !1,
@@ -787,15 +861,30 @@ var SYNURA = {
     };
   }
   return postViewState[key];
-}, renderRelatedList = function(viewId, state) {
-  state.loaded = !0, synura.update(viewId, {
+}, renderSearchList = function(viewId, state, snackbar) {
+  var items = sortVideoItemsForState(state, state.items || []), title = t("title_search_results", {
+    query: state.query || getHomeFallbackSearchQuery()
+  });
+  state.items = items, state.loaded = !0, synura.update(viewId, {
+    styles: {
+      title: title
+    },
+    models: {
+      contents: items,
+      menus: buildSearchMenus(state),
+      snackbar: void 0 === snackbar ? items.length ? "" : t("snackbar_no_videos_found") : snackbar
+    }
+  });
+}, renderRelatedList = function(viewId, state, snackbar) {
+  var items = sortVideoItemsForState(state, state.items || []);
+  state.items = items, state.loaded = !0, synura.update(viewId, {
     styles: {
       title: state.title || t("title_related_videos")
     },
     models: {
-      contents: state.items || [],
-      menus: [ t(POST_MENU_OPEN), t(MENU_SETTINGS) ],
-      snackbar: (state.items || []).length ? "" : t("snackbar_no_related_videos")
+      contents: items,
+      menus: buildRelatedMenus(state),
+      snackbar: void 0 === snackbar ? items.length ? "" : t("snackbar_no_related_videos") : snackbar
     }
   });
 }, buildHomeSnackbar = function(allChannels, visibleItems) {
@@ -811,6 +900,25 @@ var SYNURA = {
   });
 }, isHomeTrendingState = function(state) {
   return !!state && "home" === state.mode && "trending" === getString(state.homeFeedMode);
+}, renderHomeTrendingList = function(viewId, state, snackbar) {
+  var items = sortVideoItemsForState(state, state.items || []);
+  state.items = items, state.loaded = !0, synura.update(viewId, {
+    styles: {
+      title: getHomeFallbackTitle(),
+      appbar: buildHomeSearchAppbar(),
+      layout: "card",
+      pagination: !0,
+      menu: !0,
+      media: !0,
+      history: !0,
+      authorClickable: !0
+    },
+    models: {
+      contents: items,
+      menus: buildHomeMenus(state),
+      snackbar: void 0 === snackbar ? items.length ? "" : t("snackbar_no_videos_found") : snackbar
+    }
+  });
 }, loadHomeFallbackList = function(viewId, state) {
   if (state && !state.loading) {
     var keepItems = isHomeTrendingState(state), homeLabel = getHomeFallbackLabel(), homeQuery = getHomeFallbackSearchQuery();
@@ -829,30 +937,14 @@ var SYNURA = {
       },
       models: {
         contents: state.items || [],
-        menus: [ t(HOME_MENU_CHANNEL_LIST), t(MENU_SETTINGS) ],
+        menus: buildHomeMenus(state),
         snackbar: t("loading_videos")
       }
     });
     try {
       var page = fetchSearchPage(homeQuery);
       state.items = page.items, state.continuation = page.continuation, state.apiCfg = page.apiCfg, 
-      state.loaded = !0, synura.update(viewId, {
-        styles: {
-          title: getHomeFallbackTitle(),
-          appbar: buildHomeSearchAppbar(),
-          layout: "card",
-          pagination: !0,
-          menu: !0,
-          media: !0,
-          history: !0,
-          authorClickable: !0
-        },
-        models: {
-          contents: page.items,
-          menus: [ t(HOME_MENU_CHANNEL_LIST), t(MENU_SETTINGS) ],
-          snackbar: page.items.length ? "" : t("snackbar_no_videos_found")
-        }
-      });
+      renderHomeTrendingList(viewId, state, page.items.length ? "" : t("snackbar_no_videos_found"));
     } catch (e) {
       state.items = [], state.loaded = !0, showSnackbar(viewId, t("error_search_failed", {
         error: e.toString()
@@ -878,7 +970,7 @@ var SYNURA = {
     },
     models: {
       contents: state.items,
-      menus: [ t(HOME_MENU_CHANNEL_LIST), t(MENU_SETTINGS) ],
+      menus: buildHomeMenus(state),
       snackbar: buildHomeSnackbar(allChannels, state.items)
     }
   });
@@ -947,7 +1039,7 @@ var SYNURA = {
         streams: normalizeEnabledFlag(state.enableStreams)
       }, page = forceRefresh ? null : getCachedChannelPage(state.channelUrl, state.channelId, options);
       page || (page = fetchChannelPage(state.channelUrl, state.channelId, options), saveCachedChannelPage(state.channelUrl, state.channelId, options, page));
-      var split = splitBufferedItems(page.items, loadChannelListChunkSize());
+      var sortedItems = sortVideoItemsForState(state, page.items), split = splitBufferedItems(sortedItems, loadChannelListChunkSize());
       state.mode = "channel", state.items = split.visible, state.pendingItems = split.pending, 
       state.continuation = page.continuation, state.continuationSource = page.continuationSource || "", 
       state.apiCfg = page.apiCfg, state.channelTabFallbackPending = !!page.channelTabFallbackPending, 
@@ -966,14 +1058,10 @@ var SYNURA = {
 }, loadMoreChannel = function(viewId) {
   var state = listViewState[String(viewId)];
   if (state && !state.loading) {
-    var pendingAppend = drainPendingItems(state, loadChannelListChunkSize());
-    if (pendingAppend.length) return state.items = state.items.concat(pendingAppend), 
-    synura.update(viewId, {
-      models: {
-        append: pendingAppend,
-        snackbar: ""
-      }
-    }), void (state.pendingItems.length || state.continuation || state.channelTabFallbackPending || showSnackbar(viewId, t("snackbar_no_more_channel_items")));
+    var allLoadedItems = (state.items || []).concat(state.pendingItems || []), targetVisibleCount = state.items.length + loadChannelListChunkSize();
+    if (targetVisibleCount > allLoadedItems.length) targetVisibleCount = allLoadedItems.length;
+    if (targetVisibleCount > state.items.length) return rebuildChannelVisibleItems(state, targetVisibleCount), 
+    renderChannelList(viewId, state), void (state.pendingItems.length || state.continuation || state.channelTabFallbackPending || showSnackbar(viewId, t("snackbar_no_more_channel_items")));
     if (state.continuation || state.channelTabFallbackPending) {
       state.loading = !0;
       try {
@@ -1001,14 +1089,10 @@ var SYNURA = {
           var id = getString(pageItems[j] && pageItems[j].videoId);
           id && !known[id] && (known[id] = !0, freshItems.push(pageItems[j]));
         }
-        var split = splitBufferedItems(freshItems, loadChannelListChunkSize()), appended = split.visible;
-        state.pendingItems = split.pending, appended.length && (state.items = state.items.concat(appended)), 
-        synura.update(viewId, {
-          models: {
-            append: appended,
-            snackbar: appended.length ? "" : t("snackbar_no_more_channel_items")
-          }
-        }), (appended.length || state.pendingItems.length || state.continuation || state.channelTabFallbackPending) && (state.continuation || state.pendingItems.length || state.channelTabFallbackPending) || showSnackbar(viewId, t("snackbar_no_more_channel_items"));
+        var combinedItems = state.items.concat(state.pendingItems, freshItems), nextVisibleCount = state.items.length + loadChannelListChunkSize();
+        nextVisibleCount > combinedItems.length && (nextVisibleCount = combinedItems.length), 
+        state.items = combinedItems, state.pendingItems = [], rebuildChannelVisibleItems(state, nextVisibleCount), 
+        renderChannelList(viewId, state), (freshItems.length || state.pendingItems.length || state.continuation || state.channelTabFallbackPending) && (state.continuation || state.pendingItems.length || state.channelTabFallbackPending) || showSnackbar(viewId, t("snackbar_no_more_channel_items"));
       } catch (e) {
         showSnackbar(viewId, loadingDeferredTabs ? t("error_could_not_load_full_channel_list", {
           error: e.toString()
@@ -1028,19 +1112,7 @@ var SYNURA = {
     try {
       var page = fetchSearchPage(query);
       state.mode = "search", state.query = query, state.items = page.items, state.continuation = page.continuation, 
-      state.apiCfg = page.apiCfg, state.loaded = !0;
-      var title = t("title_search_results", {
-        query: query
-      });
-      synura.update(viewId, {
-        styles: {
-          title: title
-        },
-        models: {
-          contents: page.items,
-          snackbar: page.items.length ? "" : t("snackbar_no_videos_found")
-        }
-      });
+      state.apiCfg = page.apiCfg, renderSearchList(viewId, state, page.items.length ? "" : t("snackbar_no_videos_found"));
     } catch (e) {
       showSnackbar(viewId, t("error_search_failed", {
         error: e.toString()
@@ -1054,13 +1126,9 @@ var SYNURA = {
     state.loading = !0;
     try {
       var page = fetchSearchContinuation(state.continuation, state.apiCfg);
-      state.continuation = page.continuation, state.items = state.items.concat(page.items), 
-      synura.update(viewId, {
-        models: {
-          append: page.items,
-          snackbar: page.items.length ? "" : t("snackbar_no_more_results")
-        }
-      }), page.items.length && state.continuation || showSnackbar(viewId, t("snackbar_no_more_results"));
+      state.continuation = page.continuation, state.items = sortVideoItemsForState(state, state.items.concat(page.items)), 
+      renderHomeTrendingList(viewId, state, page.items.length ? "" : t("snackbar_no_more_results")), 
+      page.items.length && state.continuation || showSnackbar(viewId, t("snackbar_no_more_results"));
     } catch (e) {
       showSnackbar(viewId, t("error_could_not_load_more_videos", {
         error: e.toString()
@@ -1074,13 +1142,9 @@ var SYNURA = {
     state.loading = !0;
     try {
       var page = fetchSearchContinuation(state.continuation, state.apiCfg);
-      state.continuation = page.continuation, state.items = state.items.concat(page.items), 
-      synura.update(viewId, {
-        models: {
-          append: page.items,
-          snackbar: page.items.length ? "" : t("snackbar_no_more_results")
-        }
-      }), page.items.length && state.continuation || showSnackbar(viewId, t("snackbar_no_more_results"));
+      state.continuation = page.continuation, state.items = sortVideoItemsForState(state, state.items.concat(page.items)), 
+      renderSearchList(viewId, state, page.items.length ? "" : t("snackbar_no_more_results")), 
+      page.items.length && state.continuation || showSnackbar(viewId, t("snackbar_no_more_results"));
     } catch (e) {
       showSnackbar(viewId, t("error_could_not_load_more_videos", {
         error: e.toString()
@@ -1090,25 +1154,16 @@ var SYNURA = {
   }
 }, refreshRelatedList = function(viewId) {
   var state = listViewState[String(viewId)];
-  state && synura.update(viewId, {
-    models: {
-      contents: state.items || [],
-      snackbar: ""
-    }
-  });
+  state && renderRelatedList(viewId, state, "");
 }, loadMoreRelated = function(viewId) {
   var state = listViewState[String(viewId)];
   if (state && !state.loading && state.continuation) {
     state.loading = !0;
     try {
       var page = fetchRelatedContinuation(state.continuation, state.apiCfg);
-      state.continuation = page.continuation, state.items = state.items.concat(page.items), 
-      synura.update(viewId, {
-        models: {
-          append: page.items,
-          snackbar: page.items.length ? "" : t("snackbar_no_more_related_videos")
-        }
-      }), page.items.length && state.continuation || showSnackbar(viewId, t("snackbar_no_more_related_videos"));
+      state.continuation = page.continuation, state.items = sortVideoItemsForState(state, state.items.concat(page.items)), 
+      renderRelatedList(viewId, state, page.items.length ? "" : t("snackbar_no_more_related_videos")), 
+      page.items.length && state.continuation || showSnackbar(viewId, t("snackbar_no_more_related_videos"));
     } catch (e) {
       showSnackbar(viewId, t("error_could_not_load_related_videos", {
         error: e.toString()
@@ -1190,8 +1245,18 @@ var SYNURA = {
 }, buildPostMenus = function(state) {
   var menus = [ t(POST_MENU_OPEN) ];
   return (state.relatedItems && state.relatedItems.length || state.relatedContinuation) && menus.push(t(POST_MENU_RELATED)),
-  (state.channelUrl || state.channelId) && menus.push(t(POST_MENU_CHANNEL)), menus.push(t(MENU_SETTINGS)),
-  menus;
+  (state.channelUrl || state.channelId) && menus.push(t(POST_MENU_CHANNEL)), menus;
+}, buildSearchMenus = function(state) {
+  for (var menuLabels = QUICK_QUERIES.map(function(item) {
+    return getQuickQueryLabel(item);
+  }), i = 0, sortMenus = buildVideoSortMenus(state && state.videoSort); i < sortMenus.length; i++) menuLabels.push(sortMenus[i]);
+  return menuLabels.push(t(SEARCH_MENU_OPEN)), menuLabels;
+}, buildRelatedMenus = function(state) {
+  for (var menus = [ t(POST_MENU_OPEN) ], sortMenus = buildVideoSortMenus(state && state.videoSort), i = 0; i < sortMenus.length; i++) menus.push(sortMenus[i]);
+  return menus;
+}, buildHomeMenus = function(state) {
+  for (var menus = [ t(HOME_MENU_CHANNEL_LIST), t(MENU_SETTINGS) ], sortMenus = isHomeTrendingState(state) ? buildVideoSortMenus(state && state.videoSort) : [], i = 0; i < sortMenus.length; i++) menus.push(sortMenus[i]);
+  return menus;
 }, fetchSearchPage = function(query) {
   var normalizedQuery = cleanQuery(query) || DEFAULT_QUERY, cachedCfg = loadInnertubeConfigCache();
   if (cachedCfg && cachedCfg.apiKey) try {
@@ -1499,7 +1564,7 @@ var SYNURA = {
   }, results = getIn(initialData, [ "contents", "singleColumnWatchNextResults", "results", "results", "contents" ], []), slimMeta = findRenderer(results, "slimVideoMetadataSectionRenderer");
   if (slimMeta) {
     var info = getIn(slimMeta, [ "contents", 0, "slimVideoInformationRenderer" ], {}), owner = getIn(slimMeta, [ "contents", 1, "slimOwnerRenderer" ], {}), title = textOf(info.title), subtitle = textOf(info.expandedSubtitle) || textOf(info.collapsedSubtitle);
-    out.title = title || out.title, out.metadataLine = subtitle;
+    out.title = title || out.title, out.metadataLine = normalizeVideoMetadataLine(subtitle);
     var channel = textOf(owner.title) || textOf(owner.channelName), channelMemo = textOf(owner.expandedSubtitle) || textOf(owner.collapsedSubtitle);
     out.author = channel, out.channelTitle = channel, out.channelMemo = channelMemo, 
     out.channelAvatar = thumbnailFrom(owner.thumbnail);
@@ -1643,11 +1708,11 @@ var SYNURA = {
     viewCount: "",
     date: ""
   } : 1 === parts.length ? {
-    viewCount: parts[0],
+    viewCount: normalizeViewCountText(parts[0]),
     date: ""
   } : {
-    viewCount: parts[0],
-    date: parts[1]
+    viewCount: normalizeViewCountText(parts[0]),
+    date: normalizeDateText(parts[1])
   };
 }, extractCommentsContinuation = function(initialData) {
   for (var panels = getIn(initialData, [ "engagementPanels" ], []), i = 0; i < panels.length; i++) {
@@ -1688,8 +1753,8 @@ var SYNURA = {
 }, toVideoItem = function(renderer) {
   var videoId = getString(renderer.videoId) || getIn(renderer, [ "navigationEndpoint", "watchEndpoint", "videoId" ], "");
   if (!videoId) return null;
-  var channel = extractChannelInfoFromVideoRenderer(renderer), title = textOf(renderer.title) || textOf(renderer.headline) || t("label_untitled"), author = textOf(renderer.shortBylineText) || textOf(renderer.longBylineText) || textOf(renderer.ownerText) || channel.channelTitle, viewCount = textOf(renderer.viewCountText) || textOf(renderer.shortViewCountText), likeCount = textOf(renderer.voteCount), date = textOf(renderer.publishedTimeText), duration = textOf(renderer.lengthText), metaParts = [];
-  duration && metaParts.push(duration), viewCount && metaParts.push(viewCount), date && metaParts.push(date);
+  var channel = extractChannelInfoFromVideoRenderer(renderer), title = textOf(renderer.title) || textOf(renderer.headline) || t("label_untitled"), author = textOf(renderer.shortBylineText) || textOf(renderer.longBylineText) || textOf(renderer.ownerText) || channel.channelTitle, viewCount = normalizeViewCountText(textOf(renderer.viewCountText) || textOf(renderer.shortViewCountText)), likeCount = textOf(renderer.voteCount), date = normalizeDateText(textOf(renderer.publishedTimeText)), duration = textOf(renderer.lengthText), metaParts = [];
+  duration && metaParts.push(duration), viewCount && metaParts.push(viewCount);
   var item = {
     link: watchURL(videoId),
     videoId: videoId,
@@ -2140,6 +2205,21 @@ var SYNURA = {
 }, trimTo = function(value, maxLen) {
   var text = getString(value);
   return text.length <= maxLen ? text : text.slice(0, maxLen - 3) + "...";
+}, normalizeViewCountText = function(value) {
+  return getString(value).replace(/^조회수\s*/i, "").trim();
+}, stripLeadingDateLabel = function(value) {
+  var text = getString(value).trim(), colonIndex = text.search(/[:：]/);
+  if (!text || colonIndex <= 0 || colonIndex > 32) return text;
+  var prefix = text.slice(0, colonIndex).trim();
+  return !prefix || /\d/.test(prefix) || /[/.?#]/.test(prefix) ? text : text.slice(colonIndex + 1).trim();
+}, normalizeDateText = function(value) {
+  return stripLeadingDateLabel(value);
+}, normalizeVideoMetadataLine = function(value) {
+  for (var parts = getString(value).split("·"), out = [], i = 0; i < parts.length; i++) {
+    var part = normalizeDateText(normalizeViewCountText(parts[i])).trim();
+    part && out.push(part);
+  }
+  return out.join(" · ");
 }, cleanQuery = function(value) {
   return getString(value).replace(/\s+/g, " ").trim();
 }, showSnackbar = function(viewId, message) {
@@ -2514,4 +2594,107 @@ var SYNURA = {
 }, getNumber = function(value) {
   var n = Number(value);
   return isNaN(n) ? 0 : n;
+}, normalizeVideoSort = function(sortId) {
+  for (var selected = getString(sortId), i = 0; i < VIDEO_SORT_IDS.length; i++) if (VIDEO_SORT_IDS[i] === selected) return selected;
+  return VIDEO_SORT_DATE;
+}, getVideoSortLabel = function(sortId) {
+  var code = getCurrentUILanguageCode(), primary = code.split("-")[0], labels = VIDEO_SORT_LABELS[normalizeVideoSort(sortId)] || {};
+  return getString(labels[code] || labels[primary] || labels.en || sortId);
+}, getVideoSortFromMenu = function(menu) {
+  var text = getString(menu);
+  if (!text) return "";
+  for (var i = 0; i < VIDEO_SORT_IDS.length; i++) {
+    var sortId = VIDEO_SORT_IDS[i];
+    if (text === getVideoSortLabel(sortId)) return sortId;
+  }
+  return "";
+}, buildVideoSortMenus = function(currentSort) {
+  for (var menus = [], selected = normalizeVideoSort(currentSort), i = 0; i < VIDEO_SORT_IDS.length; i++) {
+    var sortId = VIDEO_SORT_IDS[i];
+    menus.push({
+      label: getVideoSortLabel(sortId),
+      checked: sortId === selected
+    });
+  }
+  return menus;
+}, parseCompactNumericValue = function(text) {
+  var value = getString(text).toLowerCase().replace(/\s+/g, "");
+  if (!value) return 0;
+  var compactMatch = value.match(/(\d+(?:[.,]\d+)?)\s*(k|m|b|천|만|억|万|億|亿)/i);
+  if (compactMatch) {
+    var numericText = compactMatch[1], suffix = getString(compactMatch[2]).toLowerCase(), multiplier = 1;
+    numericText = numericText.indexOf(",") >= 0 && numericText.indexOf(".") < 0 ? numericText.replace(",", ".") : numericText.replace(/,/g, "");
+    if ("k" === suffix || "천" === suffix) multiplier = 1e3; else if ("m" === suffix) multiplier = 1e6; else if ("b" === suffix) multiplier = 1e9; else if ("만" === suffix || "万" === suffix) multiplier = 1e4; else if ("억" === suffix || "億" === suffix || "亿" === suffix) multiplier = 1e8;
+    var numericValue = parseFloat(numericText);
+    return isNaN(numericValue) ? 0 : numericValue * multiplier;
+  }
+  var digitsOnly = value.replace(/[^\d]/g, "");
+  return digitsOnly ? Number(digitsOnly) : 0;
+}, parseRelativeDateValue = function(text) {
+  var value = getString(text).toLowerCase();
+  if (!value) return 0;
+  if (isLiveLikeText(value) || /(?:today|오늘|今日|今天)/i.test(value)) return Date.now();
+  if (/(?:yesterday|어제|昨日|昨天)/i.test(value)) return Date.now() - 864e5;
+  var absoluteValue = Date.parse(getString(text));
+  if (!isNaN(absoluteValue)) return absoluteValue;
+  for (var units = [ {
+    regex: /(\d+(?:[.,]\d+)?)\s*(?:years?|yrs?|년|年)/i,
+    multiplier: 31536e6
+  }, {
+    regex: /(\d+(?:[.,]\d+)?)\s*(?:months?|mos?|개월|달|월|か月|ヶ月|個月|个月)/i,
+    multiplier: 2592e6
+  }, {
+    regex: /(\d+(?:[.,]\d+)?)\s*(?:weeks?|wks?|주|週|周)/i,
+    multiplier: 6048e5
+  }, {
+    regex: /(\d+(?:[.,]\d+)?)\s*(?:days?|일|日|天)/i,
+    multiplier: 864e5
+  }, {
+    regex: /(\d+(?:[.,]\d+)?)\s*(?:hours?|hrs?|시간|時|小時|小时)/i,
+    multiplier: 36e5
+  }, {
+    regex: /(\d+(?:[.,]\d+)?)\s*(?:minutes?|mins?|분|分鐘|分钟)/i,
+    multiplier: 6e4
+  }, {
+    regex: /(\d+(?:[.,]\d+)?)\s*(?:seconds?|secs?|초|秒)/i,
+    multiplier: 1e3
+  } ], i = 0; i < units.length; i++) {
+    var match = value.match(units[i].regex);
+    if (match && match[1]) {
+      var amount = match[1].indexOf(",") >= 0 && match[1].indexOf(".") < 0 ? match[1].replace(",", ".") : match[1].replace(/,/g, ""), count = parseFloat(amount);
+      if (!isNaN(count)) return Date.now() - count * units[i].multiplier;
+    }
+  }
+  return 0;
+}, getVideoSortScore = function(item, sortId) {
+  return VIDEO_SORT_VIEWS === sortId ? parseCompactNumericValue(item && item.viewCount) : VIDEO_SORT_DATE === sortId ? parseRelativeDateValue(item && item.date) : VIDEO_SORT_STARRED === sortId ? isStarredChannel(item && item.channelUrl, item && item.channelId, item && item.channelTitle, item && item.channelAvatar) ? 1 : 0 : 0;
+}, sortVideoItems = function(items, sortId) {
+  var list = Array.isArray(items) ? items.slice() : [], selected = normalizeVideoSort(sortId);
+  for (var decorated = [], i = 0; i < list.length; i++) decorated.push({
+    item: list[i],
+    index: i,
+    score: getVideoSortScore(list[i], selected)
+  });
+  decorated.sort(function(left, right) {
+    var delta = right.score - left.score;
+    return delta || left.index - right.index;
+  });
+  for (var out = [], j = 0; j < decorated.length; j++) out.push(decorated[j].item);
+  return out;
+}, sortVideoItemsForState = function(state, items) {
+  return sortVideoItems(items, state && state.videoSort);
+}, rebuildChannelVisibleItems = function(state, targetVisibleCount) {
+  if (state) {
+    var allItems = sortVideoItemsForState(state, (state.items || []).concat(state.pendingItems || [])), visibleCount = Math.floor(getNumber(targetVisibleCount));
+    visibleCount < 0 && (visibleCount = 0), visibleCount > allItems.length && (visibleCount = allItems.length), 
+    state.items = allItems.slice(0, visibleCount), state.pendingItems = allItems.slice(visibleCount);
+  }
+}, isSortableVideoListState = function(state) {
+  return !!state && ("search" === state.mode || "related" === state.mode || "channel" === state.mode || isHomeTrendingState(state));
+}, applyVideoSortSelection = function(viewId, state) {
+  if (state) {
+    var snackbar = getVideoSortLabel(state.videoSort);
+    "channel" === state.mode ? (rebuildChannelVisibleItems(state, state.items.length), renderChannelList(viewId, state), 
+    showSnackbar(viewId, snackbar)) : "related" === state.mode ? renderRelatedList(viewId, state, snackbar) : "search" === state.mode ? renderSearchList(viewId, state, snackbar) : isHomeTrendingState(state) && renderHomeTrendingList(viewId, state, snackbar);
+  }
 };

@@ -95,8 +95,8 @@
       "version": 0.1,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/inven.js",
       "api": 0,
-      "domain": "m.inven.co.kr",
-      "icon": "https://m.inven.co.kr/favicon.ico",
+      "domain": "www.inven.co.kr",
+      "icon": "https://www.inven.co.kr/favicon.ico",
       "locale": "ko_KR"
     },
     {

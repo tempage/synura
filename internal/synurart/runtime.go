@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -71,9 +72,10 @@ type Runtime struct {
 	localBackend   LocalStorageBackend
 	sessionStorage map[string]any
 	locale         string
-	nodeIndex      map[int64]any
+	document       *DOMElement
+	domPrototype   *goja.Object
 	nodeObjects    map[*html.Node]*goja.Object
-	nextNodeID     int64
+	domParseMs     atomic.Int64
 	fetchTimeout   time.Duration
 	fetchOverrides map[string]string
 }
@@ -121,9 +123,7 @@ func NewWithOptions(out, errOut io.Writer, opts Options) (*Runtime, error) {
 		localBackend:   opts.LocalStorageBackend,
 		sessionStorage: make(map[string]any),
 		locale:         defaultNavigatorLanguage,
-		nodeIndex:      make(map[int64]any),
 		nodeObjects:    make(map[*html.Node]*goja.Object),
-		nextNodeID:     1,
 		fetchTimeout:   defaultFetchTimeout,
 		fetchOverrides: make(map[string]string),
 	}
@@ -158,6 +158,14 @@ func (r *Runtime) SetTimeout(timeout time.Duration) error {
 	}
 	r.fetchTimeout = timeout
 	return nil
+}
+
+func (r *Runtime) RecordDOMParse(durationMs int64) {
+	r.domParseMs.Add(durationMs)
+}
+
+func (r *Runtime) DOMParseMs() int64 {
+	return r.domParseMs.Load()
 }
 
 // Locale returns the current navigator.language value.
@@ -368,10 +376,12 @@ func (r *Runtime) replaceLocalStorage(next map[string]string) error {
 }
 
 func (r *Runtime) installGlobals() {
+	r.initDOM()
 	r.installNavigator()
 	r.installConsole()
 	r.installStorage()
 	r.installSynura()
+	r.installDocument()
 	r.installFetch()
 	r.installURLSearchParams()
 	r.installDOMParser()
@@ -531,8 +541,25 @@ func (r *Runtime) installSynura() {
 	_ = synura.Set("update", func(call goja.FunctionCall) goja.Value { return r.jsUpdate(call) })
 	_ = synura.Set("connect", func(call goja.FunctionCall) goja.Value { return r.jsConnect(call) })
 	_ = synura.Set("close", func(call goja.FunctionCall) goja.Value { return r.jsClose(call) })
-	_ = synura.Set("parse", func(call goja.FunctionCall) goja.Value { return r.jsParse(call) })
+	_ = synura.Set("parse", func(call goja.FunctionCall) goja.Value { return r.hostSynuraParse(call) })
 	_ = r.vm.Set("synura", synura)
+}
+
+func (r *Runtime) installDocument() {
+	document := r.vm.NewObject()
+	_ = document.Set("querySelector", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 1 {
+			return goja.Null()
+		}
+		return r.hostQuerySelector(call.Argument(0).String())
+	})
+	_ = document.Set("querySelectorAll", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 1 {
+			return r.vm.ToValue([]any{})
+		}
+		return r.hostQuerySelectorAll(call.Argument(0).String())
+	})
+	_ = r.vm.Set("document", document)
 }
 
 func (r *Runtime) installFetch() {
@@ -547,17 +574,7 @@ func (r *Runtime) installFetch() {
 }
 
 func (r *Runtime) installDOMParser() {
-	_ = r.vm.Set("DOMParser", func(call goja.ConstructorCall) *goja.Object {
-		obj := call.This
-		_ = obj.Set("parseFromString", func(fc goja.FunctionCall) goja.Value {
-			htmlText := ""
-			if len(fc.Arguments) > 0 {
-				htmlText = fc.Argument(0).String()
-			}
-			return r.newDocumentFromHTML(htmlText)
-		})
-		return obj
-	})
+	_ = r.vm.Set("DOMParser", r.newDOMParser)
 }
 
 func (r *Runtime) installTextEncoder() {
@@ -948,21 +965,6 @@ func (r *Runtime) jsClose(call goja.FunctionCall) goja.Value {
 	return r.vm.ToValue(res)
 }
 
-func (r *Runtime) jsParse(call goja.FunctionCall) goja.Value {
-	if len(call.Arguments) < 2 {
-		return r.vm.ToValue([]any{})
-	}
-	kind := call.Argument(0).String()
-	if kind != "post" {
-		return r.vm.ToValue([]any{})
-	}
-	node := r.nodeFromValue(call.Argument(1))
-	if node == nil {
-		return r.vm.ToValue([]any{})
-	}
-	return r.vm.ToValue(domToDetails(node))
-}
-
 func (r *Runtime) jsFetch(call goja.FunctionCall) goja.Value {
 	startedAt := time.Now()
 	if len(call.Arguments) < 1 {
@@ -1115,7 +1117,7 @@ func (r *Runtime) fetchOverrideResponse(urlStr, filePath string, progressFn goja
 }
 
 func (r *Runtime) validateFetchDomain(rawURL string) error {
-	allowedHosts, err := r.allowedFetchHosts()
+	allowedDomain, err := r.synuraDomain()
 	if err != nil {
 		return err
 	}
@@ -1123,51 +1125,10 @@ func (r *Runtime) validateFetchDomain(rawURL string) error {
 	if err != nil {
 		return err
 	}
-	for _, allowedHost := range allowedHosts {
-		if reqHost == allowedHost {
-			return nil
-		}
+	if reqHost == allowedDomain {
+		return nil
 	}
-	return fmt.Errorf("fetch host %q is not allowed (allowed=%q)", reqHost, strings.Join(allowedHosts, ", "))
-}
-
-func (r *Runtime) allowedFetchHosts() ([]string, error) {
-	allowedDomain, err := r.synuraDomain()
-	if err != nil {
-		return nil, err
-	}
-	hosts := []string{allowedDomain}
-	seen := map[string]struct{}{allowedDomain: {}}
-
-	siteDef := r.vm.Get("SITE")
-	if siteDef == nil || goja.IsUndefined(siteDef) || goja.IsNull(siteDef) {
-		return hosts, nil
-	}
-	siteObj := siteDef.ToObject(r.vm)
-	if siteObj == nil {
-		return hosts, nil
-	}
-	aliasesValue := siteObj.Get("hostAliases")
-	if goja.IsUndefined(aliasesValue) || goja.IsNull(aliasesValue) {
-		return hosts, nil
-	}
-	exported := aliasesValue.Export()
-	aliases, ok := exported.([]any)
-	if !ok {
-		return hosts, nil
-	}
-	for _, alias := range aliases {
-		host := normalizeHost(stringifyAny(alias))
-		if host == "" {
-			continue
-		}
-		if _, exists := seen[host]; exists {
-			continue
-		}
-		seen[host] = struct{}{}
-		hosts = append(hosts, host)
-	}
-	return hosts, nil
+	return fmt.Errorf("fetch host %q is not allowed (allowed=%q)", reqHost, allowedDomain)
 }
 
 func (r *Runtime) synuraDomain() (string, error) {
@@ -1274,7 +1235,16 @@ func (r *Runtime) errorFetchResponse(message string) goja.Value {
 	_ = obj.Set("text", func(goja.FunctionCall) goja.Value { return r.vm.ToValue("") })
 	_ = obj.Set("arrayBuffer", func(goja.FunctionCall) goja.Value { return r.newArrayBufferValue(nil) })
 	_ = obj.Set("json", func(goja.FunctionCall) goja.Value { return r.vm.ToValue(map[string]any{}) })
-	_ = obj.Set("dom", func(goja.FunctionCall) goja.Value { return r.newDocumentFromHTML("") })
+	_ = obj.Set("dom", func(call goja.FunctionCall) goja.Value {
+		mimeType := "text/html"
+		if len(call.Arguments) > 0 && !goja.IsUndefined(call.Argument(0)) && !goja.IsNull(call.Argument(0)) {
+			mimeType = call.Argument(0).String()
+		}
+		if mimeType != "text/html" {
+			panic(r.vm.ToValue("Unsupported mimeType for dom(): " + mimeType))
+		}
+		return r.newDocumentFromHTML("")
+	})
 	return obj
 }
 
@@ -1307,6 +1277,13 @@ func (r *Runtime) buildFetchResponse(resp *fetch.Response) goja.Value {
 		return r.vm.ToValue(v)
 	})
 	_ = obj.Set("dom", func(call goja.FunctionCall) goja.Value {
+		mimeType := "text/html"
+		if len(call.Arguments) > 0 && !goja.IsUndefined(call.Argument(0)) && !goja.IsNull(call.Argument(0)) {
+			mimeType = call.Argument(0).String()
+		}
+		if mimeType != "text/html" {
+			panic(r.vm.ToValue("Unsupported mimeType for dom(): " + mimeType))
+		}
 		return r.newDocumentFromHTML(body)
 	})
 	return obj

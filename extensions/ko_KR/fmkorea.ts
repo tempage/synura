@@ -678,7 +678,7 @@ function fmkoreaAppendOlderComments(viewId, state) {
 
 function parseFmkoreaBoardItems(doc, baseUrl) {
     var root = fmkoreaParseBoardRoot(doc);
-    var rows = allNodes(root, LIST_ROW_SELECTORS);
+    var rows = allNodes(root, selectorList("listRows", LIST_ROW_SELECTORS));
     if (!rows || rows.length === 0) return [];
 
     var items = [];
@@ -710,43 +710,53 @@ function fmkoreaParseBoardRoot(input) {
 }
 
 function extractListItem(row, baseUrl) {
-    var linkNode = firstNode(row, LIST_LINK_SELECTORS);
-    var titleNode = firstNode(row, LIST_TITLE_SELECTORS);
-    var link = extractListLink(row, baseUrl, LIST_LINK_SELECTORS, LIST_LINK_ALLOW_PATTERNS);
+    var linkSelectors = selectorList("listLink", LIST_LINK_SELECTORS);
+    var titleSelectors = selectorList("listTitle", LIST_TITLE_SELECTORS);
+    var authorSelectors = selectorList("listAuthor", LIST_AUTHOR_SELECTORS);
+    var avatarSelectors = selectorList("listAvatar", LIST_AVATAR_SELECTORS);
+    var dateSelectors = selectorList("listDate", LIST_DATE_SELECTORS);
+    var commentCountSelectors = selectorList("listCommentCount", LIST_COMMENT_COUNT_SELECTORS);
+    var viewCountSelectors = selectorList("listViewCount", LIST_VIEW_COUNT_SELECTORS);
+    var likeCountSelectors = selectorList("listLikeCount", LIST_LIKE_COUNT_SELECTORS);
+    var categorySelectors = selectorList("listCategory", LIST_CATEGORY_SELECTORS);
+    var imageSelectors = selectorList("listImage", LIST_IMAGE_SELECTORS);
+    var linkNode = firstNode(row, linkSelectors);
+    var titleNode = firstNode(row, titleSelectors);
+    var link = extractListLink(row, baseUrl, linkSelectors, LIST_LINK_ALLOW_PATTERNS);
     if (!link) return null;
 
     var title = firstNonEmpty([
-        textOfNodeWithoutSelectors(titleNode, LIST_COMMENT_COUNT_SELECTORS),
-        textOfNodeWithoutSelectors(linkNode, LIST_COMMENT_COUNT_SELECTORS),
+        textOfNodeWithoutSelectors(titleNode, commentCountSelectors),
+        textOfNodeWithoutSelectors(linkNode, commentCountSelectors),
         textOf(linkNode),
         textOf(row)
     ]);
     if (!title) return null;
 
-    var commentCount = hideZeroCount(parseCount(firstText(row, LIST_COMMENT_COUNT_SELECTORS)));
+    var commentCount = hideZeroCount(parseCount(firstText(row, commentCountSelectors)));
     var viewCount = firstNonEmpty([
-        hideZeroCount(parseCount(firstText(row, LIST_VIEW_COUNT_SELECTORS))),
+        hideZeroCount(parseCount(firstText(row, viewCountSelectors))),
         hideZeroCount(fmkoreaInfoText(row, "fa-eye"))
     ]);
     var likeCount = firstNonEmpty([
-        hideZeroCount(parseCount(firstText(row, LIST_LIKE_COUNT_SELECTORS))),
+        hideZeroCount(parseCount(firstText(row, likeCountSelectors))),
         hideZeroCount(fmkoreaInfoText(row, "fa-star"))
     ]);
     var author = firstNonEmpty([
-        firstAuthorText(row, LIST_AUTHOR_SELECTORS),
+        firstAuthorText(row, authorSelectors),
         fmkoreaInfoText(row, "fa-user")
     ]);
     var category = firstNonEmpty([
-        firstText(row, LIST_CATEGORY_SELECTORS),
+        firstText(row, categorySelectors),
         fmkoreaInfoText(row, "fa-bars")
     ]);
     var date = firstNonEmpty([
-        firstText(row, LIST_DATE_SELECTORS),
+        firstText(row, dateSelectors),
         fmkoreaInfoText(row, "fa-clock-o")
     ]);
-    var avatarSourceSelectors = LIST_AVATAR_SELECTORS.length > 0 ? LIST_AVATAR_SELECTORS : LIST_AUTHOR_SELECTORS;
+    var avatarSourceSelectors = avatarSelectors.length > 0 ? avatarSelectors : authorSelectors;
     var avatar = imageUrlFromNode(firstNode(row, avatarSourceSelectors), baseUrl);
-    var mediaUrl = imageUrlFromNode(firstNode(row, LIST_IMAGE_SELECTORS), baseUrl);
+    var mediaUrl = imageUrlFromNode(firstNode(row, imageSelectors), baseUrl);
     var types = [];
     if (mediaUrl) types.push("image");
 
