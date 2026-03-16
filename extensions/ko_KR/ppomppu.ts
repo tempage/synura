@@ -644,12 +644,14 @@ SITE.loadDynamicBoards = function (options) {
     return Array.isArray(cached) ? cached : [];
 };
 SITE.prepareBoardContext = function (context, items, match, url) {
+    context.lastPostId = ppomppuComputeLastPostId(items);
     return context;
 };
 SITE.filterAppendItems = function (items, state, routeContext) {
-    return items || [];
+    return ppomppuFilterAppendByLastPostId(items, state ? state.lastPostId : 0);
 };
 SITE.updateAppendState = function (state, items, routeContext) {
+    state.lastPostId = ppomppuNextLastPostId(state ? state.lastPostId : 0, items);
     return state;
 };
 SITE.buildHomeMenus = function (menus, isReorderable) {
@@ -664,12 +666,653 @@ SITE.buildBoardMenus = function (menus, state) {
 SITE.buildPostMenus = function (menus, state) {
     return menus;
 };
+function ppomppuEscapeRegExp(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function ppomppuExtractTagBlock(html, startIndex, tagName) {
+    var source = String(html || "");
+    var lower = source.toLowerCase();
+    var tag = String(tagName || "").toLowerCase();
+    var openToken = "<" + tag;
+    var closeToken = "</" + tag + ">";
+    var start = lower.indexOf(openToken, Math.max(0, startIndex || 0));
+    if (start < 0) return "";
+
+    var openEnd = lower.indexOf(">", start);
+    if (openEnd < 0) return source.slice(start);
+
+    var depth = 1;
+    var cursor = openEnd + 1;
+    while (depth > 0) {
+        var nextOpen = lower.indexOf(openToken, cursor);
+        var nextClose = lower.indexOf(closeToken, cursor);
+        if (nextClose < 0) return source.slice(start);
+
+        if (nextOpen >= 0 && nextOpen < nextClose) {
+            var nextTagChar = lower.charAt(nextOpen + openToken.length);
+            if (/[>\s/]/.test(nextTagChar || "")) {
+                var nextOpenEnd = lower.indexOf(">", nextOpen);
+                if (nextOpenEnd < 0) return source.slice(start);
+                depth += 1;
+                cursor = nextOpenEnd + 1;
+                continue;
+            }
+            cursor = nextOpen + openToken.length;
+            continue;
+        }
+
+        depth -= 1;
+        cursor = nextClose + closeToken.length;
+    }
+
+    return source.slice(start, cursor);
+}
+
+function ppomppuExtractFirstTag(html, tagName) {
+    var match = new RegExp("<" + String(tagName || "") + "\\b[^>]*>", "i").exec(String(html || ""));
+    return match ? ppomppuExtractTagBlock(html, match.index, tagName) : "";
+}
+
+function ppomppuExtractTagById(html, tagName, id) {
+    var pattern = new RegExp("<" + String(tagName || "") + "\\b(?=[^>]*\\bid=[\"']" + ppomppuEscapeRegExp(id) + "[\"'])[^>]*>", "i");
+    var match = pattern.exec(String(html || ""));
+    return match ? ppomppuExtractTagBlock(html, match.index, tagName) : "";
+}
+
+function ppomppuExtractTagByClasses(html, tagName, classNames) {
+    var pattern = "<" + String(tagName || "");
+    var classes = Array.isArray(classNames) ? classNames : [];
+    for (var i = 0; i < classes.length; i++) {
+        var className = normalizeWhitespace(classes[i]);
+        if (!className) continue;
+        pattern += "(?=[^>]*\\bclass=[\"'][^\"']*\\b" + ppomppuEscapeRegExp(className) + "\\b[^\"']*[\"'])";
+    }
+    pattern += "[^>]*>";
+    var match = new RegExp(pattern, "i").exec(String(html || ""));
+    return match ? ppomppuExtractTagBlock(html, match.index, tagName) : "";
+}
+
+function ppomppuParseFragmentRoot(fragment) {
+    try {
+        var doc = (new DOMParser()).parseFromString("<div id='ppomppu-fragment-root'>" + String(fragment || "") + "</div>", "text/html");
+        return doc.querySelector("#ppomppu-fragment-root") || doc.body;
+    } catch (e) {
+        return null;
+    }
+}
+
+var PPOMPPU_LIST_ROOT_PREFIXES = [
+    "<ul class=\"bbsList_new\"",
+    "<ul class='bbsList_new'"
+];
+var PPOMPPU_BOARD_LINK_FALLBACK_SELECTORS = [
+    "a.noeffect",
+    "a[href*='bbs_view.php']",
+    "a[href*='zboard/view.php']"
+];
+var PPOMPPU_BOARD_TITLE_FALLBACK_SELECTORS = [".thumb_sec strong", "span.cont"];
+var PPOMPPU_BOARD_COMMENT_FALLBACK_SELECTORS = [".rp", ".reply"];
+var PPOMPPU_BOARD_VIEW_FALLBACK_SELECTORS = [".view", ".hit"];
+var PPOMPPU_BOARD_LIKE_FALLBACK_SELECTORS = [".recs", ".rec", ".recom", ".recommend"];
+var PPOMPPU_BOARD_DATE_FALLBACK_SELECTORS = ["time", ".hi", ".date", ".time"];
+var PPOMPPU_BOARD_NAME_FALLBACK_SELECTORS = [".names", ".name", ".writer"];
+var PPOMPPU_BOARD_IMAGE_FALLBACK_SELECTORS = [".thmb_N > img", ".thumb_img", "img"];
+var PPOMPPU_BOARD_REFRESH_HTMLS = {};
+
+function ppomppuQueryFirst(root, selectors) {
+    if (!root || !root.querySelector) return null;
+    var list = Array.isArray(selectors) ? selectors : [selectors];
+    for (var i = 0; i < list.length; i++) {
+        var selector = list[i];
+        if (!selector) continue;
+        var node = root.querySelector(selector);
+        if (node) return node;
+    }
+    return null;
+}
+
+function ppomppuQueryAllFirst(root, selectors) {
+    if (!root || !root.querySelectorAll) return [];
+    var list = Array.isArray(selectors) ? selectors : [selectors];
+    for (var i = 0; i < list.length; i++) {
+        var selector = list[i];
+        if (!selector) continue;
+        var nodes = root.querySelectorAll(selector);
+        if (nodes && nodes.length > 0) return nodes;
+    }
+    return [];
+}
+
+function ppomppuHasClass(node, className) {
+    var token = normalizeWhitespace(className);
+    if (!node || !token) return false;
+    return (" " + String(node.className || "") + " ").indexOf(" " + token + " ") >= 0;
+}
+
+function ppomppuDirectChild(root, tagName, className) {
+    var children = root && root.children ? root.children : [];
+    var tag = normalizeWhitespace(tagName).toUpperCase();
+    var cls = normalizeWhitespace(className);
+    for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        if (!child) continue;
+        if (tag && String(child.tagName || "").toUpperCase() !== tag) continue;
+        if (cls && !ppomppuHasClass(child, cls)) continue;
+        return child;
+    }
+    return null;
+}
+
+function ppomppuReadBoardRefreshHtml(url) {
+    var key = normalizeUrl(url) || String(url || "");
+    return key && PPOMPPU_BOARD_REFRESH_HTMLS[key]
+        ? String(PPOMPPU_BOARD_REFRESH_HTMLS[key])
+        : "";
+}
+
+function ppomppuWriteBoardRefreshHtml(url, html) {
+    var key = normalizeUrl(url) || String(url || "");
+    if (!key || !html) return;
+    PPOMPPU_BOARD_REFRESH_HTMLS[key] = String(html);
+}
+
+function ppomppuFetchHtmlPage(url, allowRestricted) {
+    var response = fetchWithLogging(url, buildFetchOptions());
+    if (!response) {
+        throw new Error("Failed to fetch " + url + " (0)");
+    }
+
+    var status = response.status || 0;
+    var html = response.text();
+    var authRequired = shouldUseBrowserCookieAuth() && isAuthRequiredResponse(url, status, html);
+    var restricted = !response.ok && (status === 401 || status === 403) && !isChallengeHtml(html);
+    if (authRequired) {
+        throw makeAuthRequiredError(url, status);
+    }
+    if (!response.ok && !(allowRestricted && restricted)) {
+        throw new Error("Failed to fetch " + url + " (" + status + ")");
+    }
+
+    return {
+        response: response,
+        html: html,
+        restricted: restricted
+    };
+}
+
+function ppomppuMetaContent(html, property) {
+    var pattern = new RegExp("<meta[^>]+(?:property|name)=[\"']" + ppomppuEscapeRegExp(property) + "[\"'][^>]+content=[\"']([^\"']*)[\"'][^>]*>", "i");
+    var matched = String(html || "").match(pattern);
+    return normalizeWhitespace(matched && matched[1] ? matched[1] : "");
+}
+
+function ppomppuListHtmlFromHtml(html) {
+    var source = String(html || "");
+    for (var i = 0; i < PPOMPPU_LIST_ROOT_PREFIXES.length; i++) {
+        var start = source.indexOf(PPOMPPU_LIST_ROOT_PREFIXES[i]);
+        if (start >= 0) {
+            return ppomppuExtractTagBlock(source, start, "ul");
+        }
+    }
+    return ppomppuExtractTagByClasses(source, "ul", ["bbsList_new"]);
+}
+
+function ppomppuListRootFromHtml(html) {
+    var listHtml = ppomppuListHtmlFromHtml(html);
+    return listHtml ? ppomppuParseFragmentRoot(listHtml) : null;
+}
+
+function ppomppuBoardListNode(root) {
+    if (!root) return null;
+    if (String(root.tagName || "").toUpperCase() === "UL" && ppomppuHasClass(root, "bbsList_new")) {
+        return root;
+    }
+    return ppomppuDirectChild(root, "ul", "bbsList_new")
+        || root.querySelector("ul.bbsList_new")
+        || null;
+}
+
+function ppomppuListRowElements(listRoot) {
+    listRoot = ppomppuBoardListNode(listRoot) || listRoot;
+    var queryRows = listRoot && listRoot.querySelectorAll ? listRoot.querySelectorAll("li.bbs_list_thumbnail") : [];
+    if (queryRows && queryRows.length > 0) {
+        return queryRows;
+    }
+    var rows = [];
+    var children = listRoot && listRoot.children ? listRoot.children : [];
+    for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        if (!child || !child.querySelector) continue;
+        if (!/\bbbs_list_thumbnail\b/.test(" " + String(child.className || "") + " ")) continue;
+        rows.push(child);
+    }
+    return rows;
+}
+
+function ppomppuIsBoardAdRow(row) {
+    return !!(row && ppomppuHasClass(row, "hotpop_bg_color"));
+}
+
+function ppomppuExtractBoardItems(listRoot, baseUrl) {
+    var rows = ppomppuListRowElements(listRoot);
+    var items = [];
+    var seen = {};
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        if (ppomppuIsBoardAdRow(row)) continue;
+        var linkNode = ppomppuDirectChild(row, "a", "list_b_01n")
+            || row.querySelector("a.list_b_01n")
+            || ppomppuQueryFirst(row, PPOMPPU_BOARD_LINK_FALLBACK_SELECTORS);
+        var link = ensureAbsoluteUrl(attrOf(linkNode, "href"), baseUrl);
+        if (!isAllowedListLink(link, LIST_LINK_ALLOW_PATTERNS) || seen[link]) continue;
+
+        var thumbNode = ppomppuDirectChild(linkNode, "div", "thmb_N");
+        var bodyNode = ppomppuDirectChild(linkNode, "div", "thmb_N2")
+            || linkNode.querySelector(".thmb_N2")
+            || linkNode;
+        var bodyListNode = ppomppuDirectChild(bodyNode, "ul", "");
+        var titleRoot = ppomppuDirectChild(bodyListNode, "li", "title") || bodyNode.querySelector(".title");
+        var metaNode = ppomppuDirectChild(bodyListNode, "li", "exp") || bodyNode.querySelector(".exp") || bodyNode;
+        var namesNode = ppomppuDirectChild(bodyListNode, "li", "names")
+            || (bodyListNode && ppomppuDirectChild(bodyListNode, "li", "name"))
+            || bodyNode.querySelector(".names")
+            || ppomppuQueryFirst(bodyNode, PPOMPPU_BOARD_NAME_FALLBACK_SELECTORS);
+        var recViewNode = metaNode !== bodyNode
+            ? (ppomppuDirectChild(metaNode, "span", "rec_view") || metaNode.querySelector(".rec_view"))
+            : null;
+        var titleNode = (titleRoot && (ppomppuDirectChild(titleRoot, "span", "cont") || titleRoot.querySelector(".cont")))
+            || ppomppuQueryFirst(bodyNode, PPOMPPU_BOARD_TITLE_FALLBACK_SELECTORS);
+        var commentNode = (titleRoot && (ppomppuDirectChild(titleRoot, "span", "rp") || titleRoot.querySelector(".rp")))
+            || ppomppuQueryFirst(bodyNode, PPOMPPU_BOARD_COMMENT_FALLBACK_SELECTORS);
+        var viewNode = (recViewNode && (ppomppuDirectChild(recViewNode, "span", "view") || recViewNode.querySelector(".view")))
+            || ppomppuQueryFirst(recViewNode, [".hit"])
+            || ppomppuQueryFirst(bodyNode, PPOMPPU_BOARD_VIEW_FALLBACK_SELECTORS);
+        var likeNode = (recViewNode && (ppomppuDirectChild(recViewNode, "span", "recs") || recViewNode.querySelector(".recs")))
+            || ppomppuQueryFirst(recViewNode, [".rec", ".recom", ".recommend"])
+            || ppomppuQueryFirst(bodyNode, PPOMPPU_BOARD_LIKE_FALLBACK_SELECTORS);
+        var dateNode = ppomppuDirectChild(metaNode, "time", "")
+            || metaNode.querySelector("time")
+            || ppomppuQueryFirst(metaNode, PPOMPPU_BOARD_DATE_FALLBACK_SELECTORS);
+        var imageNode = (thumbNode && ppomppuDirectChild(thumbNode, "img", ""))
+            || linkNode.querySelector(".thmb_N > img")
+            || ppomppuQueryFirst(linkNode, PPOMPPU_BOARD_IMAGE_FALLBACK_SELECTORS);
+
+        var namesMeta = textOf(namesNode);
+        var splitMeta = ppomppuSplitListMeta(namesMeta);
+        var commentCount = hideZeroCount(parseCount(textOf(commentNode)));
+        var likeCount = hideZeroCount(parseCount(textOf(likeNode)));
+        var viewCount = parseCount(textOf(viewNode));
+        var title = textOf(titleNode);
+        if (!title) title = textOf(linkNode);
+        if (!title) title = textOf(row);
+        title = ppomppuTrimTrailingCount(title, commentCount);
+        if (!title) continue;
+
+        var mediaUrl = imageUrlFromNode(imageNode, baseUrl);
+        var types = [];
+        if (mediaUrl) types.push("image");
+        var postId = ppomppuExtractPostIdFromUrl(link);
+
+        seen[link] = true;
+        items.push({
+            link: normalizeUrl(link) || link,
+            postId: postId,
+            title: title,
+            author: splitMeta.author,
+            avatar: "",
+            date: textOf(dateNode),
+            category: formatBoardListCategory(splitMeta.category),
+            commentCount: commentCount,
+            viewCount: viewCount,
+            likeCount: likeCount,
+            mediaUrl: mediaUrl,
+            mediaType: mediaUrl ? "image" : "",
+            types: types,
+            menus: [],
+            hotCount: toInt(likeCount || viewCount || commentCount, 0),
+            coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        });
+    }
+    return items;
+}
+
+function ppomppuExtractPostIdFromUrl(url) {
+    var normalized = normalizeUrl(url) || ensureAbsoluteUrl(url, SITE.browserHomeUrl) || "";
+    var urlInfo = parseAbsoluteUrl(normalized);
+    if (!urlInfo) return "";
+    return normalizeWhitespace(queryValue(urlInfo.query, "no"));
+}
+
+function ppomppuItemPostId(item) {
+    var direct = normalizeWhitespace(item && item.postId || "");
+    if (direct) return direct;
+    return ppomppuExtractPostIdFromUrl(item && item.link || "");
+}
+
+function ppomppuComputeLastPostId(items) {
+    var lastPostId = 0;
+    for (var i = 0; i < (items || []).length; i++) {
+        var id = parseInt(ppomppuItemPostId(items[i]), 10);
+        if (!(id > 0)) continue;
+        if (lastPostId === 0 || id < lastPostId) {
+            lastPostId = id;
+        }
+    }
+    return lastPostId;
+}
+
+function ppomppuFilterAppendByLastPostId(items, lastPostId) {
+    if (!(lastPostId > 0)) return items || [];
+
+    var out = [];
+    for (var i = 0; i < (items || []).length; i++) {
+        var item = items[i];
+        var id = parseInt(ppomppuItemPostId(item), 10);
+        if (!(id > 0) || id < lastPostId) {
+            out.push(item);
+        }
+    }
+    return out;
+}
+
+function ppomppuNextLastPostId(currentLastPostId, items) {
+    var appendedLastPostId = ppomppuComputeLastPostId(items);
+    if (!(appendedLastPostId > 0)) return currentLastPostId || 0;
+    if (currentLastPostId > 0) return Math.min(currentLastPostId, appendedLastPostId);
+    return appendedLastPostId;
+}
+
+function ppomppuBuildPostFragment(html) {
+    var viewHtml = ppomppuExtractTagByClasses(html, "div", ["bbs", "view"]);
+    if (!viewHtml) return "";
+
+    var fragments = [];
+    var headerHtml = ppomppuExtractFirstTag(viewHtml, "h4");
+    var contentHtml = ppomppuExtractTagById(viewHtml, "div", "KH_Content");
+
+    if (headerHtml) fragments.push(headerHtml);
+    if (contentHtml) fragments.push(contentHtml);
+
+    return fragments.join("");
+}
+
+function ppomppuBuildBoardRouteFromItems(url, match, items) {
+    if (!items || items.length === 0) return null;
+
+    var nextUrl = SITE.buildNextPageUrl(match, url, (match.page || 1) + 1);
+    var seenLinks = [];
+    for (var i = 0; i < items.length; i++) {
+        seenLinks.push(items[i].link);
+    }
+
+    var context = {
+        kind: "board",
+        link: url,
+        boardId: match.board ? match.board.id : "",
+        boardTitle: match.board ? match.board.title : "",
+        boardUrl: match.board ? match.board.url : "",
+        title: match.board ? match.board.title : SITE.displayName,
+        page: match.page || 1,
+        nextUrl: nextUrl,
+        seenLinks: seenLinks
+    };
+    try {
+        context = SITE.prepareBoardContext ? (SITE.prepareBoardContext(context, items, match, url) || context) : context;
+    } catch (e) {
+    }
+
+    return {
+        kind: "board",
+        url: url,
+        viewData: {
+            view: "/views/list",
+            styles: buildBoardListStyles(context.title, match ? match.board : null, nextUrl),
+            models: {
+                contents: items,
+                menus: getBoardMenus(context)
+            }
+        },
+        context: context
+    };
+}
+
+function ppomppuBuildBoardRouteFromHtml(url, match, html) {
+    var listHtml = ppomppuListHtmlFromHtml(html);
+    if (!listHtml) return null;
+    var listRoot = ppomppuParseFragmentRoot(listHtml);
+    if (!listRoot) return null;
+    var items = ppomppuExtractBoardItems(listRoot, url);
+    var route = ppomppuBuildBoardRouteFromItems(url, match, items);
+    if (route) {
+        ppomppuWriteBoardRefreshHtml(url, listHtml);
+    }
+    return route;
+}
+
+function ppomppuBuildBoardRoute(url, match) {
+    var fetched = ppomppuFetchHtmlPage(url, false);
+    return ppomppuBuildBoardRouteFromHtml(url, match, fetched.html);
+}
+
+function ppomppuAppendFastText(details, value) {
+    var text = normalizeWhitespace(value);
+    if (!text) return;
+    var last = details.length > 0 ? details[details.length - 1] : null;
+    if (last && last.type === "text") {
+        last.value = normalizeWhitespace(last.value + "\n" + text);
+        return;
+    }
+    details.push({ type: "text", value: text });
+}
+
+function ppomppuParsePostContentFast(contentRoot, baseUrl) {
+    if (!contentRoot) return [];
+
+    var details = [];
+    var seenImages = {};
+    var children = contentRoot.childNodes || [];
+    for (var i = 0; i < children.length; i++) {
+        var child = children[i];
+        if (!child) continue;
+
+        if (child.nodeType === 3) {
+            ppomppuAppendFastText(details, child.textContent || "");
+            continue;
+        }
+        if (child.nodeType !== 1) continue;
+
+        var className = " " + normalizeWhitespace(child.className || "") + " ";
+        if (className.indexOf(" scrap_bx ") >= 0 || className.indexOf(" scrap_bx_txt ") >= 0) continue;
+        if (String(child.tagName || "").toUpperCase() === "A" && className.indexOf(" scrap_bx_href ") >= 0) continue;
+
+        var images = [];
+        if (String(child.tagName || "").toUpperCase() === "IMG") {
+            images = [child];
+        } else if (child.querySelectorAll) {
+            images = ppomppuQueryAllFirst(child, [
+                "img[src]",
+                "img[data-src]",
+                "img[data-original]",
+                "img[data-lazy-src]"
+            ]);
+        }
+        for (var j = 0; j < images.length; j++) {
+            var imageUrl = ensureAbsoluteUrl(firstNonEmpty([
+                attrOf(images[j], "data-original"),
+                attrOf(images[j], "data-src"),
+                attrOf(images[j], "data-lazy-src"),
+                attrOf(images[j], "src")
+            ]), baseUrl);
+            if (!imageUrl || seenImages[imageUrl]) continue;
+            seenImages[imageUrl] = true;
+            details.push({
+                type: "image",
+                value: imageUrl,
+                title: attrOf(images[j], "title"),
+                alt: attrOf(images[j], "alt"),
+                ariaLabel: attrOf(images[j], "aria-label")
+            });
+        }
+
+        var text = "";
+        if (String(child.tagName || "").toUpperCase() === "P") {
+            var paragraphImages = child.querySelectorAll ? child.querySelectorAll("img") : [];
+            if (!paragraphImages || paragraphImages.length === 0) {
+                text = child.textContent || "";
+            } else {
+                text = normalizeWhitespace((child.textContent || "").replace(/\u00a0/g, " "));
+            }
+        } else if (String(child.tagName || "").toUpperCase() !== "IMG") {
+            text = child.textContent || "";
+        }
+        ppomppuAppendFastText(details, text);
+    }
+
+    return details;
+}
+
+function ppomppuBuildPostRoute(url, match) {
+    var fetched = ppomppuFetchHtmlPage(url, true);
+    var fragment = ppomppuBuildPostFragment(fetched.html);
+    if (!fragment) return null;
+
+    var root = ppomppuParseFragmentRoot(fragment);
+    if (!root) return null;
+
+    var contentRoot = ppomppuQueryFirst(root, [
+        "#KH_Content",
+        ".viAr",
+        ".board-contents",
+        ".board_contents",
+        ".view_content"
+    ]);
+    var content = contentRoot ? parseDetails(contentRoot, url) : [];
+    if ((!content || content.length === 0) && contentRoot) {
+        content = parseMarkupDetails(String(contentRoot.innerHTML || ""), url);
+    }
+    try {
+        if (SITE.filterPostContent) content = SITE.filterPostContent(content, url, root, fetched, match) || content;
+    } catch (e) {
+    }
+
+    var rememberedItem = getRememberedItemPreview(url);
+    var comments = ppomppuParseComments(root, url);
+    if (!content || content.length === 0) {
+        content = [{
+            type: "text",
+            value: fetched.restricted ? "로그인이 필요합니다." : "본문을 가져오지 못했습니다."
+        }];
+    }
+
+    var title = firstNonEmpty([
+        cleanPageTitle(ppomppuMetaContent(fetched.html, "og:title")),
+        rememberedItem ? cleanPageTitle(rememberedItem.title) : "",
+        match.board ? match.board.title : "",
+        SITE.displayName
+    ]);
+    var infoRoot = ppomppuQueryFirst(root, [".info"]);
+    var author = firstNonEmpty([
+        cleanSingleLineField(textOf((infoRoot && ppomppuQueryFirst(infoRoot, [".ct > a", ".ct"])) || ppomppuQueryFirst(root, [".info .ct a", ".info .ct"])), 80),
+        rememberedItem ? rememberedItem.author : ""
+    ]);
+    var date = firstNonEmpty([
+        cleanSingleLineField(textOf((infoRoot && ppomppuQueryFirst(infoRoot, [".hi"])) || ppomppuQueryFirst(root, [".hi"])), 40),
+        rememberedItem ? rememberedItem.date : ""
+    ]);
+    var category = firstNonEmpty([
+        cleanSingleLineField(textOf(ppomppuQueryFirst(root, [".subject_preface", ".cate"])), 60),
+        rememberedItem ? rememberedItem.category : ""
+    ]);
+    var viewCount = firstNonEmpty([
+        parseCount(firstNonEmpty([
+            textOf((infoRoot && ppomppuQueryFirst(infoRoot, [".view"])) || ppomppuQueryFirst(root, [".view"])),
+            (fragment.match(/조회\s*:\s*([0-9,]+)/) || [])[1]
+        ])),
+        rememberedItem ? rememberedItem.viewCount : ""
+    ]);
+    var likeCount = hideZeroCount(firstNonEmpty([
+        parseCount(textOf(ppomppuQueryFirst(root, ["#vote_list_btn_txt", ".top_recommend_area", ".recommend"]))),
+        rememberedItem ? rememberedItem.likeCount : ""
+    ]));
+
+    return {
+        kind: "post",
+        url: url,
+        viewData: {
+            view: "/views/post",
+            styles: {
+                title: title,
+                menu: true
+            },
+            models: {
+                author: author,
+                avatar: rememberedItem ? rememberedItem.avatar : "",
+                date: date,
+                category: category,
+                viewCount: viewCount,
+                likeCount: likeCount,
+                content: content,
+                comments: comments,
+                link: url,
+                menus: getPostMenus(match),
+                buttons: [BUTTON_REFRESH]
+            }
+        },
+        context: {
+            kind: "post",
+            link: url,
+            boardId: match && match.board ? match.board.id : "",
+            boardTitle: match && match.board ? match.board.title : ""
+        }
+    };
+}
+
 SITE.routeBoardCustom = function (url, urlInfo, match, force) {
-    return null;
+    return ppomppuBuildBoardRoute(url, match);
 };
+
+SITE.refreshView = function (viewId, state) {
+    if (!state || state.kind !== "board" || !state.link) return false;
+
+    var url = normalizeUrl(state.link);
+    var urlInfo = parseAbsoluteUrl(url);
+    var match = urlInfo ? SITE.matchBoard(urlInfo) : null;
+    if (!url || !urlInfo || !match) return false;
+
+    var fetched = ppomppuFetchHtmlPage(url, false);
+    var nextListHtml = ppomppuListHtmlFromHtml(fetched.html);
+    if (!nextListHtml) return false;
+
+    var previousListHtml = ppomppuReadBoardRefreshHtml(url);
+    if (previousListHtml && nextListHtml === previousListHtml) {
+        ppomppuWriteBoardRefreshHtml(url, nextListHtml);
+        setViewState(viewId, state);
+        synura.update(viewId, { models: { snackbar: "새로고침 완료" } });
+        return true;
+    }
+
+    var listRoot = ppomppuParseFragmentRoot(nextListHtml);
+    if (!listRoot) return false;
+
+    var route = ppomppuBuildBoardRouteFromItems(
+        url,
+        match,
+        ppomppuExtractBoardItems(listRoot, url)
+    );
+    if (!route) {
+        return false;
+    }
+
+    ppomppuWriteBoardRefreshHtml(url, nextListHtml);
+    updateViewFromRoute(viewId, route, "새로고침 완료");
+    return true;
+};
+
 SITE.routePostCustom = function (url, urlInfo, match, force) {
-    return null;
+    return ppomppuBuildPostRoute(url, match);
 };
+
 function ppomppuDecodeFetchText(response) {
     if (!response) return "";
     try {

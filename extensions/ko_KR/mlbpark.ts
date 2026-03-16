@@ -589,6 +589,24 @@ function mlbparkNodeMatches(node, selector) {
     return false;
 }
 
+function mlbparkNodeMatchesAny(node, selectors) {
+    if (!node || !selectors) return false;
+    for (var i = 0; i < selectors.length; i++) {
+        if (mlbparkNodeMatches(node, selectors[i])) return true;
+    }
+    return false;
+}
+
+function mlbparkDescendantsBySelectors(root, selectors) {
+    if (!root || !root.querySelectorAll || !selectors || selectors.length === 0) return [];
+    var descendants = root.querySelectorAll("*");
+    var out = [];
+    for (var i = 0; i < descendants.length; i++) {
+        if (mlbparkNodeMatchesAny(descendants[i], selectors)) out.push(descendants[i]);
+    }
+    return out;
+}
+
 function mlbparkHasAncestor(node, selectors) {
     var current = node ? node.parentElement : null;
     while (current) {
@@ -749,13 +767,13 @@ function mlbparkExtractPostMetric(doc, label) {
         }
     }
 
-    var labels = metricRoot.querySelectorAll(".tit, .mark");
+    var labels = mlbparkDescendantsBySelectors(metricRoot, [".tit", ".mark"]);
     for (var i = 0; i < labels.length; i++) {
         var titleNode = labels[i];
         if (normalizeWhitespace(textOf(titleNode)) !== label) continue;
 
         for (var current = titleNode.nextElementSibling; current; current = current.nextElementSibling) {
-            if (mlbparkNodeMatches(current, ".tit, .mark")) break;
+            if (mlbparkNodeMatchesAny(current, [".tit", ".mark"])) break;
 
             var valueNode = mlbparkNodeMatches(current, ".val") ? current : firstNode(current, [".val"]);
             var parsed = mlbparkNormalizeCount(textOf(valueNode || current));

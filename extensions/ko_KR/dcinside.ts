@@ -197,8 +197,8 @@ var DC_CATEGORY_BROWSER_PAGE_SIZE = 200;
 var DC_CATEGORY_HOME_URL = DC_BASE_URL + "/galltotal";
 var dcCategoryRootCache = null;
 var dcCategoryBoardCache = {};
-var DC_CATEGORY_SCOPE_SELECTOR = ".left_content,.cate-box,.cate_wrap,.gall-total-lst,.gall-total";
-var DC_CATEGORY_FALLBACK_SCOPE_SELECTOR = ".content_box,.content,.cont,main,#container";
+var DC_CATEGORY_SCOPE_SELECTORS = [".left_content", ".cate-box", ".cate_wrap", ".gall-total-lst", ".gall-total"];
+var DC_CATEGORY_FALLBACK_SCOPE_SELECTORS = [".content_box", ".content", ".cont", "main", "#container"];
 var DC_CATEGORY_ROOT_SPECS = [
   { key: "category", title: "갤러리", url: DC_BASE_URL + "/category" },
   { key: "mcategory", title: "마이너갤", url: DC_BASE_URL + "/mcategory" },
@@ -207,9 +207,9 @@ var DC_CATEGORY_ROOT_SPECS = [
 ];
 var DC_LINK_SELECTOR = "a[href]";
 
-function dcQuerySelectorGroup(root, selectorGroup) {
-  if (!root || !root.querySelectorAll || !selectorGroup) return [];
-  var selectors = String(selectorGroup || "").split(",");
+function dcQuerySelectorGroup(root, selectors) {
+  if (!root || !root.querySelectorAll || !selectors) return [];
+  if (!Array.isArray(selectors)) selectors = [selectors];
   var out = [];
   for (var i = 0; i < selectors.length; i++) {
     var selector = String(selectors[i] || "").replace(/^\s+|\s+$/g, "");
@@ -217,7 +217,7 @@ function dcQuerySelectorGroup(root, selectorGroup) {
     var matches = root.querySelectorAll(selector);
     if (!matches || matches.length === 0) continue;
     for (var j = 0; j < matches.length; j++) {
-      out.push(matches[j]);
+      if (out.indexOf(matches[j]) < 0) out.push(matches[j]);
     }
   }
   return out;
@@ -225,7 +225,7 @@ function dcQuerySelectorGroup(root, selectorGroup) {
 
 function dcCollectScopedAnchors(doc, linkSelector) {
   if (!doc || !doc.querySelectorAll || !linkSelector) return [];
-  var groups = [DC_CATEGORY_SCOPE_SELECTOR, DC_CATEGORY_FALLBACK_SCOPE_SELECTOR];
+  var groups = [DC_CATEGORY_SCOPE_SELECTORS, DC_CATEGORY_FALLBACK_SCOPE_SELECTORS];
   for (var g = 0; g < groups.length; g++) {
     var scopes = dcQuerySelectorGroup(doc, groups[g]);
     for (var i = 0; i < scopes.length; i++) {

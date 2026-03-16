@@ -522,6 +522,21 @@ function fmkoreaParseCommentPageFromUrl(postUrl) {
     return queryInt(info.query, "cpage", 0);
 }
 
+function fmkoreaQuerySelectorUnion(root, selectors) {
+    if (!root || !root.querySelectorAll || !selectors) return [];
+    var out = [];
+    for (var i = 0; i < selectors.length; i++) {
+        var selector = selectors[i];
+        if (!selector) continue;
+        var matches = root.querySelectorAll(selector);
+        if (!matches || matches.length === 0) continue;
+        for (var j = 0; j < matches.length; j++) {
+            if (out.indexOf(matches[j]) < 0) out.push(matches[j]);
+        }
+    }
+    return out;
+}
+
 function fmkoreaDetectLatestCommentPage(doc, html) {
     var source = String(html || "");
     var matched = source.match(/window\.document_cpage\s*=\s*(\d+)/);
@@ -538,7 +553,7 @@ function fmkoreaDetectLatestCommentPage(doc, html) {
     if (!pager) return 0;
 
     var maxPage = 0;
-    var anchors = pager.querySelectorAll ? pager.querySelectorAll("a,strong,.this") : [];
+    var anchors = fmkoreaQuerySelectorUnion(pager, ["a", "strong", ".this"]);
     for (var i = 0; i < anchors.length; i++) {
         var text = normalizeWhitespace(textOf(anchors[i]));
         if (!/^\d+$/.test(text)) continue;
