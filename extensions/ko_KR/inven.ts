@@ -19,6 +19,10 @@ var SITE = {
   "hasFullBoardCatalog": false,
   "supportsBoardCatalogSync": true,
   "defaultVisibleBoardIds": [],
+  "defaultGalleryModeBoardIds": [
+    "come_2898",
+    "come_2887"
+  ],
   "hostAliases": [],
   "challengeMarkers": [],
   "titleSuffixes": [
@@ -238,10 +242,60 @@ function invenComeIdxFromUrlInfo(urlInfo) {
     return "";
 }
 function invenBoardPageParamName(url) {
-    var info = parseAbsoluteUrl(url || "");
-    if (info && /^\/board\/webzine\/\d+/.test(info.path)) return "page";
     return "p";
 }
+SITE.selectorProfiles = SITE.selectorProfiles || {};
+SITE.selectorProfiles.inven_gallery_board = {
+    listRows: [
+        ".board-gallery ul.nested2 > li",
+        ".board-gallery > ul > li",
+        ".board-gallery li"
+    ],
+    listLink: [
+        "a.subject-link",
+        "a.thumb"
+    ],
+    listTitle: [
+        "a.subject-link",
+        ".subject-link",
+        ".tit"
+    ],
+    listAuthor: [
+        ".user .layerNickName",
+        ".layerNickName",
+        ".user"
+    ],
+    listAvatar: [],
+    listDate: [
+        ".date",
+        ".time"
+    ],
+    listCommentCount: [
+        ".con-comment"
+    ],
+    listViewCount: [
+        ".cnt .view",
+        ".view"
+    ],
+    listLikeCount: [
+        ".cnt .like",
+        ".like"
+    ],
+    listCategory: [
+        ".cate"
+    ],
+    listImage: [
+        ".thumb img",
+        ".thumb"
+    ]
+};
+SITE.selectorProfilesByBoard = SITE.selectorProfilesByBoard || {};
+SITE.selectorProfilesByBoard.come_2898 = {
+    board: ["inven_gallery_board"]
+};
+SITE.selectorProfilesByBoard.come_2887 = {
+    board: ["inven_gallery_board"]
+};
 SITE.matchBoard = function (urlInfo) {
     var comeIdx = invenComeIdxFromUrlInfo(urlInfo);
     if (comeIdx) {
@@ -840,6 +894,19 @@ var LIST_LIKE_COUNT_SELECTORS = [".reco"];
 var LIST_CATEGORY_SELECTORS = [".cate"];
 var LIST_IMAGE_SELECTORS = ["img"];
 
+function invenExpandedGalleryTitle(row, title, imageSelectors) {
+    var visibleTitle = normalizeWhitespace(title || "");
+    var imageTitle = normalizeWhitespace(imageLabelOf(firstNode(row, imageSelectors)) || "");
+    if (!imageTitle) return visibleTitle;
+    if (!visibleTitle) return imageTitle;
+    if (visibleTitle === imageTitle) return visibleTitle;
+
+    var titlePrefix = normalizeWhitespace(visibleTitle.replace(/(?:\.\.+|…)+$/, ""));
+    if (/(?:\.\.+|…)+$/.test(visibleTitle)) return imageTitle;
+    if (titlePrefix && imageTitle.indexOf(titlePrefix) === 0 && imageTitle.length > visibleTitle.length) return imageTitle;
+    return visibleTitle;
+}
+
 function extractListItem(row, baseUrl) {
     var linkSelectors = selectorList("listLink", LIST_LINK_SELECTORS);
     var titleSelectors = selectorList("listTitle", LIST_TITLE_SELECTORS);
@@ -862,6 +929,7 @@ function extractListItem(row, baseUrl) {
         textOf(row)
     ]);
     if (!title) return null;
+    title = invenExpandedGalleryTitle(row, title, imageSelectors);
 
     var commentCount = hideZeroCount(parseCount(firstText(row, commentCountSelectors)));
     var viewCount = parseCount(firstText(row, viewCountSelectors));

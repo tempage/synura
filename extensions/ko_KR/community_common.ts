@@ -1309,6 +1309,18 @@
         return options;
     }
 
+    function buildPostFetchOptions(match, url) {
+        var options = buildFetchOptions();
+        try {
+            if (SITE.buildPostFetchOptions) {
+                var custom = SITE.buildPostFetchOptions(match, url, options);
+                if (custom) options = custom;
+            }
+        } catch (e) {
+        }
+        return options;
+    }
+
     function fetchWithLogging(url, options) {
         if (typeof console !== "undefined" && console && typeof console.log === "function") {
             console.log(url);
@@ -3226,8 +3238,8 @@
         };
     }
 
-    function fetchPostPage(url) {
-        var response = fetchWithLogging(url, buildFetchOptions());
+    function fetchPostPage(match, url) {
+        var response = fetchWithLogging(url, buildPostFetchOptions(match, url));
         if (!response) {
             throw new Error("Failed to fetch " + url + " (0)");
         }
@@ -3282,7 +3294,7 @@
             try {
                 return {
                     url: urls[i],
-                    page: fetchPostPage(urls[i])
+                    page: fetchPostPage(match, urls[i])
                 };
             } catch (e) {
                 lastError = e;

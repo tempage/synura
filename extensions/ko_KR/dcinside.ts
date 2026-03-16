@@ -1632,6 +1632,15 @@ function dcParseComments(doc, postUrl) {
 
 SITE.parseComments = dcParseComments;
 
+SITE.buildPostFetchOptions = function (match, url, options) {
+  var out = options || buildFetchOptions();
+  if (!out.headers) out.headers = {};
+  if (!out.headers.Accept && !out.headers.accept) {
+    out.headers.Accept = "image/webp,image/*;q=0.8,*/*;q=0.5";
+  }
+  return out;
+};
+
 SITE.fetchPostComments = function (match, url, doc, page, comments) {
   return dcAttachCommentImageHeaders(comments, url);
 };

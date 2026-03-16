@@ -14,7 +14,7 @@ var SYNURA = {
   get main() {
     return handler;
   }
-}, DEFAULT_QUERY = "technology", DEFAULT_HL = "en", DEFAULT_GL = "US", DEFAULT_CLIENT_NAME = "MWEB", DEFAULT_CLIENT_VERSION = "2.20260304.01.00", DEFAULT_API_KEY = "", YT_ORIGIN = "https://" + SYNURA.domain, QUICK_QUERIES = [ {
+}, DEFAULT_QUERY = "technology", DEFAULT_HL = "en", DEFAULT_GL = "US", DEFAULT_CLIENT_NAME = "MWEB", DEFAULT_CLIENT_VERSION = "2.20260304.01.00", DEFAULT_API_KEY = "", HOME_FALLBACK_CLIENT_NAME = "WEB", HOME_FALLBACK_CLIENT_VERSION = "2.20260312.08.00", HOME_FALLBACK_API_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8", YT_ORIGIN = "https://" + SYNURA.domain, QUICK_QUERIES = [ {
   labelKey: "quick_query_trending",
   query: "trending videos"
 }, {
@@ -1052,7 +1052,8 @@ var SYNURA = {
   if (state && !state.loading) {
     var keepItems = isHomeTrendingState(state), homeLabel = getHomeFallbackLabel(), homeQuery = getHomeFallbackSearchQuery();
     state.loading = !0, state.mode = "home", state.homeFeedMode = "trending", state.homeQuery = homeLabel, 
-    state.query = homeQuery, state.pendingItems = [], state.continuation = "", keepItems || (state.items = []), 
+    state.query = homeQuery, state.pendingItems = [], state.continuation = "", state.continuationSource = "", 
+    keepItems || (state.items = []), 
     keepItems || (state.allItems = []), 
     synura.update(viewId, {
       styles: {
@@ -1072,8 +1073,9 @@ var SYNURA = {
     }
     });
     try {
-      var page = fetchSearchPage(homeQuery);
-      state.allItems = page.items, state.items = page.items, state.continuation = page.continuation, state.apiCfg = page.apiCfg, 
+      var page = fetchHomeFallbackDesktopSearchPage(homeQuery);
+      state.allItems = page.items, state.items = page.items, state.continuation = page.continuation, 
+      state.continuationSource = page.continuationSource || "", state.apiCfg = page.apiCfg, 
       renderHomeTrendingList(viewId, state, page.items.length ? "" : t("snackbar_no_videos_found"));
     } catch (e) {
       state.allItems = [], state.items = [], state.loaded = !0, showSnackbar(viewId, t("error_search_failed", {
@@ -1455,6 +1457,40 @@ var SYNURA = {
   return {
     items: normalizeVideoItems(collectVideos(items), ""),
     continuation: extractContinuationToken(items)
+  };
+}, fetchHomeFallbackDesktopSearchPage = function(query) {
+  var normalizedQuery = cleanQuery(query) || DEFAULT_QUERY, apiCfg = applyLocaleToConfig({
+    apiKey: HOME_FALLBACK_API_KEY,
+    clientName: HOME_FALLBACK_CLIENT_NAME,
+    clientVersion: HOME_FALLBACK_CLIENT_VERSION
+  }), payload = {
+    context: {
+      client: {
+        hl: apiCfg.hl || DEFAULT_HL,
+        gl: apiCfg.gl || DEFAULT_GL,
+        clientName: apiCfg.clientName || HOME_FALLBACK_CLIENT_NAME,
+        clientVersion: apiCfg.clientVersion || HOME_FALLBACK_CLIENT_VERSION,
+        platform: "DESKTOP"
+      }
+    },
+    query: normalizedQuery
+  }, url = YT_ORIGIN + "/youtubei/v1/search?key=" + encodeURIComponent(apiCfg.apiKey), response = fetch(url, {
+    method: "POST",
+    bypass: SYNURA.bypass,
+    headers: {
+      "Content-Type": "application/json",
+      "Accept-Language": resolveAcceptLanguage(apiCfg)
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!response || !response.ok) throw new Error("HTTP " + getNumber(response && response.status) + " from home fallback search.");
+  var result = response.json() || {}, videos = normalizeVideoItems(collectVideos(result), normalizedQuery), continuation = extractContinuationToken(result);
+  if (!videos.length && !continuation) throw new Error("Could not parse home fallback search response.");
+  return {
+    items: videos,
+    continuation: continuation,
+    continuationSource: "search",
+    apiCfg: apiCfg
   };
 }, fetchChannelTabPageHTML = function(normalizedChannelUrl, channelId, tabName, optional, channelSeed) {
   var url = toChannelTabURL(normalizedChannelUrl, tabName);
