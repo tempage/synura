@@ -25,6 +25,9 @@ The core object for interacting with the Synura application.
     -   **Arguments**:
         -   `viewId` (Number): The ID of the view to update.
         -   `data` (Object): New `styles` or `models` to merge.
+    -   **Special Model Keys**:
+        -   For `'/views/list'`, `data.models.append` appends new list items to the existing `contents` instead of replacing them. This is useful for pagination.
+        -   For `'/views/chat'`, `data.models.append` appends new chat messages.
     -   **Returns**: An object `{ success: boolean, viewId: number, viewName: string, error?: string }`.
 
 -   **`synura.connect(viewId, context, callback)`**

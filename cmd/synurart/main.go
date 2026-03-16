@@ -982,6 +982,9 @@ func renderList(models, styles map[string]any) {
 			b.WriteString(c(link, cCyan))
 		}
 		fmt.Println(compactText(b.String(), 240))
+		if memoLine := listItemMemoLine(item); memoLine != "" {
+			fmt.Printf("      %s %s\n", dim("memo:"), compactText(memoLine, 220))
+		}
 		if mediaLine := listItemMediaLine(item, showMedia); mediaLine != "" {
 			fmt.Printf("      %s %s\n", dim("media:"), compactText(mediaLine, 220))
 		}
@@ -1017,6 +1020,13 @@ func listItemMeta(item map[string]any) string {
 		return ""
 	}
 	return "[" + strings.Join(parts, " | ") + "]"
+}
+
+func listItemMemoLine(item map[string]any) string {
+	if item == nil {
+		return ""
+	}
+	return strings.TrimSpace(stringifyAny(item["memo"]))
 }
 
 func listItemMediaLine(item map[string]any, enabled bool) string {
@@ -1065,6 +1075,9 @@ func renderedListSummary(models, styles map[string]any) map[string]any {
 		}
 		if link := strings.TrimSpace(stringifyAny(item["link"])); link != "" {
 			entry["link"] = link
+		}
+		if memo := listItemMemoLine(item); memo != "" {
+			entry["memo"] = memo
 		}
 		if meta := listItemMeta(item); meta != "" {
 			entry["meta"] = meta
