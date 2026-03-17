@@ -6,8 +6,8 @@
       "version": 0.1,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/fmkorea.js",
       "api": 0,
-      "domain": "m.fmkorea.com",
-      "icon": "https://m.fmkorea.com/favicon.ico",
+      "domain": "www.fmkorea.com",
+      "icon": "https://www.fmkorea.com/favicon.ico",
       "locale": "ko_KR"
     },
     {

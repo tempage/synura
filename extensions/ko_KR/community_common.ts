@@ -4527,45 +4527,55 @@
         }
 
         try {
-            var route = routeUrl(state.nextUrl, false);
-            if (!route || !route.context) {
-                synura.update(viewId, { models: { snackbar: "다음 페이지를 불러오지 못했습니다." } });
-                return;
-            }
-
             var seen = {};
             var prior = state.seenLinks || [];
             for (var i = 0; i < prior.length; i++) {
                 seen[prior[i]] = true;
             }
 
-            var rawItems = listFromDetails(((route.viewData || {}).models || {}).contents);
             var appendItems = [];
-            for (var j = 0; j < rawItems.length; j++) {
-                var item = rawItems[j];
-                if (!item || !item.link || seen[item.link]) continue;
-                seen[item.link] = true;
-                appendItems.push(item);
-            }
+            var maxEmptyAppendFetches = parseInt(String(SITE.maxEmptyAppendFetches || 5), 10);
+            if (!(maxEmptyAppendFetches > 0)) maxEmptyAppendFetches = 5;
+            var fetchCount = 0;
 
-            try {
-                appendItems = SITE.filterAppendItems ? (SITE.filterAppendItems(appendItems, state, route.context) || []) : appendItems;
-            } catch (e) {
-            }
-
-            state.page = route.context.page || state.page;
-            state.nextUrl = route.context.nextUrl || "";
-            state.seenLinks = [];
-            for (var key in seen) {
-                if (Object.prototype.hasOwnProperty.call(seen, key)) {
-                    state.seenLinks.push(key);
+            while (state.nextUrl && appendItems.length === 0 && fetchCount < maxEmptyAppendFetches) {
+                var route = routeUrl(state.nextUrl, false);
+                if (!route || !route.context) {
+                    synura.update(viewId, { models: { snackbar: "다음 페이지를 불러오지 못했습니다." } });
+                    return;
                 }
+
+                var rawItems = listFromDetails(((route.viewData || {}).models || {}).contents);
+                var pageAppendItems = [];
+                for (var j = 0; j < rawItems.length; j++) {
+                    var item = rawItems[j];
+                    if (!item || !item.link || seen[item.link]) continue;
+                    seen[item.link] = true;
+                    pageAppendItems.push(item);
+                }
+
+                try {
+                    pageAppendItems = SITE.filterAppendItems ? (SITE.filterAppendItems(pageAppendItems, state, route.context) || []) : pageAppendItems;
+                } catch (e) {
+                }
+
+                state.page = route.context.page || state.page;
+                state.nextUrl = route.context.nextUrl || "";
+                state.seenLinks = [];
+                for (var key in seen) {
+                    if (Object.prototype.hasOwnProperty.call(seen, key)) {
+                        state.seenLinks.push(key);
+                    }
+                }
+                try {
+                    state = SITE.updateAppendState ? (SITE.updateAppendState(state, pageAppendItems, route.context) || state) : state;
+                } catch (e) {
+                }
+                setViewState(viewId, state);
+
+                appendItems = pageAppendItems;
+                fetchCount += 1;
             }
-            try {
-                state = SITE.updateAppendState ? (SITE.updateAppendState(state, appendItems, route.context) || state) : state;
-            } catch (e) {
-            }
-            setViewState(viewId, state);
 
             if (appendItems.length === 0) {
                 synura.update(viewId, {

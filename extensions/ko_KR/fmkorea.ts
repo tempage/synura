@@ -3,7 +3,7 @@
 var SITE = {
   "siteKey": "fmkorea",
   "displayName": "에펨코리아",
-  "browserHomeUrl": "https://m.fmkorea.com/best",
+  "browserHomeUrl": "https://www.fmkorea.com/best",
   "browserCookieAuth": true,
   "minimumHomeBoards": 10,
   "defaultCacheTtlMs": 300000,
@@ -21,8 +21,7 @@ var SITE = {
   "defaultVisibleBoardIds": [],
   "hostAliases": [
     "fmkorea.com",
-    "www.fmkorea.com",
-    "m.fmkorea.com"
+    "www.fmkorea.com"
   ],
   "challengeMarkers": [
     "에펨코리아 보안 시스템",
@@ -34,8 +33,8 @@ var SITE = {
     " : 에펨코리아"
   ],
   "linkAllowPatterns": [
-    "^https://(?:www|m)\\.fmkorea\\.com/(?:[A-Za-z0-9_]+/)?\\d+(?:\\?|$)",
-    "^https://(?:www|m)\\.fmkorea\\.com/index\\.php\\?[^#]*document_srl=\\d+(?:[&#]|$)"
+    "^https://(?:www\\.)?fmkorea\\.com/(?:[A-Za-z0-9_]+/)?\\d+(?:\\?|$)",
+    "^https://(?:www\\.)?fmkorea\\.com/index\\.php\\?[^#]*document_srl=\\d+(?:[&#]|$)"
   ],
   "listBoardQueryParam": "",
   "boards": [
@@ -43,13 +42,13 @@ var SITE = {
       "id": "slug_best",
       "title": "포텐",
       "url": "/best",
-      "description": "모바일 베스트"
+      "description": "베스트"
     },
     {
       "id": "slug_best2",
       "title": "실시간 인기",
       "url": "/best2",
-      "description": "모바일 실시간 인기"
+      "description": "실시간 인기"
     },
     {
       "id": "mid_politics",
@@ -114,8 +113,8 @@ var SITE = {
       "title"
     ],
     "listRows": [
-      ".bd_tb_lst tbody tr:not(.notice)",
-      ".bd_lst tbody tr:not(.notice)",
+      ".bd_tb_lst tbody tr",
+      ".bd_lst tbody tr",
       "li.li",
       ".bd_lst li"
     ],
@@ -370,10 +369,18 @@ SITE.preparePostContext = function (context, match, url, doc, page) {
     if (!doc) return context;
 
     var comments = fmkoreaParseComments(doc, url);
+    var html = page && page.response ? page.response.text() : "";
     var currentCommentPage = fmkoreaParseCommentPageFromUrl(url);
-    var latestCommentPage = currentCommentPage > 0
-        ? currentCommentPage
-        : fmkoreaDetectLatestCommentPage(doc, page && page.response ? page.response.text() : "");
+    var latestCommentPage = fmkoreaDetectLatestCommentPage(doc, html);
+    var renderedCommentPage = fmkoreaDetectRenderedCommentPage(doc, html);
+    if (!(renderedCommentPage > 0)) {
+        renderedCommentPage = currentCommentPage > 0
+            ? currentCommentPage
+            : (latestCommentPage > 0 && comments.length > 0 ? latestCommentPage : 0);
+    }
+    if (latestCommentPage > 0 && renderedCommentPage > latestCommentPage) {
+        renderedCommentPage = latestCommentPage;
+    }
     var loadedCommentLinks = {};
 
     for (var i = 0; i < comments.length; i++) {
@@ -384,9 +391,11 @@ SITE.preparePostContext = function (context, match, url, doc, page) {
 
     context.fmkoreaCanonicalPostUrl = fmkoreaCanonicalPostUrl(url);
     context.fmkoreaCommentMid = fmkoreaCommentMid(match, url);
-    context.fmkoreaCommentCursorPage = currentCommentPage > 0
-        ? Math.max(0, currentCommentPage - 1)
-        : Math.max(0, latestCommentPage);
+    context.fmkoreaRenderedCommentPage = renderedCommentPage;
+    context.fmkoreaCommentLatestPage = latestCommentPage;
+    context.fmkoreaCommentCursorPage = renderedCommentPage > 0
+        ? Math.max(0, renderedCommentPage - 1)
+        : 0;
     context.fmkoreaLoadedComments = comments;
     context.fmkoreaLoadedCommentLinks = loadedCommentLinks;
     return context;
@@ -401,22 +410,22 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 };
 
 var SYNURA = {
-    domain: "m.fmkorea.com",
+    domain: "www.fmkorea.com",
     name: "fmkorea",
     description: "Unofficial FMKorea extension",
     version: 0.1,
     api: 0,
     license: "Apache-2.0",
-    bypass: "chrome/android",
+    bypass: "chrome/windows",
     locale: "ko_KR",
     deeplink: true,
-    icon: "https://m.fmkorea.com/favicon.ico",
+    icon: "https://www.fmkorea.com/favicon.ico",
     main: null
 };
 
 var LIST_LINK_ALLOW_PATTERNS = [
-    "^https://(?:www|m)\\.fmkorea\\.com/(?:[A-Za-z0-9_]+/)?\\d+(?:\\?|$)",
-    "^https://(?:www|m)\\.fmkorea\\.com/index\\.php\\?[^#]*document_srl=\\d+(?:[&#]|$)"
+    "^https://(?:www\\.)?fmkorea\\.com/(?:[A-Za-z0-9_]+/)?\\d+(?:\\?|$)",
+    "^https://(?:www\\.)?fmkorea\\.com/index\\.php\\?[^#]*document_srl=\\d+(?:[&#]|$)"
 ];
 var LIST_ROW_SELECTORS = SITE.selectors && SITE.selectors.listRows ? SITE.selectors.listRows : ["li.li",".bd_lst li"];
 var LIST_LINK_SELECTORS = SITE.selectors && SITE.selectors.listLink ? SITE.selectors.listLink : ["h3.title a","h3 a","a[href]"];
@@ -429,6 +438,66 @@ var LIST_VIEW_COUNT_SELECTORS = SITE.selectors && SITE.selectors.listViewCount ?
 var LIST_LIKE_COUNT_SELECTORS = SITE.selectors && SITE.selectors.listLikeCount ? SITE.selectors.listLikeCount : [".voted_count",".voteNum"];
 var LIST_CATEGORY_SELECTORS = SITE.selectors && SITE.selectors.listCategory ? SITE.selectors.listCategory : [".category"];
 var LIST_IMAGE_SELECTORS = SITE.selectors && SITE.selectors.listImage ? SITE.selectors.listImage : ["img.thumb",".thumb img",".title img"];
+
+var FMKOREA_BEST_BOARD_IDS = {
+    "slug_best": true,
+    "slug_best2": true
+};
+
+var FMKOREA_BEST_LIST_ROW_SELECTORS = [
+    "li.li",
+    ".bd_lst li"
+];
+
+var FMKOREA_TABLE_LIST_ROW_SELECTORS = [
+    ".bd_tb_lst tbody tr",
+    ".bd_lst tbody tr"
+];
+
+function fmkoreaResolveBoardId(match, baseUrl) {
+    var boardId = normalizeWhitespace(match && match.board && match.board.id || "");
+    if (boardId) return boardId;
+
+    var info = parseAbsoluteUrl(baseUrl);
+    var boardMatch = info && SITE.matchBoard ? SITE.matchBoard(info) : null;
+    return normalizeWhitespace(boardMatch && boardMatch.board && boardMatch.board.id || "");
+}
+
+function fmkoreaBoardListProfile(match, baseUrl) {
+    var boardId = fmkoreaResolveBoardId(match, baseUrl);
+    if (FMKOREA_BEST_BOARD_IDS[boardId]) {
+        return {
+            key: "best",
+            rowSelectors: FMKOREA_BEST_LIST_ROW_SELECTORS,
+            skipRow: function (row) {
+                return !row;
+            }
+        };
+    }
+
+    return {
+        key: "table",
+        rowSelectors: FMKOREA_TABLE_LIST_ROW_SELECTORS,
+        skipRow: fmkoreaShouldSkipListRow
+    };
+}
+
+function fmkoreaShouldSkipListRow(row) {
+    if (!row) return true;
+
+    var className = normalizeWhitespace(attrOf(row, "class"));
+    if (/\bnotice\b/i.test(className)) return true;
+    if (/\bshow_folded_notice\b/i.test(className)) return true;
+
+    var tagName = String(row.tagName || "").toUpperCase();
+    if (tagName === "TR") {
+        var linkNode = row.querySelector ? row.querySelector("a[href]") : null;
+        var colspanNode = row.querySelector ? row.querySelector("td[colspan]") : null;
+        if (colspanNode && !linkNode) return true;
+    }
+
+    return false;
+}
 
 function fmkoreaFindInfoSpan(row, iconClass) {
     if (!row || !row.querySelectorAll || !iconClass) return null;
@@ -563,6 +632,35 @@ function fmkoreaDetectLatestCommentPage(doc, html) {
     return maxPage;
 }
 
+function fmkoreaDetectRenderedCommentPage(doc, html) {
+    var source = String(html || "");
+    var matched = source.match(/window\.current_cpage\s*=\s*parseInt\('(\d+)'\)/);
+    if (matched && matched[1]) {
+        var parsedCurrentPage = parseInt(matched[1], 10);
+        if (!isNaN(parsedCurrentPage) && parsedCurrentPage > 0) return parsedCurrentPage;
+    }
+
+    matched = source.match(/window\.current_cpage\s*=\s*(\d+)/);
+    if (matched && matched[1]) {
+        var currentPage = parseInt(matched[1], 10);
+        if (!isNaN(currentPage) && currentPage > 0) return currentPage;
+    }
+
+    var pager = firstNode(doc, [
+        "#cmtPosition .bd_pg",
+        ".fdb_lst .bd_pg",
+        "#comment .bd_pg"
+    ]);
+    if (!pager) return 0;
+
+    var current = firstNode(pager, ["strong.this", ".this"]);
+    var currentText = normalizeWhitespace(textOf(current));
+    if (!/^\d+$/.test(currentText)) return 0;
+
+    var currentFromPager = parseInt(currentText, 10);
+    return !isNaN(currentFromPager) && currentFromPager > 0 ? currentFromPager : 0;
+}
+
 function fmkoreaExtractCommentId(row) {
     var raw = firstNonEmpty([
         attrOf(row, "id"),
@@ -647,23 +745,16 @@ function fmkoreaBuildCommentPageUrlFromState(state, pageNo) {
 
 function fmkoreaAppendOlderComments(viewId, state) {
     var nextPage = parseInt(String(state && state.fmkoreaCommentCursorPage || 0), 10);
-    if (!(nextPage > 0)) {
-        synura.update(viewId, { models: { snackbar: "더 불러올 댓글이 없습니다." } });
-        return true;
-    }
+    if (!(nextPage > 0)) return true;
 
     var targetUrl = fmkoreaBuildCommentPageUrlFromState(state, nextPage);
-    if (!targetUrl) {
-        synura.update(viewId, { models: { snackbar: "댓글 페이지 URL을 만들지 못했습니다." } });
-        return true;
-    }
+    if (!targetUrl) return true;
 
     try {
-        var page = fetchPostPage(targetUrl);
+        var page = fetchPostPage(null, targetUrl);
         var fetchedComments = fmkoreaParseComments(page.doc, targetUrl);
         var seen = state.fmkoreaLoadedCommentLinks || {};
         var loaded = Array.isArray(state.fmkoreaLoadedComments) ? state.fmkoreaLoadedComments.slice() : [];
-        var appendCount = 0;
 
         for (var i = 0; i < fetchedComments.length; i++) {
             var item = fetchedComments[i];
@@ -671,7 +762,6 @@ function fmkoreaAppendOlderComments(viewId, state) {
             if (!link || seen[link]) continue;
             seen[link] = true;
             loaded.push(item);
-            appendCount += 1;
         }
 
         state.fmkoreaLoadedComments = loaded;
@@ -681,25 +771,24 @@ function fmkoreaAppendOlderComments(viewId, state) {
 
         synura.update(viewId, {
             models: {
-                comments: loaded,
-                snackbar: appendCount > 0 ? "" : (state.fmkoreaCommentCursorPage > 0 ? "중복 댓글을 건너뛰었습니다." : "더 불러올 댓글이 없습니다.")
+                comments: loaded
             }
         });
-    } catch (e) {
-        synura.update(viewId, { models: { snackbar: String(e || "") } });
-    }
+    } catch (e) {}
     return true;
 }
 
-function parseFmkoreaBoardItems(doc, baseUrl) {
+function parseFmkoreaBoardItems(doc, baseUrl, match) {
     var root = fmkoreaParseBoardRoot(doc);
-    var rows = allNodes(root, selectorList("listRows", LIST_ROW_SELECTORS));
+    var profile = fmkoreaBoardListProfile(match, baseUrl);
+    var rows = allNodes(root, profile && profile.rowSelectors ? profile.rowSelectors : selectorList("listRows", LIST_ROW_SELECTORS));
     if (!rows || rows.length === 0) return [];
 
     var items = [];
     var seen = {};
     for (var i = 0; i < rows.length; i++) {
         var row = rows[i];
+        if (profile && typeof profile.skipRow === "function" && profile.skipRow(row)) continue;
         var item = extractListItem(row, baseUrl);
         if (!item || !item.link || seen[item.link]) continue;
 
@@ -725,6 +814,8 @@ function fmkoreaParseBoardRoot(input) {
 }
 
 function extractListItem(row, baseUrl) {
+    if (fmkoreaShouldSkipListRow(row)) return null;
+
     var linkSelectors = selectorList("listLink", LIST_LINK_SELECTORS);
     var titleSelectors = selectorList("listTitle", LIST_TITLE_SELECTORS);
     var authorSelectors = selectorList("listAuthor", LIST_AUTHOR_SELECTORS);
@@ -799,6 +890,6 @@ function extractListItem(row, baseUrl) {
 }
 
 SITE.parseBoardItemsCustom = parseFmkoreaBoardItems;
-SITE.parseBoardItemsFromHtml = function (html, baseUrl) {
-    return parseFmkoreaBoardItems(fmkoreaParseBoardRoot(html), baseUrl);
+SITE.parseBoardItemsFromHtml = function (html, baseUrl, match) {
+    return parseFmkoreaBoardItems(fmkoreaParseBoardRoot(html), baseUrl, match);
 };

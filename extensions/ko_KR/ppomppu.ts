@@ -991,15 +991,15 @@ function ppomppuItemPostId(item) {
 }
 
 function ppomppuComputeLastPostId(items) {
-    var lastPostId = 0;
-    for (var i = 0; i < (items || []).length; i++) {
+    // Pinned notices can carry much older ids than the actual page rows.
+    // Use the trailing row as the append cursor so page-to-page overlap works.
+    for (var i = (items || []).length - 1; i >= 0; i--) {
         var id = parseInt(ppomppuItemPostId(items[i]), 10);
-        if (!(id > 0)) continue;
-        if (lastPostId === 0 || id < lastPostId) {
-            lastPostId = id;
+        if (id > 0) {
+            return id;
         }
     }
-    return lastPostId;
+    return 0;
 }
 
 function ppomppuFilterAppendByLastPostId(items, lastPostId) {
@@ -1030,9 +1030,11 @@ function ppomppuBuildPostFragment(html) {
     var fragments = [];
     var headerHtml = ppomppuExtractFirstTag(viewHtml, "h4");
     var contentHtml = ppomppuExtractTagById(viewHtml, "div", "KH_Content");
+    var commentsHtml = ppomppuExtractTagById(viewHtml, "div", "cmAr");
 
     if (headerHtml) fragments.push(headerHtml);
     if (contentHtml) fragments.push(contentHtml);
+    if (commentsHtml) fragments.push(commentsHtml);
 
     return fragments.join("");
 }
