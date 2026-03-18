@@ -195,10 +195,16 @@ var SITE = {
     "^https://m\\.clien\\.net/service/board/[^/]+/\\d+"
   ],
   "listBoardQueryParam": "",
+  "hotThreshold": 3000,
+  "coldThreshold": 20,
+  "commentHotThreshold": 5,
+  "commentColdThreshold": 3,
   "boards": [
     {
       "id": "park",
-      "title": "모두의공원"
+      "title": "모두의공원",
+      "hotThreshold": 5000,
+      "coldThreshold": 30
     },
     {
       "id": "news",
@@ -757,7 +763,7 @@ SITE.parseComments = function (doc, postUrl) {
             level: clienDetectCommentLevel(row),
             menus: menus,
             hotCount: toInt(likeCount, 0),
-            coldCount: toInt(likeCount, 0)
+            coldCount: toInt(dislikeCount, 0)
         });
     }
 
@@ -851,8 +857,8 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount || viewCount || commentCount, 0),
-        coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        hotCount: toInt(viewCount || likeCount || commentCount, 0),
+        coldCount: toInt(likeCount || commentCount, 0)
     };
 }
 
@@ -948,8 +954,8 @@ function clienExtractImageBoardItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount || viewCount || commentCount, 0),
-        coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        hotCount: toInt(viewCount || likeCount || commentCount, 0),
+        coldCount: toInt(likeCount || commentCount, 0)
     };
 }
 

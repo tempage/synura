@@ -32,11 +32,17 @@ var SITE = {
     "^https://m\\.pann\\.nate\\.com/talk/\\d+"
   ],
   "listBoardQueryParam": "",
+  "hotThreshold": 3000,
+  "coldThreshold": 10,
+  "commentHotThreshold": 5,
+  "commentColdThreshold": 3,
   "boards": [
     {
       "id": "talk_today",
       "title": "오늘의 톡",
-      "url": "/talk/today"
+      "url": "/talk/today",
+      "hotThreshold": 5000,
+      "coldThreshold": 20
     },
     {
       "id": "talk",
@@ -484,7 +490,7 @@ function pannBuildComment(row, postUrl, index) {
         level: detectCommentLevel(row),
         menus: [],
         hotCount: toInt(likeCount, 0),
-        coldCount: toInt(dislikeCount || likeCount, 0)
+        coldCount: toInt(dislikeCount, 0)
     };
 }
 function pannParseCommentsFromDoc(doc, postUrl) {
@@ -680,7 +686,7 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount || viewCount || commentCount, 0),
-        coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        hotCount: toInt(viewCount || likeCount || commentCount, 0),
+        coldCount: toInt(likeCount || commentCount, 0)
     };
 }

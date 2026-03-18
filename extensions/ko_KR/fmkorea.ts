@@ -37,18 +37,26 @@ var SITE = {
     "^https://(?:www\\.)?fmkorea\\.com/index\\.php\\?[^#]*document_srl=\\d+(?:[&#]|$)"
   ],
   "listBoardQueryParam": "",
+  "hotThreshold": 10000,
+  "coldThreshold": 100,
+  "commentHotThreshold": 10,
+  "commentColdThreshold": 3,
   "boards": [
     {
       "id": "slug_best",
       "title": "포텐",
       "url": "/best",
-      "description": "베스트"
+      "description": "베스트",
+      "hotThreshold": 15000,
+      "coldThreshold": 150
     },
     {
       "id": "slug_best2",
       "title": "실시간 인기",
       "url": "/best2",
-      "description": "실시간 인기"
+      "description": "실시간 인기",
+      "hotThreshold": 15000,
+      "coldThreshold": 150
     },
     {
       "id": "mid_politics",
@@ -726,7 +734,7 @@ function fmkoreaParseComments(doc, postUrl) {
             level: fmkoreaDetectCommentLevel(row),
             menus: [],
             hotCount: fmkoreaMetricRankValue(likeCount),
-            coldCount: fmkoreaMetricRankValue(dislikeCount || likeCount)
+            coldCount: fmkoreaMetricRankValue(dislikeCount)
         });
     }
 
@@ -884,8 +892,8 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: fmkoreaMetricRankValue(likeCount || viewCount || commentCount),
-        coldCount: fmkoreaMetricRankValue(viewCount || likeCount || commentCount)
+        hotCount: fmkoreaMetricRankValue(viewCount || likeCount || commentCount),
+        coldCount: fmkoreaMetricRankValue(likeCount || commentCount)
     };
 }
 

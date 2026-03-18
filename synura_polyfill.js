@@ -938,6 +938,8 @@
 
         const hotThreshold = styles?.hotThreshold;
         const coldThreshold = styles?.coldThreshold;
+        const commentHotThreshold = Number(styles?.commentHotThreshold) > 0 ? Number(styles.commentHotThreshold) : hotThreshold;
+        const commentColdThreshold = Number(styles?.commentColdThreshold) > 0 ? Number(styles.commentColdThreshold) : coldThreshold;
 
         const listContainer = document.createElement('div');
         if (layout === 'card' || layout === 'gallery') {
@@ -1361,15 +1363,15 @@
                 const hotCount = c.hotCount;
                 const coldCount = c.coldCount;
 
-                if (hotThreshold && hotCount) {
-                    const opacity = hotCount > hotThreshold ? 1 : (hotCount / hotThreshold);
+                if (commentHotThreshold && hotCount) {
+                    const opacity = hotCount > commentHotThreshold ? 1 : (hotCount / commentHotThreshold);
                     if (opacity > 0) {
                         const color = `rgba(249, 38, 114, ${opacity})`;
                         el.style.borderLeft = `5px solid ${color}`;
                     }
                 }
-                if (coldThreshold && coldCount) {
-                    const opacity = coldCount > coldThreshold ? 1 : (coldCount / coldThreshold);
+                if (commentColdThreshold && coldCount) {
+                    const opacity = coldCount > commentColdThreshold ? 1 : (coldCount / commentColdThreshold);
                     if (opacity > 0) {
                         const color = `rgba(102, 217, 239, ${opacity})`;
                         el.style.borderRight = `5px solid ${color}`;

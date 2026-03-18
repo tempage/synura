@@ -8,14 +8,17 @@ var DC_PERSON_BASE_URL = DC_BASE_URL + "/person/";
 
 var DC_DEFAULT_BOARD_DESCRIPTION = "홈 기본 갤러리";
 
-function dcBoardEntry(slug, title, group, description) {
-  return {
+function dcBoardEntry(slug, title, group, description, hotThreshold, coldThreshold) {
+  var entry = {
     id: "board:" + slug,
     title: title,
     url: DC_BOARD_BASE_URL + slug,
     description: description || DC_DEFAULT_BOARD_DESCRIPTION,
     group: group
   };
+  if (typeof hotThreshold === "number") entry.hotThreshold = hotThreshold;
+  if (typeof coldThreshold === "number") entry.coldThreshold = coldThreshold;
+  return entry;
 }
 
 var DC_DEFAULT_VISIBLE_BOARD_IDS = [
@@ -43,7 +46,7 @@ var DC_DEFAULT_VISIBLE_BOARD_IDS = [
 ];
 
 var DC_SYSTEM_BOARDS = [
-  dcBoardEntry("dcbest", "실시간 베스트", "인기", "실시간 베스트"),
+  dcBoardEntry("dcbest", "실시간 베스트", "인기", "실시간 베스트", 8000, 60),
   dcBoardEntry("hiphop_new1", "힙합", "음악"),
   dcBoardEntry("comic_new6", "만화", "만화"),
   dcBoardEntry("m_entertainer_new1", "남자 연예인", "연예"),
@@ -110,6 +113,10 @@ var SITE = {
     "^https://" + DC_HOST_PATTERN + "/person/board/view(?:/)?\\?.*\\bid=[^&]+.*\\bno=\\d+"
   ],
   "listBoardQueryParam": "",
+  "hotThreshold": 4000,
+  "coldThreshold": 30,
+  "commentHotThreshold": 10,
+  "commentColdThreshold": 3,
   "boards": DC_SYSTEM_BOARDS,
   "selectors": {
     "boardTitle": [
@@ -362,8 +369,8 @@ function extractListItem(row, baseUrl) {
     mediaType: mediaUrl ? "image" : "",
     types: types,
     menus: [],
-    hotCount: toInt(likeCount || viewCount || commentCount, 0),
-    coldCount: toInt(viewCount || likeCount || commentCount, 0)
+    hotCount: toInt(viewCount || likeCount || commentCount, 0),
+    coldCount: toInt(likeCount || commentCount, 0)
   };
 }
 
@@ -1624,7 +1631,7 @@ function dcParseComments(doc, postUrl) {
       level: detectCommentLevel(row),
       menus: [],
       hotCount: toInt(likeCount, 0),
-      coldCount: toInt(likeCount, 0)
+      coldCount: 0
     });
   }
   return comments;

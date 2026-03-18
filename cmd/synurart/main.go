@@ -955,6 +955,8 @@ func printViewContent(rt *synurart.Runtime, id int64) {
 func renderList(models, styles map[string]any) {
 	menus := buttonLabels(models["menus"])
 	showMedia := boolFromAny(styles["media"])
+	hotThreshold := intFromAny(styles["hotThreshold"])
+	coldThreshold := intFromAny(styles["coldThreshold"])
 	if len(menus) > 0 {
 		fmt.Printf("  %s %s\n", dim("menus:"), strings.Join(menus, ", "))
 	}
@@ -976,6 +978,15 @@ func renderList(models, styles map[string]any) {
 		if meta := listItemMeta(item); meta != "" {
 			b.WriteString("  ")
 			b.WriteString(c(meta, cBrightBlack))
+		}
+		if signals := hotColdSignalTags(
+			intFromAny(item["hotCount"]),
+			hotThreshold,
+			intFromAny(item["coldCount"]),
+			coldThreshold,
+		); len(signals) > 0 {
+			b.WriteString("  ")
+			b.WriteString(strings.Join(signals, " "))
 		}
 		if link := stringifyAny(item["link"]); link != "" {
 			b.WriteString("  ")
@@ -1043,10 +1054,72 @@ func listItemMediaLine(item map[string]any, enabled bool) string {
 	return strings.Join(parts, " ")
 }
 
+func hotColdSignalTags(hotCount, hotThreshold, coldCount, coldThreshold int) []string {
+	out := make([]string, 0, 2)
+	if signal := thresholdSignalTag("hot", hotCount, hotThreshold); signal != "" {
+		out = append(out, signal)
+	}
+	if signal := thresholdSignalTag("cold", coldCount, coldThreshold); signal != "" {
+		out = append(out, signal)
+	}
+	return out
+}
+
+func thresholdSignalTag(kind string, count, threshold int) string {
+	if threshold <= 0 || count <= 0 {
+		return ""
+	}
+	label := strings.ToUpper(kind) + " " + strconv.Itoa(count) + "/" + strconv.Itoa(threshold)
+	codes := []string{cBold}
+	switch kind {
+	case "hot":
+		codes = append(codes, cBrightRed)
+	case "cold":
+		codes = append(codes, cBrightBlue)
+	default:
+		codes = append(codes, cBrightBlack)
+	}
+	return tag(label, codes...)
+}
+
+func thresholdSignalSummary(kind string, count, threshold int) map[string]any {
+	if threshold <= 0 || count <= 0 {
+		return nil
+	}
+	return map[string]any{
+		"kind":      kind,
+		"count":     count,
+		"threshold": threshold,
+		"label":     strings.ToUpper(kind) + " " + strconv.Itoa(count) + "/" + strconv.Itoa(threshold),
+	}
+}
+
+func appendHotColdSummaries(entry map[string]any, hotCount, hotThreshold, coldCount, coldThreshold int) {
+	if entry == nil {
+		return
+	}
+	if hot := thresholdSignalSummary("hot", hotCount, hotThreshold); hot != nil {
+		entry["hot"] = hot
+	}
+	if cold := thresholdSignalSummary("cold", coldCount, coldThreshold); cold != nil {
+		entry["cold"] = cold
+	}
+}
+
+func commentThreshold(styles map[string]any, key, fallback string) int {
+	threshold := intFromAny(styles[key])
+	if threshold > 0 {
+		return threshold
+	}
+	return intFromAny(styles[fallback])
+}
+
 func renderedViewSummary(path string, models, styles map[string]any) map[string]any {
 	switch path {
 	case "/views/list":
 		return renderedListSummary(models, styles)
+	case "/views/post":
+		return renderedPostSummary(models, styles)
 	default:
 		return nil
 	}
@@ -1056,6 +1129,8 @@ func renderedListSummary(models, styles map[string]any) map[string]any {
 	items := contentItems(models)
 	outItems := make([]map[string]any, 0, len(items))
 	showMedia := boolFromAny(styles["media"])
+	hotThreshold := intFromAny(styles["hotThreshold"])
+	coldThreshold := intFromAny(styles["coldThreshold"])
 	for i, raw := range items {
 		item := mapFromAny(raw)
 		entry := map[string]any{"index": i + 1}
@@ -1093,12 +1168,93 @@ func renderedListSummary(models, styles map[string]any) map[string]any {
 		if menus := labelsFromAny(item["menus"]); len(menus) > 0 {
 			entry["menus"] = menus
 		}
+		appendHotColdSummaries(
+			entry,
+			intFromAny(item["hotCount"]),
+			hotThreshold,
+			intFromAny(item["coldCount"]),
+			coldThreshold,
+		)
 		outItems = append(outItems, entry)
 	}
 	return map[string]any{
 		"items": outItems,
 		"menus": buttonLabels(models["menus"]),
 	}
+}
+
+func renderedPostSummary(models, styles map[string]any) map[string]any {
+	title := strings.TrimSpace(stringifyAny(modelMessage(models["title"])))
+	if title == "" {
+		title = strings.TrimSpace(stringifyAny(styles["title"]))
+	}
+	author := strings.TrimSpace(stringifyAny(modelMessage(models["author"])))
+	content := detailsFromModel(models["content"])
+	comments := detailsFromModel(models["comments"])
+	out := map[string]any{
+		"title":         title,
+		"author":        author,
+		"contentBlocks": len(content),
+		"commentsCount": len(comments),
+	}
+	appendHotColdSummaries(
+		out,
+		intFromAny(modelMessage(models["hotCount"])),
+		intFromAny(styles["hotThreshold"]),
+		intFromAny(modelMessage(models["coldCount"])),
+		intFromAny(styles["coldThreshold"]),
+	)
+	if len(comments) == 0 {
+		return out
+	}
+	commentHotThreshold := commentThreshold(styles, "commentHotThreshold", "hotThreshold")
+	commentColdThreshold := commentThreshold(styles, "commentColdThreshold", "coldThreshold")
+	renderedComments := make([]map[string]any, 0, len(comments))
+	for i, raw := range comments {
+		renderedComments = append(renderedComments, renderedCommentSummary(i, raw, commentHotThreshold, commentColdThreshold))
+	}
+	out["comments"] = renderedComments
+	return out
+}
+
+func renderedCommentSummary(index int, raw any, hotThreshold, coldThreshold int) map[string]any {
+	entry := map[string]any{"index": index + 1}
+	item := mapFromAny(raw)
+	if item == nil {
+		text := strings.TrimSpace(stringifyAny(raw))
+		if text != "" {
+			entry["text"] = text
+		}
+		return entry
+	}
+	author := strings.TrimSpace(stringifyAny(item["author"]))
+	if author == "" {
+		author = "(anon)"
+	}
+	entry["author"] = author
+	if body := summarizeCommentBody(item["content"]); body != "" {
+		entry["body"] = body
+	}
+	if date := strings.TrimSpace(stringifyAny(item["date"])); date != "" {
+		entry["date"] = date
+	}
+	if like := strings.TrimSpace(stringifyAny(item["likeCount"])); like != "" {
+		entry["likeCount"] = like
+	}
+	if level := intFromAny(item["level"]); level > 0 {
+		entry["level"] = level
+	}
+	if menus := labelsFromAny(item["menus"]); len(menus) > 0 {
+		entry["menus"] = menus
+	}
+	appendHotColdSummaries(
+		entry,
+		intFromAny(item["hotCount"]),
+		hotThreshold,
+		intFromAny(item["coldCount"]),
+		coldThreshold,
+	)
+	return entry
 }
 
 func renderPost(models, styles map[string]any) {
@@ -1108,13 +1264,24 @@ func renderPost(models, styles map[string]any) {
 	}
 	content := detailsFromModel(models["content"])
 	comments := detailsFromModel(models["comments"])
+	postSignals := hotColdSignalTags(
+		intFromAny(modelMessage(models["hotCount"])),
+		intFromAny(styles["hotThreshold"]),
+		intFromAny(modelMessage(models["coldCount"])),
+		intFromAny(styles["coldThreshold"]),
+	)
+	commentHotThreshold := commentThreshold(styles, "commentHotThreshold", "hotThreshold")
+	commentColdThreshold := commentThreshold(styles, "commentColdThreshold", "coldThreshold")
 
 	fmt.Printf("  %s  %s\n", dim("title:"), bold(title))
 	fmt.Printf("  %s %s\n", dim("author:"), c(stringifyAny(modelMessage(models["author"])), cBrightMagenta))
 	fmt.Printf("  %s %s\n", dim("content:"), c(fmt.Sprintf("%d blocks", len(content)), cBrightYellow))
 	fmt.Printf("  %s %s\n", dim("comments:"), c(fmt.Sprintf("%d", len(comments)), cBrightYellow))
+	if len(postSignals) > 0 {
+		fmt.Printf("  %s %s\n", dim("signals:"), strings.Join(postSignals, " "))
+	}
 	renderPostContentCompact(content)
-	renderPostCommentsCompact(comments)
+	renderPostCommentsCompact(comments, commentHotThreshold, commentColdThreshold)
 }
 
 func renderPostContentCompact(content []any) {
@@ -1128,7 +1295,7 @@ func renderPostContentCompact(content []any) {
 	}
 }
 
-func renderPostCommentsCompact(comments []any) {
+func renderPostCommentsCompact(comments []any, hotThreshold, coldThreshold int) {
 	if len(comments) == 0 {
 		return
 	}
@@ -1167,6 +1334,14 @@ func renderPostCommentsCompact(comments []any) {
 		}
 
 		line := fmt.Sprintf("%s%s: %s%s", indent, author, body, meta)
+		if signals := hotColdSignalTags(
+			intFromAny(item["hotCount"]),
+			hotThreshold,
+			intFromAny(item["coldCount"]),
+			coldThreshold,
+		); len(signals) > 0 {
+			line += " " + strings.Join(signals, " ")
+		}
 		if itemMenus := labelsFromAny(item["menus"]); len(itemMenus) > 0 {
 			line += fmt.Sprintf(" {menus:%s}", strings.Join(itemMenus, ", "))
 		}

@@ -53,14 +53,22 @@ var SITE = {
     "^https://damoang\\.net/[^/]+/\\d+(?:\\?|$)"
   ],
   "listBoardQueryParam": "",
+  "hotThreshold": 1500,
+  "coldThreshold": 15,
+  "commentHotThreshold": 5,
+  "commentColdThreshold": 3,
   "boards": [
     {
       "id": "fire",
-      "title": "불타는앙"
+      "title": "불타는앙",
+      "hotThreshold": 3000,
+      "coldThreshold": 30
     },
     {
       "id": "free",
-      "title": "자유게시판"
+      "title": "자유게시판",
+      "hotThreshold": 2500,
+      "coldThreshold": 25
     },
     {
       "id": "new",
@@ -655,7 +663,7 @@ function damoangParseComments(doc, postUrl) {
             level: detectCommentLevel(row),
             menus: [],
             hotCount: toInt(likeCount, 0),
-            coldCount: toInt(likeCount, 0)
+            coldCount: 0
         });
     }
     return comments;
@@ -747,8 +755,8 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount || viewCount || commentCount, 0),
-        coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        hotCount: toInt(viewCount || likeCount || commentCount, 0),
+        coldCount: toInt(likeCount || commentCount, 0)
     };
 }
 
@@ -998,7 +1006,7 @@ function damoangToCommentModel(item, postAuthor) {
         level: item && typeof item.depth === "number" ? item.depth : 0,
         menus: menus,
         hotCount: likesInt,
-        coldCount: likesInt
+        coldCount: 0
     };
 }
 
@@ -1055,8 +1063,8 @@ function damoangToCardItem(boardId, item) {
         commentCount: hideZeroCount(comments),
         viewCount: views,
         menus: [],
-        hotCount: parseInt(views || "0", 10) || 0,
-        coldCount: parseInt(views || "0", 10) || 0
+        hotCount: parseInt(views || likes || comments || "0", 10) || 0,
+        coldCount: parseInt(likes || comments || "0", 10) || 0
     };
 }
 

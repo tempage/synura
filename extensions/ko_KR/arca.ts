@@ -31,12 +31,18 @@ var SITE = {
     "^https://arca\\.live/b/[^/]+/\\d+"
   ],
   "listBoardQueryParam": "",
+  "hotThreshold": 7000,
+  "coldThreshold": 70,
+  "commentHotThreshold": 10,
+  "commentColdThreshold": 3,
   "boards": [
     {
       "id": "live",
       "title": "실시간",
       "url": "/b/live",
-      "description": "실시간 인기"
+      "description": "실시간 인기",
+      "hotThreshold": 10000,
+      "coldThreshold": 100
     },
     {
       "id": "hotdeal",
@@ -587,7 +593,7 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount, 0),
-        coldCount: 0
+        hotCount: toInt(viewCount || likeCount || commentCount, 0),
+        coldCount: toInt(likeCount || commentCount, 0)
     };
 }

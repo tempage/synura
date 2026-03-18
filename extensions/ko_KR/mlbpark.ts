@@ -5,7 +5,9 @@ var MLBPARK_PRELOADED_BOARDS = [
     "id": "bullpen",
     "title": "불펜",
     "url": "/mp/b.php?m=list&b=bullpen",
-    "description": "대표 자유 게시판"
+    "description": "대표 자유 게시판",
+    "hotThreshold": 3000,
+    "coldThreshold": 25
   },
   {
     "id": "mlbtown",
@@ -105,6 +107,14 @@ var MLBPARK_PRELOADED_BOARDS = [
   }
 ];
 
+for (var mlbparkBoardIdx = 0; mlbparkBoardIdx < MLBPARK_PRELOADED_BOARDS.length; mlbparkBoardIdx++) {
+  var mlbparkBoard = MLBPARK_PRELOADED_BOARDS[mlbparkBoardIdx];
+  if (/^best_/.test(mlbparkBoard.id)) {
+    mlbparkBoard.hotThreshold = 5000;
+    mlbparkBoard.coldThreshold = 40;
+  }
+}
+
 var MLBPARK_DEFAULT_VISIBLE_BOARD_IDS = [
   "bullpen",
   "mlbtown",
@@ -147,6 +157,10 @@ var SITE = {
     "b\\.php\\?[^#]*\\bm=view\\b"
   ],
   "listBoardQueryParam": "",
+  "hotThreshold": 2000,
+  "coldThreshold": 15,
+  "commentHotThreshold": 5,
+  "commentColdThreshold": 3,
   "boards": MLBPARK_PRELOADED_BOARDS,
   "selectors": {
     "boardTitle": [
@@ -950,7 +964,7 @@ function mlbparkParseComments(doc, postUrl) {
             level: detectCommentLevel(row),
             menus: [],
             hotCount: toInt(likeCount, 0),
-            coldCount: toInt(likeCount, 0)
+            coldCount: 0
         });
     }
     return comments;
@@ -1097,7 +1111,7 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount || viewCount || commentCount, 0),
-        coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        hotCount: toInt(viewCount || likeCount || commentCount, 0),
+        coldCount: toInt(likeCount || commentCount, 0)
     };
 }

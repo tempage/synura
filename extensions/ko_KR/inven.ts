@@ -33,12 +33,18 @@ var SITE = {
     "^https://www\\.inven\\.co\\.kr/board/[^/]+/\\d+/\\d+"
   ],
   "listBoardQueryParam": "",
+  "hotThreshold": 1200,
+  "coldThreshold": 5,
+  "commentHotThreshold": 5,
+  "commentColdThreshold": 3,
   "boards": [
     {
       "id": "come_2097",
       "title": "오픈이슈갤러리",
       "url": "/board/webzine/2097",
-      "description": "대표 이슈 게시판"
+      "description": "대표 이슈 게시판",
+      "hotThreshold": 2000,
+      "coldThreshold": 10
     },
     {
       "id": "come_2631",
@@ -463,7 +469,7 @@ function invenParseComments(doc, postUrl) {
             level: detectCommentLevel(row),
             menus: [],
             hotCount: toInt(likeCount, 0),
-            coldCount: toInt(likeCount, 0),
+            coldCount: 0,
             _invenDedupKey: commentId ? "comment:" + commentId : ""
         });
     }
@@ -959,7 +965,7 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount || viewCount || commentCount, 0),
-        coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        hotCount: toInt(viewCount || likeCount || commentCount, 0),
+        coldCount: toInt(likeCount || commentCount, 0)
     };
 }

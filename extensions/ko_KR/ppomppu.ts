@@ -419,6 +419,10 @@ var SITE = {
     "(?:bbs_view|zboard/view)\\.php\\?[^#]*\\bno="
   ],
   "listBoardQueryParam": "id",
+  "hotThreshold": 1000,
+  "coldThreshold": 8,
+  "commentHotThreshold": 5,
+  "commentColdThreshold": 3,
   "boards": ppomppuBuildBoardsFromGroups(PPOMPPU_DEFAULT_BOARD_GROUPS),
   "selectors": {
     "boardTitle": [
@@ -970,8 +974,8 @@ function ppomppuExtractBoardItems(listRoot, baseUrl) {
             mediaType: mediaUrl ? "image" : "",
             types: types,
             menus: [],
-            hotCount: toInt(likeCount || viewCount || commentCount, 0),
-            coldCount: toInt(viewCount || likeCount || commentCount, 0)
+            hotCount: toInt(viewCount || likeCount || commentCount, 0),
+            coldCount: toInt(likeCount || commentCount, 0)
         });
     }
     return items;
@@ -1441,7 +1445,7 @@ function ppomppuParseComments(doc, postUrl) {
             level: detectCommentLevel(row),
             menus: [],
             hotCount: toInt(likeCount, 0),
-            coldCount: toInt(likeCount, 0)
+            coldCount: 0
         });
     }
     return comments;
@@ -1568,7 +1572,7 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount || viewCount || commentCount, 0),
-        coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        hotCount: toInt(viewCount || likeCount || commentCount, 0),
+        coldCount: toInt(likeCount || commentCount, 0)
     };
 }

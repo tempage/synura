@@ -89,6 +89,14 @@ var RULIWEB_HOME_BOARDS = [
   }
 ];
 
+for (var ruliwebHomeIdx = 0; ruliwebHomeIdx < RULIWEB_HOME_BOARDS.length; ruliwebHomeIdx++) {
+  var ruliwebHomeBoard = RULIWEB_HOME_BOARDS[ruliwebHomeIdx];
+  if (/^best_/.test(ruliwebHomeBoard.id)) {
+    ruliwebHomeBoard.hotThreshold = 10000;
+    ruliwebHomeBoard.coldThreshold = 70;
+  }
+}
+
 function ruliwebExpandPreloadedBoardBlocks(blocks) {
   var rows = [];
   for (var i = 0; i < (blocks || []).length; i++) {
@@ -498,6 +506,10 @@ var SITE = {
     "^https://m[.]ruliweb[.]com/(?:(?:family/[0-9]+/board/[0-9]+)|(?:[^/]+/board/[0-9]+)|(?:(?!best(?:/|$)|family(?:/|$))[^/]+/[0-9]+))/read/[0-9]+"
   ],
   "listBoardQueryParam": "",
+  "hotThreshold": 7000,
+  "coldThreshold": 50,
+  "commentHotThreshold": 10,
+  "commentColdThreshold": 3,
   "boards": RULIWEB_HOME_BOARDS.concat(RULIWEB_PRELOADED_BOARDS),
   "selectors": {
     "boardTitle": [
@@ -972,7 +984,7 @@ function ruliwebParseComments(doc, postUrl) {
             level: detectCommentLevel(row),
             menus: [],
             hotCount: toInt(likeCount, 0),
-            coldCount: toInt(likeCount, 0)
+            coldCount: 0
         });
     }
     return comments;
@@ -1095,8 +1107,8 @@ function parseRuliwebBoardItemsFromHtml(html, baseUrl) {
             mediaType: "",
             types: [],
             menus: [],
-            hotCount: toInt(likeText || viewText || commentText, 0),
-            coldCount: toInt(viewText || likeText || commentText, 0)
+            hotCount: toInt(viewText || likeText || commentText, 0),
+            coldCount: toInt(likeText || commentText, 0)
         });
     }
     return items;
@@ -1171,8 +1183,8 @@ function extractTableRowItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(textOf(likeCell) || textOf(viewCell) || textOf(commentNode), 0),
-        coldCount: toInt(textOf(viewCell) || textOf(likeCell) || textOf(commentNode), 0)
+        hotCount: toInt(textOf(viewCell) || textOf(likeCell) || textOf(commentNode), 0),
+        coldCount: toInt(textOf(likeCell) || textOf(commentNode), 0)
     };
 }
 function parseRuliwebBoardItems(doc, baseUrl) {
@@ -1224,8 +1236,8 @@ function parseRuliwebBoardItems(doc, baseUrl) {
             mediaType: mediaUrl ? "image" : "",
             types: types,
             menus: [],
-            hotCount: toInt(textOf(likeCell) || textOf(viewCell) || textOf(commentNode), 0),
-            coldCount: toInt(textOf(viewCell) || textOf(likeCell) || textOf(commentNode), 0)
+            hotCount: toInt(textOf(viewCell) || textOf(likeCell) || textOf(commentNode), 0),
+            coldCount: toInt(textOf(likeCell) || textOf(commentNode), 0)
         };
         if (!item.link || seen[item.link]) continue;
         seen[item.link] = true;
@@ -1284,8 +1296,8 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount || viewCount || commentCount, 0),
-        coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        hotCount: toInt(viewCount || likeCount || commentCount, 0),
+        coldCount: toInt(likeCount || commentCount, 0)
     };
 }
 

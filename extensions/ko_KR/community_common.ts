@@ -415,6 +415,10 @@
             dynamic: !!((flags && flags.dynamic) || raw.dynamic),
             selectorProfile: normalizeWhitespace(raw.selectorProfile || ""),
             selectorProfiles: raw.selectorProfiles,
+            hotThreshold: normalizeThresholdValue(raw.hotThreshold) || undefined,
+            coldThreshold: normalizeThresholdValue(raw.coldThreshold) || undefined,
+            commentHotThreshold: normalizeThresholdValue(raw.commentHotThreshold) || undefined,
+            commentColdThreshold: normalizeThresholdValue(raw.commentColdThreshold) || undefined,
             selectors: Object.keys(selectors).length > 0 ? selectors : undefined
         };
     }
@@ -1650,6 +1654,33 @@
         return boardById(boardId) || { id: boardId };
     }
 
+    function normalizeThresholdValue(value) {
+        var parsed = toInt(value, 0);
+        return parsed > 0 ? parsed : 0;
+    }
+
+    function resolveBoardThreshold(board, key) {
+        var resolvedBoard = resolveBoardPreferenceRecord(board);
+        var boardValue = normalizeThresholdValue(resolvedBoard && resolvedBoard[key]);
+        if (boardValue > 0) return boardValue;
+        return normalizeThresholdValue(SITE[key]);
+    }
+
+    function applyBoardThresholdStyles(styles, board) {
+        var nextStyles = styles || {};
+        var hotThreshold = resolveBoardThreshold(board, "hotThreshold");
+        var coldThreshold = resolveBoardThreshold(board, "coldThreshold");
+        var commentHotThreshold = resolveBoardThreshold(board, "commentHotThreshold");
+        var commentColdThreshold = resolveBoardThreshold(board, "commentColdThreshold");
+
+        if (hotThreshold > 0) nextStyles.hotThreshold = hotThreshold;
+        if (coldThreshold > 0) nextStyles.coldThreshold = coldThreshold;
+        if (commentHotThreshold > 0) nextStyles.commentHotThreshold = commentHotThreshold;
+        if (commentColdThreshold > 0) nextStyles.commentColdThreshold = commentColdThreshold;
+
+        return nextStyles;
+    }
+
     function boardShowsMediaByDefault(board) {
         var resolvedBoard = resolveBoardPreferenceRecord(board);
         var boardId = resolveBoardPreferenceId(resolvedBoard);
@@ -1688,14 +1719,21 @@
 
     function buildBoardListStyles(title, board, hasNextUrl) {
         var useGalleryMode = boardUsesGalleryMode(board);
-        return {
+        return applyBoardThresholdStyles({
             title: title,
             layout: useGalleryMode ? "gallery" : "card",
             columnCount: useGalleryMode ? getGalleryColumnCount() : undefined,
             media: boardShowsMedia(board),
             menu: true,
             pagination: !!hasNextUrl
-        };
+        }, board);
+    }
+
+    function buildPostStyles(title, board) {
+        return applyBoardThresholdStyles({
+            title: title,
+            menu: true
+        }, board);
     }
 
     function isAllowedListLink(link, patterns) {
@@ -3429,22 +3467,19 @@
                     var route = {
                         kind: "post",
                         url: url,
-                        viewData: {
+                            viewData: {
                             view: "/views/post",
-                            styles: {
-                                title: firstNonEmpty([
-                                    preferLongerText(
-                                        cleanPageTitle(firstText(doc, SITE.selectors.postTitle)),
-                                        rememberedItem ? cleanPageTitle(rememberedItem.title) : ""
-                                    ),
-                                    cleanPageTitle(schemaPost ? schemaPost.headline : ""),
-                                    cleanPageTitle(textOf(titleNode)),
-                                    rememberedItem ? cleanPageTitle(rememberedItem.title) : "",
-                                    match.board ? match.board.title : "",
-                                    SITE.displayName
-                                ]),
-                                menu: true
-                            },
+                            styles: buildPostStyles(firstNonEmpty([
+                                preferLongerText(
+                                    cleanPageTitle(firstText(doc, SITE.selectors.postTitle)),
+                                    rememberedItem ? cleanPageTitle(rememberedItem.title) : ""
+                                ),
+                                cleanPageTitle(schemaPost ? schemaPost.headline : ""),
+                                cleanPageTitle(textOf(titleNode)),
+                                rememberedItem ? cleanPageTitle(rememberedItem.title) : "",
+                                match.board ? match.board.title : "",
+                                SITE.displayName
+                            ]), match.board),
                             models: {
                                 author: firstNonEmpty([
                                     cleanSingleLineField(firstAuthorText(doc, SITE.selectors.postAuthor), 80),
@@ -3560,14 +3595,11 @@
             url: url,
             viewData: {
                 view: "/views/post",
-                styles: {
-                    title: firstNonEmpty([
-                        rememberedItem ? cleanPageTitle(rememberedItem.title) : "",
-                        match && match.board ? match.board.title : "",
-                        SITE.displayName
-                    ]),
-                    menu: true
-                },
+                styles: buildPostStyles(firstNonEmpty([
+                    rememberedItem ? cleanPageTitle(rememberedItem.title) : "",
+                    match && match.board ? match.board.title : "",
+                    SITE.displayName
+                ]), match && match.board ? match.board : null),
                 models: {
                     author: "",
                     avatar: "",

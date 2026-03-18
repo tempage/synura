@@ -44,12 +44,18 @@ var SITE = {
     "^https://theqoo\\.net/[A-Za-z0-9_]+/\\d+"
   ],
   "listBoardQueryParam": "",
+  "hotThreshold": 6000,
+  "coldThreshold": 80,
+  "commentHotThreshold": 10,
+  "commentColdThreshold": 3,
   "boards": [
     {
       "id": "hot",
       "title": "HOT",
       "url": "/hot?filter_mode=normal",
-      "description": "핫 게시판"
+      "description": "핫 게시판",
+      "hotThreshold": 10000,
+      "coldThreshold": 150
     },
     {
       "id": "square",
@@ -352,7 +358,7 @@ function theqooParseComments(doc, postUrl) {
             level: detectCommentLevel(row),
             menus: [],
             hotCount: toInt(likeCount, 0),
-            coldCount: toInt(likeCount, 0)
+            coldCount: 0
         });
     }
     return comments;
@@ -416,7 +422,7 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
                 level: reference > 0 ? 1 : 0,
                 menus: [],
                 hotCount: toInt(likeCount, 0),
-                coldCount: toInt(likeCount, 0)
+                coldCount: 0
             });
             seen[commentId] = true;
         }
@@ -517,8 +523,8 @@ function extractListItem(row, baseUrl) {
         mediaType: mediaUrl ? "image" : "",
         types: types,
         menus: [],
-        hotCount: toInt(likeCount || viewCount || commentCount, 0),
-        coldCount: toInt(viewCount || likeCount || commentCount, 0)
+        hotCount: toInt(viewCount || likeCount || commentCount, 0),
+        coldCount: toInt(likeCount || commentCount, 0)
     };
 }
 
