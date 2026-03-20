@@ -17,6 +17,7 @@
     var AUTH_ERROR_PREFIX = "AUTH_REQUIRED:";
     var MENU_CACHE_SETTINGS = "설정";
     var MENU_BROWSER = "브라우저로 보기";
+    var MENU_GO = "바로가기";
     var MENU_ALL_BOARDS = "전체 게시판";
     var MENU_HOME = "홈";
     var MENU_HOME_TOGGLE = "홈 추가";
@@ -2093,6 +2094,7 @@
     function getHomeMenus(isReorderable) {
         var menus = [];
         if (supportsCacheSettings()) menus.push(MENU_CACHE_SETTINGS);
+        menus.push(MENU_GO);
         menus.push(MENU_BROWSER);
         if (supportsCategoryBrowser()) menus.push(MENU_ALL_BOARDS);
         menus.push(MENU_SETTINGS);
@@ -2107,6 +2109,7 @@
             menus.push(MENU_CLI);
         }
         menus = moveMenuItemToFront(menus, MENU_ALL_BOARDS);
+        menus = moveMenuItemToFront(menus, MENU_GO);
         menus = moveMenuItemToEnd(menus, MENU_CACHE_SETTINGS);
         return menus;
     }
@@ -2143,9 +2146,9 @@
             menus = SITE.buildPostMenus ? (SITE.buildPostMenus(menus, state || {}) || menus) : menus;
         } catch (e) {
         }
-        if (supportsCategoryBrowser() && !hasMenuItem(menus, MENU_ALL_BOARDS)) {
-            menus.push(MENU_ALL_BOARDS);
-        }
+        menus = filterMenusByLabel(menus, {
+            "전체 게시판": true
+        });
         var boardToggle = buildBoardHomeToggleMenu(resolveMenuBoardId(state));
         if (boardToggle && !hasMenuItem(menus, MENU_HOME_TOGGLE)) {
             menus.push(boardToggle);
@@ -3037,6 +3040,79 @@
             }
         });
         setViewState(viewId, nextState);
+    }
+
+    function normalizeGoUrlInput(rawInput) {
+        var input = normalizeWhitespace(rawInput);
+        if (!input) return "";
+        if (/^[a-z][a-z0-9+.-]*:\/\//i.test(input) || input.indexOf("//") === 0 || input.charAt(0) === "/" || input.charAt(0) === "?") {
+            return normalizeUrl(input) || ensureAbsoluteUrl(input, SITE.browserHomeUrl) || "";
+        }
+        if (/^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?::\d+)?(?:[/?#]|$)/.test(input)) {
+            return normalizeUrl("https://" + input) || "";
+        }
+        var siteRelative = ensureAbsoluteUrl("/" + input.replace(/^\/+/, ""), SITE.browserHomeUrl) || "";
+        if (siteRelative) return normalizeUrl(siteRelative) || siteRelative;
+        var resolved = ensureAbsoluteUrl(input, SITE.browserHomeUrl) || "";
+        return normalizeUrl(resolved) || resolved;
+    }
+
+    function showGoDialog(parentViewId) {
+        var context = {
+            from: "go_url_dialog",
+            parentViewId: parentViewId || 0
+        };
+        var result = synura.open({
+            view: "/dialogs/input",
+            styles: {
+                title: MENU_GO,
+                message: "열 URL을 입력하세요. 전체 URL 또는 /경로를 사용할 수 있습니다.",
+                close: true
+            },
+            models: {
+                body: [
+                    { type: "string", name: "url", label: "URL", value: "" }
+                ],
+                buttons: [MENU_GO]
+            }
+        }, context, function (event) {
+            handler.onViewEvent(event);
+        });
+        if (result && result.success) {
+            setViewState(result.viewId, context);
+        }
+        return result;
+    }
+
+    function handleGoDialogSubmit(viewId, event) {
+        var button = event.data ? event.data.button : "";
+        if (button !== MENU_GO) {
+            synura.close(viewId);
+            return;
+        }
+        var targetUrl = normalizeGoUrlInput(event.data ? event.data.url : "");
+        if (!targetUrl) {
+            synura.update(viewId, { models: { snackbar: "URL을 입력해 주세요." } });
+            return;
+        }
+        var parentViewId = event.context ? event.context.parentViewId : 0;
+        synura.close(viewId);
+        var result = openByUrl(targetUrl, false);
+        if (result && result.success) {
+            return;
+        }
+        if (handleOpenFailure(result, targetUrl, parentViewId || 0, SITE.displayName)) {
+            if (parentViewId) {
+                synura.update(parentViewId, { models: { snackbar: "브라우저에서 인증을 완료해 주세요." } });
+            }
+            return;
+        }
+        var browserUrl = ensureAbsoluteUrl(targetUrl, SITE.browserHomeUrl) || targetUrl || SITE.browserHomeUrl;
+        openBrowser(browserUrl, SITE.displayName, {
+            from: "browser_deeplink",
+            parentViewId: parentViewId || 0,
+            targetUrl: normalizeUrl(browserUrl) || browserUrl
+        });
     }
 
     function showCacheSettingsDialog(parentViewId) {
@@ -5282,6 +5358,11 @@
 
             logViewEvent(event, viewId);
 
+            if (context && context.from === "go_url_dialog" && event.eventId === "SUBMIT") {
+                handleGoDialogSubmit(viewId, event);
+                return;
+            }
+
             if (context && context.from === "board_settings" && event.eventId === "MENU_CLICK") {
                 var settingsMenu = normalizeWhitespace(event.data ? event.data.menu : "");
                 if (settingsMenu === MENU_BOARD_SYNC) {
@@ -5406,12 +5487,14 @@
                 var menu = event.data ? event.data.menu : "";
                 if (menu === MENU_SETTINGS && state && state.kind === "home") {
                     showBoardSettings(viewId);
+                } else if (menu === MENU_GO && state && state.kind === "home") {
+                    showGoDialog(viewId);
                 } else if (menu === MENU_CACHE_SETTINGS && state && state.kind === "home") {
                     showCacheSettingsDialog(viewId);
                 } else if (menu === MENU_REORDER && state && state.kind === "home") {
                     var isReorderable = !state.isReorderable;
                     updateViewFromRoute(viewId, createHomeRoute(isReorderable, isReorderable ? "순서 변경이 활성화되었습니다." : "순서 변경이 비활성화되었습니다."));
-                } else if (menu === MENU_ALL_BOARDS && state && (state.kind === "home" || state.kind === "board" || state.kind === "post")) {
+                } else if (menu === MENU_ALL_BOARDS && state && state.kind === "home") {
                     openCategoryHomeFromMenu(viewId, state);
                 } else if (menu === MENU_MEDIA_TOGGLE && state && state.kind === "board") {
                     handleBoardMediaToggleMenu(viewId, state);

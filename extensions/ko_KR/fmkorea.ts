@@ -702,6 +702,41 @@ function fmkoreaDetectCommentLevel(row) {
     return 0;
 }
 
+function fmkoreaStripReplyMarkerLinks(row, content) {
+    if (!row || !content || content.length === 0) return content;
+    if (!firstNode(row, [".findParent"])) return content;
+
+    var out = [];
+    for (var i = 0; i < content.length; i++) {
+        var item = content[i];
+        if (!item) continue;
+
+        var nextItem = item;
+        if (i === 0 && item.type === "link") {
+            var replyTo = normalizeWhitespace(item.value);
+            nextItem = {
+                type: "text",
+                value: replyTo ? ("@" + replyTo + ":") : ""
+            };
+        }
+
+        if (!nextItem.value && nextItem.type === "text") continue;
+
+        if (nextItem.type === "text" && out.length > 0 && out[out.length - 1] && out[out.length - 1].type === "text") {
+            var prev = String(out[out.length - 1].value || "");
+            var curr = String(nextItem.value || "");
+            out[out.length - 1].value = prev && curr && !/\s$/.test(prev) && !/^\s/.test(curr)
+                ? (prev + " " + curr)
+                : (prev + curr);
+            continue;
+        }
+
+        out.push(nextItem);
+    }
+
+    return out;
+}
+
 function fmkoreaParseComments(doc, postUrl) {
     var rows = allNodes(doc, SITE.selectors.commentRows);
     var comments = [];
@@ -711,6 +746,7 @@ function fmkoreaParseComments(doc, postUrl) {
         var row = rows[i];
         var contentRoot = firstNode(row, SITE.selectors.commentContent);
         var content = parseDetails(contentRoot, canonicalPostUrl);
+        content = fmkoreaStripReplyMarkerLinks(row, content);
         if (!content || content.length === 0) {
             var rawText = firstText(row, SITE.selectors.commentContent);
             if (rawText) content = [{ type: "text", value: rawText }];

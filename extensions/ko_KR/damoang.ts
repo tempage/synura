@@ -685,7 +685,7 @@ var SYNURA = {
     domain: "damoang.net",
     name: "damoang",
     description: "Unofficial damoang.net extension",
-    version: 0.5,
+    version: 0.6,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
@@ -982,13 +982,83 @@ function dA(value) {
     return normalizeUrl(text) || ensureAbsoluteUrl(text, SITE.browserHomeUrl) || "";
 }
 
+
+function damoangDecodeEscapedHtml(text) {
+    var raw = String(text || "");
+    if (!raw || raw.indexOf("&") < 0) return raw;
+    var doc = new DOMParser().parseFromString(raw, "text/html");
+    return doc && doc.body ? String(doc.body.textContent || "") : raw;
+}
+
+function damoangNormalizeEscapedVideoMarkup(markup) {
+    var raw = String(markup || "");
+    if (!raw || !/&lt;video\b/i.test(raw)) return raw;
+    return raw.replace(/&lt;video\b[\s\S]*?&lt;\/video&gt;/gi, function (block) {
+        var decoded = damoangDecodeEscapedHtml(block);
+        if (!decoded || decoded.indexOf("<video") < 0) return block;
+        if (!/\bsrc=("|')[^"']+\1/i.test(decoded) && !/<source\b[^>]*\bsrc=("|')[^"']+\1/i.test(decoded)) {
+            return block;
+        }
+        return decoded;
+    });
+}
+
+function damoangNormalizeMarkupContent(markup) {
+    var raw = damoangNormalizeEscapedVideoMarkup(markup);
+    if (!raw || raw.indexOf("data-original=") < 0) return raw;
+    return raw.replace(/<img\b[^>]*>/gi, function (tag) {
+        var matchedOriginal = tag.match(/\bdata-original=(["'])([^"']+)\1/i);
+        if (!matchedOriginal || !matchedOriginal[2]) return tag;
+        var original = String(matchedOriginal[2]).replace(/"/g, "&quot;");
+        var nextTag = tag
+            .replace(/\s+srcset=(["'])[^"']*\1/gi, "")
+            .replace(/\s+data-srcset=(["'])[^"']*\1/gi, "");
+        if (/\bsrc=(["'])[^"']*\1/i.test(nextTag)) {
+            return nextTag.replace(/\bsrc=(["'])[^"']*\1/i, 'src="' + original + '"');
+        }
+        return nextTag.replace(/>$/, ' src="' + original + '">');
+    });
+}
+
+function damoangRecoverVideoTextDetail(text) {
+    var raw = String(text || "");
+    if (!raw || raw.indexOf("<video") < 0) return null;
+    if (!/\.(mp4|m4v|mov|webm|m3u8)([?#"'\s]|$)/i.test(raw) && raw.indexOf("<source") < 0) {
+        return null;
+    }
+    var reparsed = parseMarkupDetails(damoangDecodeEscapedHtml(raw), SITE.browserHomeUrl);
+    for (var i = 0; i < reparsed.length; i++) {
+        if (reparsed[i] && reparsed[i].type === "video") {
+            return reparsed;
+        }
+    }
+    return null;
+}
+
+function damoangParseContentDetails(markup) {
+    var details = parseMarkupDetails(damoangNormalizeMarkupContent(markup), SITE.browserHomeUrl);
+    var normalized = [];
+    for (var i = 0; i < details.length; i++) {
+        var detail = details[i];
+        if (detail && detail.type === "text") {
+            var recovered = damoangRecoverVideoTextDetail(detail.value);
+            if (recovered && recovered.length > 0) {
+                normalized = normalized.concat(recovered);
+                continue;
+            }
+        }
+        normalized.push(detail);
+    }
+    return normalized;
+}
+
 function damoangToCommentModel(item, postAuthor) {
     var likesVal = damoangParseNumber(item && item.likes);
     var likesInt = parseInt(likesVal || "0", 10) || 0;
     var isDeleted = !!(item && item.deleted_at);
     var content = isDeleted
         ? [{ type: "text", value: "삭제된 댓글입니다." }]
-        : parseMarkupDetails(item && item.content || "", SITE.browserHomeUrl);
+        : damoangParseContentDetails(item && item.content || "");
     if (item && item.id) {
         content.unshift({ type: "anchor", value: "c_" + item.id });
     }
@@ -1011,7 +1081,7 @@ function damoangToCommentModel(item, postAuthor) {
 }
 
 function damoangBuildPostViewData(post, comments) {
-    var details = parseMarkupDetails(post && post.content || "", SITE.browserHomeUrl);
+    var details = damoangParseContentDetails(post && post.content || "");
     if (!details || details.length === 0) {
         details = [{ type: "text", value: "Could not load post content." }];
     }
