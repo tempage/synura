@@ -3,12 +3,15 @@ import json
 import re
 import argparse
 from collections import defaultdict
+from decimal import Decimal, InvalidOperation
 
 # Configuration
 # Get the directory where the script is located
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_FILE = os.path.join(SCRIPT_DIR, 'extensions.json')
 DEFAULT_BASE_URL = 'https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/'
+DEFAULT_REPOSITORY_VERSION = Decimal('1.0')
+REPOSITORY_VERSION_STEP = Decimal('0.1')
 
 # Files/folders to ignore when scanning
 IGNORE_FILES = {'extensions.json', 'generate_extensions_json.py', 'README.md'}
@@ -179,6 +182,25 @@ def collect_extension_entries(dir_path, base_dir, base_url):
 
     return extensions
 
+def next_repository_version(output_file):
+    """
+    Read the current top-level repository version and bump it by 0.1.
+    """
+    current_version = DEFAULT_REPOSITORY_VERSION
+
+    if os.path.exists(output_file):
+        try:
+            with open(output_file, 'r', encoding='utf-8') as f:
+                existing = json.load(f)
+            raw_version = existing.get('version')
+            if raw_version is not None:
+                current_version = Decimal(str(raw_version))
+        except (OSError, json.JSONDecodeError, InvalidOperation, TypeError, ValueError):
+            current_version = DEFAULT_REPOSITORY_VERSION
+
+    next_version = current_version + REPOSITORY_VERSION_STEP
+    return float(next_version.quantize(REPOSITORY_VERSION_STEP))
+
 def main():
     parser = argparse.ArgumentParser(description='Generate extensions.json for Synura repository.')
     parser.add_argument('--url', dest='base_url', default=DEFAULT_BASE_URL,
@@ -229,7 +251,7 @@ def main():
     repo_data = {
         "name": "Synura Example Repository",
         "description": "A collection of example extensions for educational purposes.",
-        "version": 1.0
+        "version": next_repository_version(OUTPUT_FILE)
     }
 
     if root_extensions:

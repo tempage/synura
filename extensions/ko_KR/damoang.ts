@@ -672,7 +672,44 @@ SITE.parseComments = function (doc, postUrl) {
     return damoangParseComments(doc, postUrl);
 };
 SITE.fetchPostComments = function (match, url, doc, page, comments) {
-    return comments;
+    var postAuthor = firstAuthorText(doc, SITE.selectors.postAuthor);
+    try {
+        var fetched = damoangFetchCommentsPage(url, 1, DAMOANG_COMMENT_PAGE_LIMIT);
+        var models = damoangBuildCommentModels(fetched.items, postAuthor || "");
+        damoangLastFetchedCommentsState = {
+            url: url,
+            comments: models,
+            loadedCommentIds: damoangBuildLoadedCommentIds(fetched.items),
+            page: fetched.page || 1,
+            totalPages: fetched.totalPages || 1,
+            limit: fetched.limit || DAMOANG_COMMENT_PAGE_LIMIT,
+            postAuthor: postAuthor || ""
+        };
+        return models;
+    } catch (e) {
+        damoangLastFetchedCommentsState = {
+            url: url,
+            comments: comments || [],
+            loadedCommentIds: {},
+            page: 1,
+            totalPages: 1,
+            limit: DAMOANG_COMMENT_PAGE_LIMIT,
+            postAuthor: postAuthor || ""
+        };
+        return comments;
+    }
+};
+SITE.preparePostContext = function (context, match, url, doc, page) {
+    var cached = damoangLastFetchedCommentsState;
+    if (cached && cached.url === url) {
+        context.damoangComments = Array.isArray(cached.comments) ? cached.comments.slice() : [];
+        context.damoangLoadedCommentIds = cached.loadedCommentIds || {};
+        context.damoangCommentPage = cached.page || 1;
+        context.damoangCommentTotalPages = cached.totalPages || 1;
+        context.damoangCommentLimit = cached.limit || DAMOANG_COMMENT_PAGE_LIMIT;
+        context.damoangPostAuthor = cached.postAuthor || "";
+    }
+    return context;
 };
 SITE.handleViewEvent = function (viewId, event, state, context) {
     return damoangHandleViewEvent(viewId, event, state, context);
@@ -685,7 +722,7 @@ var SYNURA = {
     domain: "damoang.net",
     name: "damoang",
     description: "Unofficial damoang.net extension",
-    version: 0.6,
+    version: 0.7,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
@@ -1232,12 +1269,146 @@ function damoangBuildBoardUrl(boardId, page, searchField, searchQuery) {
     return url + "?" + params.join("&");
 }
 
-function damoangFetchBoardItems(boardId, page, searchField, searchQuery) {
+function damoangBuildFetchOptions(referer) {
     var options = buildFetchOptions();
+    if (referer) {
+        if (!options.headers) options.headers = {};
+        if (!options.headers["Referer"] && !options.headers["referer"]) {
+            options.headers["Referer"] = referer;
+        }
+    }
+    return options;
+}
+
+var DAMOANG_COMMENT_PAGE_LIMIT = 200;
+var damoangLastFetchedCommentsState = null;
+
+function damoangMatchPostUrl(url) {
+    var matched = String(url || "").match(/^https?:\/\/(?:www\.)?damoang\.net\/([^\/?#]+)\/(\d+)/i);
+    if (!matched) return null;
+    return {
+        boardId: matched[1] || "",
+        postId: matched[2] || ""
+    };
+}
+
+function damoangParseCommentsApiResponse(text) {
+    var payload = damoangParseJSONSafe(text);
+    var data = payload && payload.data ? payload.data : null;
+    var comments = data && Array.isArray(data.comments) ? data.comments : null;
+    if (!payload || payload.success !== true || !comments) {
+        throw new Error("Failed to parse comments API response");
+    }
+    var limit = parseInt(String(data.limit || DAMOANG_COMMENT_PAGE_LIMIT), 10);
+    if (!(limit > 0)) limit = DAMOANG_COMMENT_PAGE_LIMIT;
+    var total = parseInt(String(data.total || comments.length), 10);
+    if (!(total >= 0)) total = comments.length;
+    var pageNo = parseInt(String(data.page || 1), 10);
+    if (!(pageNo > 0)) pageNo = 1;
+    var totalPages = parseInt(String(data.total_pages || 0), 10);
+    if (!(totalPages > 0)) {
+        totalPages = total > 0 ? Math.ceil(total / limit) : 1;
+    }
+    return {
+        items: comments,
+        total: total,
+        page: pageNo,
+        limit: limit,
+        totalPages: totalPages
+    };
+}
+
+function damoangBuildCommentsApiUrl(boardId, postId, page, limit) {
+    var pageNo = parseInt(String(page || 1), 10);
+    if (!(pageNo > 0)) pageNo = 1;
+    var limitNo = parseInt(String(limit || DAMOANG_COMMENT_PAGE_LIMIT), 10);
+    if (!(limitNo > 0)) limitNo = DAMOANG_COMMENT_PAGE_LIMIT;
+    return "https://" + SYNURA.domain + "/api/boards/" + encodeURIComponent(boardId) + "/posts/" + encodeURIComponent(postId) + "/comments?page=" + encodeURIComponent(String(pageNo)) + "&limit=" + encodeURIComponent(String(limitNo));
+}
+
+function damoangFetchCommentsPage(postUrl, page, limit) {
+    var match = damoangMatchPostUrl(postUrl);
+    if (!match || !match.boardId || !match.postId) {
+        throw new Error("Failed to match post URL for comments API");
+    }
+    var apiUrl = damoangBuildCommentsApiUrl(match.boardId, match.postId, page, limit);
+    var response = fetchWithLogging(apiUrl, damoangBuildFetchOptions(postUrl));
+    if (!response || !response.ok) {
+        throw new Error("HTTP " + (response ? response.status : 0) + " " + (response ? (response.statusText || "") : ""));
+    }
+    return damoangParseCommentsApiResponse(response.text());
+}
+
+function damoangBuildCommentModels(items, postAuthor) {
+    var models = [];
+    for (var i = 0; i < (items || []).length; i++) {
+        models.push(damoangToCommentModel(items[i], postAuthor));
+    }
+    return models;
+}
+
+function damoangBuildLoadedCommentIds(items) {
+    var seen = {};
+    for (var i = 0; i < (items || []).length; i++) {
+        var id = parseInt(String(items[i] && items[i].id || ""), 10);
+        if (id > 0) seen[id] = true;
+    }
+    return seen;
+}
+
+function damoangAppendPostComments(viewId, state) {
+    if (!state || state.kind !== "post") return false;
+    var currentPage = parseInt(String(state.damoangCommentPage || 1), 10);
+    if (!(currentPage > 0)) currentPage = 1;
+    var totalPages = parseInt(String(state.damoangCommentTotalPages || 1), 10);
+    if (!(totalPages > 0)) totalPages = 1;
+    if (currentPage >= totalPages) {
+        synura.update(viewId, { styles: { pagination: false } });
+        return true;
+    }
+    try {
+        var nextPage = currentPage + 1;
+        var fetched = damoangFetchCommentsPage(state.link || "", nextPage, state.damoangCommentLimit || DAMOANG_COMMENT_PAGE_LIMIT);
+        var loaded = Array.isArray(state.damoangComments) ? state.damoangComments.slice() : [];
+        var seen = state.damoangLoadedCommentIds || {};
+        var items = Array.isArray(fetched.items) ? fetched.items : [];
+        var appended = false;
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var id = parseInt(String(item && item.id || ""), 10);
+            if (id > 0 && seen[id]) continue;
+            if (id > 0) seen[id] = true;
+            loaded.push(damoangToCommentModel(item, state.damoangPostAuthor || ""));
+            appended = true;
+        }
+        state.damoangComments = loaded;
+        state.damoangLoadedCommentIds = seen;
+        state.damoangCommentPage = fetched.page || nextPage;
+        state.damoangCommentTotalPages = fetched.totalPages || totalPages;
+        state.damoangCommentLimit = fetched.limit || state.damoangCommentLimit || DAMOANG_COMMENT_PAGE_LIMIT;
+        setViewState(viewId, state);
+        synura.update(viewId, {
+            styles: {
+                pagination: state.damoangCommentPage < state.damoangCommentTotalPages
+            },
+            models: {
+                comments: loaded,
+                snackbar: appended ? "" : "더 불러올 댓글이 없습니다."
+            }
+        });
+    } catch (e) {
+        synura.update(viewId, { models: { snackbar: e.toString() } });
+    }
+    return true;
+}
+
+function damoangFetchBoardItems(boardId, page, searchField, searchQuery) {
     var pageNo = parseInt(String(page || 1), 10);
     if (!(pageNo > 0)) pageNo = 1;
     var useApiPagination = pageNo > 1 && !(searchQuery && normalizeWhitespace(searchQuery));
-    var url = damoangBuildBoardUrl(boardId, pageNo, searchField, searchQuery);
+    var boardUrl = damoangBuildBoardUrl(boardId, pageNo, searchField, searchQuery);
+    var options = damoangBuildFetchOptions(boardUrl);
+    var url = boardUrl;
     if (useApiPagination) {
         url = "https://" + SYNURA.domain + "/api/v1/boards/" + encodeURIComponent(boardId) + "/posts?page=" + encodeURIComponent(String(pageNo)) + "&limit=30";
     }
@@ -1264,7 +1435,7 @@ function damoangFetchBoardItems(boardId, page, searchField, searchQuery) {
 }
 
 function damoangFetchPostViewData(url) {
-    var response = fetchWithLogging(url, buildFetchOptions());
+    var response = fetchWithLogging(url, damoangBuildFetchOptions(url));
     if (!response || !response.ok) {
         throw new Error("HTTP " + (response ? response.status : 0) + " " + (response ? (response.statusText || "") : ""));
     }
@@ -1365,6 +1536,22 @@ function damoangBuildPostRoute(url) {
     var postView = damoangFetchPostViewData(url);
     var m = postView.models || {};
     var s = postView.styles || {};
+    var comments = Array.isArray(m.comments) ? m.comments : [];
+    var loadedCommentIds = {};
+    var commentPage = 1;
+    var commentTotalPages = 1;
+    var commentLimit = DAMOANG_COMMENT_PAGE_LIMIT;
+    try {
+        var fetchedComments = damoangFetchCommentsPage(url, 1, DAMOANG_COMMENT_PAGE_LIMIT);
+        if (fetchedComments) {
+            comments = damoangBuildCommentModels(fetchedComments.items, m.author || "");
+            loadedCommentIds = damoangBuildLoadedCommentIds(fetchedComments.items);
+            commentPage = fetchedComments.page || 1;
+            commentTotalPages = fetchedComments.totalPages || 1;
+            commentLimit = fetchedComments.limit || DAMOANG_COMMENT_PAGE_LIMIT;
+        }
+    } catch (e) {
+    }
     return {
         kind: "post",
         url: url,
@@ -1372,7 +1559,8 @@ function damoangBuildPostRoute(url) {
             view: "/views/post",
             styles: {
                 title: s.title || "",
-                menu: true
+                menu: true,
+                pagination: commentPage < commentTotalPages
             },
             models: {
                 author: m.author || "",
@@ -1382,7 +1570,7 @@ function damoangBuildPostRoute(url) {
                 date: m.date || "",
                 avatar: m.avatar || "",
                 content: m.content || [{ type: "text", value: "본문을 가져오지 못했습니다." }],
-                comments: m.comments || [],
+                comments: comments,
                 link: url,
                 menus: getPostMenus({ kind: "post", link: url }),
                 buttons: [BUTTON_REFRESH]
@@ -1390,7 +1578,13 @@ function damoangBuildPostRoute(url) {
         },
         context: {
             kind: "post",
-            link: url
+            link: url,
+            damoangComments: comments,
+            damoangLoadedCommentIds: loadedCommentIds,
+            damoangCommentPage: commentPage,
+            damoangCommentTotalPages: commentTotalPages,
+            damoangCommentLimit: commentLimit,
+            damoangPostAuthor: m.author || ""
         }
     };
 }
@@ -1437,6 +1631,10 @@ function damoangHandleViewEvent(viewId, event, state, context) {
     if (context && context.kind === "editor" && event.eventId === "SUBMIT") {
         synura.update(viewId, { models: { snackbar: "미구현. 눈팅용" } });
         return true;
+    }
+
+    if (state && state.kind === "post" && event.eventId === "SCROLL_TO_END") {
+        return damoangAppendPostComments(viewId, state);
     }
 
     if (state && state.kind === "home" && event.eventId === "MENU_CLICK") {
