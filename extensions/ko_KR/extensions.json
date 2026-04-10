@@ -53,7 +53,7 @@
     {
       "name": "dcinside",
       "description": "Unofficial dcinside extension",
-      "version": 0.1,
+      "version": 0.2,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/dcinside.js",
       "api": 0,
       "icon": "https://nstatic.dcinside.com/dc/m/img/dcinside_icon.png",

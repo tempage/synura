@@ -89,7 +89,7 @@ var SITE = {
   "boardSettingsPageSize": 120,
   "boardAddMode": "url_title",
   "hasFullBoardCatalog": false,
-  "supportsBoardCatalogSync": true,
+  "supportsBoardCatalogSync": false,
   "defaultVisibleBoardIds": DC_DEFAULT_VISIBLE_BOARD_IDS,
   "hostAliases": [
     "gall.dcinside.com",
@@ -186,7 +186,7 @@ var SYNURA = {
   domain: DC_HOST,
   name: "dcinside",
   description: "Unofficial dcinside extension",
-  version: 0.1,
+  version: 0.2,
   api: 0,
   license: "Apache-2.0",
   bypass: "chrome/android",
@@ -198,10 +198,15 @@ var SYNURA = {
 
 var DC_DISCOVERED_BOARDS_KEY = "dcinside_discovered_boards";
 var DC_DISCOVERED_BOARDS_META_KEY = "dcinside_discovered_boards_meta";
+var DC_MANAGED_BOARDS_KEY = "dcinside_managed_boards_v1";
 var DC_CATEGORY_ROOTS_KEY = "dcinside_category_roots_v1";
 var DC_DISCOVERED_BOARDS_MAX_AGE = 86400000;
 var DC_CATEGORY_BROWSER_PAGE_SIZE = 200;
 var DC_CATEGORY_HOME_URL = DC_BASE_URL + "/galltotal";
+var DC_SEARCH_API_URL = DC_BASE_URL + "/search_g";
+var DC_SEARCH_MAIN_URL = DC_BASE_URL + "/search/search_main";
+var DC_SEARCH_APPBAR_LABEL = "갤러리 찾기";
+var DC_SEARCH_APPBAR_HINT = "갤러리 이름을 입력하세요.";
 var dcCategoryRootCache = null;
 var dcCategoryBoardCache = {};
 var DC_CATEGORY_SCOPE_SELECTORS = [".left_content", ".cate-box", ".cate_wrap", ".gall-total-lst", ".gall-total"];
@@ -243,6 +248,69 @@ function dcCollectScopedAnchors(doc, linkSelector) {
   return dcQuerySelectorGroup(doc, linkSelector);
 }
 
+function dcBuildCategorySearchAppbar() {
+  return {
+    type: "query",
+    label: DC_SEARCH_APPBAR_LABEL,
+    hint: DC_SEARCH_APPBAR_HINT
+  };
+}
+
+function dcBuildSearchMainUrl(query) {
+  var url = setQueryParam(DC_SEARCH_MAIN_URL, "r_url", DC_BASE_URL);
+  var normalizedQuery = normalizeWhitespace(query);
+  if (!normalizedQuery) return url;
+  return setQueryParam(url, "keyword", normalizedQuery);
+}
+
+function dcBuildSearchApiUrl(query) {
+  return setQueryParam(DC_SEARCH_API_URL, "keyword", normalizeWhitespace(query));
+}
+
+function dcBuildSearchFetchOptions() {
+  var options = buildFetchOptions();
+  var baseHeaders = options && options.headers ? options.headers : {};
+  var headers = {};
+  for (var key in baseHeaders) {
+    if (!Object.prototype.hasOwnProperty.call(baseHeaders, key)) continue;
+    headers[key] = baseHeaders[key];
+  }
+  if (!headers["X-Requested-With"] && !headers["x-requested-with"]) {
+    headers["X-Requested-With"] = "XMLHttpRequest";
+  }
+  if (!headers.Accept && !headers.accept) {
+    headers.Accept = "*/*";
+  }
+  options.headers = headers;
+  return options;
+}
+
+function dcFetchSearchMarkup(query) {
+  var normalizedQuery = normalizeWhitespace(query);
+  if (!normalizedQuery) return "";
+  var url = dcBuildSearchApiUrl(normalizedQuery);
+  var response = fetchWithLogging(url, dcBuildSearchFetchOptions());
+  if (!response) {
+    throw new Error("Failed to fetch " + url + " (0)");
+  }
+
+  var status = response.status || 0;
+  var html = response.text();
+  if (shouldUseBrowserCookieAuth() && isAuthRequiredResponse(url, status, html)) {
+    throw makeAuthRequiredError(url, status);
+  }
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch " + url + " (" + status + ")");
+  }
+
+  return html;
+}
+
+function dcHasClass(node, className) {
+  return !!(node && node.classList && typeof node.classList.contains === "function" && node.classList.contains(className));
+}
+
 function dcNormalizeBoardKind(kind) {
   return kind === "mini" || kind === "person" ? kind : "board";
 }
@@ -273,6 +341,33 @@ function dcBoardKindLabel(kind) {
   return "갤러리";
 }
 
+function dcNormalizeSearchTypeLabel(value) {
+  var text = normalizeWhitespace(value);
+  if (!text) return "";
+  if (text === "마이너") return "마이너 갤러리";
+  if (text === "미니") return "미니 갤러리";
+  if (text === "인물") return "인물 갤러리";
+  if (text === "갤러리") return "갤러리";
+  return text;
+}
+
+function dcNormalizeSearchSectionTitle(value) {
+  return normalizeWhitespace(String(value || "").replace(/\s*\d+\s*건\s*$/, ""));
+}
+
+function dcJoinUniqueLabels(values, separator) {
+  var list = [];
+  var seen = {};
+  var joiner = separator || " / ";
+  for (var i = 0; i < (values || []).length; i++) {
+    var value = normalizeWhitespace(values[i]);
+    if (!value || seen[value]) continue;
+    seen[value] = true;
+    list.push(value);
+  }
+  return list.join(joiner);
+}
+
 function dcBuildBoardListUrl(kind, slug) {
   var normalizedKind = dcNormalizeBoardKind(kind);
   var normalizedSlug = encodeURIComponent(normalizeWhitespace(slug));
@@ -285,6 +380,11 @@ function dcBuildBoardListUrl(kind, slug) {
 function dcBuildBoardPageUrl(kind, slug, page) {
   var listUrl = dcBuildBoardListUrl(kind, slug);
   return page > 1 ? setPageParam(listUrl, "page", page) : listUrl;
+}
+
+function dcRememberedBoardTitle(kind, slug, page) {
+  var preview = getRememberedItemPreview(dcBuildBoardPageUrl(kind, slug, page));
+  return normalizeWhitespace(preview && preview.title ? preview.title : "");
 }
 
 function dcAttachImageHeaders(details, refererUrl) {
@@ -379,9 +479,16 @@ function dcKnownBoardById(boardId) {
   if (!normalizedId) return null;
   var known = boardById(normalizedId);
   if (known) return known;
-  var boards = getAllBoards();
-  for (var i = 0; i < boards.length; i++) {
-    if (boards[i].id === normalizedId) return boards[i];
+  var managedBoards = dcGetManagedBoards();
+  for (var i = 0; i < managedBoards.length; i++) {
+    if (managedBoards[i].id === normalizedId) return managedBoards[i];
+  }
+  for (var j = 0; j < defaultBoards.length; j++) {
+    if (defaultBoards[j].id === normalizedId) return defaultBoards[j];
+  }
+  var customBoards = getCustomBoards();
+  for (var k = 0; k < customBoards.length; k++) {
+    if (customBoards[k].id === normalizedId) return customBoards[k];
   }
   return null;
 }
@@ -449,6 +556,173 @@ function dcGetDiscoveredBoards() {
   return Array.isArray(stored) ? dedupeBoards(stored) : [];
 }
 
+function dcGetManagedBoards() {
+  var stored = readStoredJson(DC_MANAGED_BOARDS_KEY, []);
+  return Array.isArray(stored) ? dedupeBoards(stored) : [];
+}
+
+function dcWriteManagedBoards(boards) {
+  var merged = dedupeBoards(boards || []);
+  writeStoredJson(DC_MANAGED_BOARDS_KEY, merged);
+  return merged;
+}
+
+function dcPersistManagedBoardInCustomBoards(board) {
+  var normalizedBoard = normalizeBoardRecord(board, board);
+  if (!normalizedBoard || dcIsDefaultHomeBoardId(normalizedBoard.id)) return normalizedBoard;
+  var customBoards = getCustomBoards();
+  var nextBoards = [];
+  var savedBoard = normalizedBoard;
+  var replaced = false;
+  for (var i = 0; i < customBoards.length; i++) {
+    var current = customBoards[i];
+    if (!current || current.id !== normalizedBoard.id) {
+      nextBoards.push(current);
+      continue;
+    }
+    savedBoard = mergeBoardRecords(normalizedBoard, current);
+    nextBoards.push(savedBoard);
+    replaced = true;
+  }
+  if (!replaced) nextBoards.push(savedBoard);
+  saveCustomBoards(nextBoards);
+  return savedBoard;
+}
+
+function dcRemoveManagedBoardFromCustomBoards(boardId) {
+  var normalizedId = normalizeWhitespace(boardId);
+  if (!normalizedId || dcIsDefaultHomeBoardId(normalizedId)) return;
+  var customBoards = getCustomBoards();
+  var nextBoards = [];
+  var changed = false;
+  for (var i = 0; i < customBoards.length; i++) {
+    if (customBoards[i] && customBoards[i].id === normalizedId) {
+      changed = true;
+      continue;
+    }
+    nextBoards.push(customBoards[i]);
+  }
+  if (changed) saveCustomBoards(nextBoards);
+}
+
+function dcFindBoardRecordById(boardId, boards) {
+  var normalizedId = normalizeWhitespace(boardId);
+  var list = Array.isArray(boards) ? boards : [];
+  if (!normalizedId) return null;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] && list[i].id === normalizedId) return list[i];
+  }
+  return null;
+}
+
+function dcUpsertManagedBoard(board) {
+  var normalizedBoard = normalizeBoardRecord(board, board);
+  if (!normalizedBoard) return null;
+  var managedBoards = dcGetManagedBoards();
+  var nextBoards = [];
+  var savedBoard = normalizedBoard;
+  var replaced = false;
+  for (var i = 0; i < managedBoards.length; i++) {
+    var current = managedBoards[i];
+    if (!current || current.id !== normalizedBoard.id) {
+      nextBoards.push(current);
+      continue;
+    }
+    savedBoard = mergeBoardRecords(normalizedBoard, current);
+    nextBoards.push(savedBoard);
+    replaced = true;
+  }
+  if (!replaced) nextBoards.push(savedBoard);
+  dcWriteManagedBoards(nextBoards);
+  return dcPersistManagedBoardInCustomBoards(savedBoard);
+}
+
+function dcRemoveManagedBoard(boardId) {
+  var normalizedId = normalizeWhitespace(boardId);
+  if (!normalizedId) return;
+  var managedBoards = dcGetManagedBoards();
+  var nextBoards = [];
+  var changed = false;
+  for (var i = 0; i < managedBoards.length; i++) {
+    if (managedBoards[i] && managedBoards[i].id === normalizedId) {
+      changed = true;
+      continue;
+    }
+    nextBoards.push(managedBoards[i]);
+  }
+  if (changed) dcWriteManagedBoards(nextBoards);
+  dcRemoveManagedBoardFromCustomBoards(normalizedId);
+}
+
+function dcIsDefaultHomeBoardId(boardId) {
+  var normalizedId = normalizeWhitespace(boardId);
+  if (!normalizedId) return false;
+  for (var i = 0; i < DC_DEFAULT_VISIBLE_BOARD_IDS.length; i++) {
+    if (DC_DEFAULT_VISIBLE_BOARD_IDS[i] === normalizedId) return true;
+  }
+  return false;
+}
+
+function dcGetSparseVisibleMap() {
+  var visibleMap = getVisibleMapRaw();
+  var nextMap = {};
+  var changed = false;
+  for (var key in visibleMap) {
+    if (!Object.prototype.hasOwnProperty.call(visibleMap, key)) continue;
+    var normalizedKey = normalizeWhitespace(key);
+    if (!normalizedKey) {
+      changed = true;
+      continue;
+    }
+    var nextValue = !!visibleMap[key];
+    if (nextValue === isDefaultVisible(normalizedKey)) {
+      changed = true;
+      continue;
+    }
+    if (nextMap[normalizedKey] !== undefined) {
+      if (nextMap[normalizedKey] !== nextValue) nextMap[normalizedKey] = nextValue;
+      changed = true;
+      continue;
+    }
+    if (normalizedKey !== key || visibleMap[key] !== nextValue) changed = true;
+    nextMap[normalizedKey] = nextValue;
+  }
+  if (changed) saveVisibleMap(nextMap);
+  return nextMap;
+}
+
+function dcResolveManagedBoardById(boardId, managedBoards, discoveredBoards) {
+  var normalizedId = normalizeWhitespace(boardId);
+  if (!normalizedId) return null;
+  var known = boardById(normalizedId);
+  if (known) return known;
+  known = dcFindBoardRecordById(normalizedId, managedBoards);
+  if (known) return known;
+  known = dcFindBoardRecordById(normalizedId, defaultBoards);
+  if (known) return known;
+  known = dcFindBoardRecordById(normalizedId, getCustomBoards());
+  if (known) return known;
+  known = dcFindBoardRecordById(normalizedId, discoveredBoards);
+  if (known) return known;
+  var parts = dcSplitBoardKey(normalizedId);
+  if (!parts.slug) return null;
+  return dcCreateBoard(parts.kind, parts.slug, parts.slug, dcBoardKindLabel(parts.kind), "", null, true);
+}
+
+function dcBuildVisibleManagedBoards() {
+  var visibleMap = dcGetSparseVisibleMap();
+  var managedBoards = dcGetManagedBoards();
+  var discoveredBoards = dcGetDiscoveredBoards();
+  var boards = [];
+  for (var key in visibleMap) {
+    if (!Object.prototype.hasOwnProperty.call(visibleMap, key) || !visibleMap[key]) continue;
+    if (dcIsDefaultHomeBoardId(key)) continue;
+    var board = dcResolveManagedBoardById(key, managedBoards, discoveredBoards);
+    if (board) boards.push(board);
+  }
+  return dedupeBoards(boards);
+}
+
 function dcHasFreshDiscoveredBoards() {
   var meta = dcGetDiscoveredBoardsMeta();
   return !!(meta && meta.timestamp && (Date.now() - meta.timestamp < DC_DISCOVERED_BOARDS_MAX_AGE));
@@ -470,7 +744,7 @@ function dcWriteDiscoveredBoards(boards, mode) {
     count: merged.length,
     mode: nextMode
   });
-  setDynamicBoardsCache(merged);
+  setDynamicBoardsCache(dcBuildVisibleManagedBoards());
   return merged;
 }
 
@@ -755,18 +1029,7 @@ function dcSyncDiscoveredBoards(full) {
 }
 
 function dcLoadDynamicBoards(options) {
-  var allowNetwork = !!(options && options.allowNetwork);
-  var force = !!(options && options.force);
-  var cached = dcGetDiscoveredBoards();
-  if (!force && cached.length > 0 && (!allowNetwork || dcHasFreshDiscoveredBoards())) {
-    return cached;
-  }
-  if (!allowNetwork) return cached;
-  try {
-    return dcSyncDiscoveredBoards(false).boards;
-  } catch (e) {
-    return cached;
-  }
+  return dcBuildVisibleManagedBoards();
 }
 
 function dcCloneJson(value, fallbackValue) {
@@ -960,6 +1223,243 @@ function dcEnsureCategoryBoardRecord(rootKey, categoryId) {
   return dcFetchCategoryBoardRecord(rootKey, categoryId);
 }
 
+function dcExtractSearchResultBoard(anchor) {
+  var href = normalizeUrl(attrOf(anchor, "href")) || ensureAbsoluteUrl(attrOf(anchor, "href"), DC_BASE_URL);
+  if (!href) return null;
+
+  var titleRoot = firstNode(anchor, [".txt", ".lt"]) || anchor;
+  var title = normalizeWhitespace(firstNonEmpty([
+    textOfNodeWithoutSelectors(titleRoot, [".micon-i", ".blind", ".ltsub"]),
+    firstText(anchor, [".txt"]),
+    textOf(anchor)
+  ]));
+  var typeLabel = dcNormalizeSearchTypeLabel(firstNonEmpty([
+    firstText(anchor, [".micon-i .blind", ".blind"])
+  ]));
+  var board = dcBoardFromUrl(href, title, typeLabel, "", boardIndex || {});
+  if (!board) return null;
+  if (typeLabel) board.description = typeLabel;
+  return {
+    board: board,
+    typeLabel: typeLabel
+  };
+}
+
+function dcBuildSearchResultItems(entries) {
+  var visibleMap = dcGetSparseVisibleMap();
+  var items = [];
+  var list = entries || [];
+  for (var i = 0; i < list.length; i++) {
+    var entry = list[i] || {};
+    var board = entry.board || {};
+    if (!board.id) continue;
+    var isVisible = isBoardVisible(board.id, visibleMap);
+    items.push({
+      id: board.id,
+      link: board.url,
+      title: board.title,
+      description: dcJoinUniqueLabels([
+        entry.typeLabel,
+        board.description,
+        board.url ? board.url.replace(/^https?:\/\//, "") : ""
+      ], " / "),
+      category: dcJoinUniqueLabels(entry.sections, " / ") || MENU_ALL_BOARDS,
+      author: "",
+      date: "",
+      commentCount: "",
+      viewCount: "",
+      likeCount: "",
+      types: ["link"],
+      menus: [isVisible ? MENU_HOME_REMOVE : MENU_HOME_TOGGLE],
+      hotCount: isVisible ? 1 : 0,
+      coldCount: isVisible ? 0 : 1
+    });
+  }
+  return items;
+}
+
+function dcParseSearchResults(markup) {
+  var parser = new DOMParser();
+  var doc = parser.parseFromString("<div id='synura-dc-search-root'>" + String(markup || "") + "</div>", "text/html");
+  var root = doc.querySelector("#synura-dc-search-root") || doc.body;
+  var currentSectionTitle = "";
+  var currentSectionCount = 0;
+  var bucket = {};
+  var order = [];
+  var sections = [];
+
+  for (var node = root.firstChild; node; node = node.nextSibling) {
+    if (dcHasClass(node, "md-tit-box")) {
+      currentSectionTitle = dcNormalizeSearchSectionTitle(firstNonEmpty([
+        firstText(node, [".md-tit"]),
+        textOf(node)
+      ]));
+      currentSectionCount = toInt(firstText(node, [".count"]), 0);
+      continue;
+    }
+
+    if (!dcHasClass(node, "flex-gall-lst")) continue;
+    var anchors = node.querySelectorAll("a[href]");
+    if (!anchors || anchors.length === 0) continue;
+
+    var sectionTitle = currentSectionTitle || "검색 결과";
+    sections.push({
+      title: sectionTitle,
+      count: currentSectionCount > 0 ? currentSectionCount : anchors.length
+    });
+
+    for (var i = 0; i < anchors.length; i++) {
+      var parsed = dcExtractSearchResultBoard(anchors[i]);
+      if (!parsed || !parsed.board) continue;
+      var key = parsed.board.id || parsed.board.url;
+      if (!key) continue;
+
+      var entry = bucket[key];
+      if (!entry) {
+        entry = {
+          board: parsed.board,
+          sections: [],
+          typeLabel: parsed.typeLabel || ""
+        };
+        bucket[key] = entry;
+        order.push(entry);
+      } else {
+        entry.board = mergeBoardRecords(parsed.board, entry.board);
+        if (!entry.typeLabel && parsed.typeLabel) entry.typeLabel = parsed.typeLabel;
+      }
+
+      if (sectionTitle && entry.sections.indexOf(sectionTitle) < 0) {
+        entry.sections.push(sectionTitle);
+      }
+    }
+  }
+
+  return {
+    entries: order,
+    items: dcBuildSearchResultItems(order),
+    sections: sections
+  };
+}
+
+function dcBuildSearchMessage(query, result) {
+  var parts = [];
+  var sections = result && Array.isArray(result.sections) ? result.sections : [];
+  for (var i = 0; i < sections.length; i++) {
+    var title = normalizeWhitespace(sections[i] && sections[i].title);
+    var count = toInt(sections[i] && sections[i].count, 0);
+    if (!title) continue;
+    parts.push(title + " " + count + "개");
+  }
+  if (parts.length > 0) return parts.join(" · ");
+  return "\"" + normalizeWhitespace(query) + "\" 검색 결과가 없습니다.";
+}
+
+function dcCloneSearchReturnState(state) {
+  if (!state || state.kind === "dc_category_home") {
+    return {
+      kind: "dc_category_home",
+      homeViewId: resolveCategoryHomeViewId(state ? state.homeViewId || 0 : 0)
+    };
+  }
+  if (state.kind === "dc_category_search_list") {
+    return dcCloneSearchReturnState(state.returnState || null);
+  }
+  if (state.kind === "dc_category_root_list") {
+    return {
+      kind: "dc_category_root_list",
+      rootKey: normalizeWhitespace(state.rootKey),
+      homeViewId: resolveCategoryHomeViewId(state.homeViewId || 0)
+    };
+  }
+  if (state.kind === "dc_category_board_list") {
+    return {
+      kind: "dc_category_board_list",
+      rootKey: normalizeWhitespace(state.rootKey),
+      categoryId: String(state.categoryId),
+      homeViewId: resolveCategoryHomeViewId(state.homeViewId || 0)
+    };
+  }
+  return {
+    kind: "dc_category_home",
+    homeViewId: resolveCategoryHomeViewId(state && state.homeViewId ? state.homeViewId : 0)
+  };
+}
+
+function dcCreateRouteFromSearchReturnState(state) {
+  var target = dcCloneSearchReturnState(state);
+  if (!target || target.kind === "dc_category_home") {
+    return dcCreateCategoryHomeRoute(target ? target.homeViewId || 0 : 0);
+  }
+  if (target.kind === "dc_category_root_list") {
+    return dcCreateCategorySectionRoute(target.rootKey, target.homeViewId || 0);
+  }
+  if (target.kind === "dc_category_board_list") {
+    return dcCreateCategoryBoardRoute(target.rootKey, target.categoryId, target.homeViewId || 0);
+  }
+  return dcCreateCategoryHomeRoute(target ? target.homeViewId || 0 : 0);
+}
+
+function dcCreateCategorySearchRoute(query, returnState) {
+  var normalizedQuery = normalizeWhitespace(query);
+  if (!normalizedQuery) {
+    return dcCreateRouteFromSearchReturnState(returnState);
+  }
+  var parsed = dcParseSearchResults(dcFetchSearchMarkup(normalizedQuery));
+  var browserUrl = dcBuildSearchMainUrl(normalizedQuery);
+  var baseState = dcCloneSearchReturnState(returnState);
+  return {
+    kind: "dc_category_search_list",
+    url: normalizeUrl(browserUrl) || browserUrl,
+    viewData: {
+      view: "/views/list",
+      styles: {
+        title: MENU_ALL_BOARDS,
+        appbar: dcBuildCategorySearchAppbar(),
+        layout: "list",
+        menu: true,
+        pagination: false,
+        message: dcBuildSearchMessage(normalizedQuery, parsed)
+      },
+      models: {
+        contents: parsed.items,
+        menus: [MENU_BROWSER]
+      }
+    },
+    context: {
+      kind: "dc_category_search_list",
+      query: normalizedQuery,
+      link: normalizeUrl(browserUrl) || browserUrl,
+      browserUrl: normalizeUrl(browserUrl) || browserUrl,
+      title: MENU_ALL_BOARDS,
+      homeViewId: baseState.homeViewId || 0,
+      returnState: baseState,
+      entries: parsed.entries
+    }
+  };
+}
+
+function dcFindSearchEntryById(state, boardId) {
+  var entries = state && Array.isArray(state.entries) ? state.entries : [];
+  var normalizedId = normalizeWhitespace(boardId);
+  for (var i = 0; i < entries.length; i++) {
+    var entry = entries[i];
+    if (entry && entry.board && entry.board.id === normalizedId) return entry;
+  }
+  return null;
+}
+
+function dcBoardRecordDiffers(left, right) {
+  var primary = left || {};
+  var secondary = right || {};
+  return normalizeWhitespace(primary.id) !== normalizeWhitespace(secondary.id) ||
+    dcNormalizeBoardKind(primary.kind) !== dcNormalizeBoardKind(secondary.kind) ||
+    normalizeWhitespace(primary.slug) !== normalizeWhitespace(secondary.slug) ||
+    normalizeWhitespace(primary.title) !== normalizeWhitespace(secondary.title) ||
+    normalizeUrl(primary.url) !== normalizeUrl(secondary.url) ||
+    normalizeWhitespace(primary.description) !== normalizeWhitespace(secondary.description) ||
+    normalizeWhitespace(primary.group) !== normalizeWhitespace(secondary.group);
+}
+
 function dcBoardKindLabelFromId(boardId) {
   return dcBoardKindLabel(dcSplitBoardKey(boardId).kind);
 }
@@ -1014,7 +1514,7 @@ function dcBuildCategorySectionItems(rootKey) {
 
 function dcBuildCategoryBoardItems(record, startIndex, pageSize) {
   var boards = record && Array.isArray(record.boards) ? record.boards : [];
-  var visibleMap = getAllBoardsVisibility();
+  var visibleMap = dcGetSparseVisibleMap();
   var start = Math.max(0, toInt(startIndex, 0));
   var size = Math.max(1, toInt(pageSize, DC_CATEGORY_BROWSER_PAGE_SIZE));
   var end = Math.min(boards.length, start + size);
@@ -1045,23 +1545,45 @@ function dcBuildCategoryBoardItems(record, startIndex, pageSize) {
 }
 
 function dcBuildSettingsRootItems() {
-  var specs = dcGetCategoryRootSpecs();
+  var boards = getVisibleBoards();
   var items = [];
-  for (var i = 0; i < specs.length; i++) {
-    var categoryCount = dcGetCachedCategoryRootEntries(specs[i].key, true).length;
+  for (var i = 0; i < boards.length; i++) {
+    var board = boards[i];
     items.push({
-      id: specs[i].key,
-      title: specs[i].title,
-      description: categoryCount > 0 ? ("카테고리 " + categoryCount + "개") : "카테고리 목록",
-      category: "HOME 표시 선택",
+      id: board.id,
+      link: board.url,
+      title: board.title,
+      description: firstNonEmpty([
+        board.group ? (board.group + " / " + dcBoardKindLabelFromId(board.id)) : "",
+        board.description,
+        board.url.replace(/^https?:\/\//, "")
+      ]),
+      category: dcIsDefaultHomeBoardId(board.id) ? "홈 기본" : "홈 추가",
       author: "",
       date: "",
       commentCount: "",
       viewCount: "",
       likeCount: "",
       types: ["link"],
+      menus: [MENU_HOME_REMOVE],
+      hotCount: 1,
+      coldCount: 0
+    });
+  }
+  if (items.length === 0) {
+    items.push({
+      id: "__empty__",
+      title: "홈 갤러리가 없습니다.",
+      description: "갤러리 찾기 또는 갤러리 페이지에서 홈에 추가하세요.",
+      category: "",
+      author: "",
+      date: "",
+      commentCount: "",
+      viewCount: "",
+      likeCount: "",
+      types: [],
       menus: [],
-      hotCount: categoryCount,
+      hotCount: 0,
       coldCount: 0
     });
   }
@@ -1070,7 +1592,7 @@ function dcBuildSettingsRootItems() {
 
 function dcBuildSettingsBoardItems(record, startIndex, pageSize) {
   var boards = record && Array.isArray(record.boards) ? record.boards : [];
-  var visibleMap = getAllBoardsVisibility();
+  var visibleMap = dcGetSparseVisibleMap();
   var start = Math.max(0, toInt(startIndex, 0));
   var size = Math.max(1, toInt(pageSize, DC_CATEGORY_BROWSER_PAGE_SIZE));
   var end = Math.min(boards.length, start + size);
@@ -1111,6 +1633,7 @@ function dcCreateCategoryHomeRoute(homeViewId) {
       view: "/views/list",
       styles: {
         title: MENU_ALL_BOARDS,
+        appbar: dcBuildCategorySearchAppbar(),
         layout: "list",
         menu: true,
         pagination: false
@@ -1140,6 +1663,7 @@ function dcCreateCategorySectionRoute(rootKey, homeViewId) {
       view: "/views/list",
       styles: {
         title: spec.title,
+        appbar: dcBuildCategorySearchAppbar(),
         layout: "list",
         menu: true,
         pagination: false
@@ -1170,6 +1694,7 @@ function dcCreateCategoryBoardRoute(rootKey, categoryId, homeViewId) {
       view: "/views/list",
       styles: {
         title: record.title,
+        appbar: dcBuildCategorySearchAppbar(),
         layout: "list",
         menu: true,
         pagination: record.boards.length > items.length
@@ -1207,7 +1732,7 @@ function dcCreateSettingsRootRoute(parentViewId) {
       },
       models: {
         contents: dcBuildSettingsRootItems(),
-        menus: [MENU_BOARD_SYNC, "추가", "초기화"]
+        menus: ["초기화"]
       }
     },
     context: {
@@ -1285,6 +1810,15 @@ function dcRouteCustom(url, urlInfo) {
   if (urlInfo.path === "/galltotal" || urlInfo.path === "/galltotal/") {
     return dcCreateCategoryHomeRoute(0);
   }
+  if (
+    urlInfo.path === "/search/search_main" ||
+    urlInfo.path === "/search/search_main/" ||
+    urlInfo.path === "/search_g" ||
+    urlInfo.path === "/search_g/"
+  ) {
+    var keyword = normalizeWhitespace(queryValue(urlInfo.query, "keyword"));
+    return keyword ? dcCreateCategorySearchRoute(keyword, null) : dcCreateCategoryHomeRoute(0);
+  }
   var matchedRoot = urlInfo.path.match(/^\/(category|mcategory|micategory|prcategory)\/?$/);
   if (matchedRoot) {
     return dcCreateCategorySectionRoute(matchedRoot[1], 0);
@@ -1304,6 +1838,8 @@ function dcRefreshCustomView(viewId, state, snackbar) {
     route = dcCreateCategorySectionRoute(state.rootKey, state.homeViewId || 0);
   } else if (state.kind === "dc_category_board_list") {
     route = dcCreateCategoryBoardRoute(state.rootKey, state.categoryId, state.homeViewId || 0);
+  } else if (state.kind === "dc_category_search_list") {
+    route = dcCreateCategorySearchRoute(state.query, state.returnState || null);
   } else if (state.kind === "board_settings_root") {
     route = dcCreateSettingsRootRoute(state.parentViewId || 0);
   } else if (state.kind === "dc_board_settings_category_root_list") {
@@ -1351,21 +1887,26 @@ function dcAppendCategoryPage(viewId, state) {
 function dcPersistBoardForHome(board) {
   var normalizedBoard = normalizeBoardRecord(board, board);
   if (!normalizedBoard) return null;
-  dcMergeDiscoveredBoards([normalizedBoard], dcHasFreshFullDiscoveredBoards() ? "full" : "");
-  if (shouldAppendEnabledBoardToHomeOrder(normalizedBoard.id)) {
-    moveBoardOrderToEnd(normalizedBoard.id);
+  var knownBoard = dcKnownBoardById(normalizedBoard.id);
+  var persistedBoard = knownBoard ? mergeBoardRecords(normalizedBoard, knownBoard) : normalizedBoard;
+  if (!knownBoard || dcBoardRecordDiffers(persistedBoard, knownBoard)) {
+    return dcUpsertManagedBoard(persistedBoard);
   }
-  homeBoards = getVisibleBoards();
-  rebuildBoardIndex();
-  return normalizedBoard;
+  return persistedBoard;
 }
 
 function dcSetBoardVisible(boardLike, visible) {
   var normalizedBoard = dcPersistBoardForHome(boardLike);
   if (!normalizedBoard) return null;
-  var visibleMap = getAllBoardsVisibility();
-  visibleMap[normalizedBoard.id] = !!visible;
+  var visibleMap = dcGetSparseVisibleMap();
+  if (!!visible === isDefaultVisible(normalizedBoard.id)) {
+    delete visibleMap[normalizedBoard.id];
+  } else {
+    visibleMap[normalizedBoard.id] = !!visible;
+  }
   saveVisibleMap(visibleMap);
+  if (!visible) dcRemoveManagedBoard(normalizedBoard.id);
+  setDynamicBoardsCache(dcLoadDynamicBoards({ allowNetwork: false, force: true }));
   if (visible && shouldAppendEnabledBoardToHomeOrder(normalizedBoard.id)) {
     moveBoardOrderToEnd(normalizedBoard.id);
   }
@@ -1379,13 +1920,20 @@ function dcResolveBoardFromState(state) {
   var boardId = normalizeWhitespace(state.boardId);
   if (!boardId) return null;
   var parts = dcSplitBoardKey(boardId);
-  return dcCreateBoard(parts.kind, parts.slug, state.boardTitle || parts.slug, state.boardTitle || parts.slug);
+  var preferredTitle = firstNonEmpty([
+    normalizeWhitespace(state.boardTitle) !== parts.slug ? state.boardTitle : "",
+    normalizeWhitespace(state.title) !== parts.slug ? state.title : "",
+    state.boardTitle,
+    state.title,
+    parts.slug
+  ]);
+  return dcCreateBoard(parts.kind, parts.slug, preferredTitle, preferredTitle);
 }
 
 function dcHandleBoardHomeToggleMenu(viewId, state) {
   var board = dcResolveBoardFromState(state);
   if (!board) return false;
-  var nextVisible = !isBoardVisible(board.id, getAllBoardsVisibility());
+  var nextVisible = !isBoardVisible(board.id, dcGetSparseVisibleMap());
   var saved = dcSetBoardVisible(board, nextVisible);
   if (!saved) {
     synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
@@ -1454,24 +2002,11 @@ function dcHandleBoardSettingsRootEvent(viewId, event, state) {
 
   if (event.eventId === "MENU_CLICK") {
     var menu = normalizeWhitespace(event.data ? event.data.menu : "");
-    if (menu === MENU_BOARD_SYNC) {
-      var result = dcSyncDiscoveredBoards(true);
-      dcRefreshCustomView(viewId, state, result.count > 0
-        ? ("게시판 " + result.count + "개를 가져왔습니다.")
-        : "가져올 게시판이 없습니다.");
-      if (state.parentViewId) {
-        refreshAnyHomeView(state.parentViewId, "");
-      }
-      return true;
-    }
-    if (menu === "추가") {
-      showBoardAddDialog(viewId, state.parentViewId || 0);
-      return true;
-    }
     if (menu === "초기화") {
       clearDynamicBoardsCache();
       localStorage.removeItem(DC_DISCOVERED_BOARDS_KEY);
       localStorage.removeItem(DC_DISCOVERED_BOARDS_META_KEY);
+      localStorage.removeItem(DC_MANAGED_BOARDS_KEY);
       localStorage.removeItem(DC_CATEGORY_ROOTS_KEY);
       dcCategoryRootCache = null;
       dcCategoryBoardCache = {};
@@ -1483,9 +2018,19 @@ function dcHandleBoardSettingsRootEvent(viewId, event, state) {
   }
 
   if (event.eventId === "CLICK") {
-    var rootKey = normalizeWhitespace(event.data ? event.data.id : "");
-    if (!rootKey) return true;
-    openRoute(dcCreateSettingsCategoryRoute(state.parentViewId || 0, rootKey));
+    var link = normalizeUrl(event.data ? event.data.link : "") ||
+      ensureAbsoluteUrl(event.data ? event.data.link : "", SITE.browserHomeUrl);
+    if (!link) return true;
+    rememberItemPreview(event.data);
+    var result = openByUrl(link, false);
+    if (!result || !result.success) {
+      if (handleOpenFailure(result, link, viewId, SITE.displayName)) return true;
+      openBrowser(link, SITE.displayName, {
+        from: "browser_click",
+        parentViewId: viewId || 0,
+        targetUrl: normalizeUrl(link) || link
+      });
+    }
     return true;
   }
 
@@ -1494,6 +2039,31 @@ function dcHandleBoardSettingsRootEvent(viewId, event, state) {
 
 function dcHandleCustomListEvent(viewId, event, state) {
   if (!state) return false;
+
+  if (event.eventId === "QUERY") {
+    if (
+      state.kind !== "dc_category_home" &&
+      state.kind !== "dc_category_root_list" &&
+      state.kind !== "dc_category_board_list" &&
+      state.kind !== "dc_category_search_list"
+    ) {
+      return false;
+    }
+
+    var query = normalizeWhitespace(event.data ? event.data.query : "");
+    if (!query) {
+      if (state.kind !== "dc_category_search_list") return true;
+      updateViewFromRoute(viewId, dcCreateRouteFromSearchReturnState(state.returnState || null), "");
+      return true;
+    }
+
+    updateViewFromRoute(
+      viewId,
+      dcCreateCategorySearchRoute(query, state.kind === "dc_category_search_list" ? state.returnState || null : state),
+      ""
+    );
+    return true;
+  }
 
   if (event.eventId === "SCROLL_TO_END") {
     return dcAppendCategoryPage(viewId, state);
@@ -1527,7 +2097,7 @@ function dcHandleCustomListEvent(viewId, event, state) {
         synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
         return true;
       }
-      var nextVisible = !isBoardVisible(board.id, getAllBoardsVisibility());
+      var nextVisible = !isBoardVisible(board.id, dcGetSparseVisibleMap());
       var saved = dcSetBoardVisible(board, nextVisible);
       if (!saved) {
         synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
@@ -1566,6 +2136,55 @@ function dcHandleCustomListEvent(viewId, event, state) {
     return true;
   }
 
+  if (event.eventId === "ITEM_MENU_CLICK" && state.kind === "board_settings_root") {
+    var settingsItemMenu = normalizeWhitespace(event.data ? event.data.menu : "");
+    var settingsItemId = normalizeWhitespace(event.data ? event.data.id : "");
+    if (settingsItemMenu !== MENU_HOME_TOGGLE && settingsItemMenu !== MENU_HOME_REMOVE) return false;
+    var settingsBoard = dcKnownBoardById(settingsItemId);
+    if (!settingsBoard) {
+      synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
+      return true;
+    }
+    var savedSettingsBoard = dcSetBoardVisible(settingsBoard, settingsItemMenu === MENU_HOME_TOGGLE);
+    if (!savedSettingsBoard) {
+      synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
+      return true;
+    }
+    dcRefreshCustomView(
+      viewId,
+      state,
+      savedSettingsBoard.title + (settingsItemMenu === MENU_HOME_TOGGLE ? " 홈에 추가했습니다." : " 홈에서 제거했습니다.")
+    );
+    if (state.parentViewId) refreshAnyHomeView(state.parentViewId, "");
+    return true;
+  }
+
+  if (event.eventId === "ITEM_MENU_CLICK" && state.kind === "dc_category_search_list") {
+    var searchItemMenu = normalizeWhitespace(event.data ? event.data.menu : "");
+    var searchItemId = normalizeWhitespace(event.data ? event.data.id : "");
+    if (searchItemMenu !== MENU_HOME_TOGGLE && searchItemMenu !== MENU_HOME_REMOVE) return false;
+    var searchEntry = dcFindSearchEntryById(state, searchItemId);
+    if (!searchEntry || !searchEntry.board) {
+      synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
+      return true;
+    }
+    var savedSearchBoard = dcSetBoardVisible(searchEntry.board, searchItemMenu === MENU_HOME_TOGGLE);
+    if (!savedSearchBoard) {
+      synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
+      return true;
+    }
+    searchEntry.board = mergeBoardRecords(savedSearchBoard, searchEntry.board);
+    setViewState(viewId, state);
+    synura.update(viewId, {
+      models: {
+        contents: dcBuildSearchResultItems(state.entries),
+        snackbar: savedSearchBoard.title + (searchItemMenu === MENU_HOME_TOGGLE ? " 홈에 추가했습니다." : " 홈에서 제거했습니다.")
+      }
+    });
+    refreshAnyHomeView(state.homeViewId || 0, "");
+    return true;
+  }
+
   if (event.eventId !== "MENU_CLICK") return false;
 
   var menu = normalizeWhitespace(event.data ? event.data.menu : "");
@@ -1594,10 +2213,17 @@ function dcHandleCustomListEvent(viewId, event, state) {
 
 function dcHandleViewEvent(viewId, event, state) {
   if (!state) return false;
+  if (state.kind === "home" && event.eventId === "QUERY") {
+    var homeQuery = normalizeWhitespace(event.data ? event.data.query : "");
+    if (!homeQuery) return true;
+    openRoute(dcCreateCategorySearchRoute(homeQuery, dcCreateCategoryHomeRoute(viewId || 0).context));
+    return true;
+  }
   if (
     state.kind === "dc_category_home" ||
     state.kind === "dc_category_root_list" ||
     state.kind === "dc_category_board_list" ||
+    state.kind === "dc_category_search_list" ||
     state.kind === "dc_board_settings_category_root_list" ||
     state.kind === "dc_board_settings_category_board_list"
   ) {
@@ -1658,47 +2284,53 @@ SITE.matchBoard = function (urlInfo) {
   var parts = pathSegments(urlInfo.path);
   if (urlInfo.path === "/board/lists" || urlInfo.path === "/board/lists/") {
     var listId = queryValue(urlInfo.query, "id");
+    var listPage = queryInt(urlInfo.query, "page", 1);
     if (listId) {
       return {
-        board: dcCreateBoard("board", listId, "", dcBoardKindLabel("board")),
-        page: queryInt(urlInfo.query, "page", 1)
+        board: dcCreateBoard("board", listId, dcRememberedBoardTitle("board", listId, listPage), dcBoardKindLabel("board")),
+        page: listPage
       };
     }
   }
   if (urlInfo.path === "/mini/board/lists" || urlInfo.path === "/mini/board/lists/") {
     var miniId = queryValue(urlInfo.query, "id");
+    var miniPage = queryInt(urlInfo.query, "page", 1);
     if (miniId) {
       return {
-        board: dcCreateBoard("mini", miniId, "", dcBoardKindLabel("mini")),
-        page: queryInt(urlInfo.query, "page", 1)
+        board: dcCreateBoard("mini", miniId, dcRememberedBoardTitle("mini", miniId, miniPage), dcBoardKindLabel("mini")),
+        page: miniPage
       };
     }
   }
   if (urlInfo.path === "/person/board/lists" || urlInfo.path === "/person/board/lists/") {
     var personId = queryValue(urlInfo.query, "id");
+    var personPage = queryInt(urlInfo.query, "page", 1);
     if (personId) {
       return {
-        board: dcCreateBoard("person", personId, "", dcBoardKindLabel("person")),
-        page: queryInt(urlInfo.query, "page", 1)
+        board: dcCreateBoard("person", personId, dcRememberedBoardTitle("person", personId, personPage), dcBoardKindLabel("person")),
+        page: personPage
       };
     }
   }
   if (parts.length === 2 && parts[0] === "board" && parts[1] !== "view" && parts[1] !== "lists") {
+    var boardPage = queryInt(urlInfo.query, "page", 1);
     return {
-      board: dcCreateBoard("board", parts[1], "", dcBoardKindLabel("board")),
-      page: queryInt(urlInfo.query, "page", 1)
+      board: dcCreateBoard("board", parts[1], dcRememberedBoardTitle("board", parts[1], boardPage), dcBoardKindLabel("board")),
+      page: boardPage
     };
   }
   if (parts.length === 2 && parts[0] === "mini" && parts[1] !== "board") {
+    var matchedMiniPage = queryInt(urlInfo.query, "page", 1);
     return {
-      board: dcCreateBoard("mini", parts[1], "", dcBoardKindLabel("mini")),
-      page: queryInt(urlInfo.query, "page", 1)
+      board: dcCreateBoard("mini", parts[1], dcRememberedBoardTitle("mini", parts[1], matchedMiniPage), dcBoardKindLabel("mini")),
+      page: matchedMiniPage
     };
   }
   if (parts.length === 2 && parts[0] === "person" && parts[1] !== "board") {
+    var matchedPersonPage = queryInt(urlInfo.query, "page", 1);
     return {
-      board: dcCreateBoard("person", parts[1], "", dcBoardKindLabel("person")),
-      page: queryInt(urlInfo.query, "page", 1)
+      board: dcCreateBoard("person", parts[1], dcRememberedBoardTitle("person", parts[1], matchedPersonPage), dcBoardKindLabel("person")),
+      page: matchedPersonPage
     };
   }
   return null;
@@ -1769,6 +2401,10 @@ SITE.routeCustom = dcRouteCustom;
 SITE.openCategoryHomeFromMenu = dcOpenCategoryHomeFromMenu;
 
 SITE.showBoardSettings = dcShowBoardSettings;
+
+SITE.buildHomeAppbar = function () {
+  return dcBuildCategorySearchAppbar();
+};
 
 SITE.refreshView = function (viewId, state) {
   if (!state) return false;

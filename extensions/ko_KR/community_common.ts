@@ -3258,6 +3258,14 @@
         return result;
     }
 
+    function buildHomeAppbar(isReorderable) {
+        try {
+            return SITE.buildHomeAppbar ? (SITE.buildHomeAppbar(!!isReorderable) || undefined) : undefined;
+        } catch (e) {
+            return undefined;
+        }
+    }
+
     function createHomeRoute(isReorderable, snackbar) {
         return {
             kind: "home",
@@ -3266,6 +3274,7 @@
                 view: "/views/list",
                 styles: {
                     title: SITE.displayName,
+                    appbar: buildHomeAppbar(!!isReorderable),
                     layout: "list",
                     menu: true,
                     pagination: false,
