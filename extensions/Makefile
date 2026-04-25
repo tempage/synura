@@ -15,12 +15,18 @@ KO_KR_EXTENSION_TARGETS = arca clien damoang dcinside fmkorea inven mlbpark pann
 KO_KR_TARGETS = $(addprefix ko_KR/,$(KO_KR_EXTENSION_TARGETS))
 KO_KR_OUTPUTS = $(addsuffix .js,$(KO_KR_TARGETS))
 
-OUTPUTS = $(ROOT_OUTPUTS) $(KO_KR_OUTPUTS)
+EN_US_EXTENSION_TARGETS = hackernews
+EN_US_TARGETS = $(addprefix en_US/,$(EN_US_EXTENSION_TARGETS))
+EN_US_OUTPUTS = $(addsuffix .js,$(EN_US_TARGETS))
+
+OUTPUTS = $(ROOT_OUTPUTS) $(KO_KR_OUTPUTS) $(EN_US_OUTPUTS)
 
 .PHONY: all build check clean \
 	$(ROOT_EXTENSION_TARGETS) \
 	$(KO_KR_EXTENSION_TARGETS) \
-	$(KO_KR_TARGETS)
+	$(KO_KR_TARGETS) \
+	$(EN_US_EXTENSION_TARGETS) \
+	$(EN_US_TARGETS)
 
 all: build
 
@@ -40,7 +46,11 @@ $(ROOT_EXTENSION_TARGETS): %: %.js
 
 $(KO_KR_EXTENSION_TARGETS): %: ko_KR/%.js
 
+$(EN_US_EXTENSION_TARGETS): %: en_US/%.js
+
 $(KO_KR_TARGETS): %: %.js
+
+$(EN_US_TARGETS): %: %.js
 
 define compile_js
 	$(TSC) $(TSC_FLAGS) --outFile $@ $^

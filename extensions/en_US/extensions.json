@@ -16,6 +16,17 @@
         "video",
         "community"
       ]
+    },
+    {
+      "name": "hackernews",
+      "description": "Unofficial Hacker News extension with feeds, stories, and comments.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/en_US/hackernews.js",
+      "api": 0,
+      "domain": "news.ycombinator.com",
+      "author": "Synura Team",
+      "icon": "https://news.ycombinator.com/y18.svg",
+      "locale": "en_US"
     }
   ]
 }
