@@ -11,7 +11,6 @@ var SYNURA = {
     version: 0.1,
     api: 0,
     license: "Apache-2.0",
-    icon: "https://news.ycombinator.com/y18.svg",
     locale: "en_US",
     bypass: "chrome/android",
     deeplink: true,
