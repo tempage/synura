@@ -5,6 +5,16 @@
 ## What is Synura?
 Synura is a versatile application that lets you browse content from various sources using powerful mini-apps called "extensions". Think of it as a browser, but instead of websites, you use extensions to get content in a clean, native-app format.
 
+## Downloads
+
+- [Synura Android app](https://play.google.com/store/apps/details?id=io.tempage.synura)
+
+### Private by Default
+
+Synura does not collect personal data by default. Your browsing traffic is not routed through any middle proxy server; your device connects directly to the extension source servers.
+
+Optional anonymous usage statistics and crash reports are only sent if you explicitly enable them in the app's privacy settings.
+
 ## Core Concepts for Users
 
 *   **Extension Discovery**: Enter a domain (e.g., `example.com` or `https://example.com`) to automatically fetch the `synura.js` file from that domain. If no protocol is provided, `https://` is used by default. This is the primary way to install extensions from their official websites.
