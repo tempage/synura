@@ -1,58 +1,61 @@
 // @ts-nocheck
 // =============================================================================
-// hackernews.js - Synura Extension for Hacker News
+// geeknews.js - Synura Extension for GeekNews
 // =============================================================================
 
 var SYNURA = {
-    domain: "news.ycombinator.com",
-    name: "hackernews",
+    domain: "news.hada.io",
+    name: "geeknews",
     author: "Synura Team",
-    description: "Unofficial Hacker News extension with feeds, stories, and comments.",
-    version: 0.2,
+    description: "Unofficial GeekNews extension with feeds, topics, and comments.",
+    version: 0.1,
     api: 0,
     license: "Apache-2.0",
-    locale: "en_US",
+    icon: "https://news.hada.io/favicon.ico",
+    locale: "ko_KR",
     bypass: "chrome/android",
     deeplink: true,
     get main() { return handler; }
 };
 
-var HN_ORIGIN = "https://" + SYNURA.domain;
-var HN_HEADERS = {
+var GN_ORIGIN = "https://" + SYNURA.domain;
+var GN_HEADERS = {
     "User-Agent": "Synura/1.0"
 };
-var MENU_OPEN_HN = "Open HN";
-var MENU_OPEN_ARTICLE = "Open Article";
+var MENU_OPEN_GN = "브라우저로 보기";
+var MENU_OPEN_ARTICLE = "원문 열기";
 var MENU_GO = "Go";
-var MENU_USER_SUBMISSIONS = "Submissions";
-var MENU_USER_COMMENTS = "Comments";
-var MENU_USER_FAVORITES = "Favorites";
-var BUTTON_REFRESH = "Refresh";
+var MENU_USER_TOPICS = "작성글";
+var MENU_USER_COMMENTS = "댓글";
+var BUTTON_REFRESH = "새로고침";
 var BUTTON_GO = "Go";
-var MENU_BACK_DAY = "Back Day";
-var MENU_BACK_MONTH = "Back Month";
-var MENU_BACK_YEAR = "Back Year";
-var MENU_FORWARD_DAY = "Forward Day";
-var MENU_FORWARD_MONTH = "Forward Month";
-var MENU_FORWARD_YEAR = "Forward Year";
+var MENU_BACK_YEAR = "일년전";
+var MENU_BACK_MONTH = "한달전";
+var MENU_BACK_WEEK = "일주일전";
+var MENU_BACK_DAY = "하루전";
+var MENU_FORWARD_DAY = "다음날";
+var MENU_FORWARD_WEEK = "다음주";
+var MENU_FORWARD_MONTH = "다음달";
+var MENU_FORWARD_YEAR = "일년후";
 var PAST_NAV_MENU_ORDER = [
-    MENU_BACK_DAY,
-    MENU_BACK_MONTH,
     MENU_BACK_YEAR,
+    MENU_BACK_MONTH,
+    MENU_BACK_WEEK,
+    MENU_BACK_DAY,
     MENU_FORWARD_DAY,
+    MENU_FORWARD_WEEK,
     MENU_FORWARD_MONTH,
     MENU_FORWARD_YEAR
 ];
 
 var feeds = [
-    { id: "news", title: "Top", path: "news", description: "Front page stories" },
-    { id: "newest", title: "New", path: "newest", description: "Newest submissions" },
-    { id: "front", title: "Past", path: "front", description: "Past front pages" },
-    { id: "comments", title: "Comments", path: "newcomments", description: "Latest comments" },
-    { id: "best", title: "Best", path: "best", description: "Best recent stories" },
-    { id: "ask", title: "Ask HN", path: "ask", description: "Questions and discussion" },
-    { id: "show", title: "Show HN", path: "show", description: "Projects from the community" },
-    { id: "jobs", title: "Jobs", path: "jobs", description: "Hiring posts" }
+    { id: "top", title: "인기글", path: "", kind: "topics", description: "GeekNews 첫 화면" },
+    { id: "new", title: "최신글", path: "new", kind: "topics", description: "시간순 최신 글" },
+    { id: "past", title: "예전글", path: "past", kind: "topics", description: "지난 날짜 글" },
+    { id: "comments", title: "댓글", path: "comments", kind: "comments", description: "최신 댓글" },
+    { id: "ask", title: "Ask", path: "ask", kind: "topics", description: "질문과 토론" },
+    { id: "show", title: "Show", path: "show", kind: "topics", description: "프로젝트 소개" },
+    { id: "plus", title: "GN+", path: "plus", kind: "topics", description: "GN+ 기술 뉴스" }
 ];
 
 var viewState = new Map();
@@ -106,16 +109,6 @@ var formatCount = function(value) {
     return String(num);
 };
 
-var ensureAbsoluteUrl = function(value, baseUrl) {
-    var raw = normalizeWhitespace(value);
-    if (!raw) return "";
-    if (/^https?:\/\//i.test(raw)) return raw;
-    if (raw.indexOf("//") === 0) return "https:" + raw;
-    if (raw.charAt(0) === "/") return HN_ORIGIN + raw;
-    if (raw.charAt(0) === "?" && baseUrl) return stripHash(baseUrl).split("?")[0] + raw;
-    return HN_ORIGIN + "/" + raw.replace(/^\/+/, "");
-};
-
 var stripHash = function(url) {
     return String(url || "").split("#")[0];
 };
@@ -135,27 +128,18 @@ var hostFromUrl = function(url) {
     return hostOf(url).replace(/^www\./, "");
 };
 
-var isHNUrl = function(url) {
+var ensureAbsoluteUrl = function(value, baseUrl) {
+    var raw = normalizeWhitespace(value);
+    if (!raw) return "";
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (raw.indexOf("//") === 0) return "https:" + raw;
+    if (raw.charAt(0) === "/") return GN_ORIGIN + raw;
+    if (raw.charAt(0) === "?" && baseUrl) return stripHash(baseUrl).split("?")[0] + raw;
+    return GN_ORIGIN + "/" + raw.replace(/^\/+/, "");
+};
+
+var isGNUrl = function(url) {
     return hostOf(url) === SYNURA.domain;
-};
-
-var itemIdFromUrl = function(url) {
-    var match = String(url || "").match(/[?&]id=([0-9]+)/);
-    return match ? match[1] : "";
-};
-
-var commentIdFromUrl = function(url) {
-    var match = String(url || "").match(/#(?:c_)?([0-9]+)/);
-    return match ? match[1] : "";
-};
-
-// HN uses numeric URL fragments, while Synura post anchors need a safe internal id.
-var commentAnchorForId = function(commentId) {
-    return commentId ? "c_" + String(commentId) : "";
-};
-
-var nativeCommentAnchorForId = function(commentId) {
-    return commentId ? String(commentId) : "";
 };
 
 var queryValueFromUrl = function(url, name) {
@@ -173,93 +157,148 @@ var queryValueFromUrl = function(url, name) {
         if (key !== name) continue;
         try {
             return decodeURIComponent(String(pair.slice(1).join("=") || "").replace(/\+/g, " "));
-        } catch (e) {
+        } catch (e2) {
             return String(pair.slice(1).join("=") || "");
         }
     }
     return "";
 };
 
-var hnPathFromUrl = function(url) {
-    return pathAndQueryOf(url).split("?")[0].replace(/^\/+|\/+$/g, "") || "news";
+var gnPathFromUrl = function(url) {
+    var path = pathAndQueryOf(url).split("?")[0].replace(/^\/+|\/+$/g, "");
+    return path || "";
+};
+
+var topicIdFromUrl = function(url) {
+    var path = gnPathFromUrl(url);
+    if (path === "topic") {
+        var queryId = queryValueFromUrl(url, "id");
+        return /^[0-9]+$/.test(queryId) ? queryId : "";
+    }
+    var pathMatch = String(pathAndQueryOf(url) || "").match(/^\/?topic\/([0-9]+)(?:\D|$)/);
+    return pathMatch ? pathMatch[1] : "";
+};
+
+var commentIdFromUrl = function(url) {
+    var hashMatch = String(url || "").match(/#(?:c_|cid)([0-9]+)/);
+    if (hashMatch) return hashMatch[1];
+    var queryMatch = String(url || "").match(/[?&]id=([0-9]+)/);
+    if (queryMatch) return queryMatch[1];
+    return "";
+};
+
+var commentTargetIdFromUrl = function(url) {
+    var match = String(url || "").match(/#(?:c_|cid)([0-9]+)/);
+    return match ? match[1] : "";
+};
+
+var commentAnchorForId = function(commentId) {
+    return commentId ? "c_" + String(commentId) : "";
 };
 
 var userIdFromUrl = function(url) {
-    return normalizeWhitespace(queryValueFromUrl(url, "id"));
+    var normalized = normalizeWhitespace(url);
+    var queryUser = queryValueFromUrl(normalized, "userid") || queryValueFromUrl(normalized, "id");
+    if (queryUser) return queryUser;
+
+    var path = gnPathFromUrl(normalized);
+    if (path.charAt(0) === "@") return decodeURIComponent(path.substring(1));
+    var userMatch = path.match(/^user\/([^\/?#]+)/);
+    if (userMatch) return decodeURIComponent(userMatch[1]);
+    return "";
+};
+
+var topicIdFromNode = function(node) {
+    var id = attrOf(node, "data-topic-state-id");
+    if (id) return id;
+
+    var links = node ? node.querySelectorAll("a") : [];
+    for (var i = 0; i < links.length; i++) {
+        var linkId = topicIdFromUrl(attrOf(links[i], "href"));
+        if (linkId) return linkId;
+    }
+
+    var idNodes = node ? node.querySelectorAll("[id]") : [];
+    for (var j = 0; j < idNodes.length; j++) {
+        var attrId = attrOf(idNodes[j], "id");
+        var match = attrId.match(/(?:vote|tp|dead|unvote)([0-9]+)/);
+        if (match) return match[1];
+    }
+    return "";
+};
+
+var commentIdFromNode = function(node) {
+    var id = attrOf(node, "data-comment-state-id");
+    if (id) return id;
+    var domId = attrOf(node, "id");
+    var match = domId.match(/^cid([0-9]+)/);
+    if (match) return match[1];
+    var links = node ? node.querySelectorAll("a") : [];
+    for (var i = 0; i < links.length; i++) {
+        var href = attrOf(links[i], "href");
+        if (gnPathFromUrl(ensureAbsoluteUrl(href, GN_ORIGIN + "/")) === "comment") {
+            var linkId = commentIdFromUrl(href);
+            if (linkId) return linkId;
+        }
+    }
+    return "";
 };
 
 var discussionUrlForId = function(id) {
-    return HN_ORIGIN + "/item?id=" + encodeURIComponent(String(id || ""));
+    return GN_ORIGIN + "/topic?id=" + encodeURIComponent(String(id || ""));
 };
 
 var commentUrlForId = function(postUrl, commentId) {
-    var normalized = normalizeHNUrl(postUrl) || HN_ORIGIN + "/news";
-    return stripHash(normalized) + "#" + nativeCommentAnchorForId(commentId);
+    var normalized = normalizeGNUrl(postUrl) || GN_ORIGIN + "/";
+    return stripHash(normalized) + "#" + commentAnchorForId(commentId);
 };
 
 var userUrlForId = function(userId) {
-    return HN_ORIGIN + "/user?id=" + encodeURIComponent(String(userId || ""));
+    return GN_ORIGIN + "/@" + encodeURIComponent(String(userId || ""));
 };
 
 var userActivityUrl = function(kind, userId) {
-    return HN_ORIGIN + "/" + kind + "?id=" + encodeURIComponent(String(userId || ""));
+    var path = kind === "comments" ? "comments" : "topics";
+    return GN_ORIGIN + "/" + path + "?userid=" + encodeURIComponent(String(userId || ""));
 };
 
 var userActivityTitle = function(kind, userId) {
-    if (kind === "submitted") return userId + " Submissions";
-    if (kind === "threads") return userId + " Comments";
-    if (kind === "favorites") return userId + " Favorites";
-    return userId;
+    if (kind === "comments") return userId + " 댓글";
+    return userId + " 작성글";
 };
 
 var userActivityKindForMenu = function(menu) {
-    if (menu === MENU_USER_SUBMISSIONS) return "submitted";
-    if (menu === MENU_USER_COMMENTS) return "threads";
-    if (menu === MENU_USER_FAVORITES) return "favorites";
+    if (menu === MENU_USER_TOPICS) return "topics";
+    if (menu === MENU_USER_COMMENTS) return "comments";
     return "";
 };
 
 var isUserActivityKind = function(kind) {
-    return kind === "submitted" || kind === "threads" || kind === "favorites";
+    return kind === "topics" || kind === "comments";
 };
 
-var normalizeHNUrl = function(url) {
-    var normalized = ensureAbsoluteUrl(url || HN_ORIGIN + "/news", HN_ORIGIN + "/");
-    if (!isHNUrl(normalized)) return "";
+var normalizeGNUrl = function(url) {
+    var normalized = ensureAbsoluteUrl(url || GN_ORIGIN + "/", GN_ORIGIN + "/");
+    if (!isGNUrl(normalized)) return "";
     return normalized;
 };
 
 var goUrlFromInput = function(value) {
     var raw = normalizeWhitespace(value);
     if (!raw) return "";
-    if (/^news\.ycombinator\.com(?:[\/?#]|$)/i.test(raw)) raw = "https://" + raw;
+    if (/^news\.hada\.io(?:[\/?#]|$)/i.test(raw)) raw = "https://" + raw;
 
-    var itemMatch = raw.match(/^([0-9]+)(#(?:c_)?[0-9]+)?$/);
-    if (itemMatch) {
-        return discussionUrlForId(itemMatch[1]) + (itemMatch[2] || "");
+    var topicMatch = raw.match(/^([0-9]+)(#(?:c_|cid)?[0-9]+)?$/);
+    if (topicMatch) {
+        var suffix = "";
+        if (topicMatch[2]) {
+            var commentMatch = topicMatch[2].match(/^#(?:c_|cid)?([0-9]+)$/);
+            suffix = commentMatch ? "#" + commentAnchorForId(commentMatch[1]) : topicMatch[2];
+        }
+        return discussionUrlForId(topicMatch[1]) + suffix;
     }
 
-    return normalizeHNUrl(raw);
-};
-
-var getNextElement = function(node) {
-    if (!node) return null;
-    if (node.nextElementSibling) return node.nextElementSibling;
-    var next = node.nextSibling;
-    while (next) {
-        if (next.nodeType === 1) return next;
-        next = next.nextSibling;
-    }
-    return null;
-};
-
-var firstStoryRow = function(doc) {
-    var rows = doc.querySelectorAll("tr.athing");
-    for (var i = 0; i < rows.length; i++) {
-        var className = String(rows[i].className || "");
-        if (className.indexOf("comtr") < 0) return rows[i];
-    }
-    return null;
+    return normalizeGNUrl(raw);
 };
 
 var findFeed = function(id) {
@@ -270,18 +309,22 @@ var findFeed = function(id) {
 };
 
 var feedUrl = function(feed) {
-    return HN_ORIGIN + "/" + (feed && feed.path ? feed.path : "news");
+    var path = feed && feed.path ? feed.path : "";
+    return path ? GN_ORIGIN + "/" + path : GN_ORIGIN + "/";
 };
 
 var feedForUrl = function(url) {
-    var normalized = normalizeHNUrl(url);
+    var normalized = normalizeGNUrl(url);
     if (!normalized) return null;
-    var path = hnPathFromUrl(normalized);
-    if (path === "new") path = "newest";
+    var path = gnPathFromUrl(normalized);
     for (var i = 0; i < feeds.length; i++) {
         if (feeds[i].path === path || feeds[i].id === path) return feeds[i];
     }
     return null;
+};
+
+var isPastFeed = function(feed) {
+    return !!feed && (feed.id === "past" || feed.path === "past");
 };
 
 var buildHomeItems = function() {
@@ -289,7 +332,7 @@ var buildHomeItems = function() {
         return {
             id: feed.id,
             title: feed.title,
-            memo: "HN",
+            memo: "GN",
             author: feed.description,
             date: "",
             commentCount: "",
@@ -303,63 +346,48 @@ var buildHomeItems = function() {
 var buildFeedMenus = function(pastNavLinks) {
     var menus = [];
     var nav = pastNavLinks || {};
+    var used = {};
     for (var i = 0; i < PAST_NAV_MENU_ORDER.length; i++) {
-        if (nav[PAST_NAV_MENU_ORDER[i]]) menus.push(PAST_NAV_MENU_ORDER[i]);
+        var label = PAST_NAV_MENU_ORDER[i];
+        if (nav[label]) {
+            menus.push(label);
+            used[label] = true;
+        }
     }
-    menus.push(MENU_OPEN_HN);
+    for (var key in nav) {
+        if (!used[key]) menus.push(key);
+    }
+    menus.push(MENU_OPEN_GN);
     return menus;
 };
 
-var isPastFeed = function(feed) {
-    return !!feed && (feed.id === "front" || feed.path === "front");
-};
-
-var isCommentsFeed = function(feed) {
-    return !!feed && (feed.id === "comments" || feed.path === "newcomments");
-};
-
-var frontDayFromUrl = function(url) {
+var pastDayFromUrl = function(url) {
     var match = String(url || "").match(/[?&]day=([0-9]{4}-[0-9]{2}-[0-9]{2})/);
     return match ? match[1] : "";
 };
 
-var frontDayFromDocument = function(doc, url) {
-    var fromUrl = frontDayFromUrl(url);
+var pastDayFromDocument = function(doc, url) {
+    var fromUrl = pastDayFromUrl(url);
     if (fromUrl) return fromUrl;
 
+    var day = textOf(doc ? doc.querySelector(".pastnav .bold") : null);
+    if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(day)) return day;
+
     var title = textOf(doc ? doc.querySelector("title") : null);
-    var fromTitle = title.match(/([0-9]{4}-[0-9]{2}-[0-9]{2})\s+front/i);
+    var fromTitle = title.match(/([0-9]{4}-[0-9]{2}-[0-9]{2})/);
     return fromTitle ? fromTitle[1] : "";
 };
 
-var pastNavMenuLabel = function(currentDay, targetDay, unit) {
-    if (!currentDay || !targetDay || targetDay === currentDay) return "";
-    var direction = targetDay < currentDay ? "Back" : "Forward";
-    if (unit === "day") return direction === "Back" ? MENU_BACK_DAY : MENU_FORWARD_DAY;
-    if (unit === "month") return direction === "Back" ? MENU_BACK_MONTH : MENU_FORWARD_MONTH;
-    if (unit === "year") return direction === "Back" ? MENU_BACK_YEAR : MENU_FORWARD_YEAR;
-    return "";
-};
-
 var parsePastNavLinks = function(doc, baseUrl) {
-    var currentDay = frontDayFromDocument(doc, baseUrl);
-    var links = doc ? doc.querySelectorAll("a") : [];
+    var links = doc ? doc.querySelectorAll(".pastnav a") : [];
     var nav = {};
-
     for (var i = 0; i < links.length; i++) {
-        var unit = textOf(links[i]).toLowerCase();
-        if (unit !== "day" && unit !== "month" && unit !== "year") continue;
-
+        var label = textOf(links[i]);
         var href = ensureAbsoluteUrl(attrOf(links[i], "href"), baseUrl);
-        if (!href || !isHNUrl(href)) continue;
-        var path = pathAndQueryOf(href).split("?")[0].replace(/^\/+/, "") || "news";
-        if (path !== "front") continue;
-
-        var targetDay = frontDayFromUrl(href);
-        var label = pastNavMenuLabel(currentDay, targetDay, unit);
-        if (label && !nav[label]) nav[label] = href;
+        if (!label || !href || !isGNUrl(href)) continue;
+        if (gnPathFromUrl(href) !== "past") continue;
+        nav[label] = href;
     }
-
     return nav;
 };
 
@@ -376,7 +404,7 @@ var queryFromEvent = function(event) {
     );
 };
 
-var normalizeFrontDayQuery = function(value) {
+var normalizePastDayQuery = function(value) {
     var day = normalizeWhitespace(value);
     if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(day)) return "";
 
@@ -393,22 +421,24 @@ var normalizeFrontDayQuery = function(value) {
     return normalized === day ? day : "";
 };
 
-var frontUrlForDay = function(day) {
-    return HN_ORIGIN + "/front?day=" + encodeURIComponent(day);
+var pastUrlForDay = function(day) {
+    return GN_ORIGIN + "/past?day=" + encodeURIComponent(day);
 };
 
 var parseCommentCount = function(text) {
-    var normalized = normalizeWhitespace(text).toLowerCase();
-    if (!normalized || normalized === "discuss") return 0;
-    return parseIntText(normalized);
+    var normalized = normalizeWhitespace(text);
+    if (!normalized || normalized.indexOf("댓글과 토론") >= 0) return 0;
+    var parsed = parseIntText(normalized);
+    return parsed === null ? 0 : parsed;
 };
 
 var normalizeStoryTitle = function(title) {
     var normalized = normalizeWhitespace(title);
     var prefixes = [
-        { pattern: /^Show HN:\s*/i, category: "SH" },
-        { pattern: /^Ask HN:\s*/i, category: "AH" },
-        { pattern: /^Tell HN:\s*/i, category: "TH" }
+        { pattern: /^Show GN:\s*/i, category: "SH" },
+        { pattern: /^Ask GN:\s*/i, category: "AH" },
+        { pattern: /^GN\+:\s*/i, category: "GN+" },
+        { pattern: /^GN⁺:\s*/i, category: "GN+" }
     ];
     for (var i = 0; i < prefixes.length; i++) {
         var withoutPrefix = normalized.replace(prefixes[i].pattern, "");
@@ -422,44 +452,74 @@ var normalizeStoryTitle = function(title) {
     return { title: normalized, category: "" };
 };
 
-var parseStoryRow = function(row, baseUrl) {
-    if (!row) return null;
-    var id = attrOf(row, "id");
+var titleAnchorFromTopic = function(node) {
+    if (!node) return null;
+    var links = node.querySelectorAll(".topictitle a");
+    for (var i = 0; i < links.length; i++) {
+        if (links[i].querySelector && links[i].querySelector("h1")) return links[i];
+    }
+    return links.length > 0 ? links[0] : null;
+};
+
+var authorFromInfo = function(info) {
+    var links = info ? info.querySelectorAll("a") : [];
+    for (var i = 0; i < links.length; i++) {
+        var href = attrOf(links[i], "href");
+        if (href.indexOf("/@") === 0 || href.indexOf("/user/") === 0) return textOf(links[i]);
+    }
+    return "";
+};
+
+var dateFromTopicInfo = function(info, author) {
+    var text = textOf(info);
+    if (!text) return "";
+    var beforePipe = text.split("|")[0];
+    if (author) {
+        var idx = beforePipe.indexOf(author);
+        if (idx >= 0) return normalizeWhitespace(beforePipe.substring(idx + author.length));
+    }
+    return normalizeWhitespace(beforePipe.replace(/^[0-9,]+\s*P?oints?\s+by\s+/i, ""));
+};
+
+var commentCountFromTopicInfo = function(info) {
+    var links = info ? info.querySelectorAll("a") : [];
+    for (var i = links.length - 1; i >= 0; i--) {
+        var label = textOf(links[i]);
+        if (label.indexOf("댓글") >= 0) return parseCommentCount(label);
+    }
+    var countNode = info ? info.querySelector("[data-topic-comment-count]") : null;
+    var raw = attrOf(countNode, "data-topic-comment-count");
+    return raw ? parseIntText(raw) : null;
+};
+
+var parseTopicNode = function(node, baseUrl) {
+    if (!node) return null;
+    var id = topicIdFromNode(node);
     if (!id) return null;
 
-    var titleAnchor = row.querySelector(".titleline > a") ||
-        row.querySelector(".storylink") ||
-        row.querySelector("td.title a");
-    var parsedTitle = normalizeStoryTitle(textOf(titleAnchor));
+    var titleAnchor = titleAnchorFromTopic(node);
+    var titleText = textOf(titleAnchor ? titleAnchor.querySelector("h1") : null) || textOf(titleAnchor);
+    var parsedTitle = normalizeStoryTitle(titleText);
     if (!parsedTitle.title) return null;
 
     var rawTarget = attrOf(titleAnchor, "href");
     var targetUrl = ensureAbsoluteUrl(rawTarget, baseUrl);
     var discussionUrl = discussionUrlForId(id);
-    var externalUrl = targetUrl && !isHNUrl(targetUrl) ? targetUrl : "";
-
-    var subRow = getNextElement(row);
-    var subtext = subRow ? subRow.querySelector(".subtext") : null;
-    var score = parseIntText(textOf(subtext ? subtext.querySelector(".score") : null));
-    var author = textOf(subtext ? subtext.querySelector(".hnuser") : null);
-    var date = textOf(subtext ? subtext.querySelector(".age") : null);
-    var commentCount = null;
-
-    if (subtext) {
-        var links = subtext.querySelectorAll("a");
-        for (var i = 0; i < links.length; i++) {
-            var href = ensureAbsoluteUrl(attrOf(links[i], "href"), baseUrl);
-            var linkText = textOf(links[i]);
-            if (itemIdFromUrl(href) === id && linkText !== date) {
-                var parsedComments = parseCommentCount(linkText);
-                if (parsedComments !== null) commentCount = parsedComments;
-            }
-        }
+    var targetTopicId = topicIdFromUrl(targetUrl);
+    var externalUrl = "";
+    if (targetUrl && (!isGNUrl(targetUrl) || (!targetTopicId && gnPathFromUrl(targetUrl) !== "topic"))) {
+        externalUrl = targetUrl;
     }
 
-    var site = textOf(row.querySelector(".sitestr"));
+    var info = node.querySelector(".topicinfo");
+    var score = parseIntText(textOf(info ? info.querySelector("[id^='tp']") : null));
+    var author = authorFromInfo(info);
+    var date = dateFromTopicInfo(info, author);
+    var commentCount = commentCountFromTopicInfo(info);
+
+    var site = textOf(node.querySelector(".topicurl")).replace(/^\(|\)$/g, "");
     if (!site && externalUrl) site = hostFromUrl(externalUrl);
-    if (!site) site = "HN";
+    if (!site) site = "GN";
 
     var story = {
         id: id,
@@ -483,120 +543,17 @@ var parseStoryRow = function(row, baseUrl) {
 };
 
 var fetchDocument = function(url) {
-    var normalized = normalizeHNUrl(url);
-    if (!normalized) throw new Error("Unsupported Hacker News URL");
+    var normalized = normalizeGNUrl(url);
+    if (!normalized) throw new Error("지원하지 않는 GeekNews URL입니다");
 
     console.log("Fetching:", normalized);
-    var response = fetch(normalized, { headers: HN_HEADERS });
+    var options = { headers: GN_HEADERS };
+    if (SYNURA.bypass) options.bypass = SYNURA.bypass;
+    var response = fetch(normalized, options);
     if (!response || !response.ok) {
-        throw new Error("Failed to fetch " + normalized + " (" + (response ? response.status : 0) + ")");
+        throw new Error("GeekNews를 불러오지 못했습니다: " + normalized + " (" + (response ? response.status : 0) + ")");
     }
     return response.dom("text/html");
-};
-
-var userProfileCell = function(doc, label) {
-    var wanted = String(label || "").toLowerCase();
-    var rows = doc ? doc.querySelectorAll("tr") : [];
-    for (var i = 0; i < rows.length; i++) {
-        var cells = rows[i].querySelectorAll("td");
-        if (!cells || cells.length < 2) continue;
-        var key = textOf(cells[0]).toLowerCase().replace(/:$/, "");
-        if (key === wanted) return cells[1];
-    }
-    return null;
-};
-
-var fetchUserProfile = function(userIdOrUrl) {
-    var normalized = normalizeHNUrl(userIdOrUrl);
-    var userId = "";
-    if (normalized && hnPathFromUrl(normalized) === "user") {
-        userId = userIdFromUrl(normalized);
-    } else {
-        userId = normalizeWhitespace(userIdOrUrl);
-        normalized = userUrlForId(userId);
-    }
-    if (!userId) throw new Error("Missing Hacker News user id");
-
-    var doc = fetchDocument(normalized);
-    var userCell = userProfileCell(doc, "user");
-    var createdCell = userProfileCell(doc, "created");
-    var karmaCell = userProfileCell(doc, "karma");
-    var aboutCell = userProfileCell(doc, "about");
-
-    var profileUserId = textOf(userCell) || userId;
-    var created = textOf(createdCell);
-    var karma = parseIntText(textOf(karmaCell));
-    var content = parseContentNode(aboutCell);
-    if (content.length === 0) content.push({ type: "text", value: "(No profile text)" });
-
-    return {
-        url: userUrlForId(profileUserId),
-        userId: profileUserId,
-        styles: {
-            title: profileUserId,
-            authorClickable: false
-        },
-        models: {
-            link: userUrlForId(profileUserId),
-            author: profileUserId,
-            avatar: "",
-            date: created,
-            memo: "HN user",
-            viewCount: "",
-            likeCount: karma === null ? "" : formatCount(karma),
-            dislikeCount: "",
-            commentCount: "",
-            content: content,
-            comments: [],
-            menus: [
-                MENU_USER_SUBMISSIONS,
-                MENU_USER_COMMENTS,
-                MENU_USER_FAVORITES,
-                MENU_OPEN_HN
-            ],
-            buttons: [BUTTON_REFRESH]
-        }
-    };
-};
-
-var fetchFeed = function(url) {
-    var normalized = normalizeHNUrl(url);
-    var doc = fetchDocument(normalized);
-    var feed = feedForUrl(normalized) || feeds[0];
-    var items = [];
-    var seen = {};
-
-    if (isCommentsFeed(feed)) {
-        var commentRows = doc.querySelectorAll("tr.athing");
-        for (var i = 0; i < commentRows.length; i++) {
-            var comment = parseUserCommentRow(commentRows[i], normalized, "");
-            if (!comment || !comment.link || seen[comment.link]) continue;
-            seen[comment.link] = true;
-            items.push(comment);
-        }
-    } else {
-        var rows = doc.querySelectorAll("tr.athing");
-        for (var j = 0; j < rows.length; j++) {
-            var className = String(rows[j].className || "");
-            if (className.indexOf("comtr") >= 0) continue;
-
-            var item = parseStoryRow(rows[j], normalized);
-            if (!item || !item.link || seen[item.link]) continue;
-            seen[item.link] = true;
-            items.push(item);
-        }
-    }
-
-    var moreLink = doc.querySelector("a.morelink");
-    var nextUrl = moreLink ? ensureAbsoluteUrl(attrOf(moreLink, "href"), normalized) : "";
-    if (nextUrl && !isHNUrl(nextUrl)) nextUrl = "";
-
-    return {
-        items: items,
-        nextUrl: nextUrl,
-        frontDay: isPastFeed(feed) ? frontDayFromDocument(doc, normalized) : "",
-        pastNavLinks: isPastFeed(feed) ? parsePastNavLinks(doc, normalized) : {}
-    };
 };
 
 var parseContentNode = function(node) {
@@ -612,27 +569,47 @@ var parseContentNode = function(node) {
     return text ? [{ type: "text", value: text }] : [];
 };
 
+var topicLinkFromCommentInfo = function(info, baseUrl) {
+    var links = info ? info.querySelectorAll("a") : [];
+    var fallback = null;
+    for (var i = 0; i < links.length; i++) {
+        var href = ensureAbsoluteUrl(attrOf(links[i], "href"), baseUrl);
+        if (!topicIdFromUrl(href)) continue;
+        var label = textOf(links[i]);
+        var item = { url: href, title: label };
+        if (label !== "parent") return item;
+        fallback = item;
+    }
+    return fallback;
+};
+
+var dateFromCommentInfo = function(info) {
+    var links = info ? info.querySelectorAll("a") : [];
+    for (var i = 0; i < links.length; i++) {
+        var href = attrOf(links[i], "href");
+        if (gnPathFromUrl(ensureAbsoluteUrl(href, GN_ORIGIN + "/")) === "comment") return textOf(links[i]);
+    }
+    return "";
+};
+
 var parsePostComments = function(doc, baseUrl) {
-    var rows = doc.querySelectorAll("tr.athing.comtr");
+    var rows = doc ? doc.querySelectorAll("#comment_thread .comment_row") : [];
     var comments = [];
 
     for (var i = 0; i < rows.length; i++) {
         var row = rows[i];
-        var id = attrOf(row, "id");
-        var author = textOf(row.querySelector(".hnuser")) || "[deleted]";
-        var date = textOf(row.querySelector(".age"));
-        var body = row.querySelector(".commtext");
+        var id = commentIdFromNode(row);
+        var info = row.querySelector(".commentinfo");
+        var author = authorFromInfo(info) || "[deleted]";
+        var date = dateFromCommentInfo(info);
+        var body = row.querySelector(".comment_contents");
         var content = parseContentNode(body);
         if (content.length === 0) content.push({ type: "text", value: "[empty]" });
         if (id) content.unshift({ type: "anchor", value: commentAnchorForId(id) });
 
-        var indentCell = row.querySelector(".ind");
-        var indent = parseIntText(attrOf(indentCell, "indent"));
-        if (indent === null) {
-            var indentImage = indentCell ? indentCell.querySelector("img") : null;
-            var width = parseIntText(attrOf(indentImage, "width"));
-            indent = width === null ? 0 : Math.floor(width / 40);
-        }
+        var style = attrOf(row, "style");
+        var depthMatch = style.match(/--depth\s*:\s*([0-9]+)/);
+        var level = depthMatch ? parseInt(depthMatch[1], 10) : 0;
 
         comments.push({
             id: id,
@@ -643,8 +620,8 @@ var parsePostComments = function(doc, baseUrl) {
             date: date,
             likeCount: "",
             dislikeCount: "",
-            level: indent || 0,
-            menus: [MENU_OPEN_HN],
+            level: level || 0,
+            menus: [MENU_OPEN_GN],
             hotCount: 0,
             coldCount: 0
         });
@@ -660,44 +637,30 @@ var truncateText = function(value, maxLength) {
     return text.substring(0, limit - 3) + "...";
 };
 
-var contextUrlFromCommentRow = function(row, baseUrl) {
-    var links = row ? row.querySelectorAll(".navs a") : [];
-    for (var i = 0; i < links.length; i++) {
-        if (textOf(links[i]).toLowerCase() !== "context") continue;
-        var href = ensureAbsoluteUrl(attrOf(links[i], "href"), baseUrl);
-        if (href && isHNUrl(href) && itemIdFromUrl(href)) return href;
-    }
-    return "";
-};
-
-var parseUserCommentRow = function(row, baseUrl, userId) {
+var parseCommentListItem = function(row, baseUrl, userId) {
     if (!row) return null;
-    var id = attrOf(row, "id");
+    var id = commentIdFromNode(row);
     if (!id) return null;
 
-    var author = textOf(row.querySelector(".hnuser"));
+    var info = row.querySelector(".commentinfo");
+    var author = authorFromInfo(info);
     if (userId && author !== userId) return null;
 
-    var date = textOf(row.querySelector(".age"));
-    var body = row.querySelector(".commtext");
+    var date = dateFromCommentInfo(info);
+    var body = row.querySelector(".comment_contents");
     var bodyText = textOf(body);
-    var onStory = row.querySelector(".onstory a");
-    var storyTitle = attrOf(onStory, "title") || textOf(onStory);
-    storyTitle = normalizeStoryTitle(storyTitle).title;
-    var storyUrl = onStory ? ensureAbsoluteUrl(attrOf(onStory, "href"), baseUrl) : "";
-    var contextUrl = contextUrlFromCommentRow(row, baseUrl);
-    if (contextUrl) contextUrl = commentUrlForId(contextUrl, id);
-    else if (storyUrl) contextUrl = commentUrlForId(storyUrl, id);
-    if (!contextUrl) contextUrl = discussionUrlForId(id);
+    var topic = topicLinkFromCommentInfo(info, baseUrl);
+    var link = topic && topic.url ? commentUrlForId(topic.url, id) : GN_ORIGIN + "/comment?id=" + encodeURIComponent(id);
 
-    var item = {
+    return {
         id: id,
-        link: contextUrl,
-        title: truncateText(bodyText || "(empty comment)", 180),
+        link: link,
+        externalUrl: topic && topic.url ? topic.url : "",
+        title: truncateText(bodyText || "(빈 댓글)", 180),
         author: author,
         avatar: "",
         date: date,
-        memo: storyTitle ? ("on " + storyTitle) : "Comment",
+        memo: topic && topic.title ? ("on " + topic.title) : "댓글",
         likeCount: "",
         dislikeCount: "",
         commentCount: "",
@@ -706,48 +669,135 @@ var parseUserCommentRow = function(row, baseUrl, userId) {
         hotCount: 0,
         coldCount: 0
     };
-
-    if (storyUrl) item.externalUrl = storyUrl;
-    return item;
 };
 
-var fetchUserActivity = function(url) {
-    var normalized = normalizeHNUrl(url);
-    if (!normalized) throw new Error("Unsupported Hacker News URL");
-
-    var kind = hnPathFromUrl(normalized);
-    if (!isUserActivityKind(kind)) throw new Error("Unsupported Hacker News user activity URL");
-
-    var userId = userIdFromUrl(normalized);
-    if (!userId) throw new Error("Missing Hacker News user id");
-
+var fetchFeed = function(url) {
+    var normalized = normalizeGNUrl(url);
     var doc = fetchDocument(normalized);
+    var feed = feedForUrl(normalized) || feeds[0];
     var items = [];
     var seen = {};
 
-    if (kind === "threads") {
-        var commentRows = doc.querySelectorAll("tr.athing.comtr");
+    if (feed.kind === "comments") {
+        var commentRows = doc.querySelectorAll(".comments .comment_row");
         for (var i = 0; i < commentRows.length; i++) {
-            var comment = parseUserCommentRow(commentRows[i], normalized, userId);
+            var comment = parseCommentListItem(commentRows[i], normalized, "");
             if (!comment || !comment.link || seen[comment.link]) continue;
             seen[comment.link] = true;
             items.push(comment);
         }
     } else {
-        var rows = doc.querySelectorAll("tr.athing");
-        for (var j = 0; j < rows.length; j++) {
-            var className = String(rows[j].className || "");
-            if (className.indexOf("comtr") >= 0) continue;
-            var story = parseStoryRow(rows[j], normalized);
-            if (!story || !story.link || seen[story.link]) continue;
-            seen[story.link] = true;
-            items.push(story);
+        var topicRows = doc.querySelectorAll(".topics .topic_row");
+        for (var j = 0; j < topicRows.length; j++) {
+            var topic = parseTopicNode(topicRows[j], normalized);
+            if (!topic || !topic.link || seen[topic.link]) continue;
+            seen[topic.link] = true;
+            items.push(topic);
         }
     }
 
-    var moreLink = doc.querySelector("a.morelink");
+    var moreLink = doc.querySelector(".next a");
     var nextUrl = moreLink ? ensureAbsoluteUrl(attrOf(moreLink, "href"), normalized) : "";
-    if (nextUrl && !isHNUrl(nextUrl)) nextUrl = "";
+    if (nextUrl && !isGNUrl(nextUrl)) nextUrl = "";
+
+    return {
+        items: items,
+        nextUrl: nextUrl,
+        pastDay: isPastFeed(feed) ? pastDayFromDocument(doc, normalized) : "",
+        pastNavLinks: isPastFeed(feed) ? parsePastNavLinks(doc, normalized) : {}
+    };
+};
+
+var fetchUserProfile = function(userIdOrUrl) {
+    var normalized = normalizeGNUrl(userIdOrUrl);
+    var userId = "";
+    if (normalized && (gnPathFromUrl(normalized).charAt(0) === "@" || gnPathFromUrl(normalized).indexOf("user/") === 0)) {
+        userId = userIdFromUrl(normalized);
+    } else {
+        userId = normalizeWhitespace(userIdOrUrl);
+        normalized = userUrlForId(userId);
+    }
+    if (!userId) throw new Error("GeekNews 사용자 ID가 없습니다");
+
+    var doc = fetchDocument(normalized);
+    var root = doc.querySelector("[data-user-profile-root]");
+    var profileUserId = attrOf(root, "data-profile-userid") || textOf(doc.querySelector(".profile-userid")) || userId;
+    var karma = parseIntText(textOf(doc.querySelector(".profile-meta-value")));
+    var joined = "";
+    var metaBlocks = doc.querySelectorAll(".profile-meta-block");
+    for (var i = 0; i < metaBlocks.length; i++) {
+        var metaText = textOf(metaBlocks[i]);
+        if (metaText.indexOf("가입일") >= 0) joined = normalizeWhitespace(metaText.replace("가입일", ""));
+    }
+
+    var content = parseContentNode(doc.querySelector(".profile-about"));
+    if (content.length === 0) content.push({ type: "text", value: "(프로필 내용 없음)" });
+
+    return {
+        url: userUrlForId(profileUserId),
+        userId: profileUserId,
+        styles: {
+            title: profileUserId,
+            authorClickable: false
+        },
+        models: {
+            link: userUrlForId(profileUserId),
+            author: profileUserId,
+            avatar: "",
+            date: joined,
+            memo: "GeekNews user",
+            viewCount: "",
+            likeCount: karma === null ? "" : formatCount(karma),
+            dislikeCount: "",
+            commentCount: "",
+            content: content,
+            comments: [],
+            menus: [
+                MENU_USER_TOPICS,
+                MENU_USER_COMMENTS,
+                MENU_OPEN_GN
+            ],
+            buttons: [BUTTON_REFRESH]
+        }
+    };
+};
+
+var fetchUserActivity = function(url) {
+    var normalized = normalizeGNUrl(url);
+    if (!normalized) throw new Error("지원하지 않는 GeekNews URL입니다");
+
+    var kind = gnPathFromUrl(normalized);
+    if (!isUserActivityKind(kind)) throw new Error("지원하지 않는 사용자 활동 URL입니다");
+
+    var userId = userIdFromUrl(normalized);
+    if (!userId) throw new Error("GeekNews 사용자 ID가 없습니다");
+
+    var doc = fetchDocument(normalized);
+    var items = [];
+    var seen = {};
+
+    if (kind === "comments") {
+        var commentRows = doc.querySelectorAll(".comments .comment_row");
+        for (var i = 0; i < commentRows.length; i++) {
+            var comment = parseCommentListItem(commentRows[i], normalized, userId);
+            if (!comment || !comment.link || seen[comment.link]) continue;
+            seen[comment.link] = true;
+            items.push(comment);
+        }
+    } else {
+        var topicRows = doc.querySelectorAll(".topics .topic_row");
+        for (var j = 0; j < topicRows.length; j++) {
+            var topic = parseTopicNode(topicRows[j], normalized);
+            if (!topic || !topic.link || seen[topic.link]) continue;
+            if (userId && topic.author && topic.author !== userId) continue;
+            seen[topic.link] = true;
+            items.push(topic);
+        }
+    }
+
+    var moreLink = doc.querySelector(".next a");
+    var nextUrl = moreLink ? ensureAbsoluteUrl(attrOf(moreLink, "href"), normalized) : "";
+    if (nextUrl && !isGNUrl(nextUrl)) nextUrl = "";
 
     return {
         kind: kind,
@@ -759,31 +809,31 @@ var fetchUserActivity = function(url) {
 };
 
 var fetchPost = function(link) {
-    var id = itemIdFromUrl(link);
-    if (!id) throw new Error("Missing Hacker News item id");
+    var id = topicIdFromUrl(link);
+    if (!id) throw new Error("GeekNews 글 ID가 없습니다");
 
     var url = discussionUrlForId(id);
-    var postLink = normalizeHNUrl(link) || url;
+    var postLink = normalizeGNUrl(link) || url;
     var doc = fetchDocument(url);
-    var story = parseStoryRow(firstStoryRow(doc), url);
+    var story = parseTopicNode(doc.querySelector(".topic"), url);
     if (!story) {
         story = {
             id: id,
             link: url,
             externalUrl: "",
-            title: "Hacker News Item",
+            title: "GeekNews 글",
             author: "",
             date: "",
-            memo: "HN",
+            memo: "GN",
             likeCount: "",
             commentCount: ""
         };
     }
 
     var content = [];
-    var topText = doc.querySelector(".toptext");
-    var parsedTopText = parseContentNode(topText);
-    for (var i = 0; i < parsedTopText.length; i++) content.push(parsedTopText[i]);
+    var body = doc.querySelector("#topic_contents") || doc.querySelector(".topic_contents");
+    var parsedBody = parseContentNode(body);
+    for (var i = 0; i < parsedBody.length; i++) content.push(parsedBody[i]);
 
     if (story.externalUrl) {
         content.unshift({
@@ -794,14 +844,14 @@ var fetchPost = function(link) {
     }
 
     if (content.length === 0) {
-        content.push({ type: "text", value: "(No text content)" });
+        content.push({ type: "text", value: "(본문 없음)" });
     }
 
     var comments = parsePostComments(doc, postLink);
-    var menus = [MENU_OPEN_HN];
+    var menus = [MENU_OPEN_GN];
     if (story.externalUrl) menus.unshift(MENU_OPEN_ARTICLE);
 
-    var targetCommentId = commentIdFromUrl(link);
+    var targetCommentId = commentTargetIdFromUrl(link);
     var targetAnchor = commentAnchorForId(targetCommentId);
     var styles = {
         title: story.title,
@@ -817,7 +867,7 @@ var fetchPost = function(link) {
         author: story.author || "",
         avatar: "",
         date: story.date || "",
-        memo: story.memo || "HN",
+        memo: story.memo || "GN",
         viewCount: "",
         likeCount: story.likeCount || "",
         dislikeCount: "",
@@ -838,10 +888,10 @@ var fetchPost = function(link) {
 
 var openBrowser = function(url, title) {
     if (!url) return;
-    var browserUrl = String(url || "").replace(/#c_([0-9]+)/, "#$1");
+    var browserUrl = String(url || "").replace(/#c_([0-9]+)/, "#cid$1");
     synura.open({
         view: "/views/browser",
-        styles: { title: title || "Hacker News" },
+        styles: { title: title || "GeekNews" },
         models: { url: browserUrl }
     });
 };
@@ -850,13 +900,13 @@ var openGoDialog = function(parentViewId) {
     synura.open({
         view: "/dialogs/input",
         styles: {
-            title: "Go to Hacker News",
-            message: "Enter an HN URL, path, or item id.",
+            title: "GeekNews Go",
+            message: "GeekNews URL, path, or 글 ID를 입력하세요.",
             close: true
         },
         models: {
             body: [
-                { type: "string", name: "url", label: "URL or item id", value: "" }
+                { type: "string", name: "url", label: "URL 또는 글 ID", value: "" }
             ],
             buttons: [BUTTON_GO]
         }
@@ -878,9 +928,9 @@ var openRoute = function(parentViewId, url) {
     return false;
 };
 
-var feedDisplayTitle = function(feed, frontDay) {
-    if (isPastFeed(feed) && frontDay) return feed.title + " " + frontDay;
-    return feed ? feed.title : "Hacker News";
+var feedDisplayTitle = function(feed, pastDay) {
+    if (isPastFeed(feed) && pastDay) return feed.title + " " + pastDay;
+    return feed ? feed.title : "GeekNews";
 };
 
 var todayAsYYYYMMDD = function() {
@@ -893,8 +943,8 @@ var todayAsYYYYMMDD = function() {
     return yyyy + "-" + mm + "-" + dd;
 };
 
-var buildPastDateAppbar = function(frontDay) {
-    var value = frontDay || todayAsYYYYMMDD();
+var buildPastDateAppbar = function(pastDay) {
+    var value = pastDay || todayAsYYYYMMDD();
     return {
         type: "query",
         label: value,
@@ -903,8 +953,8 @@ var buildPastDateAppbar = function(frontDay) {
     };
 };
 
-var buildPastDateQueryModel = function(frontDay) {
-    var value = frontDay || todayAsYYYYMMDD();
+var buildPastDateQueryModel = function(pastDay) {
+    var value = pastDay || todayAsYYYYMMDD();
     return [{
         label: value,
         hint: value,
@@ -914,43 +964,43 @@ var buildPastDateQueryModel = function(frontDay) {
     }];
 };
 
-var addPastDateQueryModel = function(models, feed, frontDay) {
-    if (isPastFeed(feed)) models.query = buildPastDateQueryModel(frontDay);
+var addPastDateQueryModel = function(models, feed, pastDay) {
+    if (isPastFeed(feed)) models.query = buildPastDateQueryModel(pastDay);
     return models;
 };
 
-var buildFeedListStyles = function(feed, frontDay, pagination) {
+var buildFeedListStyles = function(feed, pastDay, pagination) {
     var styles = {
-        title: feedDisplayTitle(feed, frontDay),
+        title: feedDisplayTitle(feed, pastDay),
         layout: "card",
-        hotThreshold: 500,
+        hotThreshold: 100,
         coldThreshold: 0,
         history: true,
         pagination: !!pagination,
         authorClickable: true
     };
-    if (isPastFeed(feed)) styles.appbar = buildPastDateAppbar(frontDay);
+    if (isPastFeed(feed)) styles.appbar = buildPastDateAppbar(pastDay);
     return styles;
 };
 
-var buildFeedUpdateStyles = function(feed, frontDay, pagination) {
+var buildFeedUpdateStyles = function(feed, pastDay, pagination) {
     var styles = {
-        title: feedDisplayTitle(feed, frontDay),
+        title: feedDisplayTitle(feed, pastDay),
         pagination: !!pagination
     };
-    if (isPastFeed(feed)) styles.appbar = buildPastDateAppbar(frontDay);
+    if (isPastFeed(feed)) styles.appbar = buildPastDateAppbar(pastDay);
     return styles;
 };
 
 var updateFeedView = function(viewId, url, append) {
-    var normalizedUrl = normalizeHNUrl(url);
+    var normalizedUrl = normalizeGNUrl(url);
     var feed = feedForUrl(normalizedUrl) || feeds[0];
     var params = getParams(viewId);
-    var requestedFrontDay = isPastFeed(feed) ? (frontDayFromUrl(normalizedUrl) || params.frontDay || "") : "";
+    var requestedPastDay = isPastFeed(feed) ? (pastDayFromUrl(normalizedUrl) || params.pastDay || "") : "";
 
     try {
         var result = fetchFeed(normalizedUrl);
-        var frontDay = result.frontDay || requestedFrontDay;
+        var pastDay = result.pastDay || requestedPastDay;
         var currentItems = append && params.allItems ? params.allItems : [];
         var allItems = append ? currentItems.concat(result.items) : result.items;
         setParams(viewId, {
@@ -958,7 +1008,7 @@ var updateFeedView = function(viewId, url, append) {
             url: append ? params.url : normalizedUrl,
             nextUrl: result.nextUrl,
             allItems: allItems,
-            frontDay: frontDay,
+            pastDay: pastDay,
             pastNavLinks: result.pastNavLinks || {},
             loaded: true
         });
@@ -966,7 +1016,7 @@ var updateFeedView = function(viewId, url, append) {
         var models = {
             menus: buildFeedMenus(result.pastNavLinks)
         };
-        addPastDateQueryModel(models, feed, frontDay);
+        addPastDateQueryModel(models, feed, pastDay);
         if (append) {
             models.append = result.items;
         } else {
@@ -974,15 +1024,19 @@ var updateFeedView = function(viewId, url, append) {
         }
 
         synura.update(viewId, {
-            styles: buildFeedUpdateStyles(feed, frontDay, !!result.nextUrl),
+            styles: buildFeedUpdateStyles(feed, pastDay, !!result.nextUrl),
             models: models
         });
     } catch (e) {
         console.log("Failed to update feed:", e);
-        var errorUpdate = { models: { snackbar: e.toString() } };
+        var errorModels = { snackbar: e.toString() };
+        if (!append && (!params.allItems || params.allItems.length === 0)) {
+            errorModels.contents = [];
+        }
+        var errorUpdate = { models: errorModels };
         if (isPastFeed(feed)) {
-            errorUpdate.styles = buildFeedUpdateStyles(feed, requestedFrontDay, !!params.nextUrl);
-            addPastDateQueryModel(errorUpdate.models, feed, requestedFrontDay);
+            errorUpdate.styles = buildFeedUpdateStyles(feed, requestedPastDay, !!params.nextUrl);
+            addPastDateQueryModel(errorUpdate.models, feed, requestedPastDay);
         }
         synura.update(viewId, errorUpdate);
     }
@@ -991,14 +1045,14 @@ var updateFeedView = function(viewId, url, append) {
 var openFeed = function(parentViewId, feed) {
     var url = feedUrl(feed);
     var models = {
-        contents: [{ title: "Loading...", memo: "HN" }],
+        contents: [],
         menus: buildFeedMenus()
     };
     addPastDateQueryModel(models, feed, "");
 
     var result = synura.open({
         view: "/views/list",
-        styles: buildFeedListStyles(feed, "", true),
+        styles: buildFeedListStyles(feed, "", false),
         models: models
     }, { from: "feed", feedId: feed.id, url: url, nextUrl: "", loaded: true }, function(event) {
         SYNURA.main.onViewEvent(event.viewId, event);
@@ -1024,7 +1078,7 @@ var createPostRouteData = function(link, postData) {
 var updatePostView = function(viewId, link) {
     try {
         var postData = fetchPost(link);
-        var anchor = commentAnchorForId(commentIdFromUrl(link));
+        var anchor = commentAnchorForId(commentTargetIdFromUrl(link));
         setParams(viewId, {
             link: postData.models.link,
             externalUrl: postData.externalUrl || "",
@@ -1039,7 +1093,7 @@ var updatePostView = function(viewId, link) {
 };
 
 var openPost = function(parentViewId, link) {
-    var targetCommentId = commentIdFromUrl(link);
+    var targetCommentId = commentTargetIdFromUrl(link);
     var targetAnchor = commentAnchorForId(targetCommentId);
     if (targetCommentId) {
         try {
@@ -1077,7 +1131,7 @@ var openPost = function(parentViewId, link) {
     var result = synura.open({
         view: "/views/post",
         styles: {
-            title: "Loading...",
+            title: "불러오는 중...",
             authorClickable: true
         },
         models: {
@@ -1085,9 +1139,9 @@ var openPost = function(parentViewId, link) {
             author: "",
             avatar: "",
             date: "",
-            content: [{ type: "text", value: "Loading content..." }],
+            content: [{ type: "text", value: "본문을 불러오는 중..." }],
             comments: [],
-            menus: [MENU_OPEN_HN],
+            menus: [MENU_OPEN_GN],
             buttons: [BUTTON_REFRESH]
         }
     }, { from: "post", link: link, loaded: true }, function(event) {
@@ -1134,14 +1188,13 @@ var openUserProfile = function(parentViewId, userId) {
             author: userId,
             avatar: "",
             date: "",
-            memo: "HN user",
-            content: [{ type: "text", value: "Loading profile..." }],
+            memo: "GeekNews user",
+            content: [{ type: "text", value: "프로필을 불러오는 중..." }],
             comments: [],
             menus: [
-                MENU_USER_SUBMISSIONS,
+                MENU_USER_TOPICS,
                 MENU_USER_COMMENTS,
-                MENU_USER_FAVORITES,
-                MENU_OPEN_HN
+                MENU_OPEN_GN
             ],
             buttons: [BUTTON_REFRESH]
         }
@@ -1176,19 +1229,19 @@ var updateUserActivityView = function(viewId, url, append) {
         setParams(viewId, {
             kind: result.kind,
             userId: result.userId,
-            url: append ? params.url : normalizeHNUrl(url),
+            url: append ? params.url : normalizeGNUrl(url),
             nextUrl: result.nextUrl,
             allItems: allItems,
             loaded: true
         });
 
         var models = {
-            menus: [MENU_OPEN_HN]
+            menus: [MENU_OPEN_GN]
         };
         if (append) models.append = result.items;
         else models.contents = result.items;
         if (result.items.length === 0 && !append) {
-            models.snackbar = "No public items";
+            models.snackbar = "공개 항목이 없습니다";
         }
 
         synura.update(viewId, {
@@ -1197,7 +1250,9 @@ var updateUserActivityView = function(viewId, url, append) {
         });
     } catch (e) {
         console.log("Failed to update user activity:", e);
-        synura.update(viewId, { models: { snackbar: e.toString() } });
+        var errorModels = { snackbar: e.toString() };
+        if (!append) errorModels.contents = [];
+        synura.update(viewId, { models: errorModels });
     }
 };
 
@@ -1207,10 +1262,10 @@ var openUserActivity = function(parentViewId, userId, kind) {
     var title = userActivityTitle(kind, userId);
     var result = synura.open({
         view: "/views/list",
-        styles: buildUserActivityStyles(title, true),
+        styles: buildUserActivityStyles(title, false),
         models: {
-            contents: [{ title: "Loading...", memo: "HN" }],
-            menus: [MENU_OPEN_HN]
+            contents: [],
+            menus: [MENU_OPEN_GN]
         }
     }, { from: "user_activity", kind: kind, userId: userId, url: url, nextUrl: "", loaded: true }, function(event) {
         SYNURA.main.onViewEvent(event.viewId, event);
@@ -1228,19 +1283,19 @@ var home = function() {
     var result = synura.open({
         view: "/views/list",
         styles: {
-            title: "Hacker News",
+            title: "GeekNews",
             layout: "list"
         },
         models: {
             contents: buildHomeItems(),
-            menus: [MENU_GO, MENU_OPEN_HN]
+            menus: [MENU_GO, MENU_OPEN_GN]
         }
     }, { from: "home" }, function(event) {
         SYNURA.main.onViewEvent(event.viewId, event);
     });
 
     if (!result || !result.success) {
-        console.log("Failed to open Hacker News home:", result ? result.error : "unknown error");
+        console.log("Failed to open GeekNews home:", result ? result.error : "unknown error");
     }
 };
 
@@ -1252,17 +1307,17 @@ var resume = function(viewId, context) {
 
 var handleHomeEvent = function(viewId, event) {
     if (event.eventId === "CLICK") {
-        if (event.data && event.data.link && itemIdFromUrl(event.data.link)) {
+        if (event.data && event.data.link && topicIdFromUrl(event.data.link)) {
             openPost(viewId, event.data.link);
             return;
         }
-        var feed = findFeed(event.data && event.data.id ? event.data.id : "news");
+        var feed = findFeed(event.data && event.data.id ? event.data.id : "top");
         openFeed(viewId, feed);
     } else if (event.eventId === "MENU_CLICK") {
         if (event.data && event.data.menu === MENU_GO) {
             openGoDialog(viewId);
-        } else if (event.data && event.data.menu === MENU_OPEN_HN) {
-            openBrowser(HN_ORIGIN + "/news", "Hacker News");
+        } else if (event.data && event.data.menu === MENU_OPEN_GN) {
+            openBrowser(GN_ORIGIN + "/", "GeekNews");
         }
     }
 };
@@ -1276,7 +1331,7 @@ var handleGoEvent = function(viewId, event) {
 
     var url = goUrlFromInput(event.data.url);
     if (!url) {
-        synura.update(viewId, { models: { snackbar: "Enter a Hacker News URL, path, or item id." } });
+        synura.update(viewId, { models: { snackbar: "GeekNews URL, path, or 글 ID를 입력하세요." } });
         return;
     }
 
@@ -1285,7 +1340,7 @@ var handleGoEvent = function(viewId, event) {
 
     try {
         if (!openRoute(parentViewId, url)) {
-            openBrowser(url, "Hacker News");
+            openBrowser(url, "GeekNews");
         }
     } catch (e) {
         if (parentViewId) synura.update(parentViewId, { models: { snackbar: e.toString() } });
@@ -1308,7 +1363,7 @@ var handleFeedEvent = function(viewId, event) {
         if (!nextUrl) {
             synura.update(viewId, {
                 styles: { pagination: false },
-                models: { snackbar: "No more stories" }
+                models: { snackbar: "더 이상 항목이 없습니다" }
             });
             return;
         }
@@ -1316,8 +1371,6 @@ var handleFeedEvent = function(viewId, event) {
     } else if (event.eventId === "CLICK") {
         var link = event.data && event.data.link ? event.data.link : "";
         if (link) openPost(viewId, link);
-    } else if (event.eventId === "AUTHOR_CLICK") {
-        if (event.data && event.data.author) openUserProfile(viewId, event.data.author);
     } else if (event.eventId === "MENU_CLICK") {
         var menu = event.data ? event.data.menu : "";
         var pastNavLinks = params.pastNavLinks || {};
@@ -1325,31 +1378,31 @@ var handleFeedEvent = function(viewId, event) {
             updateFeedView(viewId, pastNavLinks[menu], false);
             return;
         }
-        if (menu === MENU_OPEN_HN) {
-            openBrowser(params.url || HN_ORIGIN + "/news", "Hacker News");
+        if (menu === MENU_OPEN_GN) {
+            openBrowser(params.url || GN_ORIGIN + "/", "GeekNews");
             return;
         }
     } else if (event.eventId === "QUERY") {
-        var feed = findFeed(params.feedId || (event.context && event.context.feedId) || "news");
+        var feed = findFeed(params.feedId || (event.context && event.context.feedId) || "top");
         if (!isPastFeed(feed)) return;
 
         var rawDay = queryFromEvent(event);
         if (!rawDay) return;
 
-        var day = normalizeFrontDayQuery(rawDay);
+        var day = normalizePastDayQuery(rawDay);
         if (!day) {
-            synura.update(viewId, { models: { snackbar: "Enter date as YYYY-MM-DD" } });
+            synura.update(viewId, { models: { snackbar: "YYYY-MM-DD 형식으로 입력하세요" } });
             return;
         }
 
-        updateFeedView(viewId, frontUrlForDay(day), false);
+        updateFeedView(viewId, pastUrlForDay(day), false);
     }
 };
 
 var handlePostEvent = function(viewId, event) {
     var params = getParams(viewId);
     var link = params.link || (event.context && event.context.link) || (event.data && event.data.link) || "";
-    var anchor = params.anchor || (event.context && event.context.anchor) || commentAnchorForId(commentIdFromUrl(link));
+    var anchor = params.anchor || (event.context && event.context.anchor) || commentAnchorForId(commentTargetIdFromUrl(link));
 
     if (event.eventId === "LOAD") {
         if (anchor) {
@@ -1372,14 +1425,14 @@ var handlePostEvent = function(viewId, event) {
                 (event.context && event.context.externalUrl) ||
                 (event.data && event.data.externalUrl) ||
                 "";
-            if (externalUrl) openBrowser(externalUrl, "Article");
-            else synura.update(viewId, { models: { snackbar: "No article link" } });
-        } else if (menu === MENU_OPEN_HN) {
-            openBrowser(link || HN_ORIGIN + "/news", "Hacker News");
+            if (externalUrl) openBrowser(externalUrl, "원문");
+            else synura.update(viewId, { models: { snackbar: "원문 링크가 없습니다" } });
+        } else if (menu === MENU_OPEN_GN) {
+            openBrowser(link || GN_ORIGIN + "/", "GeekNews");
         }
     } else if (event.eventId === "ITEM_MENU_CLICK") {
-        if (event.data && event.data.menu === MENU_OPEN_HN && event.data.link) {
-            openBrowser(event.data.link, "Hacker News");
+        if (event.data && event.data.menu === MENU_OPEN_GN && event.data.link) {
+            openBrowser(event.data.link, "GeekNews");
         }
     } else if (event.eventId === "AUTHOR_CLICK") {
         if (event.data && event.data.author) {
@@ -1407,8 +1460,8 @@ var handleUserProfileEvent = function(viewId, event) {
             openUserActivity(viewId, userId, kind);
             return;
         }
-        if (menu === MENU_OPEN_HN) {
-            openBrowser(url || userUrlForId(userId), userId || "Hacker News User");
+        if (menu === MENU_OPEN_GN) {
+            openBrowser(url || userUrlForId(userId), userId || "GeekNews User");
         }
     }
 };
@@ -1428,7 +1481,7 @@ var handleUserActivityEvent = function(viewId, event) {
         if (!nextUrl) {
             synura.update(viewId, {
                 styles: { pagination: false },
-                models: { snackbar: "No more items" }
+                models: { snackbar: "더 이상 항목이 없습니다" }
             });
             return;
         }
@@ -1440,8 +1493,8 @@ var handleUserActivityEvent = function(viewId, event) {
         if (event.data && event.data.author) openUserProfile(viewId, event.data.author);
     } else if (event.eventId === "MENU_CLICK") {
         var menu = event.data ? event.data.menu : "";
-        if (menu === MENU_OPEN_HN) {
-            openBrowser(params.url || (event.context && event.context.url) || HN_ORIGIN + "/news", "Hacker News");
+        if (menu === MENU_OPEN_GN) {
+            openBrowser(params.url || (event.context && event.context.url) || GN_ORIGIN + "/", "GeekNews");
         }
     }
 };
@@ -1464,11 +1517,11 @@ var onViewEvent = function(viewId, event) {
 };
 
 var routeForUrl = function(url) {
-    var normalized = normalizeHNUrl(url);
+    var normalized = normalizeGNUrl(url);
     if (!normalized) return null;
 
-    var path = hnPathFromUrl(normalized);
-    if (path === "user") {
+    var path = gnPathFromUrl(normalized);
+    if (path.charAt(0) === "@" || path.indexOf("user/") === 0) {
         var profile = fetchUserProfile(normalized);
         return {
             viewData: {
@@ -1486,13 +1539,13 @@ var routeForUrl = function(url) {
         };
     }
 
-    if (isUserActivityKind(path)) {
+    if (isUserActivityKind(path) && userIdFromUrl(normalized)) {
         var activity = fetchUserActivity(normalized);
         var activityModels = {
             contents: activity.items,
-            menus: [MENU_OPEN_HN]
+            menus: [MENU_OPEN_GN]
         };
-        if (activity.items.length === 0) activityModels.snackbar = "No public items";
+        if (activity.items.length === 0) activityModels.snackbar = "공개 항목이 없습니다";
 
         return {
             viewData: {
@@ -1513,19 +1566,16 @@ var routeForUrl = function(url) {
         };
     }
 
-    var id = itemIdFromUrl(normalized);
-    if (id) {
-        var postLink = normalized;
-        var postData = fetchPost(postLink);
-        var anchor = commentAnchorForId(commentIdFromUrl(postLink));
+    var id = topicIdFromUrl(normalized);
+    if (id && path === "topic") {
+        var postData = fetchPost(normalized);
         return {
-            viewData: createPostRouteData(postLink, postData),
+            viewData: createPostRouteData(normalized, postData),
             context: {
                 from: "post",
                 link: postData.models.link,
                 externalUrl: postData.externalUrl || "",
-                loaded: true,
-                anchor: anchor
+                loaded: true
             }
         };
     }
@@ -1537,13 +1587,13 @@ var routeForUrl = function(url) {
             contents: feedData.items,
             menus: buildFeedMenus(feedData.pastNavLinks)
         };
-        addPastDateQueryModel(models, feed, feedData.frontDay);
+        addPastDateQueryModel(models, feed, feedData.pastDay);
 
         return {
             viewData: {
                 view: "/views/list",
                 timestamp: Date.now(),
-                styles: buildFeedListStyles(feed, feedData.frontDay, !!feedData.nextUrl),
+                styles: buildFeedListStyles(feed, feedData.pastDay, !!feedData.nextUrl),
                 models: models
             },
             context: {
@@ -1552,7 +1602,7 @@ var routeForUrl = function(url) {
                 url: normalized,
                 nextUrl: feedData.nextUrl,
                 allItems: feedData.items,
-                frontDay: feedData.frontDay || "",
+                pastDay: feedData.pastDay || "",
                 pastNavLinks: feedData.pastNavLinks || {},
                 loaded: true
             }
@@ -1592,6 +1642,6 @@ var handler = {
             console.log("Deep link route error:", e);
         }
 
-        openBrowser(normalizeHNUrl(url) || HN_ORIGIN + "/news", "Hacker News");
+        openBrowser(normalizeGNUrl(url) || GN_ORIGIN + "/", "GeekNews");
     }
 };

@@ -11,7 +11,7 @@ ROOT_EXTENSION_TARGETS = youtube
 ROOT_OUTPUTS = $(addsuffix .js,$(ROOT_EXTENSION_TARGETS))
 
 KO_KR_COMMON_TS = ko_KR/community_common.ts
-KO_KR_EXTENSION_TARGETS = arca clien damoang dcinside fmkorea inven mlbpark pann ppomppu ruliweb theqoo
+KO_KR_EXTENSION_TARGETS = arca clien damoang dcinside fmkorea geeknews inven mlbpark pann ppomppu ruliweb theqoo
 KO_KR_TARGETS = $(addprefix ko_KR/,$(KO_KR_EXTENSION_TARGETS))
 KO_KR_OUTPUTS = $(addsuffix .js,$(KO_KR_TARGETS))
 
@@ -51,6 +51,9 @@ $(EN_US_EXTENSION_TARGETS): %: en_US/%.js
 $(KO_KR_TARGETS): %: %.js
 
 $(EN_US_TARGETS): %: %.js
+
+ko_KR/geeknews.js: ko_KR/geeknews.ts
+	$(compile_js)
 
 define compile_js
 	$(TSC) $(TSC_FLAGS) --outFile $@ $^

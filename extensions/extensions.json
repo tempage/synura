@@ -1,7 +1,7 @@
 {
   "name": "Synura Example Repository",
   "description": "A collection of example extensions for educational purposes.",
-  "version": 1.6,
+  "version": 1.7,
   "extensions": [
     {
       "name": "test_youtube",
