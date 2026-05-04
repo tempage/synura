@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "chiphell",
+      "description": "Unofficial Chiphell.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/chiphell.js",
+      "api": 0,
+      "domain": "www.chiphell.com",
+      "author": "Synura Team",
+      "icon": "https://www.chiphell.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "hardware",
+        "lifestyle",
+        "forum"
+      ]
+    },
+    {
+      "name": "v2ex",
+      "description": "Unofficial V2EX.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/v2ex.js",
+      "api": 0,
+      "domain": "www.v2ex.com",
+      "author": "Synura Team",
+      "icon": "https://www.v2ex.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "developers",
+        "startups",
+        "forum"
+      ]
+    },
+    {
+      "name": "linux_do",
+      "description": "Unofficial LINUX DO.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/linux_do.js",
+      "api": 0,
+      "domain": "linux.do",
+      "author": "Synura Team",
+      "icon": "https://linux.do/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "linux",
+        "developers",
+        "forum"
+      ]
+    }
+  ]
+}

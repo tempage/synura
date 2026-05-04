@@ -993,6 +993,11 @@ var SYNURA = {
     bypass: "chrome/windows",
     locale: "ko_KR",
     deeplink: true,
+    tags: [
+      "baseball",
+      "sports",
+      "forum"
+    ],
     icon: "https://mlbpark.donga.com/favicon.ico",
     main: null
 };

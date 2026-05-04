@@ -622,6 +622,11 @@ var SYNURA = {
     bypass: "chrome/android",
     locale: "ko_KR",
     deeplink: true,
+    tags: [
+      "entertainment",
+      "lifestyle",
+      "forum"
+    ],
     icon: "https://m.pann.nate.com/favicon.ico",
     main: null
 };

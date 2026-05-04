@@ -884,6 +884,10 @@ var SYNURA = {
     bypass: "chrome/windows",
     locale: "ko_KR",
     deeplink: true,
+    tags: [
+      "gaming",
+      "forum"
+    ],
     icon: "https://www.inven.co.kr/favicon.ico",
     main: null
 };

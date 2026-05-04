@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "habr",
+      "description": "Unofficial Habr.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ru_RU/habr.js",
+      "api": 0,
+      "domain": "habr.com",
+      "author": "Synura Team",
+      "icon": "https://habr.com/favicon.ico",
+      "locale": "ru_RU",
+      "tags": [
+        "technology",
+        "programming",
+        "articles"
+      ]
+    },
+    {
+      "name": "vc_ru",
+      "description": "Unofficial VC.ru.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ru_RU/vc_ru.js",
+      "api": 0,
+      "domain": "vc.ru",
+      "author": "Synura Team",
+      "icon": "https://vc.ru/favicon.ico",
+      "locale": "ru_RU",
+      "tags": [
+        "business",
+        "startups",
+        "news"
+      ]
+    },
+    {
+      "name": "linux_org_ru",
+      "description": "Unofficial Linux.org.ru.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ru_RU/linux_org_ru.js",
+      "api": 0,
+      "domain": "www.linux.org.ru",
+      "author": "Synura Team",
+      "icon": "https://www.linux.org.ru/favicon.ico",
+      "locale": "ru_RU",
+      "tags": [
+        "linux",
+        "open-source",
+        "forum"
+      ]
+    }
+  ]
+}

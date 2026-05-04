@@ -1,0 +1,51 @@
+{
+  "extensions": [
+    {
+      "name": "coolaler",
+      "description": "Unofficial Coolaler Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_TW/coolaler.js",
+      "api": 0,
+      "domain": "www.coolaler.com",
+      "author": "Synura Team",
+      "icon": "https://www.coolaler.com/favicon.ico",
+      "locale": "zh_TW",
+      "tags": [
+        "hardware",
+        "overclocking",
+        "forum"
+      ]
+    },
+    {
+      "name": "backpackers",
+      "description": "Unofficial Backpackers.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_TW/backpackers.js",
+      "api": 0,
+      "domain": "www.backpackers.com.tw",
+      "author": "Synura Team",
+      "icon": "https://www.backpackers.com.tw/favicon.ico",
+      "locale": "zh_TW",
+      "tags": [
+        "travel",
+        "forum"
+      ]
+    },
+    {
+      "name": "mobile01",
+      "description": "Unofficial Mobile01.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_TW/mobile01.js",
+      "api": 0,
+      "domain": "m.mobile01.com",
+      "author": "Synura Team",
+      "icon": "https://m.mobile01.com/favicon.ico",
+      "locale": "zh_TW",
+      "tags": [
+        "technology",
+        "lifestyle",
+        "forum"
+      ]
+    }
+  ]
+}

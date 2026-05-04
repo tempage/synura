@@ -43,7 +43,7 @@ const handler = {
         menus: ["Delete All", "About"]
       }
     }, function(event) {
-      self.onListEvent(event, result.viewId);
+      self.onListEvent(event, event.viewId);
     });
   },
 
@@ -70,7 +70,7 @@ const handler = {
       }
     }, function(event) {
       if (event.eventId === 'SUBMIT') {
-        synura.close(result.viewId);
+        synura.close(event.viewId);
       }
     });
   },
@@ -85,7 +85,7 @@ const handler = {
       }
     }, function(event) {
       if (event.eventId === 'SUBMIT') {
-        synura.close(result.viewId);
+        synura.close(event.viewId);
 
         // Clear items and update list
         self.items = [];
@@ -110,7 +110,7 @@ const handler = {
       }
     }, function(event) {
       if (event.eventId === 'SUBMIT') {
-        synura.close(result.viewId);
+        synura.close(event.viewId);
       }
     });
   },
@@ -124,7 +124,7 @@ const handler = {
       }
     }, function(event) {
       if (event.eventId === 'SUBMIT') {
-        synura.close(result.viewId);
+        synura.close(event.viewId);
       }
     });
   }

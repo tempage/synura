@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "voz",
+      "description": "Unofficial Voz.vn.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/vi_VN/voz.js",
+      "api": 0,
+      "domain": "voz.vn",
+      "author": "Synura Team",
+      "icon": "https://voz.vn/favicon.ico",
+      "locale": "vi_VN",
+      "tags": [
+        "technology",
+        "general",
+        "forum"
+      ]
+    },
+    {
+      "name": "otofun",
+      "description": "Unofficial Otofun.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/vi_VN/otofun.js",
+      "api": 0,
+      "domain": "www.otofun.net",
+      "author": "Synura Team",
+      "icon": "https://www.otofun.net/favicon.ico",
+      "locale": "vi_VN",
+      "tags": [
+        "automotive",
+        "cars",
+        "forum"
+      ]
+    },
+    {
+      "name": "tinhte",
+      "description": "Unofficial Tinhte.vn.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/vi_VN/tinhte.js",
+      "api": 0,
+      "domain": "tinhte.vn",
+      "author": "Synura Team",
+      "icon": "https://tinhte.vn/favicon.ico",
+      "locale": "vi_VN",
+      "tags": [
+        "technology",
+        "mobile",
+        "forum"
+      ]
+    }
+  ]
+}

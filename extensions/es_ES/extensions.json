@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "meneame",
+      "description": "Unofficial Meneame.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_ES/meneame.js",
+      "api": 0,
+      "domain": "www.meneame.net",
+      "author": "Synura Team",
+      "icon": "https://www.meneame.net/favicon.ico",
+      "locale": "es_ES",
+      "tags": [
+        "social-news",
+        "news",
+        "links"
+      ]
+    },
+    {
+      "name": "rankia",
+      "description": "Unofficial Rankia.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_ES/rankia.js",
+      "api": 0,
+      "domain": "www.rankia.com",
+      "author": "Synura Team",
+      "icon": "https://www.rankia.com/favicon.ico",
+      "locale": "es_ES",
+      "tags": [
+        "finance",
+        "investing",
+        "forum"
+      ]
+    },
+    {
+      "name": "foros_acb",
+      "description": "Unofficial Foros ACB.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_ES/foros_acb.js",
+      "api": 0,
+      "domain": "foros.acb.com",
+      "author": "Synura Team",
+      "icon": "https://foros.acb.com/favicon.ico",
+      "locale": "es_ES",
+      "tags": [
+        "basketball",
+        "sports",
+        "forum"
+      ]
+    }
+  ]
+}

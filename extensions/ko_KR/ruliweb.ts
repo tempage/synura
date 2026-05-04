@@ -864,6 +864,7 @@ function ruliwebCollectFamilySeeds(doc) {
     }
     return seeds;
 }
+var RULIWEB_MENU_BOARD_LINK_SELECTORS = ["a[href*='/board/']", "a[href*='/read/']"];
 function ruliwebCollectBoardsFromMenuDoc(doc, rootLabel, items, seenBoards) {
     var nav = firstNode(doc, ["ul.nav_list.row"]);
     if (!nav) return;
@@ -876,7 +877,7 @@ function ruliwebCollectBoardsFromMenuDoc(doc, rootLabel, items, seenBoards) {
         var depth1 = firstNode(item, ["h4.list_item.depth1"]);
         if (depth1) {
             var groupTitle = normalizeWhitespace(textOf(depth1));
-            var anchor = firstNode(item, ["a[href]"]);
+            var anchor = firstNode(item, RULIWEB_MENU_BOARD_LINK_SELECTORS);
             var className = String(attrOf(item, "class") || "");
             var isExpandable = /\bexpand\b/.test(className) || /\bstyle_open_list\b/.test(className);
             if (isExpandable) {
@@ -887,7 +888,7 @@ function ruliwebCollectBoardsFromMenuDoc(doc, rootLabel, items, seenBoards) {
             }
             continue;
         }
-        var anchor = firstNode(item, ["a[href]"]);
+        var anchor = firstNode(item, RULIWEB_MENU_BOARD_LINK_SELECTORS);
         var depth2 = firstNode(item, ["h4.list_item.depth2"]);
         if (!anchor || !depth2) continue;
         ruliwebPushDynamicBoard(items, seenBoards, normalizeWhitespace(textOf(depth2)), attrOf(anchor, "href"), currentGroup || ruliwebGroupSegment(rootLabel));
@@ -1012,6 +1013,11 @@ var SYNURA = {
     bypass: "chrome/android",
     locale: "ko_KR",
     deeplink: true,
+    tags: [
+      "gaming",
+      "entertainment",
+      "forum"
+    ],
     icon: "https://m.ruliweb.com/favicon.ico",
     main: null
 };

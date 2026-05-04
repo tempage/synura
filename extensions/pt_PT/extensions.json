@@ -1,0 +1,68 @@
+{
+  "extensions": [
+    {
+      "name": "motorguia",
+      "description": "Unofficial Forum Motorguia.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_PT/motorguia.js",
+      "api": 0,
+      "domain": "forum.motorguia.net",
+      "author": "Synura Team",
+      "icon": "https://forum.motorguia.net/favicon.ico",
+      "locale": "pt_PT",
+      "tags": [
+        "automotive",
+        "cars",
+        "forum"
+      ]
+    },
+    {
+      "name": "forum_da_casa",
+      "description": "Unofficial Forum da Casa.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_PT/forum_da_casa.js",
+      "api": 0,
+      "domain": "www.forumdacasa.com",
+      "author": "Synura Team",
+      "icon": "https://www.forumdacasa.com/favicon.ico",
+      "locale": "pt_PT",
+      "tags": [
+        "home",
+        "real-estate",
+        "forum"
+      ]
+    },
+    {
+      "name": "zwame",
+      "description": "Unofficial ZWAME.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_PT/zwame.js",
+      "api": 0,
+      "domain": "forum.zwame.pt",
+      "author": "Synura Team",
+      "icon": "https://forum.zwame.pt/favicon.ico",
+      "locale": "pt_PT",
+      "tags": [
+        "technology",
+        "hardware",
+        "forum"
+      ]
+    },
+    {
+      "name": "portal_classicos",
+      "description": "Unofficial Portal dos Classicos.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_PT/portal_classicos.js",
+      "api": 0,
+      "domain": "portalclassicos.com",
+      "author": "Synura Team",
+      "icon": "https://portalclassicos.com/favicon.ico",
+      "locale": "pt_PT",
+      "tags": [
+        "classic-cars",
+        "automotive",
+        "forum"
+      ]
+    }
+  ]
+}

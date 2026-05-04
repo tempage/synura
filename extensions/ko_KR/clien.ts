@@ -260,8 +260,7 @@ var SITE = {
       "a.list_item",
       "div.list_item.symph_row",
       "div.list_item",
-      "tr.list_item",
-      "tr"
+      "tr.list_item"
     ],
     "listLink": [
       ".list_title a.list_subject",
@@ -793,6 +792,11 @@ var SYNURA = {
     bypass: "chrome/android",
     locale: "ko_KR",
     deeplink: true,
+    tags: [
+      "technology",
+      "gadgets",
+      "forum"
+    ],
     icon: "https://m.clien.net/service/image/favicon.ico",
     main: null
 };

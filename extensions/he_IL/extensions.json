@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "carsforum",
+      "description": "Unofficial CarsForum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/he_IL/carsforum.js",
+      "api": 0,
+      "domain": "carsforum.co.il",
+      "author": "Synura Team",
+      "icon": "https://carsforum.co.il/favicon.ico",
+      "locale": "he_IL",
+      "tags": [
+        "automotive",
+        "cars",
+        "forum"
+      ]
+    },
+    {
+      "name": "hwzone",
+      "description": "Unofficial HWzone.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/he_IL/hwzone.js",
+      "api": 0,
+      "domain": "hwzone.co.il",
+      "author": "Synura Team",
+      "icon": "https://hwzone.co.il/favicon.ico",
+      "locale": "he_IL",
+      "tags": [
+        "hardware",
+        "technology",
+        "forum"
+      ]
+    },
+    {
+      "name": "hasolidit",
+      "description": "Unofficial Hasolidit Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/he_IL/hasolidit.js",
+      "api": 0,
+      "domain": "www.hasolidit.com",
+      "author": "Synura Team",
+      "icon": "https://www.hasolidit.com/favicon.ico",
+      "locale": "he_IL",
+      "tags": [
+        "finance",
+        "investing",
+        "forum"
+      ]
+    }
+  ]
+}

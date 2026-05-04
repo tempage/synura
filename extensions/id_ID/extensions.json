@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "indoforum",
+      "description": "Unofficial IndoForum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/id_ID/indoforum.js",
+      "api": 0,
+      "domain": "www.forum.or.id",
+      "author": "Synura Team",
+      "icon": "https://www.forum.or.id/favicon.ico",
+      "locale": "id_ID",
+      "tags": [
+        "general",
+        "discussion",
+        "forum"
+      ]
+    },
+    {
+      "name": "expatindo",
+      "description": "Unofficial Expat Indo Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/id_ID/expatindo.js",
+      "api": 0,
+      "domain": "www.expatindo.org",
+      "author": "Synura Team",
+      "icon": "https://www.expatindo.org/favicon.ico",
+      "locale": "id_ID",
+      "tags": [
+        "expat",
+        "indonesia",
+        "forum"
+      ]
+    },
+    {
+      "name": "bersosial",
+      "description": "Unofficial Bersosial Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/id_ID/bersosial.js",
+      "api": 0,
+      "domain": "forum.bersosial.com",
+      "author": "Synura Team",
+      "icon": "https://forum.bersosial.com/favicon.ico",
+      "locale": "id_ID",
+      "tags": [
+        "general",
+        "discussion",
+        "forum"
+      ]
+    }
+  ]
+}

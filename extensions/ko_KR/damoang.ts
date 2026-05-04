@@ -476,17 +476,18 @@ var SITE = {
       "title"
     ],
     "listRows": [
-      "article",
-      "li",
-      "tr"
+      "article[class]",
+      "li[class]",
+      "tr[class]",
+      "a[href^='https://damoang.net/'][href*='/']"
     ],
     "listLink": [
-      "a[href]"
+      "a[href^='https://damoang.net/'][href*='/']"
     ],
     "listTitle": [
-      "h2",
+      "h2.title",
       "strong",
-      "a[href]"
+      "a[href^='https://damoang.net/'][href*='/']"
     ],
     "listAuthor": [
       ".author",
@@ -542,11 +543,12 @@ var SITE = {
       ".category"
     ],
     "postContent": [
-      "article",
+      "article[class]",
       ".content"
     ],
     "commentRows": [
-      "li",
+      "li[class]",
+      ".comment[id]",
       ".comment"
     ],
     "commentAuthor": [
@@ -728,13 +730,18 @@ var SYNURA = {
     bypass: "chrome/android",
     locale: "ko_KR",
     deeplink: true,
+    tags: [
+      "technology",
+      "general",
+      "forum"
+    ],
     icon: "https://damoang.net/favicon-96x96.png",
     main: null
 };
 
 var LIST_LINK_ALLOW_PATTERNS = ["^https://damoang\\.net/[^/]+/\\d+(?:\\?|$)"];
-var LIST_LINK_SELECTORS = ["a[href]"];
-var LIST_TITLE_SELECTORS = ["h2","strong","a[href]"];
+var LIST_LINK_SELECTORS = ["a[href^='https://damoang.net/'][href*='/']"];
+var LIST_TITLE_SELECTORS = ["h2.title","strong","a[href^='https://damoang.net/'][href*='/']"];
 var LIST_AUTHOR_SELECTORS = [".author",".writer"];
 var LIST_AVATAR_SELECTORS = [];
 var LIST_DATE_SELECTORS = ["time",".date"];

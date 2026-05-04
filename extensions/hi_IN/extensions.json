@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "indusladies",
+      "description": "Unofficial Indusladies.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/hi_IN/indusladies.js",
+      "api": 0,
+      "domain": "indusladies.com",
+      "author": "Synura Team",
+      "icon": "https://indusladies.com/favicon.ico",
+      "locale": "hi_IN",
+      "tags": [
+        "lifestyle",
+        "women",
+        "forum"
+      ]
+    },
+    {
+      "name": "desidime",
+      "description": "Unofficial DesiDime.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/hi_IN/desidime.js",
+      "api": 0,
+      "domain": "www.desidime.com",
+      "author": "Synura Team",
+      "icon": "https://www.desidime.com/favicon.ico",
+      "locale": "hi_IN",
+      "tags": [
+        "deals",
+        "shopping",
+        "coupons"
+      ]
+    },
+    {
+      "name": "india_forums",
+      "description": "Unofficial India Forums.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/hi_IN/india_forums.js",
+      "api": 0,
+      "domain": "www.indiaforums.com",
+      "author": "Synura Team",
+      "icon": "https://www.indiaforums.com/favicon.ico",
+      "locale": "hi_IN",
+      "tags": [
+        "entertainment",
+        "television",
+        "forum"
+      ]
+    }
+  ]
+}

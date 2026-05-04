@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "androidiani",
+      "description": "Unofficial Androidiani Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/it_IT/androidiani.js",
+      "api": 0,
+      "domain": "www.androidiani.com",
+      "author": "Synura Team",
+      "icon": "https://www.androidiani.com/favicon.ico",
+      "locale": "it_IT",
+      "tags": [
+        "android",
+        "mobile",
+        "forum"
+      ]
+    },
+    {
+      "name": "tomshw_italia",
+      "description": "Unofficial Tom",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/it_IT/tomshw_italia.js",
+      "api": 0,
+      "domain": "forum.tomshw.it",
+      "author": "Synura Team",
+      "icon": "https://forum.tomshw.it/favicon.ico",
+      "locale": "it_IT",
+      "tags": [
+        "hardware",
+        "technology",
+        "forum"
+      ]
+    },
+    {
+      "name": "finanzaonline",
+      "description": "Unofficial FinanzaOnline Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/it_IT/finanzaonline.js",
+      "api": 0,
+      "domain": "forum.finanzaonline.com",
+      "author": "Synura Team",
+      "icon": "https://forum.finanzaonline.com/favicon.ico",
+      "locale": "it_IT",
+      "tags": [
+        "finance",
+        "investing",
+        "forum"
+      ]
+    }
+  ]
+}

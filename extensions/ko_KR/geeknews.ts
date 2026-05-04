@@ -15,6 +15,11 @@ var SYNURA = {
     locale: "ko_KR",
     bypass: "chrome/android",
     deeplink: true,
+    tags: [
+      "technology",
+      "startups",
+      "news"
+    ],
     get main() { return handler; }
 };
 

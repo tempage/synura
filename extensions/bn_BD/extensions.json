@@ -1,0 +1,51 @@
+{
+  "extensions": [
+    {
+      "name": "bigganblog",
+      "description": "Unofficial Biggan Blog.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/bn_BD/bigganblog.js",
+      "api": 0,
+      "domain": "bigganblog.org",
+      "author": "Synura Team",
+      "icon": "https://bigganblog.org/favicon.ico",
+      "locale": "bn_BD",
+      "tags": [
+        "science",
+        "blog"
+      ]
+    },
+    {
+      "name": "cadetcollegeblog",
+      "description": "Unofficial Cadet College Blog.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/bn_BD/cadetcollegeblog.js",
+      "api": 0,
+      "domain": "cadetcollegeblog.com",
+      "author": "Synura Team",
+      "icon": "https://cadetcollegeblog.com/favicon.ico",
+      "locale": "bn_BD",
+      "tags": [
+        "blog",
+        "education",
+        "alumni"
+      ]
+    },
+    {
+      "name": "somewhereinblog",
+      "description": "Unofficial Somewhere in Blog.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/bn_BD/somewhereinblog.js",
+      "api": 0,
+      "domain": "m.somewhereinblog.net",
+      "author": "Synura Team",
+      "icon": "https://m.somewhereinblog.net/favicon.ico",
+      "locale": "bn_BD",
+      "tags": [
+        "blog",
+        "personal",
+        "writing"
+      ]
+    }
+  ]
+}

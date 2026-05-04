@@ -123,7 +123,8 @@ var SITE = {
     ],
     "listLink": [
       "td.title a[href]",
-      "a[href]"
+      "a[href^='/'][href*='/']",
+      "a[href*='theqoo.net/']"
     ],
     "listTitle": [
       "td.title",
@@ -459,12 +460,17 @@ var SYNURA = {
     bypass: "chrome/android",
     locale: "ko_KR",
     deeplink: true,
+    tags: [
+      "entertainment",
+      "fandom",
+      "forum"
+    ],
     icon: "https://theqoo.net/files/attach/xeicon/favicon.ico",
     main: null
 };
 
 var LIST_LINK_ALLOW_PATTERNS = ["^https://theqoo\\.net/[A-Za-z0-9_]+/\\d+"];
-var LIST_LINK_SELECTORS = ["td.title a[href]","a[href]"];
+var LIST_LINK_SELECTORS = ["td.title a[href]","a[href^='/'][href*='/']","a[href*='theqoo.net/']"];
 var LIST_TITLE_SELECTORS = ["td.title",".title_span",".title"];
 var LIST_AUTHOR_SELECTORS = [".name",".author",".writer"];
 var LIST_AVATAR_SELECTORS = [];

@@ -29,7 +29,7 @@ var SYNURA = {
     locale: "en_US",
     bypass: "chrome/android",
     deeplink: true,
-    tags: ["social", "news", "images", "video", "community"],
+    tags:["social","news","images","video"],
     get main() { return handler; }
 }
 

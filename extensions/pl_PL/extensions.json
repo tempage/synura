@@ -1,0 +1,68 @@
+{
+  "extensions": [
+    {
+      "name": "wykop",
+      "description": "Unofficial Wykop.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pl_PL/wykop.js",
+      "api": 0,
+      "domain": "wykop.pl",
+      "author": "Synura Team",
+      "icon": "https://wykop.pl/favicon.ico",
+      "locale": "pl_PL",
+      "tags": [
+        "social-news",
+        "links",
+        "discussion"
+      ]
+    },
+    {
+      "name": "elektroda",
+      "description": "Unofficial Elektroda.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pl_PL/elektroda.js",
+      "api": 0,
+      "domain": "www.elektroda.pl",
+      "author": "Synura Team",
+      "icon": "https://www.elektroda.pl/favicon.ico",
+      "locale": "pl_PL",
+      "tags": [
+        "electronics",
+        "technology",
+        "forum"
+      ]
+    },
+    {
+      "name": "kafeteria",
+      "description": "Unofficial Kafeteria Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pl_PL/kafeteria.js",
+      "api": 0,
+      "domain": "f.kafeteria.pl",
+      "author": "Synura Team",
+      "icon": "https://f.kafeteria.pl/favicon.ico",
+      "locale": "pl_PL",
+      "tags": [
+        "lifestyle",
+        "discussion",
+        "forum"
+      ]
+    },
+    {
+      "name": "forum_gazeta",
+      "description": "Unofficial Forum Gazeta.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pl_PL/forum_gazeta.js",
+      "api": 0,
+      "domain": "forum.gazeta.pl",
+      "author": "Synura Team",
+      "icon": "https://forum.gazeta.pl/favicon.ico",
+      "locale": "pl_PL",
+      "tags": [
+        "general",
+        "discussion",
+        "forum"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "donanimhaber",
+      "description": "Unofficial DonanimHaber Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/tr_TR/donanimhaber.js",
+      "api": 0,
+      "domain": "forum.donanimhaber.com",
+      "author": "Synura Team",
+      "icon": "https://forum.donanimhaber.com/favicon.ico",
+      "locale": "tr_TR",
+      "tags": [
+        "technology",
+        "hardware",
+        "forum"
+      ]
+    },
+    {
+      "name": "turkhackteam",
+      "description": "Unofficial TurkHackTeam.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/tr_TR/turkhackteam.js",
+      "api": 0,
+      "domain": "www.turkhackteam.org",
+      "author": "Synura Team",
+      "icon": "https://www.turkhackteam.org/favicon.ico",
+      "locale": "tr_TR",
+      "tags": [
+        "technology",
+        "tutorials",
+        "forum"
+      ]
+    },
+    {
+      "name": "turkiyeforum",
+      "description": "Unofficial Turkiye Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/tr_TR/turkiyeforum.js",
+      "api": 0,
+      "domain": "www.turkiyeforum.com",
+      "author": "Synura Team",
+      "icon": "https://www.turkiyeforum.com/favicon.ico",
+      "locale": "tr_TR",
+      "tags": [
+        "general",
+        "discussion",
+        "forum"
+      ]
+    }
+  ]
+}

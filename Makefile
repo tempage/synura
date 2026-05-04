@@ -9,7 +9,14 @@
 #   make android     - Setup ADB and start server (for Android testing)
 #   make clean       - Clean build artifacts
 
-.PHONY: server fetch synurart test reverse android clean help generate_extensions build build_ko_community_extensions
+.PHONY: server fetch synurart test reverse android clean help generate_extensions build build_ko_community_extensions build_local_community_extensions build_all_country_community_extensions
+
+COMMUNITY_EXTENSION_LOCALES = ar_SA bn_BD de_DE en_US es_419 es_ES fa_IR fr_FR he_IL hi_IN id_ID it_IT ja_JP ko_KR pl_PL pt_BR pt_PT ru_RU th_TH tr_TR vi_VN zh_CN zh_TW
+COMMUNITY_EXTENSION_LANGUAGE_ALIASES = ar bn de en es fa fr he hi id it ja ko pl pt ru th tr vi zh
+COMMUNITY_EXTENSION_LOCALE_TARGETS = $(addprefix build_,$(addsuffix _community_extensions,$(COMMUNITY_EXTENSION_LOCALES)))
+COMMUNITY_EXTENSION_LANGUAGE_ALIAS_TARGETS = $(addprefix build_,$(addsuffix _community_extensions,$(COMMUNITY_EXTENSION_LANGUAGE_ALIASES)))
+
+.PHONY: $(COMMUNITY_EXTENSION_LOCALE_TARGETS) $(COMMUNITY_EXTENSION_LANGUAGE_ALIAS_TARGETS)
 
 # Default target
 help:
@@ -24,6 +31,9 @@ help:
 	@echo "  make android             - Setup ADB and start server"
 	@echo "  make generate_extensions - Generate extensions.json from extensions directory"
 	@echo "  make build_ko_community_extensions - Build ko_KR community extensions with make + tsc"
+	@echo "  make build_<locale>_community_extensions - Build one locale (ex: build_ja_JP_community_extensions)"
+	@echo "  make build_<lang>_community_extensions - Build a language alias (ex: build_ja_community_extensions)"
+	@echo "  make build_all_country_community_extensions - Build ko_KR + generated country community extensions"
 	@echo "  make clean               - Clean build artifacts"
 	@echo ""
 	@echo "Endpoints available at http://localhost:8080:"
@@ -101,7 +111,34 @@ generate_extensions:
 	python extensions/generate_extensions_json.py
 	@echo "Done."
 
-build_ko_community_extensions:
-	@echo "Building ko_KR community extensions..."
-	$(MAKE) -C extensions/ko_KR build
+build_ar_community_extensions: build_ar_SA_community_extensions
+build_bn_community_extensions: build_bn_BD_community_extensions
+build_de_community_extensions: build_de_DE_community_extensions
+build_en_community_extensions: build_en_US_community_extensions
+build_es_community_extensions: build_es_419_community_extensions build_es_ES_community_extensions
+build_fa_community_extensions: build_fa_IR_community_extensions
+build_fr_community_extensions: build_fr_FR_community_extensions
+build_he_community_extensions: build_he_IL_community_extensions
+build_hi_community_extensions: build_hi_IN_community_extensions
+build_id_community_extensions: build_id_ID_community_extensions
+build_it_community_extensions: build_it_IT_community_extensions
+build_ja_community_extensions: build_ja_JP_community_extensions
+build_ko_community_extensions: build_ko_KR_community_extensions
+build_pl_community_extensions: build_pl_PL_community_extensions
+build_pt_community_extensions: build_pt_BR_community_extensions build_pt_PT_community_extensions
+build_ru_community_extensions: build_ru_RU_community_extensions
+build_th_community_extensions: build_th_TH_community_extensions
+build_tr_community_extensions: build_tr_TR_community_extensions
+build_vi_community_extensions: build_vi_VN_community_extensions
+build_zh_community_extensions: build_zh_CN_community_extensions build_zh_TW_community_extensions
+
+$(COMMUNITY_EXTENSION_LOCALE_TARGETS):
+	@locale="$(patsubst build_%_community_extensions,%,$@)"; \
+	echo "Building $$locale community extensions..."
+	$(MAKE) -C extensions $@
+	@echo "Done."
+
+build_local_community_extensions build_all_country_community_extensions:
+	@echo "Building all country community extensions..."
+	$(MAKE) -C extensions build_all_country_community_extensions
 	@echo "Done."

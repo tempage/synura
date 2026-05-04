@@ -1474,6 +1474,11 @@ var SYNURA = {
     bypass: "chrome/android",
     locale: "ko_KR",
     deeplink: true,
+    tags: [
+      "deals",
+      "shopping",
+      "forum"
+    ],
     icon: "https://m.ppomppu.co.kr/favicon.ico",
     main: null
 };

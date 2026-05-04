@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "forosperu",
+      "description": "Unofficial Foros Peru.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_419/forosperu.js",
+      "api": 0,
+      "domain": "www.forosperu.net",
+      "author": "Synura Team",
+      "icon": "https://www.forosperu.net/favicon.ico",
+      "locale": "es_419",
+      "tags": [
+        "peru",
+        "general",
+        "forum"
+      ]
+    },
+    {
+      "name": "ba_k",
+      "description": "Unofficial Ba-k.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_419/ba_k.js",
+      "api": 0,
+      "domain": "ba-k.com",
+      "author": "Synura Team",
+      "icon": "https://ba-k.com/favicon.ico",
+      "locale": "es_419",
+      "tags": [
+        "general",
+        "discussion",
+        "forum"
+      ]
+    },
+    {
+      "name": "forosdelweb",
+      "description": "Unofficial Foros del Web.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_419/forosdelweb.js",
+      "api": 0,
+      "domain": "www.forosdelweb.com",
+      "author": "Synura Team",
+      "icon": "https://www.forosdelweb.com/favicon.ico",
+      "locale": "es_419",
+      "tags": [
+        "web-development",
+        "programming",
+        "forum"
+      ]
+    }
+  ]
+}

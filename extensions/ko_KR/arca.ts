@@ -117,7 +117,7 @@ var SITE = {
     "listLink": [
       ".title.hybrid-title",
       ".title",
-      "a[href]"
+      "a[href*='/b/']"
     ],
     "listTitle": [
       ".title.hybrid-title",
@@ -526,12 +526,17 @@ var SYNURA = {
     bypass: "chrome/android",
     locale: "ko_KR",
     deeplink: true,
+    tags: [
+      "subculture",
+      "gaming",
+      "forum"
+    ],
     icon: "https://arca.live/static/favicon-192.png",
     main: null
 };
 
 var LIST_LINK_ALLOW_PATTERNS = ["^https://arca\\.live/b/[^/]+/\\d+"];
-var LIST_LINK_SELECTORS = [".title.hybrid-title",".title","a[href]"];
+var LIST_LINK_SELECTORS = [".title.hybrid-title",".title","a[href*='/b/']"];
 var LIST_TITLE_SELECTORS = [".title.hybrid-title",".title"];
 var LIST_TITLE_EXCLUDE_SELECTORS = [".comment-count",".info"];
 var LIST_AUTHOR_SELECTORS = [".user-info",".name",".author"];

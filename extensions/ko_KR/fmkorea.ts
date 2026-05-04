@@ -131,7 +131,9 @@ var SITE = {
       "td.title a[href]",
       "h3.title a",
       "h3 a",
-      "a[href]"
+      "a[href*='document_srl=']",
+      "a[href^='https://www.fmkorea.com/']",
+      "a[href^='/']"
     ],
     "listTitle": [
       "td.title",
@@ -427,6 +429,11 @@ var SYNURA = {
     bypass: "chrome/windows",
     locale: "ko_KR",
     deeplink: true,
+    tags: [
+      "sports",
+      "games",
+      "discussion"
+    ],
     icon: "https://www.fmkorea.com/favicon.ico",
     main: null
 };
@@ -436,7 +443,7 @@ var LIST_LINK_ALLOW_PATTERNS = [
     "^https://(?:www\\.)?fmkorea\\.com/index\\.php\\?[^#]*document_srl=\\d+(?:[&#]|$)"
 ];
 var LIST_ROW_SELECTORS = SITE.selectors && SITE.selectors.listRows ? SITE.selectors.listRows : ["li.li",".bd_lst li"];
-var LIST_LINK_SELECTORS = SITE.selectors && SITE.selectors.listLink ? SITE.selectors.listLink : ["h3.title a","h3 a","a[href]"];
+var LIST_LINK_SELECTORS = SITE.selectors && SITE.selectors.listLink ? SITE.selectors.listLink : ["h3.title a","h3 a","a[href*='document_srl=']","a[href^='https://www.fmkorea.com/']","a[href^='/']"];
 var LIST_TITLE_SELECTORS = SITE.selectors && SITE.selectors.listTitle ? SITE.selectors.listTitle : ["h3.title","h3",".title"];
 var LIST_AUTHOR_SELECTORS = SITE.selectors && SITE.selectors.listAuthor ? SITE.selectors.listAuthor : [".author"];
 var LIST_AVATAR_SELECTORS = [];
@@ -499,7 +506,7 @@ function fmkoreaShouldSkipListRow(row) {
 
     var tagName = String(row.tagName || "").toUpperCase();
     if (tagName === "TR") {
-        var linkNode = row.querySelector ? row.querySelector("a[href]") : null;
+        var linkNode = row.querySelector ? row.querySelector("a[href*='document_srl='],a[href^='https://www.fmkorea.com/'],a[href^='/']") : null;
         var colspanNode = row.querySelector ? row.querySelector("td[colspan]") : null;
         if (colspanNode && !linkNode) return true;
     }

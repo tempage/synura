@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "hardwareluxx",
+      "description": "Unofficial Hardwareluxx.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/de_DE/hardwareluxx.js",
+      "api": 0,
+      "domain": "www.hardwareluxx.de",
+      "author": "Synura Team",
+      "icon": "https://www.hardwareluxx.de/favicon.ico",
+      "locale": "de_DE",
+      "tags": [
+        "hardware",
+        "technology",
+        "forum"
+      ]
+    },
+    {
+      "name": "gutefrage",
+      "description": "Unofficial gutefrage.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/de_DE/gutefrage.js",
+      "api": 0,
+      "domain": "www.gutefrage.net",
+      "author": "Synura Team",
+      "icon": "https://www.gutefrage.net/favicon.ico",
+      "locale": "de_DE",
+      "tags": [
+        "q&a",
+        "advice",
+        "general"
+      ]
+    },
+    {
+      "name": "computerbase",
+      "description": "Unofficial ComputerBase Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/de_DE/computerbase.js",
+      "api": 0,
+      "domain": "www.computerbase.de",
+      "author": "Synura Team",
+      "icon": "https://www.computerbase.de/favicon.ico",
+      "locale": "de_DE",
+      "tags": [
+        "technology",
+        "hardware",
+        "forum"
+      ]
+    }
+  ]
+}

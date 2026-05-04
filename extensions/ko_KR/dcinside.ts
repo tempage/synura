@@ -192,6 +192,11 @@ var SYNURA = {
   bypass: "chrome/android",
   locale: "ko_KR",
   deeplink: true,
+  tags: [
+    "galleries",
+    "discussion",
+    "forum"
+  ],
   icon: "https://nstatic.dcinside.com/dc/m/img/dcinside_icon.png",
   main: null
 };
@@ -210,14 +215,28 @@ var DC_SEARCH_APPBAR_HINT = "갤러리 이름을 입력하세요.";
 var dcCategoryRootCache = null;
 var dcCategoryBoardCache = {};
 var DC_CATEGORY_SCOPE_SELECTORS = [".left_content", ".cate-box", ".cate_wrap", ".gall-total-lst", ".gall-total"];
-var DC_CATEGORY_FALLBACK_SCOPE_SELECTORS = [".content_box", ".content", ".cont", "main", "#container"];
+var DC_CATEGORY_FALLBACK_SCOPE_SELECTORS = [".content_box", ".content", ".cont", "main#container", "main.content", "main.cont", "#container"];
 var DC_CATEGORY_ROOT_SPECS = [
   { key: "category", title: "갤러리", url: DC_BASE_URL + "/category" },
   { key: "mcategory", title: "마이너갤", url: DC_BASE_URL + "/mcategory" },
   { key: "micategory", title: "미니갤", url: DC_BASE_URL + "/micategory" },
   { key: "prcategory", title: "인물갤", url: DC_BASE_URL + "/prcategory" }
 ];
-var DC_LINK_SELECTOR = "a[href]";
+var DC_LINK_SELECTOR = [
+  "a[href*='/board/lists'][href*='id=']",
+  "a[href^='/board/']:not([href*='/board/view'])",
+  "a[href*='gall.dcinside.com/board/']:not([href*='/board/view'])",
+  "a[href*='/mini/board/lists'][href*='id=']",
+  "a[href^='/mini/']:not([href*='/mini/board/view'])",
+  "a[href*='gall.dcinside.com/mini/']:not([href*='/mini/board/view'])",
+  "a[href*='/person/board/lists'][href*='id=']",
+  "a[href^='/person/']:not([href*='/person/board/view'])",
+  "a[href*='gall.dcinside.com/person/']:not([href*='/person/board/view'])",
+  "a[href*='/category/']",
+  "a[href*='/mcategory/']",
+  "a[href*='/micategory/']",
+  "a[href*='/prcategory/']"
+];
 
 function dcQuerySelectorGroup(root, selectors) {
   if (!root || !root.querySelectorAll || !selectors) return [];
@@ -1299,7 +1318,7 @@ function dcParseSearchResults(markup) {
     }
 
     if (!dcHasClass(node, "flex-gall-lst")) continue;
-    var anchors = node.querySelectorAll("a[href]");
+    var anchors = dcQuerySelectorGroup(node, DC_LINK_SELECTOR);
     if (!anchors || anchors.length === 0) continue;
 
     var sectionTitle = currentSectionTitle || "검색 결과";

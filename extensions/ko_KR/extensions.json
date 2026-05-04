@@ -8,7 +8,12 @@
       "api": 0,
       "domain": "www.fmkorea.com",
       "icon": "https://www.fmkorea.com/favicon.ico",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "sports",
+        "games",
+        "discussion"
+      ]
     },
     {
       "name": "ppomppu",
@@ -18,7 +23,28 @@
       "api": 0,
       "domain": "m.ppomppu.co.kr",
       "icon": "https://m.ppomppu.co.kr/favicon.ico",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "deals",
+        "shopping",
+        "forum"
+      ]
+    },
+    {
+      "name": "instiz",
+      "description": "Unofficial Instiz.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/instiz.js",
+      "api": 0,
+      "domain": "www.instiz.net",
+      "author": "Synura Team",
+      "icon": "https://www.instiz.net/favicon.ico",
+      "locale": "ko_KR",
+      "tags": [
+        "entertainment",
+        "fandom",
+        "forum"
+      ]
     },
     {
       "name": "pann",
@@ -28,7 +54,12 @@
       "api": 0,
       "domain": "m.pann.nate.com",
       "icon": "https://m.pann.nate.com/favicon.ico",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "entertainment",
+        "lifestyle",
+        "forum"
+      ]
     },
     {
       "name": "damoang",
@@ -38,7 +69,12 @@
       "api": 0,
       "domain": "damoang.net",
       "icon": "https://damoang.net/favicon-96x96.png",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "technology",
+        "general",
+        "forum"
+      ]
     },
     {
       "name": "ruliweb",
@@ -48,7 +84,28 @@
       "api": 0,
       "domain": "m.ruliweb.com",
       "icon": "https://m.ruliweb.com/favicon.ico",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "gaming",
+        "entertainment",
+        "forum"
+      ]
+    },
+    {
+      "name": "clien_local",
+      "description": "Unofficial Clien.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/clien_local.js",
+      "api": 0,
+      "domain": "www.clien.net",
+      "author": "Synura Team",
+      "icon": "https://www.clien.net/favicon.ico",
+      "locale": "ko_KR",
+      "tags": [
+        "technology",
+        "gadgets",
+        "forum"
+      ]
     },
     {
       "name": "dcinside",
@@ -57,7 +114,12 @@
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/dcinside.js",
       "api": 0,
       "icon": "https://nstatic.dcinside.com/dc/m/img/dcinside_icon.png",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "galleries",
+        "discussion",
+        "forum"
+      ]
     },
     {
       "name": "arca",
@@ -67,7 +129,12 @@
       "api": 0,
       "domain": "arca.live",
       "icon": "https://arca.live/static/favicon-192.png",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "subculture",
+        "gaming",
+        "forum"
+      ]
     },
     {
       "name": "geeknews",
@@ -78,7 +145,12 @@
       "domain": "news.hada.io",
       "author": "Synura Team",
       "icon": "https://news.hada.io/favicon.ico",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "technology",
+        "startups",
+        "news"
+      ]
     },
     {
       "name": "clien",
@@ -88,7 +160,12 @@
       "api": 0,
       "domain": "m.clien.net",
       "icon": "https://m.clien.net/service/image/favicon.ico",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "technology",
+        "gadgets",
+        "forum"
+      ]
     },
     {
       "name": "mlbpark",
@@ -98,7 +175,12 @@
       "api": 0,
       "domain": "mlbpark.donga.com",
       "icon": "https://mlbpark.donga.com/favicon.ico",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "baseball",
+        "sports",
+        "forum"
+      ]
     },
     {
       "name": "inven",
@@ -108,7 +190,11 @@
       "api": 0,
       "domain": "www.inven.co.kr",
       "icon": "https://www.inven.co.kr/favicon.ico",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "gaming",
+        "forum"
+      ]
     },
     {
       "name": "theqoo",
@@ -118,7 +204,28 @@
       "api": 0,
       "domain": "theqoo.net",
       "icon": "https://theqoo.net/files/attach/xeicon/favicon.ico",
-      "locale": "ko_KR"
+      "locale": "ko_KR",
+      "tags": [
+        "entertainment",
+        "fandom",
+        "forum"
+      ]
+    },
+    {
+      "name": "todayhumor",
+      "description": "Unofficial Today Humor.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/todayhumor.js",
+      "api": 0,
+      "domain": "www.todayhumor.co.kr",
+      "author": "Synura Team",
+      "icon": "https://www.todayhumor.co.kr/favicon.ico",
+      "locale": "ko_KR",
+      "tags": [
+        "humor",
+        "general",
+        "forum"
+      ]
     }
   ]
 }

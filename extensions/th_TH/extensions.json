@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "pantip",
+      "description": "Unofficial Pantip.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/th_TH/pantip.js",
+      "api": 0,
+      "domain": "pantip.com",
+      "author": "Synura Team",
+      "icon": "https://pantip.com/favicon.ico",
+      "locale": "th_TH",
+      "tags": [
+        "general",
+        "discussion",
+        "forum"
+      ]
+    },
+    {
+      "name": "overclockzone",
+      "description": "Unofficial Overclockzone.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/th_TH/overclockzone.js",
+      "api": 0,
+      "domain": "forum.overclockzone.com",
+      "author": "Synura Team",
+      "icon": "https://forum.overclockzone.com/favicon.ico",
+      "locale": "th_TH",
+      "tags": [
+        "hardware",
+        "overclocking",
+        "forum"
+      ]
+    },
+    {
+      "name": "soccersuck",
+      "description": "Unofficial Soccersuck.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/th_TH/soccersuck.js",
+      "api": 0,
+      "domain": "www.soccersuck.com",
+      "author": "Synura Team",
+      "icon": "https://www.soccersuck.com/favicon.ico",
+      "locale": "th_TH",
+      "tags": [
+        "football",
+        "sports",
+        "forum"
+      ]
+    }
+  ]
+}

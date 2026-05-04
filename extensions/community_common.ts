@@ -1,5 +1,197 @@
     // @ts-nocheck
 
+    function communityLocaleCode() {
+        var configuredLocale = typeof COMMUNITY_LOCALE_CODE !== "undefined" ? COMMUNITY_LOCALE_CODE : "en_US";
+        var locale = String((SYNURA && SYNURA.locale) || (SITE && SITE.locale) || configuredLocale || "en_US").replace("-", "_");
+        return locale || "en_US";
+    }
+
+    function communityLanguageCode() {
+        return communityLocaleCode().split("_")[0].toLowerCase();
+    }
+
+    function communityBoardKeywordRegex() {
+        var pattern = typeof COMMUNITY_BOARD_KEYWORD_PATTERN !== "undefined" && COMMUNITY_BOARD_KEYWORD_PATTERN
+            ? COMMUNITY_BOARD_KEYWORD_PATTERN
+            : "forum|forums|board|boards|community|category|categories|group|groups|topic|topics|tag|tags|gallery|galleries|club|clubs|channel|channels|section|sections";
+        try {
+            return new RegExp("(?:" + pattern + ")", "i");
+        } catch (e) {
+            return /(?:forum|forums|board|boards|community|category|categories|group|groups|topic|topics|tag|tags|gallery|galleries|club|clubs|channel|channels|section|sections)/i;
+        }
+    }
+
+    function communityExcludedBoardGroupRegex() {
+        var pattern = typeof COMMUNITY_EXCLUDED_BOARD_GROUP_PATTERN !== "undefined" ? COMMUNITY_EXCLUDED_BOARD_GROUP_PATTERN : "";
+        if (!pattern) return null;
+        try {
+            return new RegExp("^(?:" + pattern + ")$", "i");
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function communityLocaleLabels() {
+        var labels = {};
+        var source = typeof COMMUNITY_LOCALE_LABELS !== "undefined" && COMMUNITY_LOCALE_LABELS ? COMMUNITY_LOCALE_LABELS : {};
+        for (var key in source) {
+            if (Object.prototype.hasOwnProperty.call(source, key)) labels[key] = source[key];
+        }
+        return labels;
+    }
+
+    function mergeCommunityLabels(base, override) {
+        var out = {};
+        var key;
+        for (key in (base || {})) {
+            if (Object.prototype.hasOwnProperty.call(base, key)) out[key] = base[key];
+        }
+        for (key in (override || {})) {
+            if (Object.prototype.hasOwnProperty.call(override, key) && override[key] !== undefined) out[key] = override[key];
+        }
+        return out;
+    }
+
+    function communityText(key, fallback) {
+        var labels = (SITE && SITE.labels) || {};
+        var value = labels[key];
+        return value === undefined || value === null || value === "" ? fallback : String(value);
+    }
+
+    function communityMessage(key, values) {
+        var messages = typeof COMMUNITY_LOCALE_MESSAGES !== "undefined" && COMMUNITY_LOCALE_MESSAGES ? COMMUNITY_LOCALE_MESSAGES : {};
+        var text = messages[key] || key;
+        values = values || {};
+        return text.replace(/\{([A-Za-z0-9_]+)\}/g, function (_, name) {
+            return values[name] === undefined || values[name] === null ? "" : String(values[name]);
+        });
+    }
+
+    function countText(count, singularKey, pluralKey, fallbackSingular, fallbackPlural) {
+        var n = parseInt(String(count || 0), 10);
+        if (isNaN(n)) n = 0;
+        var lang = communityLanguageCode();
+        var singular = communityText(singularKey, fallbackSingular);
+        var plural = communityText(pluralKey || singularKey, fallbackPlural || fallbackSingular);
+        if (lang === "ko" || lang === "ja" || lang === "zh" || lang === "th" || lang === "vi") {
+            return n + " " + plural;
+        }
+        return n + " " + (n === 1 ? singular : plural);
+    }
+
+    function boardCountText(count) {
+        return countText(count, "board", "boards", "Board", "Boards");
+    }
+
+    function groupCountText(count) {
+        return countText(count, "group", "groups", "Group", "Groups");
+    }
+
+    function moreCountText(count) {
+        var n = parseInt(String(count || 0), 10);
+        if (isNaN(n)) n = 0;
+        var template = typeof COMMUNITY_MORE_COUNT_TEXT !== "undefined" && COMMUNITY_MORE_COUNT_TEXT
+            ? COMMUNITY_MORE_COUNT_TEXT
+            : "+{count} more";
+        return String(template).replace(/\{count\}/g, String(n));
+    }
+
+    function visibleCountText(visible, total) {
+        return visible + "/" + total + " " + communityText("visibleSuffix", "visible");
+    }
+
+    function normalizeCommunitySiteConfig() {
+        SITE.labels = mergeCommunityLabels(communityLocaleLabels(), SITE.labels || {});
+        SITE.siteKey = SITE.siteKey || SITE.key || SYNURA.name || "community";
+        SITE.displayName = SITE.displayName || SITE.name || SYNURA.name || SITE.siteKey;
+        SITE.browserHomeUrl = SITE.browserHomeUrl || SITE.homeUrl || ("https://" + SYNURA.domain + "/");
+        SITE.browserCookieAuth = !!SITE.browserCookieAuth;
+        SITE.minimumHomeBoards = SITE.minimumHomeBoards || 10;
+        SITE.defaultCacheTtlMs = SITE.defaultCacheTtlMs || 300000;
+        SITE.showCacheSnackbarByDefault = SITE.showCacheSnackbarByDefault !== false;
+        SITE.enableCacheSettings = SITE.enableCacheSettings !== false;
+        SITE.enableBoardReorder = SITE.enableBoardReorder !== false;
+        SITE.enableBoardDelete = SITE.enableBoardDelete !== false;
+        if (!SITE.boardSettingsMenuLabel) {
+            SITE.boardSettingsMenuLabel = communityText("boardSettingsMenu", "Boards");
+        }
+        if (!SITE.boardSettingsTitle) {
+            SITE.boardSettingsTitle = communityText("boardSettingsTitle", "Board Settings");
+        }
+        SITE.boardSettingsLargeThreshold = SITE.boardSettingsLargeThreshold || 128;
+        SITE.boardSettingsPageSize = SITE.boardSettingsPageSize || 96;
+        SITE.boardAddMode = SITE.boardAddMode || "url_title";
+        SITE.hasFullBoardCatalog = !!SITE.hasFullBoardCatalog;
+        SITE.supportsBoardCatalogSync = !!SITE.supportsBoardCatalogSync;
+        SITE.defaultVisibleBoardIds = Array.isArray(SITE.defaultVisibleBoardIds) ? SITE.defaultVisibleBoardIds : [];
+        SITE.hostAliases = Array.isArray(SITE.hostAliases) ? SITE.hostAliases : [];
+        SITE.challengeMarkers = Array.isArray(SITE.challengeMarkers) ? SITE.challengeMarkers : [];
+        SITE.titleSuffixes = Array.isArray(SITE.titleSuffixes) && SITE.titleSuffixes.length > 0
+            ? SITE.titleSuffixes
+            : [" - " + SITE.displayName, " | " + SITE.displayName, " : " + SITE.displayName];
+
+        if (SITE.acceptLanguage && !SITE.fetchHeaders) {
+            SITE.fetchHeaders = {
+                "Accept-Language": SITE.acceptLanguage
+            };
+        }
+
+        var configuredBoards = Array.isArray(SITE.boards) ? SITE.boards.slice() : [];
+        var seenBoardKeys = {};
+
+        function simpleBoardIdFromUrl(url, fallback) {
+            var raw = String(url || "");
+            var path = raw.replace(/^https?:\/\/[^\/?#]+/i, "").split("#")[0].split("?")[0].replace(/\/+$/, "");
+            var parts = path.split("/");
+            var slug = "";
+            for (var i = 0; i < parts.length; i++) {
+                var part = String(parts[i] || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+                if (part) slug = part;
+            }
+            return slug || fallback || "home";
+        }
+
+        function pushConfiguredBoard(id, title, url, description, group) {
+            var boardUrl = url || SITE.browserHomeUrl;
+            var boardId = id || simpleBoardIdFromUrl(boardUrl, configuredBoards.length === 0 ? "home" : "");
+            var key = String(boardUrl || boardId || "");
+            if (!boardId || seenBoardKeys[key]) return;
+            seenBoardKeys[key] = true;
+            configuredBoards.push({
+                id: boardId,
+                title: title || boardId,
+                url: boardUrl,
+                description: description || SITE.category || title || boardId,
+                group: group || SITE.country || ""
+            });
+        }
+
+        for (var b = 0; b < configuredBoards.length; b++) {
+            var existing = configuredBoards[b] || {};
+            seenBoardKeys[String(existing.url || existing.id || "")] = true;
+        }
+
+        if (configuredBoards.length === 0) {
+            pushConfiguredBoard("home", "Home", SITE.browserHomeUrl, SITE.category || SITE.displayName, SITE.country || "");
+            var entries = Array.isArray(SITE.entryPoints) ? SITE.entryPoints : [];
+            for (var e = 0; e < entries.length && configuredBoards.length < SITE.minimumHomeBoards; e++) {
+                var entry = entries[e] || {};
+                pushConfiguredBoard("", entry.title || "Home", entry.url || SITE.browserHomeUrl, entry.description || SITE.category || SITE.displayName, entry.category || SITE.country || "");
+            }
+        }
+        SITE.boards = configuredBoards;
+
+        if (SITE.defaultVisibleBoardIds.length === 0) {
+            for (var v = 0; v < SITE.boards.length && SITE.defaultVisibleBoardIds.length < SITE.minimumHomeBoards; v++) {
+                if (SITE.boards[v] && SITE.boards[v].id) SITE.defaultVisibleBoardIds.push(SITE.boards[v].id);
+            }
+        }
+
+        SITE.selectors = SITE.selectors || {};
+    }
+
+    normalizeCommunitySiteConfig();
+
     var DEFAULT_CACHE_TTL = SITE.defaultCacheTtlMs || 300000;
     var CACHE_PREFIX="cr:"+SITE.siteKey+":"+(SITE.cp||"");
     var CACHE_TTL_KEY = "community_cache_ttl_ms:" + SITE.siteKey;
@@ -15,21 +207,35 @@
     var BOARD_ORDER_KEY = "community_board_order:" + SITE.siteKey;
     var HOME_GROUP_PATHS_KEY = "community_home_group_paths:" + SITE.siteKey;
     var AUTH_ERROR_PREFIX = "AUTH_REQUIRED:";
-    var MENU_CACHE_SETTINGS = "설정";
-    var MENU_BROWSER = "브라우저로 보기";
-    var MENU_GO = "바로가기";
-    var MENU_ALL_BOARDS = "전체 게시판";
-    var MENU_HOME = "홈";
-    var MENU_HOME_TOGGLE = "홈 추가";
-    var MENU_HOME_REMOVE = "홈 해제";
-    var MENU_MEDIA_TOGGLE = "미디어 표시";
-    var MENU_GALLERY_MODE = "갤러리 모드";
-    var MENU_SETTINGS = SITE.boardSettingsMenuLabel || "게시판 설정";
-    var MENU_BOARD_SYNC = "게시판가져오기";
-    var BUTTON_OPEN_CATEGORY_HOME_WITHOUT_SYNC = "그대로 보기";
-    var MENU_REORDER = "정렬";
+    var MENU_CACHE_SETTINGS = communityText("cacheSettings", "Settings");
+    var MENU_BROWSER = communityText("browser", "Open in Browser");
+    var MENU_GO = communityText("go", "Go");
+    var MENU_ALL_BOARDS = communityText("allBoards", "All Boards");
+    var MENU_HOME = communityText("home", "Home");
+    var MENU_HOME_TOGGLE = communityText("homeToggle", "Add to Home");
+    var MENU_HOME_REMOVE = communityText("homeRemove", "Remove from Home");
+    var MENU_MEDIA_TOGGLE = communityText("mediaToggle", "Show Media");
+    var MENU_GALLERY_MODE = communityText("galleryMode", "Gallery Mode");
+    var MENU_SETTINGS = SITE.boardSettingsMenuLabel || communityText("boardSettingsMenu", "Boards");
+    var MENU_BOARD_SYNC = communityText("boardSync", "Fetch Boards");
+    var BUTTON_OPEN_CATEGORY_HOME_WITHOUT_SYNC = communityText("openWithoutSync", "Open Anyway");
+    var MENU_REORDER = communityText("reorder", "Reorder");
     var MENU_CLI = "CLI";
-    var BUTTON_REFRESH = "새로고침";
+    var BUTTON_REFRESH = communityText("refresh", "Refresh");
+    var BUTTON_SAVE = communityText("save", "Save");
+    var BUTTON_CLOSE = communityText("close", "Close");
+    var BUTTON_ADD = communityText("add", "Add");
+    var BUTTON_DELETE = communityText("delete", "Delete");
+    var BUTTON_RESET = communityText("reset", "Reset");
+    var BUTTON_CANCEL = communityText("cancel", "Cancel");
+    var BUTTON_CONFIRM = communityText("confirm", "OK");
+    var LABEL_BOARD = communityText("board", "Board");
+    var LABEL_BOARDS = communityText("boards", "Boards");
+    var LABEL_BOARD_ID = communityText("boardId", "Board ID");
+    var LABEL_NAME = communityText("name", "Name");
+    var LABEL_BOARD_URL = communityText("boardUrl", "Board URL");
+    var LABEL_OPTIONAL_NAME = communityText("optionalName", "Name (optional)");
+    var LABEL_SETTINGS = communityText("settings", "Settings");
     var CATEGORY_ROUTE_QUERY_KEY = "_synura_category";
     var viewState = {};
     var boardIndex = {};
@@ -627,8 +833,17 @@
         var seconds = Math.floor(ms / 1000);
         var minutes = Math.floor(seconds / 60);
         var remain = seconds % 60;
-        if (minutes > 0) return minutes + "분 " + remain + "초";
-        return remain + "초";
+        var durationText = typeof COMMUNITY_DURATION_TEXT !== "undefined" && COMMUNITY_DURATION_TEXT ? COMMUNITY_DURATION_TEXT : null;
+        if (durationText) {
+            var template = minutes > 0 ? durationText.minuteSecond : durationText.second;
+            if (template) {
+                return String(template)
+                    .replace(/\{minutes\}/g, String(minutes))
+                    .replace(/\{seconds\}/g, String(remain));
+            }
+        }
+        if (minutes > 0) return minutes + "m " + remain + "s";
+        return remain + "s";
     }
 
     function showCacheSnackbar(viewId, cachedAt) {
@@ -641,7 +856,10 @@
         var remaining = ttl - age;
         synura.update(viewId, {
             models: {
-                snackbar: formatDuration(age) + " 전 캐시됨, " + formatDuration(remaining) + " 남음."
+                snackbar: communityMessage("cachedNotice", {
+                    age: formatDuration(age),
+                    remaining: formatDuration(remaining)
+                })
             }
         });
     }
@@ -953,12 +1171,34 @@
             .replace(/\s{2,}/g, " ")
             .trim();
         if (!text) return "";
-        if (/^(로그인|회원가입|설정|PC화면|바로가기|클로즈버튼|로딩중|내 즐겨찾기 관리|최근 방문한 게시판초기화|신규카테|MY|홈|더보기|전체보기|전체)$/i.test(text)) {
+        var excludedGroupRegex = communityExcludedBoardGroupRegex();
+        if (excludedGroupRegex && excludedGroupRegex.test(text)) {
             return "";
         }
         if (/^https?:\/\//i.test(text) || /\.(com|net|co\.kr|kr)/i.test(text)) return "";
         if (text.length > 32) return "";
         return text;
+    }
+
+    function countAnchorDescendants(node, limit) {
+        if (!node) return 0;
+        var max = limit || 2147483647;
+        var count = 0;
+
+        function walk(current) {
+            for (var child = current.firstChild; child; child = child.nextSibling) {
+                if (child.nodeType !== 1) continue;
+                if (String(child.tagName || "").toUpperCase() === "A" && attrOf(child, "href")) {
+                    count += 1;
+                    if (count >= max) return true;
+                }
+                if (walk(child)) return true;
+            }
+            return false;
+        }
+
+        walk(node);
+        return count;
     }
 
     function inferBoardGroupFromContext(node) {
@@ -971,7 +1211,7 @@
                 if (sibling.nodeType === 3) {
                     candidate = cleanBoardGroupText(sibling.textContent || "");
                 } else if (sibling.nodeType === 1) {
-                    var anchorCount = sibling.querySelectorAll ? sibling.querySelectorAll("a[href]").length : 0;
+                    var anchorCount = countAnchorDescendants(sibling, 2);
                     if (anchorCount === 0) {
                         candidate = cleanBoardGroupText(textOf(sibling));
                     } else {
@@ -1305,11 +1545,24 @@
         var options = {
             bypass: SYNURA.bypass
         };
+        if (SITE.fetchHeaders && typeof SITE.fetchHeaders === "object") {
+            options.headers = {};
+            var keys = Object.keys(SITE.fetchHeaders);
+            for (var i = 0; i < keys.length; i++) {
+                options.headers[keys[i]] = SITE.fetchHeaders[keys[i]];
+            }
+        }
         var cookie = getSavedCookie();
         if (cookie) {
-            options.headers = {
-                "Cookie": cookie
-            };
+            if (!options.headers) options.headers = {};
+            options.headers["Cookie"] = cookie;
+        }
+        try {
+            if (SITE.buildFetchOptions) {
+                var custom = SITE.buildFetchOptions(options);
+                if (custom) options = custom;
+            }
+        } catch (e) {
         }
         return options;
     }
@@ -1331,6 +1584,26 @@
             console.log(url);
         }
         return fetch(url, options);
+    }
+
+    function responseText(response) {
+        if (SITE.textEncoding) {
+            try {
+                return new TextDecoder(SITE.textEncoding).decode(response.arrayBuffer());
+            } catch (e) {
+            }
+        }
+        return response.text();
+    }
+
+    function responseDocument(response, html) {
+        if (SITE.textEncoding) {
+            try {
+                return new DOMParser().parseFromString(html || "", "text/html");
+            } catch (e) {
+            }
+        }
+        return response.dom("text/html");
     }
 
     function isBrowserAuthRequiredStatus(status) {
@@ -1609,6 +1882,17 @@
                     changed = true;
                 }
             }
+        }
+        return value;
+    }
+
+    function cleanPostTitle(title, doc, match) {
+        var value = cleanPageTitle(title);
+        try {
+            if (SITE.cleanPostTitle) {
+                value = SITE.cleanPostTitle(value, doc, match) || value;
+            }
+        } catch (e) {
         }
         return value;
     }
@@ -1995,9 +2279,9 @@
                     id: homeGroupOrderId(entry.path),
                     link: buildCategoryRouteUrl(entry.path),
                     title: entry.title,
-                    description: entry.description || "카테고리 바로가기",
+                    description: entry.description || communityMessage("categoryShortcut"),
                     category: parentPath || MENU_ALL_BOARDS,
-                    author: entry.totalCount + "개 게시판",
+                    author: boardCountText(entry.totalCount),
                     date: "",
                     commentCount: "",
                     viewCount: "",
@@ -2120,13 +2404,13 @@
             menus = SITE.buildBoardMenus ? (SITE.buildBoardMenus(menus, state || {}) || menus) : menus;
         } catch (e) {
         }
-        menus = filterMenusByLabel(menus, {
-            "브라우저로 보기": true,
-            "전체 게시판": true,
-            "미디어 표시": true,
-            "갤러리 모드": true,
-            "홈 추가": true
-        });
+        var excludedBoardMenus = {};
+        excludedBoardMenus[MENU_BROWSER] = true;
+        excludedBoardMenus[MENU_ALL_BOARDS] = true;
+        excludedBoardMenus[MENU_MEDIA_TOGGLE] = true;
+        excludedBoardMenus[MENU_GALLERY_MODE] = true;
+        excludedBoardMenus[MENU_HOME_TOGGLE] = true;
+        menus = filterMenusByLabel(menus, excludedBoardMenus);
         var ordered = [MENU_BROWSER];
         var mediaToggle = buildBoardMediaToggleMenu(state);
         if (mediaToggle) ordered.push(mediaToggle);
@@ -2146,9 +2430,9 @@
             menus = SITE.buildPostMenus ? (SITE.buildPostMenus(menus, state || {}) || menus) : menus;
         } catch (e) {
         }
-        menus = filterMenusByLabel(menus, {
-            "전체 게시판": true
-        });
+        var excludedPostMenus = {};
+        excludedPostMenus[MENU_ALL_BOARDS] = true;
+        menus = filterMenusByLabel(menus, excludedPostMenus);
         var boardToggle = buildBoardHomeToggleMenu(resolveMenuBoardId(state));
         if (boardToggle && !hasMenuItem(menus, MENU_HOME_TOGGLE)) {
             menus.push(boardToggle);
@@ -2175,25 +2459,25 @@
             {
                 type: "number",
                 name: "ttl",
-                label: "캐시 TTL (분)",
+                label: communityText("cacheTtlMinutes", "Cache TTL (minutes)"),
                 value: Math.max(1, Math.round(getCacheTTL() / 60000))
             },
             {
                 type: "boolean",
                 name: "show_snackbar",
-                label: "캐시 알림 표시",
+                label: communityText("showCacheSnackbar", "Show cache notice"),
                 value: getShowCacheSnackbar()
             },
             {
                 type: "boolean",
                 name: "category_two_char",
-                label: "카테고리 2자",
+                label: communityText("categoryTwoChar", "Short category labels"),
                 value: getUseTwoCharCategory()
             },
             {
                 type: "number",
                 name: "gallery_column_count",
-                label: "갤러리 열 수",
+                label: communityText("galleryColumns", "Gallery columns"),
                 value: getGalleryColumnCount()
             }
         ];
@@ -2207,20 +2491,20 @@
             var mapped = cleanBoardGroupText(SITE.boardGroupMap[board.id]);
             if (mapped) return mapped;
         }
-        if (board.custom) return "사용자 추가";
+        if (board.custom) return communityText("customGroup", "Custom");
         if (board.dynamic) {
             var detail = cleanBoardGroupText(board.description || "");
-            if (detail && detail !== cleanBoardGroupText(board.title || "") && detail !== "사용자 추가") {
+            if (detail && detail !== cleanBoardGroupText(board.title || "") && detail !== communityText("customGroup", "Custom")) {
                 return detail;
             }
-            return cleanBoardGroupText(SITE.dynamicBoardGroupLabel || "") || "동기화";
+            return cleanBoardGroupText(SITE.dynamicBoardGroupLabel || "") || communityText("syncedGroup", "Synced");
         }
         return "";
     }
 
     function getBoardGroupLabel(board) {
         var path = getBoardGroupPath(board);
-        return path || "기본";
+        return path || communityText("defaultGroup", "Default");
     }
 
     function boardSettingsItemTitle(board) {
@@ -2238,7 +2522,7 @@
         var label = getBoardGroupLabel(board);
         return {
             key: "group:" + (normalizeWhitespace(label) || "default"),
-            label: label || "게시판"
+            label: label || LABEL_BOARD
         };
     }
 
@@ -2253,7 +2537,7 @@
             var key = normalizeWhitespace(info && info.key ? info.key : "");
             var label = normalizeWhitespace(info && info.label ? info.label : "");
             if (!key) key = "default";
-            if (!label) label = "게시판";
+            if (!label) label = LABEL_BOARD;
             if (!groupMap[key]) {
                 groupMap[key] = {
                     key: key,
@@ -2286,7 +2570,7 @@
         if (sections.length === 0) {
             sections.push({
                 key: "default:0",
-                label: "게시판",
+                label: LABEL_BOARD,
                 boardIds: []
             });
         }
@@ -2359,12 +2643,12 @@
 
     function getBoardSettingsMessage(state) {
         var info = getBoardSettingsSection(state);
-        var current = info.current || { label: "게시판", boardIds: [] };
-        return current.label + " · " + current.boardIds.length + "개";
+        var current = info.current || { label: LABEL_BOARD, boardIds: [] };
+        return current.label + " · " + boardCountText(current.boardIds.length);
     }
 
     function getBoardSettingsButtons() {
-        return ["저장", "닫기"];
+        return [BUTTON_SAVE, BUTTON_CLOSE];
     }
 
     function getSimpleBoardSettingsBody() {
@@ -2385,13 +2669,13 @@
     }
 
     function getSimpleBoardSettingsButtons() {
-        return ["저장"];
+        return [BUTTON_SAVE];
     }
 
     function getSimpleBoardSettingsMenus() {
-        var menus = [MENU_BOARD_SYNC, "추가"];
-        if (supportsBoardDelete()) menus.push("삭제");
-        menus.push("초기화", "취소");
+        var menus = [MENU_BOARD_SYNC, BUTTON_ADD];
+        if (supportsBoardDelete()) menus.push(BUTTON_DELETE);
+        menus.push(BUTTON_RESET, BUTTON_CANCEL);
         return menus;
     }
 
@@ -2419,9 +2703,9 @@
         }
         var text = titles.join(", ");
         if (ids.length > titles.length) {
-            text += (text ? " " : "") + "외 " + (ids.length - titles.length) + "개";
+            text += (text ? " " : "") + moreCountText(ids.length - titles.length);
         }
-        return text || "게시판이 없습니다.";
+        return text || communityText("emptyBoards", "No boards.");
     }
 
     function buildBoardSettingsRootItems() {
@@ -2445,8 +2729,8 @@
                 id: String(j),
                 title: section.label,
                 description: boardSettingsSectionPreview(section, boardMap),
-                category: visibleCount + "/" + totalCount + " 표시",
-                author: totalCount + "개 게시판",
+                category: visibleCountText(visibleCount, totalCount),
+                author: boardCountText(totalCount),
                 date: "",
                 commentCount: "",
                 viewCount: "",
@@ -2461,9 +2745,9 @@
     }
 
     function getBoardSettingsRootMenus(state) {
-        var menus = ["추가"];
-        if (supportsBoardDelete()) menus.push("삭제");
-        menus.push("초기화");
+        var menus = [BUTTON_ADD];
+        if (supportsBoardDelete()) menus.push(BUTTON_DELETE);
+        menus.push(BUTTON_RESET);
         try {
             menus = SITE.buildBoardSettingsRootMenus ? (SITE.buildBoardSettingsRootMenus(menus, state || {}) || menus) : menus;
         } catch (e) {
@@ -2506,21 +2790,21 @@
     function getBoardAddDialogBody() {
         if (getBoardAddMode() === "id_title") {
             return [
-                { type: "string", name: "id", label: "게시판 ID", value: "" },
-                { type: "string", name: "title", label: "이름", value: "" }
+                { type: "string", name: "id", label: LABEL_BOARD_ID, value: "" },
+                { type: "string", name: "title", label: LABEL_NAME, value: "" }
             ];
         }
         return [
-            { type: "string", name: "url", label: "게시판 URL", value: "" },
-            { type: "string", name: "title", label: "이름 (선택)", value: "" }
+            { type: "string", name: "url", label: LABEL_BOARD_URL, value: "" },
+            { type: "string", name: "title", label: LABEL_OPTIONAL_NAME, value: "" }
         ];
     }
 
     function getBoardAddDialogMessage() {
         if (getBoardAddMode() === "id_title") {
-            return "게시판 ID와 이름을 입력하세요.";
+            return communityMessage("boardIdNameDialog");
         }
-        return "게시판 URL을 입력하세요. 이름은 비워두면 자동으로 사용합니다.";
+        return communityMessage("boardUrlDialog");
     }
 
     function hasCachedDynamicBoardCatalog() {
@@ -2592,13 +2876,13 @@
         rebuildBoardIndex();
 
         var snackbar = items.length > 0
-            ? ("게시판 " + items.length + "개를 가져왔습니다.")
-            : "가져올 게시판이 없습니다.";
+            ? communityMessage("fetchedBoards", { count: items.length })
+            : communityMessage("noBoardsToFetch");
 
         if (rootState && rootState.kind === "board_settings_root") {
             refreshBoardSettingsRootView(viewId, rootState, snackbar);
         } else {
-            refreshBoardSettingsView(viewId, createBoardSettingsState(parentViewId || 0, 0, "열기"), snackbar);
+            refreshBoardSettingsView(viewId, createBoardSettingsState(parentViewId || 0, 0, "open"), snackbar);
         }
 
         if (parentViewId) {
@@ -2617,7 +2901,7 @@
             view: "/dialogs/input",
             styles: {
                 title: MENU_ALL_BOARDS,
-                message: "캐시된 전체 게시판 목록이 없습니다. 지금 " + MENU_BOARD_SYNC + "를 실행할까요?",
+                message: communityMessage("noCachedBoardsPrompt", { sync: MENU_BOARD_SYNC }),
                 close: true
             },
             models: {
@@ -2883,7 +3167,7 @@
                     return true;
                 }
                 var status = response.status || 0;
-                var html = response.text();
+                var html = responseText(response);
                 if (shouldUseBrowserCookieAuth() && isAuthRequiredResponse(fetchUrl, status, html)) {
                     throw makeAuthRequiredError(fetchUrl, status);
                 }
@@ -2940,7 +3224,7 @@
                     cliMessage(viewId, "Error: " + added.error);
                     return true;
                 }
-                updateHomeAfterBoardMutation(parentViewId, added.activated ? "게시판이 다시 표시되었습니다." : "게시판이 추가되었습니다.");
+                updateHomeAfterBoardMutation(parentViewId, added.activated ? communityMessage("boardReactivatedShort") : communityMessage("boardAddedShort"));
                 cliMessage(viewId, "board saved: `" + added.board.id + "` " + added.board.title);
                 return true;
             }
@@ -2955,7 +3239,7 @@
                     cliMessage(viewId, 'Error: cannot remove "' + removeId + '".');
                     return true;
                 }
-                updateHomeAfterBoardMutation(parentViewId, "게시판이 삭제되었습니다.");
+                updateHomeAfterBoardMutation(parentViewId, communityMessage("boardDeleted"));
                 cliMessage(viewId, 'board removed: "' + removeId + '"');
                 return true;
             }
@@ -2971,7 +3255,7 @@
                     cliMessage(viewId, 'Error: unknown board "' + targetId + '".');
                     return true;
                 }
-                updateHomeAfterBoardMutation(parentViewId, tokens[1] === "show" ? "게시판이 표시됩니다." : "게시판이 숨겨집니다.");
+                updateHomeAfterBoardMutation(parentViewId, tokens[1] === "show" ? communityMessage("boardShown") : communityMessage("boardHidden"));
                 cliMessage(viewId, 'board "' + targetId + '" -> ' + (tokens[1] === "show" ? "visible" : "hidden"));
                 return true;
             }
@@ -3018,14 +3302,14 @@
             return;
         }
         if (state && state.from === "board_settings") {
-            refreshBoardSettingsView(viewId, createBoardSettingsState(state.parentViewId || 0, 0, "열기"), snackbar || "");
+            refreshBoardSettingsView(viewId, createBoardSettingsState(state.parentViewId || 0, 0, "open"), snackbar || "");
             return;
         }
-        refreshBoardSettingsView(viewId, createBoardSettingsState(state ? state.parentViewId : 0, 0, "열기"), snackbar || "");
+        refreshBoardSettingsView(viewId, createBoardSettingsState(state ? state.parentViewId : 0, 0, "open"), snackbar || "");
     }
 
     function refreshBoardSettingsView(viewId, state, snackbar) {
-        var nextState = createBoardSettingsState(state ? state.parentViewId : 0, 0, "열기");
+        var nextState = createBoardSettingsState(state ? state.parentViewId : 0, 0, "open");
         synura.update(viewId, {
             styles: {
                 title: SITE.boardSettingsTitle || MENU_SETTINGS,
@@ -3066,7 +3350,7 @@
             view: "/dialogs/input",
             styles: {
                 title: MENU_GO,
-                message: "열 URL을 입력하세요. 전체 URL 또는 /경로를 사용할 수 있습니다.",
+                message: communityMessage("goDialogMessage"),
                 close: true
             },
             models: {
@@ -3092,7 +3376,7 @@
         }
         var targetUrl = normalizeGoUrlInput(event.data ? event.data.url : "");
         if (!targetUrl) {
-            synura.update(viewId, { models: { snackbar: "URL을 입력해 주세요." } });
+            synura.update(viewId, { models: { snackbar: communityMessage("urlRequired") } });
             return;
         }
         var parentViewId = event.context ? event.context.parentViewId : 0;
@@ -3103,7 +3387,7 @@
         }
         if (handleOpenFailure(result, targetUrl, parentViewId || 0, SITE.displayName)) {
             if (parentViewId) {
-                synura.update(parentViewId, { models: { snackbar: "브라우저에서 인증을 완료해 주세요." } });
+                synura.update(parentViewId, { models: { snackbar: communityMessage("authCompleteInBrowser") } });
             }
             return;
         }
@@ -3123,13 +3407,13 @@
         var result = synura.open({
             view: "/dialogs/input",
             styles: {
-                title: "설정",
-                message: "설정을 변경하세요.",
+                title: LABEL_SETTINGS,
+                message: communityMessage("cacheDialogMessage"),
                 close: true
             },
             models: {
                 body: getCacheSettingsBody(),
-                buttons: ["저장", "초기화"]
+                buttons: [BUTTON_SAVE, BUTTON_RESET]
             }
         }, context, function (event) {
             handler.onViewEvent(event);
@@ -3146,7 +3430,7 @@
         if (shouldUseLargeBoardSettings()) {
             return openRoute(createBoardSettingsRootRoute(parentViewId || 0));
         }
-        var context = createBoardSettingsState(parentViewId || 0, 0, "열기");
+        var context = createBoardSettingsState(parentViewId || 0, 0, "open");
         var result = synura.open({
             view: "/views/settings",
             styles: {
@@ -3198,13 +3482,13 @@
         var result = synura.open({
             view: "/dialogs/input",
             styles: {
-                title: "게시판 추가",
+                title: communityMessage("boardAddTitle"),
                 message: getBoardAddDialogMessage(),
                 close: true
             },
             models: {
                 body: getBoardAddDialogBody(),
-                buttons: ["추가"]
+                buttons: [BUTTON_ADD]
             }
         }, context, function (event) {
             handler.onViewEvent(event);
@@ -3220,7 +3504,7 @@
         if (customBoards.length === 0) {
             synura.update(parentViewId, {
                 models: {
-                    snackbar: "삭제할 수 있는 게시판이 없습니다."
+                    snackbar: communityMessage("noDeletableBoards")
                 }
             });
             return null;
@@ -3242,12 +3526,12 @@
         var result = synura.open({
             view: "/views/settings",
             styles: {
-                title: "게시판 삭제",
-                message: "유지하려면 체크하세요. 체크 해제시 삭제됩니다."
+                title: communityMessage("boardDeleteTitle"),
+                message: communityMessage("boardDeleteMessage")
             },
             models: {
                 body: body,
-                buttons: ["확인", "취소"]
+                buttons: [BUTTON_CONFIRM, BUTTON_CANCEL]
             }
         }, context, function (event) {
             handler.onViewEvent(event);
@@ -3323,11 +3607,14 @@
     function fetchDocument(url) {
         var response = fetchWithLogging(url, buildFetchOptions());
         if (!response) {
+            if (shouldUseBrowserCookieAuth()) {
+                throw makeAuthRequiredError(url, 0);
+            }
             throw new Error("Failed to fetch " + url + " (0)");
         }
 
         var status = response.status || 0;
-        var html = response.text();
+        var html = responseText(response);
         if (shouldUseBrowserCookieAuth() && isAuthRequiredResponse(url, status, html)) {
             throw makeAuthRequiredError(url, status);
         }
@@ -3336,17 +3623,20 @@
             throw new Error("Failed to fetch " + url + " (" + status + ")");
         }
 
-        return response.dom("text/html");
+        return responseDocument(response, html);
     }
 
     function fetchBoardPage(url) {
         var response = fetchWithLogging(url, buildFetchOptions());
         if (!response) {
+            if (shouldUseBrowserCookieAuth()) {
+                throw makeAuthRequiredError(url, 0);
+            }
             throw new Error("Failed to fetch " + url + " (0)");
         }
 
         var status = response.status || 0;
-        var html = response.text();
+        var html = responseText(response);
         if (shouldUseBrowserCookieAuth() && isAuthRequiredResponse(url, status, html)) {
             throw makeAuthRequiredError(url, status);
         }
@@ -3357,18 +3647,21 @@
 
         return {
             html: html,
-            doc: response.dom("text/html")
+            doc: responseDocument(response, html)
         };
     }
 
     function fetchPostPage(match, url) {
         var response = fetchWithLogging(url, buildPostFetchOptions(match, url));
         if (!response) {
+            if (shouldUseBrowserCookieAuth()) {
+                throw makeAuthRequiredError(url, 0);
+            }
             throw new Error("Failed to fetch " + url + " (0)");
         }
 
         var status = response.status || 0;
-        var html = response.text();
+        var html = responseText(response);
         var authRequired = shouldUseBrowserCookieAuth() &&
             isAuthRequiredResponse(url, status, html);
         var restricted = !response.ok && (status === 401 || status === 403) && !isChallengeHtml(html);
@@ -3381,7 +3674,7 @@
 
         return {
             response: response,
-            doc: response.dom("text/html"),
+            doc: responseDocument(response, html),
             restricted: restricted
         };
     }
@@ -3544,7 +3837,7 @@
                         } else {
                             content = [{
                                 type: "text",
-                                value: page.restricted ? "로그인이 필요합니다." : "본문을 가져오지 못했습니다."
+                                value: page.restricted ? communityMessage("loginRequired") : communityMessage("postContentFailed")
                             }];
                         }
                     }
@@ -3556,11 +3849,11 @@
                             view: "/views/post",
                             styles: buildPostStyles(firstNonEmpty([
                                 preferLongerText(
-                                    cleanPageTitle(firstText(doc, SITE.selectors.postTitle)),
+                                    cleanPostTitle(firstText(doc, SITE.selectors.postTitle), doc, match),
                                     rememberedItem ? cleanPageTitle(rememberedItem.title) : ""
                                 ),
-                                cleanPageTitle(schemaPost ? schemaPost.headline : ""),
-                                cleanPageTitle(textOf(titleNode)),
+                                cleanPostTitle(schemaPost ? schemaPost.headline : "", doc, match),
+                                cleanPostTitle(textOf(titleNode), doc, match),
                                 rememberedItem ? cleanPageTitle(rememberedItem.title) : "",
                                 match.board ? match.board.title : "",
                                 SITE.displayName
@@ -3714,7 +4007,7 @@
             } else {
                 synura.update(opened.viewId, {
                     models: {
-                        snackbar: "경로를 불러오지 못했습니다."
+                        snackbar: communityMessage("routeLoadFailed")
                     }
                 });
             }
@@ -3724,7 +4017,7 @@
                 error: e.toString()
             };
             if (handleOpenFailure(result, targetUrl, opened.viewId, title || SITE.displayName)) {
-                synura.update(opened.viewId, { models: { snackbar: "브라우저에서 인증을 완료해 주세요." } });
+                synura.update(opened.viewId, { models: { snackbar: communityMessage("authCompleteInBrowser") } });
             } else {
                 synura.update(opened.viewId, { models: { snackbar: e.toString() } });
             }
@@ -3770,7 +4063,7 @@
             if (!boardId || !boardTitle) {
                 return {
                     ok: false,
-                    error: "게시판 ID와 이름을 모두 입력해 주세요."
+                    error: communityMessage("boardIdNameRequired")
                 };
             }
             var boardUrl = "";
@@ -3781,7 +4074,7 @@
             if (!boardUrl) {
                 return {
                     ok: false,
-                    error: "게시판 URL을 생성할 수 없습니다."
+                    error: communityMessage("boardUrlBuildFailed")
                 };
             }
             var builtBoard = normalizeBoardRecord({
@@ -3794,7 +4087,7 @@
             if (!builtBoard) {
                 return {
                     ok: false,
-                    error: "게시판 정보를 저장할 수 없습니다."
+                    error: communityMessage("boardSaveFailed")
                 };
             }
             return {
@@ -3809,7 +4102,7 @@
         if (!normalized) {
             return {
                 ok: false,
-                error: "게시판 URL을 입력해 주세요."
+                error: communityMessage("boardUrlRequired")
             };
         }
 
@@ -3817,7 +4110,7 @@
         if (!info || !isKnownHost(info.host)) {
             return {
                 ok: false,
-                error: "이 확장에서 지원하는 사이트 URL이 아닙니다."
+                error: communityMessage("unsupportedSiteUrl")
             };
         }
 
@@ -3830,7 +4123,7 @@
         if (!board || !board.id) {
             return {
                 ok: false,
-                error: "게시판 URL을 인식하지 못했습니다."
+                error: communityMessage("boardUrlUnrecognized")
             };
         }
 
@@ -3844,7 +4137,7 @@
         if (!normalizedBoard) {
             return {
                 ok: false,
-                error: "게시판 정보를 저장할 수 없습니다."
+                error: communityMessage("boardSaveFailed")
             };
         }
 
@@ -3867,7 +4160,7 @@
             if (isBoardVisible(board.id, visibleMap)) {
                 return {
                     ok: false,
-                    error: "이미 존재하는 게시판입니다."
+                    error: communityMessage("customBoardExists")
                 };
             }
 
@@ -3952,7 +4245,7 @@
         return {
             key: path || "root",
             path: path || "",
-            title: title || "카테고리",
+            title: title || communityText("category", "Category"),
             groups: [],
             groupMap: {},
             boards: []
@@ -3960,7 +4253,7 @@
     }
 
     function buildCategoryTree() {
-        var root = createCategoryTreeNode("", "카테고리");
+        var root = createCategoryTreeNode("", communityText("category", "Category"));
         var index = { "": root };
         var boards = getBoardSettingsBoards();
 
@@ -4192,9 +4485,9 @@
         }
         var text = titles.join(", ");
         if ((boards || []).length > titles.length) {
-            text += (text ? " " : "") + "외 " + ((boards || []).length - titles.length) + "개";
+            text += (text ? " " : "") + moreCountText((boards || []).length - titles.length);
         }
-        return text || "게시판이 없습니다.";
+        return text || communityText("emptyBoards", "No boards.");
     }
 
     function makeCategoryGroupItemId(path) {
@@ -4217,10 +4510,10 @@
             id: makeCategoryGroupItemId(node.path),
             title: node.title,
             description: buildCategoryNodePreview(visibility.boards),
-            category: visibility.visibleCount + "/" + visibility.totalCount + " 표시",
+            category: visibleCountText(visibility.visibleCount, visibility.totalCount),
             author: node.groups.length > 0
-                ? ("하위 그룹 " + node.groups.length + "개")
-                : (visibility.totalCount + "개 게시판"),
+                ? groupCountText(node.groups.length)
+                : boardCountText(visibility.totalCount),
             date: "",
             commentCount: "",
             viewCount: "",
@@ -4350,8 +4643,8 @@
         var visibility = getCategoryNodeVisibility(node.path, tree);
         var title = node.path ? node.title : MENU_ALL_BOARDS;
         var message = node.path
-            ? (node.path + " · " + visibility.totalCount + "개 게시판")
-            : ("그룹 " + node.groups.length + "개 · 게시판 " + visibility.totalCount + "개");
+            ? (node.path + " · " + boardCountText(visibility.totalCount))
+            : (groupCountText(node.groups.length) + " · " + boardCountText(visibility.totalCount));
 
         return {
             kind: node.path ? "category_group" : "category_home",
@@ -4609,26 +4902,26 @@
                 return;
             }
             if (!state || !state.kind || state.kind === "home") {
-                updateViewFromRoute(viewId, createHomeRoute(!!(state && state.isReorderable), "새로고침 완료"));
+                updateViewFromRoute(viewId, createHomeRoute(!!(state && state.isReorderable), communityMessage("refreshDone")));
                 return;
             }
             if (state.kind === "category_home" || state.kind === "category_group") {
-                updateViewFromRoute(viewId, createCategoryRouteFromState(state), "새로고침 완료");
+                updateViewFromRoute(viewId, createCategoryRouteFromState(state), communityMessage("refreshDone"));
                 return;
             }
             var route = routeUrl(state.link, true);
             if (!route) {
-                synura.update(viewId, { models: { snackbar: "새로고침할 경로를 찾을 수 없습니다." } });
+                synura.update(viewId, { models: { snackbar: communityMessage("refreshPathNotFound") } });
                 return;
             }
-            updateViewFromRoute(viewId, route, "새로고침 완료");
+            updateViewFromRoute(viewId, route, communityMessage("refreshDone"));
         } catch (e) {
             var result = {
                 success: false,
                 error: e.toString()
             };
             if (handleOpenFailure(result, (state && state.link) || SITE.browserHomeUrl, viewId, (state && state.title) || SITE.displayName)) {
-                synura.update(viewId, { models: { snackbar: "브라우저에서 인증을 완료해 주세요." } });
+                synura.update(viewId, { models: { snackbar: communityMessage("authCompleteInBrowser") } });
                 return;
             }
             synura.update(viewId, { models: { snackbar: e.toString() } });
@@ -4639,7 +4932,7 @@
         var state = getViewState(viewId);
         if (!state || state.kind !== "board") return;
         if (!state.nextUrl) {
-            synura.update(viewId, { models: { snackbar: "더 불러올 글이 없습니다." } });
+            synura.update(viewId, { models: { snackbar: communityMessage("noMorePosts") } });
             return;
         }
 
@@ -4658,7 +4951,7 @@
             while (state.nextUrl && appendItems.length === 0 && fetchCount < maxEmptyAppendFetches) {
                 var route = routeUrl(state.nextUrl, false);
                 if (!route || !route.context) {
-                    synura.update(viewId, { models: { snackbar: "다음 페이지를 불러오지 못했습니다." } });
+                    synura.update(viewId, { models: { snackbar: communityMessage("nextPageFailed") } });
                     return;
                 }
 
@@ -4697,7 +4990,7 @@
             if (appendItems.length === 0) {
                 synura.update(viewId, {
                     styles: { pagination: !!state.nextUrl },
-                    models: { snackbar: state.nextUrl ? "중복 글을 건너뛰었습니다." : "더 불러올 글이 없습니다." }
+                    models: { snackbar: state.nextUrl ? communityMessage("duplicateSkipped") : communityMessage("noMorePosts") }
                 });
                 return;
             }
@@ -4717,7 +5010,7 @@
             };
             var authTarget = (state && state.nextUrl) || (state && state.link) || SITE.browserHomeUrl;
             if (handleOpenFailure(result, authTarget, viewId, (state && state.title) || SITE.displayName)) {
-                synura.update(viewId, { models: { snackbar: "브라우저에서 인증을 완료해 주세요." } });
+                synura.update(viewId, { models: { snackbar: communityMessage("authCompleteInBrowser") } });
                 return;
             }
             synura.update(viewId, { models: { snackbar: e.toString() } });
@@ -4733,7 +5026,7 @@
     function refreshBoardViewPreferenceState(viewId, state) {
         var board = resolveMenuBoard(state);
         if (!board) {
-            synura.update(viewId, { models: { snackbar: "게시판을 찾지 못했습니다." } });
+            synura.update(viewId, { models: { snackbar: communityMessage("boardNotFound") } });
             return;
         }
         synura.update(viewId, {
@@ -4748,7 +5041,7 @@
     function handleBoardMediaToggleMenu(viewId, state) {
         var board = resolveMenuBoard(state);
         if (!board) {
-            synura.update(viewId, { models: { snackbar: "게시판을 찾지 못했습니다." } });
+            synura.update(viewId, { models: { snackbar: communityMessage("boardNotFound") } });
             return true;
         }
         var nextEnabled = !boardShowsMedia(board);
@@ -4780,7 +5073,7 @@
     function handleBoardGalleryModeToggleMenu(viewId, state) {
         var board = resolveMenuBoard(state);
         if (!board) {
-            synura.update(viewId, { models: { snackbar: "게시판을 찾지 못했습니다." } });
+            synura.update(viewId, { models: { snackbar: communityMessage("boardNotFound") } });
             return true;
         }
         var nextEnabled = !boardUsesGalleryMode(board);
@@ -4800,18 +5093,18 @@
         }
         var boardId = resolveMenuBoardId(state);
         if (!boardId) {
-            synura.update(viewId, { models: { snackbar: "게시판을 찾지 못했습니다." } });
+            synura.update(viewId, { models: { snackbar: communityMessage("boardNotFound") } });
             return true;
         }
 
         var nextVisible = !isBoardVisible(boardId, getAllBoardsVisibility());
         var board = setBoardVisible(boardId, nextVisible);
         if (!board) {
-            synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
+            synura.update(viewId, { models: { snackbar: communityMessage("boardStateFailed") } });
             return true;
         }
 
-        var message = board.title + (nextVisible ? " 홈에 추가했습니다." : " 홈에서 제거했습니다.");
+        var message = communityMessage(nextVisible ? "boardAddToHome" : "boardRemoveFromHome", { title: board.title });
         synura.update(viewId, {
             models: {
                 menus: state && state.kind === "post" ? getPostMenus(state) : getBoardMenus(state),
@@ -4836,11 +5129,11 @@
         var path = homeGroupPathFromOrderId(itemId);
         var toggled = setHomeGroupShortcut(path, false);
         if (!toggled.ok) {
-            synura.update(viewId, { models: { snackbar: "그룹 홈 바로가기를 제거하지 못했습니다." } });
+            synura.update(viewId, { models: { snackbar: communityMessage("groupShortcutRemoveFailed") } });
             return true;
         }
 
-        updateViewFromRoute(viewId, createHomeRoute(!!(state && state.isReorderable), toggled.title + " 그룹을 홈에서 제거했습니다."));
+        updateViewFromRoute(viewId, createHomeRoute(!!(state && state.isReorderable), communityMessage("groupRemoveFromHome", { title: toggled.title })));
         return true;
     }
 
@@ -4862,8 +5155,7 @@
 
             if ((itemMenu === MENU_HOME_TOGGLE || itemMenu === MENU_HOME_REMOVE) && isCategoryGroupItemId(itemId)) {
                 var toggledGroup = toggleCategoryHomeShortcut(categoryGroupPathFromItemId(itemId));
-                var groupMessage = toggledGroup.label + " 그룹을 "
-                    + (toggledGroup.enabled ? "홈에 추가했습니다." : "홈에서 제거했습니다.");
+                var groupMessage = communityMessage(toggledGroup.enabled ? "groupAddToHome" : "groupRemoveFromHome", { title: toggledGroup.label });
                 refreshCategoryView(viewId, state, groupMessage);
                 refreshAnyHomeView(state.homeViewId || 0, "");
                 return true;
@@ -4872,10 +5164,10 @@
             if (itemMenu === MENU_HOME_TOGGLE || itemMenu === MENU_HOME_REMOVE) {
                 var board = setBoardVisible(itemId, itemMenu === MENU_HOME_TOGGLE);
                 if (!board) {
-                    synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
+                    synura.update(viewId, { models: { snackbar: communityMessage("boardStateFailed") } });
                     return true;
                 }
-                var boardMessage = board.title + (itemMenu === MENU_HOME_TOGGLE ? " 홈에 추가했습니다." : " 홈에서 제거했습니다.");
+                var boardMessage = communityMessage(itemMenu === MENU_HOME_TOGGLE ? "boardAddToHome" : "boardRemoveFromHome", { title: board.title });
                 refreshCategoryView(viewId, state, boardMessage);
                 refreshAnyHomeView(state.homeViewId || 0, "");
                 return true;
@@ -4903,8 +5195,7 @@
 
         if (menu === MENU_HOME_TOGGLE && state.kind === "category_group" && state.categoryPath) {
             var toggledCurrentGroup = toggleCategoryHomeShortcut(state.categoryPath);
-            var currentGroupMessage = toggledCurrentGroup.label + " 그룹을 "
-                + (toggledCurrentGroup.enabled ? "홈에 추가했습니다." : "홈에서 제거했습니다.");
+            var currentGroupMessage = communityMessage(toggledCurrentGroup.enabled ? "groupAddToHome" : "groupRemoveFromHome", { title: toggledCurrentGroup.label });
             refreshCategoryView(viewId, state, currentGroupMessage);
             refreshAnyHomeView(state.homeViewId || 0, "");
             return true;
@@ -4974,7 +5265,7 @@
             }
         }
         saveBoardOrder(newOrder);
-        updateViewFromRoute(viewId, createHomeRoute(true, "순서가 저장되었습니다."));
+        updateViewFromRoute(viewId, createHomeRoute(true, communityMessage("orderSaved")));
     }
 
     function handleBoardSettingsRootEvent(viewId, event, state) {
@@ -4994,17 +5285,17 @@
                 syncDynamicBoardsAndRefresh(viewId, state.parentViewId || 0, state);
                 return true;
             }
-            if (menu === "추가") {
+            if (menu === BUTTON_ADD) {
                 showBoardAddDialog(viewId, state.parentViewId || 0);
                 return true;
             }
-            if (menu === "삭제" && supportsBoardDelete()) {
+            if (menu === BUTTON_DELETE && supportsBoardDelete()) {
                 showBoardDeleteDialog(viewId, state.parentViewId || 0);
                 return true;
             }
-            if (menu === "초기화") {
+            if (menu === BUTTON_RESET) {
                 resetBoardSettingsStorage();
-                resetHomeAfterBoardSettingsReset(viewId, state.parentViewId || 0, "설정이 초기화되었습니다.");
+                resetHomeAfterBoardSettingsReset(viewId, state.parentViewId || 0, communityMessage("settingsReset"));
                 return true;
             }
             return true;
@@ -5050,10 +5341,10 @@
         }
 
         var message = cookie
-            ? "쿠키를 저장했지만 차단이 계속됩니다."
-            : "인증 쿠키를 가져오지 못했습니다.";
+            ? communityMessage("cookieSavedButBlocked")
+            : communityMessage("cookieFetchFailed");
         if (isAuthRequiredResult(result)) {
-            message = "인증이 아직 완료되지 않았습니다. 브라우저에서 계속 진행해 주세요.";
+            message = communityMessage("authNotComplete");
         }
         synura.update(viewId, { models: { snackbar: message } });
         if (parentViewId) {
@@ -5065,13 +5356,13 @@
         var button = event.data ? event.data.button : "";
         var parentViewId = event.context ? event.context.parentViewId : 0;
 
-        if (button === "저장") {
+        if (button === BUTTON_SAVE) {
             var ttlMinutes = parseInt(String(event.data ? event.data.ttl : 0), 10);
             var galleryColumnCount = parseInt(String(event.data ? event.data.gallery_column_count : 0), 10);
             if (isNaN(ttlMinutes) || ttlMinutes <= 0) {
                 synura.update(viewId, {
                     models: {
-                        snackbar: "캐시 TTL은 1분 이상이어야 합니다."
+                        snackbar: communityMessage("cacheTtlMin")
                     }
                 });
                 return;
@@ -5079,7 +5370,7 @@
             if (isNaN(galleryColumnCount) || galleryColumnCount <= 0) {
                 synura.update(viewId, {
                     models: {
-                        snackbar: "갤러리 열 수는 1 이상이어야 합니다."
+                        snackbar: communityMessage("galleryColumnsMin")
                     }
                 });
                 return;
@@ -5092,14 +5383,14 @@
             if (parentViewId) {
                 synura.update(parentViewId, {
                     models: {
-                        snackbar: "캐시 설정이 저장되었습니다."
+                        snackbar: communityMessage("cacheSettingsSaved")
                     }
                 });
             }
             return;
         }
 
-        if (button === "초기화") {
+        if (button === BUTTON_RESET) {
             localStorage.removeItem(CACHE_TTL_KEY);
             localStorage.removeItem(CACHE_SNACKBAR_KEY);
             localStorage.removeItem(CATEGORY_TWO_CHAR_KEY);
@@ -5107,13 +5398,13 @@
             synura.update(viewId, {
                 models: {
                     body: getCacheSettingsBody(),
-                    snackbar: "캐시 설정이 초기화되었습니다."
+                    snackbar: communityMessage("cacheSettingsReset")
                 }
             });
             if (parentViewId) {
                 synura.update(parentViewId, {
                     models: {
-                        snackbar: "캐시 설정이 초기화되었습니다."
+                        snackbar: communityMessage("cacheSettingsReset")
                     }
                 });
             }
@@ -5160,7 +5451,7 @@
             return;
         }
 
-        if (button === "저장") {
+        if (button === BUTTON_SAVE) {
             var allBoards = getSortedBoards();
             var visibleMap = getAllBoardsVisibility();
             var changed = false;
@@ -5186,23 +5477,23 @@
             }
             synura.close(viewId);
             if (parentViewId) {
-                updateViewFromRoute(parentViewId, createHomeRoute(!!(parentState && parentState.isReorderable), "설정이 저장되었습니다."));
+                updateViewFromRoute(parentViewId, createHomeRoute(!!(parentState && parentState.isReorderable), communityMessage("settingsSaved")));
             }
             return;
         }
 
-        if (button === "초기화") {
+        if (button === BUTTON_RESET) {
             resetBoardSettingsStorage();
-            resetHomeAfterBoardSettingsReset(viewId, parentViewId, "설정이 초기화되었습니다.");
+            resetHomeAfterBoardSettingsReset(viewId, parentViewId, communityMessage("settingsReset"));
             return;
         }
 
-        if (button === "추가") {
+        if (button === BUTTON_ADD) {
             showBoardAddDialog(viewId, parentViewId);
             return;
         }
 
-        if (button === "삭제" && supportsBoardDelete()) {
+        if (button === BUTTON_DELETE && supportsBoardDelete()) {
             showBoardDeleteDialog(viewId, parentViewId);
             return;
         }
@@ -5217,7 +5508,7 @@
         var parentViewId = sectionState.parentViewId || 0;
         var changed = false;
 
-        if (button === "저장") {
+        if (button === BUTTON_SAVE) {
             changed = saveBoardSettingsSection(sectionState, event.data || {});
         }
 
@@ -5225,7 +5516,7 @@
 
         if (settingsViewId) {
             var rootState = getViewState(settingsViewId) || createBoardSettingsRootState(parentViewId);
-            refreshBoardSettingsRootView(settingsViewId, rootState, changed ? "설정이 저장되었습니다." : "");
+            refreshBoardSettingsRootView(settingsViewId, rootState, changed ? communityMessage("settingsSaved") : "");
         }
         if (parentViewId && changed) {
             var parentState = getViewState(parentViewId);
@@ -5235,7 +5526,7 @@
 
     function handleBoardAddSubmit(viewId, event) {
         var button = event.data ? event.data.button : "";
-        if (button !== "추가") {
+        if (button !== BUTTON_ADD) {
             synura.close(viewId);
             return;
         }
@@ -5251,8 +5542,8 @@
         }
 
         var message = result.activated
-            ? "게시판을 다시 표시합니다: " + result.board.title
-            : "게시판이 추가되었습니다: " + result.board.title;
+            ? communityMessage("boardReactivated", { title: result.board.title })
+            : communityMessage("boardAdded", { title: result.board.title });
         var settingsViewId = event.context ? event.context.parentViewId : 0;
         var homeViewId = event.context ? event.context.homeViewId : 0;
 
@@ -5265,7 +5556,7 @@
 
     function handleBoardDeleteSubmit(viewId, event) {
         var button = event.data ? event.data.button : "";
-        if (button !== "확인") {
+        if (button !== BUTTON_CONFIRM) {
             synura.close(viewId);
             return;
         }
@@ -5286,7 +5577,7 @@
 
         var settingsViewId = event.context ? event.context.parentViewId : 0;
         var homeViewId = event.context ? event.context.homeViewId : 0;
-        var message = removedCount + "개의 게시판이 삭제되었습니다.";
+        var message = communityMessage("removedBoards", { count: removedCount });
         if (settingsViewId) {
             refreshBoardSettingsParent(settingsViewId, message);
         }
@@ -5313,8 +5604,8 @@
 
             var openResult = openRoute(createCategoryHomeRoute(homeViewId));
             var message = items.length > 0
-                ? ("게시판 " + items.length + "개를 가져왔습니다.")
-                : "가져올 게시판이 없습니다.";
+                ? communityMessage("fetchedBoards", { count: items.length })
+                : communityMessage("noBoardsToFetch");
             if (openResult && openResult.success) {
                 synura.update(openResult.viewId, { models: { snackbar: message } });
             }
@@ -5378,20 +5669,20 @@
                     syncDynamicBoardsAndRefresh(viewId, context.parentViewId || 0, null);
                     return;
                 }
-                if (settingsMenu === "추가") {
+                if (settingsMenu === BUTTON_ADD) {
                     showBoardAddDialog(viewId, context.parentViewId || 0);
                     return;
                 }
-                if (settingsMenu === "삭제" && supportsBoardDelete()) {
+                if (settingsMenu === BUTTON_DELETE && supportsBoardDelete()) {
                     showBoardDeleteDialog(viewId, context.parentViewId || 0);
                     return;
                 }
-                if (settingsMenu === "초기화") {
+                if (settingsMenu === BUTTON_RESET) {
                     resetBoardSettingsStorage();
-                    resetHomeAfterBoardSettingsReset(viewId, context.parentViewId || 0, "설정이 초기화되었습니다.");
+                    resetHomeAfterBoardSettingsReset(viewId, context.parentViewId || 0, communityMessage("settingsReset"));
                     return;
                 }
-                if (settingsMenu === "취소") {
+                if (settingsMenu === BUTTON_CANCEL) {
                     synura.close(viewId);
                     return;
                 }
@@ -5502,7 +5793,7 @@
                     showCacheSettingsDialog(viewId);
                 } else if (menu === MENU_REORDER && state && state.kind === "home") {
                     var isReorderable = !state.isReorderable;
-                    updateViewFromRoute(viewId, createHomeRoute(isReorderable, isReorderable ? "순서 변경이 활성화되었습니다." : "순서 변경이 비활성화되었습니다."));
+                    updateViewFromRoute(viewId, createHomeRoute(isReorderable, isReorderable ? communityMessage("reorderEnabled") : communityMessage("reorderDisabled")));
                 } else if (menu === MENU_ALL_BOARDS && state && state.kind === "home") {
                     openCategoryHomeFromMenu(viewId, state);
                 } else if (menu === MENU_MEDIA_TOGGLE && state && state.kind === "board") {

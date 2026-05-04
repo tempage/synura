@@ -43,7 +43,7 @@ const handler = {
         buttons: ['Login', 'Register']
       }
     }, function(event) {
-      self.onLoginEvent(event, result.viewId);
+      self.onLoginEvent(event, event.viewId);
     });
   },
 
@@ -109,10 +109,10 @@ const handler = {
       if (event.eventId === 'SUBMIT') {
         if (event.data.button === 'Create Account') {
           console.log('Registering:', event.data.username, 'Age:', event.data.age);
-          synura.close(result.viewId);
+          synura.close(event.viewId);
           self.showSuccess("Account created for " + event.data.username + "!");
         } else {
-          synura.close(result.viewId);
+          synura.close(event.viewId);
           self.showLoginDialog();
         }
       }

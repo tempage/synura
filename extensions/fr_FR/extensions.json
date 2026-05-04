@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "frandroid",
+      "description": "Unofficial Frandroid Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fr_FR/frandroid.js",
+      "api": 0,
+      "domain": "forum.frandroid.com",
+      "author": "Synura Team",
+      "icon": "https://forum.frandroid.com/favicon.ico",
+      "locale": "fr_FR",
+      "tags": [
+        "android",
+        "mobile",
+        "forum"
+      ]
+    },
+    {
+      "name": "forum_auto",
+      "description": "Unofficial Forum-Auto.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fr_FR/forum_auto.js",
+      "api": 0,
+      "domain": "forum-auto.caradisiac.com",
+      "author": "Synura Team",
+      "icon": "https://forum-auto.caradisiac.com/favicon.ico",
+      "locale": "fr_FR",
+      "tags": [
+        "automotive",
+        "cars",
+        "forum"
+      ]
+    },
+    {
+      "name": "hardware_fr",
+      "description": "Unofficial Hardware.fr Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fr_FR/hardware_fr.js",
+      "api": 0,
+      "domain": "forum.hardware.fr",
+      "author": "Synura Team",
+      "icon": "https://forum.hardware.fr/favicon.ico",
+      "locale": "fr_FR",
+      "tags": [
+        "hardware",
+        "technology",
+        "forum"
+      ]
+    }
+  ]
+}

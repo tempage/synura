@@ -1,0 +1,51 @@
+{
+  "extensions": [
+    {
+      "name": "tarfandestan",
+      "description": "Unofficial Tarfandestan.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fa_IR/tarfandestan.js",
+      "api": 0,
+      "domain": "www.tarfandestan.com",
+      "author": "Synura Team",
+      "icon": "https://www.tarfandestan.com/favicon.ico",
+      "locale": "fa_IR",
+      "tags": [
+        "technology",
+        "tips",
+        "forum"
+      ]
+    },
+    {
+      "name": "bazicenter",
+      "description": "Unofficial BaziCenter Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fa_IR/bazicenter.js",
+      "api": 0,
+      "domain": "forum.bazicenter.com",
+      "author": "Synura Team",
+      "icon": "https://forum.bazicenter.com/favicon.ico",
+      "locale": "fa_IR",
+      "tags": [
+        "gaming",
+        "forum"
+      ]
+    },
+    {
+      "name": "majidonline",
+      "description": "Unofficial MajidOnline Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fa_IR/majidonline.js",
+      "api": 0,
+      "domain": "forum.majidonline.com",
+      "author": "Synura Team",
+      "icon": "https://forum.majidonline.com/favicon.ico",
+      "locale": "fa_IR",
+      "tags": [
+        "technology",
+        "design",
+        "forum"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,757 @@
+// @ts-nocheck
+// Generated local community config. Runtime: ../community_common.ts
+
+var SITE = {
+  "siteKey": "hatena_anonymous_diary",
+  "displayName": "Hatena Anonymous Diary",
+  "country": "Japan",
+  "category": "anonymous diary community",
+  "browserHomeUrl": "https://anond.hatelabo.jp/",
+  "browserCookieAuth": false,
+  "minimumHomeBoards": 3,
+  "defaultCacheTtlMs": 300000,
+  "showCacheSnackbarByDefault": true,
+  "enableCacheSettings": true,
+  "enableBoardReorder": true,
+  "enableBoardDelete": true,
+  "boardSettingsMenuLabel": "掲示板",
+  "boardSettingsTitle": "掲示板設定",
+  "boardSettingsLargeThreshold": 128,
+  "boardSettingsPageSize": 96,
+  "boardAddMode": "url_title",
+  "hasFullBoardCatalog": false,
+  "supportsBoardCatalogSync": true,
+  "maxDiscoveredBoards": 256,
+  "defaultVisibleBoardIds": [
+    "top",
+    "archive",
+    "categories",
+    "keywords"
+  ],
+  "hostAliases": [],
+  "acceptLanguage": "ja-JP,ja;q=0.9,en-US;q=0.6,en;q=0.5",
+  "fetchHeaders": {
+    "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36 Synura/1.0",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "ja-JP,ja;q=0.9,en-US;q=0.6,en;q=0.5"
+  },
+  "challengeMarkers": [],
+  "titleSuffixes": [
+    " - Hatena Anonymous Diary",
+    " | Hatena Anonymous Diary",
+    " : Hatena Anonymous Diary"
+  ],
+  "boards": [
+    {
+      "id": "top",
+      "title": "Top",
+      "url": "https://anond.hatelabo.jp/",
+      "description": "Latest diary entries",
+      "group": "Hatena"
+    },
+    {
+      "id": "archive",
+      "title": "Archive",
+      "url": "https://anond.hatelabo.jp/archive",
+      "description": "Archive",
+      "group": "Hatena"
+    },
+    {
+      "id": "categories",
+      "title": "Categories",
+      "url": "https://anond.hatelabo.jp/c",
+      "description": "Categories",
+      "group": "Hatena"
+    },
+    {
+      "id": "keywords",
+      "title": "Keywords",
+      "url": "https://anond.hatelabo.jp/keyword",
+      "description": "Keywords",
+      "group": "Hatena"
+    }
+  ],
+  "selectors": {
+    "boardTitle": [
+      "h1",
+      ".contentTitle",
+      ".p-title-value",
+      ".ipsType_pageTitle",
+      ".forum-title",
+      "title"
+    ],
+    "listRows": [
+      ".section",
+      "#popularentriesblock li",
+      "#hotentriesblock li",
+      "li"
+    ],
+    "listLink": [
+      ".sectionfooter a[href^='/20']",
+      ".sectionfooter a",
+      "h3 a[href^='/20']:not(:first-child)",
+      "h3 a[href^='/20']",
+      "a[href^='/20']",
+      "a"
+    ],
+    "listTitle": [
+      "p",
+      "h3 a[href^='/20']:not(:first-child)",
+      "h3",
+      "a[href^='/20']"
+    ],
+    "listTitleExclude": [
+      ".badge",
+      ".counter",
+      ".stats",
+      ".meta",
+      ".share-button",
+      ".ad"
+    ],
+    "listAuthor": [
+      ".username",
+      ".userLink",
+      ".author",
+      "[itemprop='author']",
+      ".user-name",
+      ".name"
+    ],
+    "listAvatar": [
+      ".avatar img",
+      ".userAvatarImage",
+      "img[alt*='avatar']",
+      "img"
+    ],
+    "listDate": [
+      "time[datetime]",
+      "time",
+      ".date",
+      ".time",
+      "[class*='created']",
+      "[class*='date']"
+    ],
+    "listCommentCount": [
+      ".replies",
+      ".comments",
+      ".reply-count",
+      ".comment-count",
+      "[class*='answerCounter']",
+      "[class*='InformationText']",
+      ".trackback",
+      ".note"
+    ],
+    "listViewCount": [
+      ".views",
+      ".view-count",
+      "[class*='eye'] + *",
+      "[class*='pv']"
+    ],
+    "listLikeCount": [
+      ".likes",
+      ".vote-count",
+      ".recommend",
+      "[class*='thumb'] + *"
+    ],
+    "listCategory": [
+      ".category",
+      ".forum-title",
+      ".board-title",
+      "[class*='Category']",
+      ".tag",
+      "a[href*='/tags/']"
+    ],
+    "listImage": [
+      "img"
+    ],
+    "postTitle": [
+      "h3",
+      "h1",
+      "meta[property='og:title']",
+      "title"
+    ],
+    "postAuthor": [
+      "[itemprop='author']",
+      ".username",
+      ".user-name",
+      ".name",
+      ".author",
+      "[class*='display_name']"
+    ],
+    "postAvatar": [
+      ".avatar img",
+      ".messageSidebar img",
+      ".userAvatarImage",
+      "img[alt*='avatar']"
+    ],
+    "postDate": [
+      "time[datetime]",
+      "meta[itemprop='dateCreated']",
+      ".date",
+      ".time",
+      "[class*='created']",
+      "[class*='date']"
+    ],
+    "postViewCount": [
+      ".view-count",
+      ".views",
+      "[class*='pv']"
+    ],
+    "postLikeCount": [
+      ".reactionSummary",
+      ".likes",
+      ".vote-count",
+      "[class*='thumb']"
+    ],
+    "postCategory": [
+      ".breadcrumbs a",
+      ".p-breadcrumbs a",
+      ".category",
+      "[class*='Category']",
+      ".tag",
+      "a[href*='/tags/']"
+    ],
+    "postContent": [
+      "#hatena-anond .section",
+      ".section",
+      ".body",
+      "article",
+      "main"
+    ],
+    "commentRows": [
+      "#trackback .section",
+      ".trackback",
+      ".comment",
+      ".section"
+    ],
+    "commentAuthor": [
+      "[itemprop='author']",
+      ".username",
+      ".user-name",
+      ".name",
+      ".author",
+      "[class*='display_name']"
+    ],
+    "commentAvatar": [
+      ".avatar img",
+      ".postprofile img",
+      ".ipsUserPhoto img",
+      "img[alt*='avatar']"
+    ],
+    "commentContent": [
+      ".body",
+      "p",
+      ".comment",
+      ".section"
+    ],
+    "commentDate": [
+      "time[datetime]",
+      "meta[itemprop='dateCreated']",
+      ".date",
+      ".time",
+      "[class*='created']",
+      "[class*='date']"
+    ],
+    "commentLikeCount": [
+      ".reactionSummary",
+      ".likes",
+      ".vote-count",
+      "[class*='thumb']"
+    ],
+    "commentLevel": []
+  },
+  "commentLevelAttrs": [
+    "data-depth",
+    "depth",
+    "data-level"
+  ],
+  "useRawPostParse": true,
+  "useRawPostParseInEmulator": true
+};
+
+var SYNURA = {
+  "domain": "anond.hatelabo.jp",
+  "name": "hatena_anonymous_diary",
+  "author": "Synura Team",
+  "description": "Unofficial Hatena Anonymous Diary.",
+  "version": 0.2,
+  "api": 0,
+  "license": "Apache-2.0",
+  "locale": "ja_JP",
+  "icon": "https://anond.hatelabo.jp/images/favicon.ico",
+  "bypass": "chrome/android",
+  "deeplink": true,
+  "tags": [
+    "diary",
+    "discussion",
+    "community"
+  ],
+  "main": null
+};
+
+var LOCAL_POST_PATTERNS = [
+  /\/20\d{12}/i
+];
+
+
+var LOCAL_BOARD_LINK_SELECTORS = [
+  "a[href='/archive']",
+  "a[href='/c']",
+  "a[href='/keyword']",
+  "a[href*='mode=top']"
+];
+
+var LOCAL_OPEN_REACTION_POST_MENU = "投稿として開く";
+
+function localQuerySelectorAll(root, selectors) {
+  if (!root || !root.querySelectorAll) return [];
+  var out = [];
+  for (var i = 0; i < selectors.length; i++) {
+    var selector = selectors[i];
+    if (!selector) continue;
+    var nodes = [];
+    try {
+      nodes = root.querySelectorAll(selector);
+    } catch (e) {
+      nodes = [];
+    }
+    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
+      nodes = localQueryHrefContains(root, selector);
+    }
+    for (var j = 0; j < nodes.length; j++) {
+      if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
+    }
+  }
+  return out;
+}
+
+
+function localQueryHrefContains(root, selector) {
+  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
+  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
+  var needles = [];
+  var regex = /\[href\*=(['"])(.*?)\1\]/g;
+  var match;
+  while ((match = regex.exec(String(selector || "")))) {
+    if (match[2]) needles.push(match[2]);
+  }
+  if (!needles.length) return [];
+  var nodes = [];
+  try {
+    nodes = root.querySelectorAll(tagName || "a");
+  } catch (e) {
+    nodes = [];
+  }
+  var out = [];
+  for (var i = 0; i < nodes.length; i++) {
+    var href = attrOf(nodes[i], "href");
+    var ok = !!href;
+    for (var j = 0; j < needles.length && ok; j++) {
+      ok = href.indexOf(needles[j]) >= 0;
+    }
+    if (ok) out.push(nodes[i]);
+  }
+  return out;
+}
+
+function localPathAndQuery(url) {
+  var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
+  return match ? (match[1] || "/") : String(url || "");
+}
+
+function localUrlFromInfo(info) {
+  return (info.scheme || "https") + "://" + info.host + (info.path || "/") + (info.query ? "?" + info.query : "");
+}
+
+function localLooksLikeAssetUrl(url) {
+  return /\.(?:jpg|jpeg|png|gif|webp|svg|ico|css|js|json|xml|pdf|zip|rar|7z|mp3|mp4|webm|avi|mov)(?:[?#]|$)/i.test(String(url || ""));
+}
+
+function localLooksLikeBadNav(url, title) {
+  var sample = (String(url || "") + " " + String(title || "")).toLowerCase();
+  return /(?:login|signin|signup|register|join|logout|privacy|terms|policy|advertis|adclick|affiliate|contact|about|help|search|tag\/|tags\/|tagged\/|\?tagged|objecttype=|category\/|categories\/|rss|feed|download|app\b|oauth|account|member|members\/|profile|user\/|users\/|\/~|avatar|newsletter|fullversion|markread|settings|manage\/|banlist|user-fotos|reviews\/|\/experts|toutes-les-news|message\.php)/i.test(sample);
+}
+
+function localLooksLikeCollectionUrl(url) {
+  var path = localPathAndQuery(url).toLowerCase();
+  if (/(?:forumdisplay\.php|viewforum\.php|list\.php\?table=|liste_sujet|liste_categorie|\/forums\/0-|\/bbs\/[^\/]+\/index\.html|\/home(?:[?#]|$)|\/wiki=|[?&]do=markread)/i.test(path)) return true;
+  if (/\/(?:forum|forums|community|boards?|categories?|category|tags?|search|members?|users?)\/?(?:[?#]|$)/i.test(path)) return true;
+  if (/\/(?:forums?|category|categories)\/[^\/?#]+\/?(?:[?#]|$)/i.test(path)) return true;
+  return false;
+}
+
+function localLooksLikePostUrl(url) {
+  var path = localPathAndQuery(url).toLowerCase();
+  for (var i = 0; i < LOCAL_POST_PATTERNS.length; i++) {
+    if (LOCAL_POST_PATTERNS[i].test(path)) return true;
+  }
+  return false;
+}
+
+function localTitleFromNode(node) {
+  var title = textOf(node);
+  if (!title) title = attrOf(node, "title");
+  if (!title) title = attrOf(node, "aria-label");
+  if (!title) {
+    var img = node && node.querySelector ? node.querySelector("img") : null;
+    title = attrOf(img, "alt");
+  }
+  return normalizeWhitespace(title).replace(/\s*\[[0-9,]+\]\s*$/, "");
+}
+
+function localTitleFromBoardUrl(url) {
+  var path = localPathAndQuery(url).split("?")[0].replace(/\/+$/, "");
+  var parts = path.split("/");
+  for (var i = parts.length - 1; i >= 0; i--) {
+    var value = normalizeWhitespace(parts[i]).replace(/[-_]+/g, " ");
+    if (value) return value;
+  }
+  return "Home";
+}
+
+function localBoardIdHash(value) {
+  var text = String(value || "");
+  var hash = 0;
+  for (var i = 0; i < text.length; i++) {
+    hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function localBoardIdFromUrl(url) {
+  var path = localPathAndQuery(url).split("?")[0].replace(/\/+$/, "");
+  var parts = path.split("/");
+  var slug = "";
+  for (var i = 0; i < parts.length; i++) {
+    var part = normalizeWhitespace(parts[i]).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    if (part) slug = part;
+  }
+  if (!slug) slug = "home";
+  return slug.substring(0, 24) + "_" + localBoardIdHash(url);
+}
+
+function localPostIdFromUrl(url) {
+  var match = String(url || "").match(/[?&](?:id|no|t|tid|thread|topic)=([0-9A-Za-z_-]+)/);
+  if (match) return match[1];
+  match = String(url || "").match(/\/([0-9]{3,})(?:[\/?#]|$)/);
+  if (match) return match[1];
+  return localBoardIdHash(url);
+}
+
+function localFindConfiguredBoard(url) {
+  var normalized = normalizeUrl(url) || url;
+  var boards = SITE.boards || [];
+  for (var i = 0; i < boards.length; i++) {
+    var boardUrl = normalizeUrl(boards[i].url) || ensureAbsoluteUrl(boards[i].url, SITE.browserHomeUrl);
+    if (boardUrl && boardUrl === normalized) return boardById(boards[i].id) || boards[i];
+  }
+  return null;
+}
+
+function localBoardForUrl(url) {
+  var configured = localFindConfiguredBoard(url);
+  if (configured) return configured;
+  var info = parseAbsoluteUrl(url);
+  var path = info ? info.path : "/";
+  var parentPath = path.replace(/\/[^\/]*$/, "/");
+  if (!parentPath || parentPath === path) parentPath = "/";
+  var boardUrl = info ? (info.scheme + "://" + info.host + parentPath) : SITE.browserHomeUrl;
+  return ensureBoard(localBoardIdFromUrl(boardUrl), boardUrl, localTitleFromBoardUrl(boardUrl));
+}
+
+
+function localBoardDiscoveryScore(url, title) {
+  var path = localPathAndQuery(url).toLowerCase();
+  var lowerTitle = String(title || "").toLowerCase();
+  if (!url || !isKnownHost((parseAbsoluteUrl(url) || {}).host)) return -999;
+  if (localLooksLikeAssetUrl(url) || localLooksLikeBadNav(url, title)) return -999;
+  if (localLooksLikePostUrl(url) && !localLooksLikeCollectionUrl(url)) return -999;
+  var score = 0;
+  if (localLooksLikeCollectionUrl(url)) score += 60;
+  if (/(?:\/forums?\/|\/forum\/|\/boards?\/|\/bbs\/|\/community\/|\/categories?\/|\/tags?\/|\/groups?\/|\/gall(?:ery)?\/|forumdisplay\.php|viewforum\.php|list\.php\?)/i.test(path)) score += 45;
+  if (communityBoardKeywordRegex().test(lowerTitle)) score += 20;
+  if (title.length >= 2 && title.length <= 90) score += 16;
+  if (/[?&](?:page|p)=/.test(path)) score -= 15;
+  if ((normalizeUrl(url) || url) === (normalizeUrl(SITE.browserHomeUrl) || SITE.browserHomeUrl)) score -= 35;
+  return score;
+}
+
+function localExtractCommentCount(title) {
+  var match = String(title || "").match(/[\[(]([0-9]{1,4})[\])](?!.*[\[(][0-9]{1,4}[\])])/);
+  return match ? match[1] : "";
+}
+
+
+function extractListItem(row, baseUrl) {
+  if (!row) return null;
+  var linkNode = firstNode(row, selectorList("listLink", [])) || (attrOf(row, "href") ? row : null);
+  var link = linkNode ? (normalizeUrl(attrOf(linkNode, "href")) || ensureAbsoluteUrl(attrOf(linkNode, "href"), baseUrl)) : "";
+  if (!link || localLooksLikeAssetUrl(link) || !localLooksLikePostUrl(link)) return null;
+  var title = firstNonEmpty([
+    firstText(row, selectorList("listTitle", [])),
+    localTitleFromNode(linkNode)
+  ]);
+  title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
+  if (!title || title.length < 3) return null;
+  var commentCount = firstNonEmpty([
+    parseCount(firstText(row, selectorList("listCommentCount", []))),
+    localExtractCommentCount(title)
+  ]);
+  var image = imageUrlFromNode(firstNode(row, selectorList("listImage", ["img"])), baseUrl);
+  return {
+    id: SITE.siteKey + ":" + localPostIdFromUrl(link),
+    link: normalizeUrl(link) || link,
+    title: title,
+    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
+    date: firstText(row, selectorList("listDate", [])),
+    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    commentCount: commentCount,
+    viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
+    likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
+    mediaUrl: image,
+    mediaType: image ? "image" : "",
+    types: image ? ["image", "link"] : ["link"],
+    menus: [],
+    hotCount: toInt(commentCount, 0),
+    coldCount: 0
+  };
+}
+
+function localCommentAuthor(node) {
+  return firstAuthorText(node, selectorList("commentAuthor", []));
+}
+
+function localCommentDate(node) {
+  var time = firstNode(node, selectorList("commentDate", ["time", ".date", ".time"]));
+  return attrOf(time, "datetime") || textOf(time);
+}
+
+function localHatenaReactionDateFromUrl(url) {
+  var id = localPostIdFromUrl(url);
+  var match = String(id || "").match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/);
+  if (!match) return "";
+  return match[1] + "-" + match[2] + "-" + match[3] + " " + match[4] + ":" + match[5];
+}
+
+function localHatenaReactionLabelFromUrl(url) {
+  var id = localPostIdFromUrl(url);
+  return id ? ("anond:" + id) : "";
+}
+
+function localHatenaReactionLevel(row) {
+  var level = 0;
+  var node = row ? row.parentNode : null;
+  while (node) {
+    var tagName = String(node.tagName || "").toLowerCase();
+    if (tagName === "li") level++;
+    var className = String(node.className || "");
+    if (className.indexOf("refererlist") >= 0) break;
+    node = node.parentNode;
+  }
+  return Math.min(level, 8);
+}
+
+function localParseHatenaAnonymousDiaryReactions(doc, postUrl) {
+  var root = firstNode(doc, [".refererlist"]);
+  if (!root) return [];
+  var rows = allNodes(root, ["li"]);
+  var currentUrl = (normalizeUrl(postUrl) || postUrl || "").split("#")[0];
+  var seen = {};
+  var out = [];
+  for (var i = 0; i < rows.length && out.length < 50; i++) {
+    var header = firstNode(rows[i], [".trackback-header"]);
+    if (!header) continue;
+    var linkNode = firstNode(header, ["a[href*='anond.hatelabo.jp/20']", "a[href^='/20']", "a[href]"]);
+    var link = normalizeUrl(attrOf(linkNode, "href")) || ensureAbsoluteUrl(attrOf(linkNode, "href"), postUrl);
+    link = link ? link.split("#")[0] : "";
+    if (!link || !localLooksLikePostUrl(link) || link === currentUrl || seen[link]) continue;
+    var contentRoot = firstNode(rows[i], [".box-curve", "[id^='excerpt-']"]);
+    var text = textOf(contentRoot);
+    if (text.length < 2) continue;
+    seen[link] = true;
+    var content = parseDetails(contentRoot, link);
+    if (!content || content.length === 0) content = [{ type: "text", value: text }];
+    var label = localHatenaReactionLabelFromUrl(link) || localTitleFromNode(linkNode) || SITE.displayName;
+    out.push({
+      id: SITE.siteKey + ":reaction:" + localPostIdFromUrl(link),
+      link: link,
+      author: label,
+      avatar: "",
+      date: localHatenaReactionDateFromUrl(link),
+      content: content,
+      likeCount: "",
+      dislikeCount: "",
+      level: localHatenaReactionLevel(rows[i]),
+      menus: [LOCAL_OPEN_REACTION_POST_MENU, MENU_BROWSER],
+      hotCount: 0,
+      coldCount: 0
+    });
+  }
+  return out;
+}
+
+
+
+function localParseComments(doc, postUrl) {
+  if (SITE.siteKey === "hatena_anonymous_diary") {
+    return localParseHatenaAnonymousDiaryReactions(doc, postUrl);
+  }
+  var seen = {};
+  var out = [];
+  var rows = allNodes(doc, selectorList("commentRows", []));
+  var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
+  for (var i = 0; i < rows.length && out.length < 50; i++) {
+    var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
+    var text = textOf(contentRoot);
+    if (text.length < 3 || text.length > 4000) continue;
+    var key = text.substring(0, 220).toLowerCase();
+    if (!key || seen[key] || key === pageTitle) continue;
+    seen[key] = true;
+    var content = parseDetails(contentRoot, postUrl);
+    if (!content || content.length === 0) content = [{ type: "text", value: text }];
+    var domId = attrOf(rows[i], "id");
+    var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
+    out.push({
+      id: SITE.siteKey + ":comment:" + out.length,
+      link: postUrl + (domId ? ("#" + domId) : ("#comment-" + out.length)),
+      author: localCommentAuthor(rows[i]),
+      avatar: imageUrlFromNode(firstNode(rows[i], selectorList("commentAvatar", [])), postUrl),
+      date: localCommentDate(rows[i]),
+      content: content,
+      likeCount: hideZeroCount(parseCount(likeText)),
+      dislikeCount: "",
+      level: detectCommentLevel(rows[i]),
+      menus: [MENU_BROWSER],
+      hotCount: toInt(likeText, 0),
+      coldCount: 0
+    });
+  }
+  return out;
+}
+
+
+function localParseBoardItemsFromHtml(html, baseUrl) {
+  var doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+  var rows = localQuerySelectorAll(doc, SITE.selectors.listRows || []);
+  var items = [];
+  var seen = {};
+  for (var i = 0; i < rows.length; i++) {
+    var item = extractListItem(rows[i], baseUrl);
+    if (!item || !item.link || seen[item.link]) continue;
+    seen[item.link] = true;
+    items.push(item);
+  }
+  return items;
+}
+
+function localDiscoverBoardRecords(doc, baseUrl) {
+  var anchors = localQuerySelectorAll(doc, LOCAL_BOARD_LINK_SELECTORS);
+  if (anchors.length < SITE.minimumHomeBoards) {
+    anchors = localQuerySelectorAll(doc, (LOCAL_BOARD_LINK_SELECTORS || []).concat(["a[href]"]));
+  }
+  var candidates = [];
+  var seen = {};
+  var homeUrl = normalizeUrl(SITE.browserHomeUrl) || SITE.browserHomeUrl;
+  if (homeUrl) seen[homeUrl] = true;
+  for (var i = 0; i < anchors.length && candidates.length < 1000; i++) {
+    var url = normalizeUrl(attrOf(anchors[i], "href")) || ensureAbsoluteUrl(attrOf(anchors[i], "href"), baseUrl || SITE.browserHomeUrl);
+    if (!url || seen[url]) continue;
+    var title = localTitleFromNode(anchors[i]);
+    var score = localBoardDiscoveryScore(url, title);
+    if (score < 45) continue;
+    seen[url] = true;
+    candidates.push({
+      score: score,
+      order: i,
+      board: {
+        id: localBoardIdFromUrl(url),
+        title: title || localTitleFromBoardUrl(url),
+        url: url,
+        description: url,
+        group: SITE.country || "",
+        dynamic: true
+      }
+    });
+  }
+  candidates.sort(function (a, b) {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.order - b.order;
+  });
+  var out = [];
+  var limit = SITE.maxDiscoveredBoards || 256;
+  for (var j = 0; j < candidates.length && out.length < limit; j++) out.push(candidates[j].board);
+  return out;
+}
+
+
+SITE.parseComments = function (doc, postUrl) {
+  return localParseComments(doc, postUrl);
+};
+
+
+SITE.parseBoardItemsCustom = function (doc, baseUrl, match, boardPage) {
+  return localParseBoardItemsFromHtml(boardPage && boardPage.html ? boardPage.html : "", baseUrl);
+};
+
+SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
+  return localParseBoardItemsFromHtml(html, baseUrl);
+};
+
+SITE.loadDynamicBoards = function (options) {
+  if (!options || !options.allowNetwork) return [];
+  var doc = fetchDocument(SITE.browserHomeUrl);
+  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+};
+
+SITE.buildNextPageUrl = function (match, url, nextPage) {
+  return setQueryParam(url, "page", nextPage);
+};
+
+SITE.handleViewEvent = function (viewId, event, state, context) {
+  if (!state || state.kind !== "post" || !event || event.eventId !== "ITEM_MENU_CLICK") return false;
+  var menu = normalizeWhitespace(event.data ? event.data.menu : "");
+  var link = normalizeUrl(event.data ? event.data.link : "");
+  if (!link) return false;
+  if (menu === LOCAL_OPEN_REACTION_POST_MENU) {
+    var result = openByUrl(link, false);
+    if (!result || !result.success) {
+      openBrowser(link, SITE.displayName, {
+        from: "reaction_post_menu",
+        parentViewId: viewId || 0,
+        targetUrl: link
+      });
+    }
+    return true;
+  }
+  if (menu === MENU_BROWSER) {
+    openBrowser(link, SITE.displayName, {
+      from: "reaction_browser_menu",
+      parentViewId: viewId || 0,
+      targetUrl: link
+    });
+    return true;
+  }
+  return false;
+};
+
+SITE.matchPost = function (info) {
+  if (!info || !isKnownHost(info.host)) return null;
+  var url = localUrlFromInfo(info);
+  if (!localLooksLikePostUrl(url)) return null;
+  return {
+    board: localBoardForUrl(url),
+    postId: localPostIdFromUrl(url),
+    page: queryInt(info.query, "page", 1)
+  };
+};
+
+SITE.matchBoard = function (info) {
+  if (!info || !isKnownHost(info.host)) return null;
+  var url = localUrlFromInfo(info);
+  if (localLooksLikeAssetUrl(url) || localLooksLikePostUrl(url)) return null;
+  var board = localFindConfiguredBoard(url) || ensureBoard(localBoardIdFromUrl(url), url, localTitleFromBoardUrl(url));
+  return {
+    board: board,
+    page: queryInt(info.query, "page", 1)
+  };
+};

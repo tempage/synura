@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "adrenaline",
+      "description": "Unofficial Adrenaline Forum.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_BR/adrenaline.js",
+      "api": 0,
+      "domain": "forum.adrenaline.com.br",
+      "author": "Synura Team",
+      "icon": "https://forum.adrenaline.com.br/favicon.ico",
+      "locale": "pt_BR",
+      "tags": [
+        "hardware",
+        "gaming",
+        "forum"
+      ]
+    },
+    {
+      "name": "clube_do_hardware",
+      "description": "Unofficial Clube do Hardware.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_BR/clube_do_hardware.js",
+      "api": 0,
+      "domain": "www.clubedohardware.com.br",
+      "author": "Synura Team",
+      "icon": "https://www.clubedohardware.com.br/favicon.ico",
+      "locale": "pt_BR",
+      "tags": [
+        "hardware",
+        "technology",
+        "forum"
+      ]
+    },
+    {
+      "name": "outer_space",
+      "description": "Unofficial Forum Outer Space.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_BR/outer_space.js",
+      "api": 0,
+      "domain": "forum.outerspace.com.br",
+      "author": "Synura Team",
+      "icon": "https://forum.outerspace.com.br/favicon.ico",
+      "locale": "pt_BR",
+      "tags": [
+        "gaming",
+        "pop-culture",
+        "forum"
+      ]
+    }
+  ]
+}
