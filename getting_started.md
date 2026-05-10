@@ -69,6 +69,7 @@ var SYNURA = {
   description: "A simple hello world extension.",
   license: "Apache-2.0",
   domain: "example.com",
+  host_permissions: ["https://example.com/*"],
   icon: "emoji:📖",
   bypass: "firefox",
   main: {
@@ -81,7 +82,8 @@ var SYNURA = {
 };
 ```
 
--   **domain**: The `fetch` API can only fetch data from this domain.
+-   **domain**: The extension identity and default network scope. If `host_permissions` is omitted, `fetch` can only use `http://<domain>/*` and `https://<domain>/*`.
+-   **host_permissions**: Optional explicit network permissions for `fetch`. Use this when the site needs sibling subdomains or a narrower path scope, for example `["https://*.github.io/*"]`. Patterns must stay in the same registrable domain family as `domain`; public registry wildcards such as `*.io`, `*.com`, and `*.co.kr` are rejected.
 -   **icon**: The icon must be a URL. It can be an HTTP(S) URL to an image (hosted on the same `domain`) or an Emoji URL (e.g., `emoji:📖`). If omitted, `https://<domain>/favicon.ico` is used by default.
 
 ### The `main` Object

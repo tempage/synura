@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,6 +25,7 @@ import (
 	"github.com/ivere27/synura/internal/fetch"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/charset"
+	"golang.org/x/net/publicsuffix"
 	"golang.org/x/term"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/language"
@@ -1117,18 +1120,20 @@ func (r *Runtime) fetchOverrideResponse(urlStr, filePath string, progressFn goja
 }
 
 func (r *Runtime) validateFetchDomain(rawURL string) error {
-	allowedDomain, err := r.synuraDomain()
+	permissions, allowedDescription, err := r.effectiveHostPermissions()
 	if err != nil {
 		return err
 	}
-	reqHost, err := hostFromURL(rawURL)
+	reqURL, err := absoluteFetchURL(rawURL)
 	if err != nil {
 		return err
 	}
-	if reqHost == allowedDomain {
-		return nil
+	for _, permission := range permissions {
+		if permission.Matches(reqURL) {
+			return nil
+		}
 	}
-	return fmt.Errorf("fetch host %q is not allowed (allowed=%q)", reqHost, allowedDomain)
+	return fmt.Errorf("fetch host %q is not allowed (allowed=%q)", normalizeHost(reqURL.Hostname()), allowedDescription)
 }
 
 func (r *Runtime) synuraDomain() (string, error) {
@@ -1151,24 +1156,89 @@ func (r *Runtime) synuraDomain() (string, error) {
 	return domain, nil
 }
 
-func hostFromURL(rawURL string) (string, error) {
-	u, err := url.Parse(strings.TrimSpace(rawURL))
+func (r *Runtime) effectiveHostPermissions() ([]hostPermission, string, error) {
+	domain, err := r.synuraDomain()
 	if err != nil {
-		return "", fmt.Errorf("invalid fetch url: %w", err)
+		return nil, "", err
 	}
-	if u.Host == "" {
-		if strings.HasPrefix(strings.TrimSpace(rawURL), "//") {
-			u, err = url.Parse("https:" + strings.TrimSpace(rawURL))
-			if err != nil {
-				return "", fmt.Errorf("invalid fetch url: %w", err)
-			}
+
+	explicit, ok, err := r.explicitHostPermissionPatterns()
+	if err != nil {
+		return nil, "", err
+	}
+	if ok {
+		if err := validateHostPermissionsForDomain(domain, explicit); err != nil {
+			return nil, "", err
 		}
+		permissions, err := parseHostPermissions(explicit)
+		if err != nil {
+			return nil, "", err
+		}
+		return permissions, strings.Join(normalizeHostPermissionPatterns(permissions), ", "), nil
 	}
-	host := normalizeHost(u.Host)
-	if host == "" {
-		return "", errors.New("fetch url must be absolute with a host")
+
+	permissions, err := parseHostPermissions([]string{
+		fmt.Sprintf("http://%s/*", domain),
+		fmt.Sprintf("https://%s/*", domain),
+	})
+	if err != nil {
+		return nil, "", err
 	}
-	return host, nil
+	return permissions, domain, nil
+}
+
+func (r *Runtime) explicitHostPermissionPatterns() ([]string, bool, error) {
+	synuraDef := r.vm.Get("SYNURA")
+	if synuraDef == nil || goja.IsUndefined(synuraDef) || goja.IsNull(synuraDef) {
+		return nil, false, errors.New("SYNURA.domain is required for fetch")
+	}
+	synuraObj := synuraDef.ToObject(r.vm)
+	if synuraObj == nil {
+		return nil, false, errors.New("SYNURA.domain is required for fetch")
+	}
+	v := synuraObj.Get("host_permissions")
+	if v == nil || goja.IsUndefined(v) || goja.IsNull(v) {
+		return nil, false, nil
+	}
+	values, ok := v.Export().([]interface{})
+	if !ok {
+		return nil, true, errors.New("SYNURA.host_permissions must be an array of strings")
+	}
+	if len(values) == 0 {
+		return nil, true, errors.New("SYNURA.host_permissions cannot be empty")
+	}
+
+	patterns := make([]string, 0, len(values))
+	for _, value := range values {
+		pattern, ok := value.(string)
+		if !ok {
+			return nil, true, errors.New("SYNURA.host_permissions must be an array of strings")
+		}
+		pattern = strings.TrimSpace(pattern)
+		if pattern == "" {
+			return nil, true, errors.New("SYNURA.host_permissions cannot contain empty patterns")
+		}
+		patterns = append(patterns, pattern)
+	}
+	return patterns, true, nil
+}
+
+func absoluteFetchURL(rawURL string) (*url.URL, error) {
+	trimmed := strings.TrimSpace(rawURL)
+	if trimmed == "" {
+		return nil, errors.New("fetch url is required")
+	}
+	if strings.HasPrefix(trimmed, "//") {
+		trimmed = "https:" + trimmed
+	}
+	u, err := url.Parse(trimmed)
+	if err != nil {
+		return nil, fmt.Errorf("invalid fetch url: %w", err)
+	}
+	if normalizeHost(u.Hostname()) == "" {
+		return nil, errors.New("fetch url must be absolute with a host")
+	}
+	return u, nil
 }
 
 func normalizeHost(input string) string {
@@ -1194,6 +1264,287 @@ func normalizeHost(input string) string {
 	}
 
 	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(s)), ".")
+}
+
+type hostPermission struct {
+	raw       string
+	scheme    string
+	host      string
+	port      string
+	wildcard  bool
+	path      string
+	pathRegex *regexp.Regexp
+}
+
+type hostPermissionDomainScope struct {
+	host    string
+	port    string
+	hasPort bool
+	local   bool
+}
+
+func parseHostPermissions(patterns []string) ([]hostPermission, error) {
+	permissions := make([]hostPermission, 0, len(patterns))
+	for _, raw := range patterns {
+		permission, err := parseHostPermission(raw)
+		if err != nil {
+			return nil, err
+		}
+		permissions = append(permissions, permission)
+	}
+	return permissions, nil
+}
+
+func parseHostPermission(raw string) (hostPermission, error) {
+	raw = strings.TrimSpace(raw)
+	parseRaw := raw
+	scheme := ""
+	if strings.HasPrefix(parseRaw, "*://") {
+		scheme = "*"
+		parseRaw = "http://" + strings.TrimPrefix(parseRaw, "*://")
+	}
+
+	u, err := url.Parse(parseRaw)
+	if err != nil {
+		return hostPermission{}, fmt.Errorf("invalid host permission %q: %w", raw, err)
+	}
+	if scheme == "" {
+		scheme = u.Scheme
+	}
+	if scheme != "http" && scheme != "https" && scheme != "*" {
+		return hostPermission{}, fmt.Errorf("invalid host permission %q: scheme must be http, https, or *", raw)
+	}
+	if u.Host == "" {
+		return hostPermission{}, fmt.Errorf("invalid host permission %q: host is required", raw)
+	}
+	if u.RawQuery != "" || u.Fragment != "" {
+		return hostPermission{}, fmt.Errorf("invalid host permission %q: query and fragment are not supported", raw)
+	}
+
+	host := normalizeHost(u.Hostname())
+	port := u.Port()
+	if host == "" {
+		return hostPermission{}, fmt.Errorf("invalid host permission %q: host is required", raw)
+	}
+	if port != "" {
+		if _, err := strconv.Atoi(port); err != nil {
+			return hostPermission{}, fmt.Errorf("invalid host permission %q: invalid port", raw)
+		}
+	}
+
+	wildcard := strings.HasPrefix(host, "*.")
+	if strings.Contains(host, "*") && !wildcard {
+		return hostPermission{}, fmt.Errorf("invalid host permission %q: wildcard must be the left-most label", raw)
+	}
+	if wildcard {
+		if strings.Count(host, "*") != 1 {
+			return hostPermission{}, fmt.Errorf("invalid host permission %q: only one wildcard is allowed", raw)
+		}
+		base := strings.TrimPrefix(host, "*.")
+		if base == "" || strings.Contains(base, "*") {
+			return hostPermission{}, fmt.Errorf("invalid host permission %q: wildcard base is invalid", raw)
+		}
+		if net.ParseIP(base) != nil {
+			return hostPermission{}, fmt.Errorf("invalid host permission %q: wildcard IP hosts are not supported", raw)
+		}
+		publicSuffix, icann := publicsuffix.PublicSuffix(base)
+		if publicSuffix == base && icann {
+			return hostPermission{}, fmt.Errorf("invalid host permission %q: wildcard cannot target an ICANN public suffix", raw)
+		}
+		host = base
+	}
+
+	pathPattern := u.EscapedPath()
+	if pathPattern == "" {
+		pathPattern = "/"
+	}
+	if !strings.HasPrefix(pathPattern, "/") {
+		return hostPermission{}, fmt.Errorf("invalid host permission %q: path must start with /", raw)
+	}
+	pathRegex, err := wildcardPathRegex(pathPattern)
+	if err != nil {
+		return hostPermission{}, fmt.Errorf("invalid host permission %q: %w", raw, err)
+	}
+
+	normalizedHost := host
+	if wildcard {
+		normalizedHost = "*." + host
+	}
+	normalizedHost = hostWithPort(normalizedHost, port)
+
+	return hostPermission{
+		raw:       fmt.Sprintf("%s://%s%s", scheme, normalizedHost, pathPattern),
+		scheme:    scheme,
+		host:      host,
+		port:      port,
+		wildcard:  wildcard,
+		path:      pathPattern,
+		pathRegex: pathRegex,
+	}, nil
+}
+
+func normalizeHostPermissionPatterns(permissions []hostPermission) []string {
+	normalized := make([]string, 0, len(permissions))
+	seen := make(map[string]bool, len(permissions))
+	for _, permission := range permissions {
+		if !seen[permission.raw] {
+			seen[permission.raw] = true
+			normalized = append(normalized, permission.raw)
+		}
+	}
+	sort.Strings(normalized)
+	return normalized
+}
+
+func (p hostPermission) Matches(u *url.URL) bool {
+	if u == nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	if p.scheme != "*" && p.scheme != u.Scheme {
+		return false
+	}
+	if p.port != "" && p.port != u.Port() {
+		return false
+	}
+
+	host := normalizeHost(u.Hostname())
+	if host == "" {
+		return false
+	}
+	if p.wildcard {
+		if host != p.host && !strings.HasSuffix(host, "."+p.host) {
+			return false
+		}
+	} else if host != p.host {
+		return false
+	}
+
+	path := u.EscapedPath()
+	if path == "" {
+		path = "/"
+	}
+	return p.pathRegex.MatchString(path)
+}
+
+func validateHostPermissionsForDomain(domain string, patterns []string) error {
+	scope, ok := domainScopeFromDomain(domain)
+	if !ok {
+		return fmt.Errorf("invalid SYNURA.domain: %q", domain)
+	}
+
+	permissions, err := parseHostPermissions(patterns)
+	if err != nil {
+		return err
+	}
+	for _, permission := range permissions {
+		if !scope.allows(permission) {
+			return fmt.Errorf("host permission %q must stay within SYNURA.domain %q", permission.raw, domain)
+		}
+	}
+	return nil
+}
+
+func domainScopeFromDomain(domain string) (hostPermissionDomainScope, bool) {
+	domain = strings.TrimSpace(domain)
+	if domain == "" {
+		return hostPermissionDomainScope{}, false
+	}
+
+	parseTarget := domain
+	if !strings.Contains(parseTarget, "://") {
+		parseTarget = "//" + parseTarget
+	}
+	if u, err := url.Parse(parseTarget); err == nil {
+		host := normalizeHost(u.Hostname())
+		if host != "" {
+			port := u.Port()
+			return hostPermissionDomainScope{
+				host:    host,
+				port:    port,
+				hasPort: port != "",
+				local:   isLocalPermissionHost(host),
+			}, true
+		}
+	}
+	return hostPermissionDomainScope{}, false
+}
+
+func (scope hostPermissionDomainScope) allows(permission hostPermission) bool {
+	if scope.local || isLocalPermissionHost(permission.host) {
+		if permission.wildcard {
+			return false
+		}
+		if scope.host != permission.host {
+			return false
+		}
+		if scope.hasPort || permission.port != "" {
+			return scope.hasPort && permission.port == scope.port
+		}
+		return true
+	}
+	return hostBelongsToDomainFamily(scope.host, permission.host)
+}
+
+func hostBelongsToDomainFamily(domainHost string, permissionHost string) bool {
+	domainHost = normalizeHost(domainHost)
+	permissionHost = normalizeHost(permissionHost)
+	if domainHost == "" || permissionHost == "" {
+		return false
+	}
+	if domainHost == permissionHost {
+		return true
+	}
+	if net.ParseIP(domainHost) != nil || net.ParseIP(permissionHost) != nil {
+		return false
+	}
+
+	domainBase, err := publicsuffix.EffectiveTLDPlusOne(domainHost)
+	if err != nil {
+		return false
+	}
+	permissionBase, err := publicsuffix.EffectiveTLDPlusOne(permissionHost)
+	if err != nil {
+		return false
+	}
+	return domainBase == permissionBase
+}
+
+func isLocalPermissionHost(host string) bool {
+	host = normalizeHost(host)
+	if host == "" {
+		return false
+	}
+	if net.ParseIP(host) != nil {
+		return true
+	}
+	return host == "localhost" || strings.HasSuffix(host, ".localhost")
+}
+
+func wildcardPathRegex(pattern string) (*regexp.Regexp, error) {
+	var b strings.Builder
+	b.WriteString("^")
+	for _, r := range pattern {
+		if r == '*' {
+			b.WriteString(".*")
+			continue
+		}
+		b.WriteString(regexp.QuoteMeta(string(r)))
+	}
+	b.WriteString("$")
+	return regexp.Compile(b.String())
+}
+
+func hostWithPort(host string, port string) string {
+	if port == "" {
+		return host
+	}
+	if strings.Contains(host, ":") && !strings.HasPrefix(host, "[") {
+		return "[" + host + "]:" + port
+	}
+	return host + ":" + port
 }
 
 func normalizeFetchOverrideURL(rawURL string) (string, error) {

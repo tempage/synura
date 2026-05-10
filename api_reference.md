@@ -53,7 +53,44 @@ The core object for interacting with the Synura application.
 ### `fetch(url, options)`
 A custom **synchronous** HTTP client (unlike Web API, it does **not** return a Promise).
 
-> **Host restriction:** Extension requests must target `SYNURA.domain`. This is the rule in both `synurart` and the real Synura app. Do not fetch `api.*`, `cdn.*`, or any other host directly if it differs from `SYNURA.domain`, even if the site's own web frontend does so.
+> **Host restriction:** By default, extension requests must target `SYNURA.domain`. If an extension needs sibling subdomains or path-scoped hosts, declare `SYNURA.host_permissions`. `synurart` and the real Synura app use the same rule.
+
+`SYNURA.host_permissions` is optional. When it is omitted, the effective permission is:
+
+```javascript
+[
+  "http://<SYNURA.domain>/*",
+  "https://<SYNURA.domain>/*"
+]
+```
+
+When it is present, it replaces the default fetch scope. Each pattern must be one of:
+
+```text
+http://host/path
+https://host/path
+*://host/path
+```
+
+The host can be exact (`api.example.com`) or a left-most wildcard (`*.example.com`). The path can contain `*`. Query strings and fragments are not allowed in permission patterns.
+
+Examples:
+
+```javascript
+var SYNURA = {
+  domain: "github.io",
+  host_permissions: [
+    "https://*.github.io/*"
+  ]
+};
+```
+
+Security boundaries:
+
+- Permission hosts must stay in the same registrable domain family as `SYNURA.domain`.
+- Wildcards cannot target ICANN public suffixes such as `*.io`, `*.com`, or `*.co.kr`.
+- Private/public-suffix service domains such as `github.io` are handled by the public suffix list. For example, `*.github.io` is allowed only when the extension identity is scoped to `github.io`; a `user.github.io` extension cannot broaden to sibling pages.
+- For raw IPs and localhost, ports are part of the boundary. `127.0.0.1:8080` cannot request `127.0.0.1:9090`.
 
 -   **Options**:
     -   `method`: `'GET'` | `'POST'`

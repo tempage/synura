@@ -22,12 +22,23 @@ The runtime exposes the same browser-like `navigator` globals as Synura extensio
 
 ## Network Host Rule
 
-Extension network requests must stay on `SYNURA.domain`.
+Extension network requests must stay inside the extension's effective host permissions.
 
 - `synurart` and the real Synura app follow the same rule.
-- Do not call API hosts, CDN hosts, or any other host directly from extension code if the host is different from `SYNURA.domain`.
-- If a site's web app uses cross-host APIs, that does not make those calls valid for Synura extensions.
-- In practice, extension `fetch(...)` URLs should be `https://` + `SYNURA.domain` + `...`.
+- If `SYNURA.host_permissions` is omitted, only `http://<SYNURA.domain>/*` and `https://<SYNURA.domain>/*` are allowed.
+- If `SYNURA.host_permissions` is present, it replaces the default scope. Use patterns such as `https://api.example.com/*` or `https://*.github.io/*`.
+- Permission hosts must stay within the same registrable domain family as `SYNURA.domain`.
+- Wildcards must be left-most only and cannot target ICANN public suffixes such as `*.io`, `*.com`, or `*.co.kr`.
+- Localhost and raw IP permissions are port-strict. `127.0.0.1:8080` does not grant `127.0.0.1:9090`.
+
+Example:
+
+```javascript
+var SYNURA = {
+  domain: "github.io",
+  host_permissions: ["https://*.github.io/*"]
+};
+```
 
 ## Start Commands
 
