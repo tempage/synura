@@ -550,6 +550,9 @@ SITE.loadDynamicBoards = function (options) {
     return Array.isArray(cached) && cached.length > 0 ? cached : fallback;
 };
 SITE.prepareBoardContext = function (context, items, match, url) {
+    var page = clienBoardPage(match);
+    context.page = page;
+    context.nextUrl = SITE.buildNextPageUrl(match, url, page + 1);
     return context;
 };
 SITE.filterAppendItems = function (items, state, routeContext) {
@@ -786,7 +789,7 @@ var SYNURA = {
     domain: "m.clien.net",
     name: "clien",
     description: "Unofficial Clien extension",
-    version: 0.5,
+    version: 0.6,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
@@ -864,6 +867,12 @@ function extractListItem(row, baseUrl) {
         hotCount: toInt(viewCount || likeCount || commentCount, 0),
         coldCount: toInt(likeCount || commentCount, 0)
     };
+}
+
+function clienBoardPage(match) {
+    if (!match) return 0;
+    var page = parseInt(String(match.page), 10);
+    return !isNaN(page) && page >= 0 ? page : 0;
 }
 
 function clienImageBoardPage(match) {
