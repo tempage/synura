@@ -1,19 +1,35 @@
 {
   "extensions": [
     {
-      "name": "bakusai",
-      "description": "Unofficial Bakusai.",
+      "name": "hatena_bookmark",
+      "description": "Unofficial Hatena Bookmark.",
       "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ja_JP/bakusai.js",
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ja_JP/hatena_bookmark.js",
       "api": 0,
-      "domain": "bakusai.com",
+      "domain": "b.hatena.ne.jp",
       "author": "Synura Team",
-      "icon": "https://bakusai.com/favicon.ico",
+      "icon": "https://b.hatena.ne.jp/favicon.ico",
       "locale": "ja_JP",
       "tags": [
-        "local",
-        "regional",
-        "forum"
+        "bookmarks",
+        "social-news",
+        "web"
+      ]
+    },
+    {
+      "name": "oshiete_goo",
+      "description": "Unofficial Oshiete!goo.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ja_JP/oshiete_goo.js",
+      "api": 0,
+      "domain": "oshiete.goo.ne.jp",
+      "author": "Synura Team",
+      "icon": "https://oshiete.goo.ne.jp/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "q&a",
+        "advice",
+        "general"
       ]
     },
     {
@@ -30,6 +46,54 @@
         "general",
         "discussion",
         "forum"
+      ]
+    },
+    {
+      "name": "bakusai",
+      "description": "Unofficial Bakusai.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ja_JP/bakusai.js",
+      "api": 0,
+      "domain": "bakusai.com",
+      "author": "Synura Team",
+      "icon": "https://bakusai.com/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "local",
+        "regional",
+        "forum"
+      ]
+    },
+    {
+      "name": "yahoo_chiebukuro",
+      "description": "Unofficial Yahoo! Chiebukuro.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ja_JP/yahoo_chiebukuro.js",
+      "api": 0,
+      "domain": "chiebukuro.yahoo.co.jp",
+      "author": "Synura Team",
+      "icon": "https://s.yimg.jp/c/icon/s/bsc/2.0/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "q&a",
+        "advice",
+        "general"
+      ]
+    },
+    {
+      "name": "teratail",
+      "description": "Unofficial teratail.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ja_JP/teratail.js",
+      "api": 0,
+      "domain": "teratail.com",
+      "author": "Synura Team",
+      "icon": "https://teratail.com/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "developers",
+        "programming",
+        "q&a"
       ]
     },
     {
@@ -81,22 +145,6 @@
       ]
     },
     {
-      "name": "hatena_bookmark",
-      "description": "Unofficial Hatena Bookmark.",
-      "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ja_JP/hatena_bookmark.js",
-      "api": 0,
-      "domain": "b.hatena.ne.jp",
-      "author": "Synura Team",
-      "icon": "https://b.hatena.ne.jp/favicon.ico",
-      "locale": "ja_JP",
-      "tags": [
-        "bookmarks",
-        "social-news",
-        "web"
-      ]
-    },
-    {
       "name": "komachi",
       "description": "Unofficial Yomiuri Komachi.",
       "version": 0.2,
@@ -121,54 +169,6 @@
       "domain": "okwave.jp",
       "author": "Synura Team",
       "icon": "https://okwave.jp/favicon.ico",
-      "locale": "ja_JP",
-      "tags": [
-        "q&a",
-        "advice",
-        "general"
-      ]
-    },
-    {
-      "name": "oshiete_goo",
-      "description": "Unofficial Oshiete!goo.",
-      "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ja_JP/oshiete_goo.js",
-      "api": 0,
-      "domain": "oshiete.goo.ne.jp",
-      "author": "Synura Team",
-      "icon": "https://oshiete.goo.ne.jp/favicon.ico",
-      "locale": "ja_JP",
-      "tags": [
-        "q&a",
-        "advice",
-        "general"
-      ]
-    },
-    {
-      "name": "teratail",
-      "description": "Unofficial teratail.",
-      "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ja_JP/teratail.js",
-      "api": 0,
-      "domain": "teratail.com",
-      "author": "Synura Team",
-      "icon": "https://teratail.com/favicon.ico",
-      "locale": "ja_JP",
-      "tags": [
-        "developers",
-        "programming",
-        "q&a"
-      ]
-    },
-    {
-      "name": "yahoo_chiebukuro",
-      "description": "Unofficial Yahoo! Chiebukuro.",
-      "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ja_JP/yahoo_chiebukuro.js",
-      "api": 0,
-      "domain": "chiebukuro.yahoo.co.jp",
-      "author": "Synura Team",
-      "icon": "https://s.yimg.jp/c/icon/s/bsc/2.0/favicon.ico",
       "locale": "ja_JP",
       "tags": [
         "q&a",

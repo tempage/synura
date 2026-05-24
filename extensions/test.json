@@ -1,0 +1,47 @@
+{
+  "name": "Synura Test Repository",
+  "description": "All Synura extensions, including beta and test extensions.",
+  "version": 3.6,
+  "extensions": [
+    {
+      "name": "test_youtube",
+      "description": "Unofficial YouTube extension with search, comments, and related videos.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/youtube.js",
+      "api": 0,
+      "domain": "m.youtube.com",
+      "author": "Synura Team",
+      "tags": [
+        "video",
+        "streaming",
+        "search"
+      ]
+    }
+  ],
+  "includes": [
+    "ar_SA/test.json",
+    "basic/test.json",
+    "bn_BD/test.json",
+    "de_DE/test.json",
+    "en_US/test.json",
+    "es_419/test.json",
+    "es_ES/test.json",
+    "fa_IR/test.json",
+    "fr_FR/test.json",
+    "he_IL/test.json",
+    "hi_IN/test.json",
+    "id_ID/test.json",
+    "it_IT/test.json",
+    "ja_JP/test.json",
+    "ko_KR/test.json",
+    "pl_PL/test.json",
+    "pt_BR/test.json",
+    "pt_PT/test.json",
+    "ru_RU/test.json",
+    "th_TH/test.json",
+    "tr_TR/test.json",
+    "vi_VN/test.json",
+    "zh_CN/test.json",
+    "zh_TW/test.json"
+  ]
+}

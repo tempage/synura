@@ -8,13 +8,48 @@ from decimal import Decimal, InvalidOperation
 # Configuration
 # Get the directory where the script is located
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_FILE = os.path.join(SCRIPT_DIR, 'extensions.json')
+STABLE_OUTPUT_FILE = os.path.join(SCRIPT_DIR, 'extensions.json')
+TEST_OUTPUT_FILE = os.path.join(SCRIPT_DIR, 'test.json')
 DEFAULT_BASE_URL = 'https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/'
 DEFAULT_REPOSITORY_VERSION = Decimal('1.0')
 REPOSITORY_VERSION_STEP = Decimal('0.1')
 
+# Stable is an explicit allowlist. New/community extensions stay in test.json
+# until they are promoted here.
+STABLE_EXTENSION_PATHS = (
+    'youtube.js',
+    'basic/list.js',
+    'basic/source.js',
+    'basic/input_dialog.js',
+    'basic/markdown.js',
+    'basic/simple.js',
+    'basic/settings.js',
+    'basic/chat.js',
+    'basic/browser.js',
+    'basic/editor.js',
+    'basic/wikipedia_featured.js',
+    'basic/confirmation_dialog.js',
+    'basic/router.js',
+    'basic/hello_world.js',
+    'basic/post.js',
+    'en_US/reddit.js',
+    'en_US/hackernews.js',
+    'ko_KR/fmkorea.js',
+    'ko_KR/ppomppu.js',
+    'ko_KR/pann.js',
+    'ko_KR/damoang.js',
+    'ko_KR/ruliweb.js',
+    'ko_KR/dcinside.js',
+    'ko_KR/arca.js',
+    'ko_KR/geeknews.js',
+    'ko_KR/clien.js',
+    'ko_KR/mlbpark.js',
+    'ko_KR/inven.js',
+    'ko_KR/theqoo.js',
+)
+
 # Files/folders to ignore when scanning
-IGNORE_FILES = {'extensions.json', 'generate_extensions_json.py', 'README.md'}
+IGNORE_FILES = {'extensions.json', 'test.json', 'generate_extensions_json.py', 'README.md'}
 IGNORE_DIRS = {'.git', '__pycache__', 'node_modules'}
 
 def extract_object_literal(content, start_idx):
@@ -201,6 +236,69 @@ def next_repository_version(output_file):
     next_version = current_version + REPOSITORY_VERSION_STEP
     return float(next_version.quantize(REPOSITORY_VERSION_STEP))
 
+def stable_extension_entries_by_path(root_extensions, extensions_by_subdir, base_url):
+    """
+    Return stable entries keyed by their relative .js path.
+    """
+    entries_by_path = {}
+    all_extensions = list(root_extensions)
+    for extensions in extensions_by_subdir.values():
+        all_extensions.extend(extensions)
+
+    for entry in all_extensions:
+        url = entry.get('url', '')
+        if not url.startswith(base_url):
+            continue
+        rel_path = url[len(base_url):]
+        entries_by_path[rel_path] = entry
+
+    stable_entries_by_path = {}
+    missing_paths = []
+    for rel_path in STABLE_EXTENSION_PATHS:
+        entry = entries_by_path.get(rel_path)
+        if entry:
+            stable_entries_by_path[rel_path] = entry
+        else:
+            missing_paths.append(rel_path)
+
+    if missing_paths:
+        print("Warning: stable allowlist paths missing:")
+        for rel_path in missing_paths:
+            print(f"  - {rel_path}")
+
+    return stable_entries_by_path
+
+def stable_entries_for_subdir(subdir, stable_entries_by_path):
+    prefix = f'{subdir}/'
+    stable_paths = [path for path in STABLE_EXTENSION_PATHS if path.startswith(prefix)]
+    return [stable_entries_by_path[path] for path in stable_paths if path in stable_entries_by_path]
+
+def stable_root_entries(stable_entries_by_path):
+    stable_paths = [path for path in STABLE_EXTENSION_PATHS if '/' not in path]
+    return [stable_entries_by_path[path] for path in stable_paths if path in stable_entries_by_path]
+
+def build_repository_data(name, description, version, extensions=None, includes=None):
+    """
+    Build a top-level repository JSON object.
+    """
+    repo_data = {
+        "name": name,
+        "description": description,
+        "version": version
+    }
+
+    if extensions:
+        repo_data["extensions"] = extensions
+    if includes:
+        repo_data["includes"] = sorted(includes)
+
+    return repo_data
+
+def write_json(path, data):
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.write('\n')
+
 def main():
     parser = argparse.ArgumentParser(description='Generate extensions.json for Synura repository.')
     parser.add_argument('--url', dest='base_url', default=DEFAULT_BASE_URL,
@@ -230,42 +328,71 @@ def main():
             if extensions:
                 extensions_by_subdir[subdir].extend(extensions)
 
-    # Generate per-subdir JSON files with relative includes
-    includes = []
+    stable_entries_by_path = stable_extension_entries_by_path(root_extensions, extensions_by_subdir, base_url)
+
+    # Generate per-subdir stable and test JSON files with relative includes.
+    stable_includes = []
+    test_includes = []
     for subdir, extensions in extensions_by_subdir.items():
-        subdir_json_path = os.path.join(SCRIPT_DIR, subdir, 'extensions.json')
-        # Use relative path for includes
-        include_path = f'{subdir}/extensions.json'
-        
-        subdir_data = {
+        stable_extensions = stable_entries_for_subdir(subdir, stable_entries_by_path)
+        stable_json_path = os.path.join(SCRIPT_DIR, subdir, 'extensions.json')
+        test_json_path = os.path.join(SCRIPT_DIR, subdir, 'test.json')
+        stable_include_path = f'{subdir}/extensions.json'
+        test_include_path = f'{subdir}/test.json'
+        stable_file_existed = os.path.exists(stable_json_path)
+
+        stable_data = {
+            "extensions": stable_extensions
+        }
+        test_data = {
             "extensions": extensions
         }
-        
-        with open(subdir_json_path, 'w', encoding='utf-8') as f:
-            json.dump(subdir_data, f, indent=2, ensure_ascii=False)
-        
-        includes.append(include_path)
-        print(f"Generated: {subdir_json_path} with {len(extensions)} extensions.")
 
-    # Generate top-level extensions.json with relative includes
-    repo_data = {
-        "name": "Synura Example Repository",
-        "description": "A collection of example extensions for educational purposes.",
-        "version": next_repository_version(OUTPUT_FILE)
-    }
+        if stable_extensions:
+            write_json(stable_json_path, stable_data)
+        elif os.path.exists(stable_json_path):
+            os.remove(stable_json_path)
+        write_json(test_json_path, test_data)
 
-    if root_extensions:
-        repo_data["extensions"] = root_extensions
-    if includes:
-        repo_data["includes"] = sorted(includes)
+        if stable_extensions:
+            stable_includes.append(stable_include_path)
+        test_includes.append(test_include_path)
+        if stable_extensions:
+            print(f"Generated: {stable_json_path} with {len(stable_extensions)} stable extensions.")
+        elif stable_file_existed:
+            print(f"Removed empty stable manifest: {stable_json_path}")
+        else:
+            print(f"Skipped empty stable manifest: {stable_json_path}")
+        print(f"Generated: {test_json_path} with {len(extensions)} test extensions.")
 
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-        json.dump(repo_data, f, indent=2, ensure_ascii=False)
+    # Generate the full test/beta repository.
+    test_repo_data = build_repository_data(
+        "Synura Test Repository",
+        "All Synura extensions, including beta and test extensions.",
+        next_repository_version(TEST_OUTPUT_FILE),
+        extensions=root_extensions,
+        includes=test_includes
+    )
+    write_json(TEST_OUTPUT_FILE, test_repo_data)
+
+    # Generate the public stable repository.
+    stable_entries = stable_root_entries(stable_entries_by_path)
+    stable_repo_data = build_repository_data(
+        "Synura Stable Repository",
+        "Stable Synura extensions.",
+        next_repository_version(STABLE_OUTPUT_FILE),
+        extensions=stable_entries,
+        includes=stable_includes
+    )
+    write_json(STABLE_OUTPUT_FILE, stable_repo_data)
     
     total_extensions = len(root_extensions) + sum(len(exts) for exts in extensions_by_subdir.values())
-    print(f"\nSuccessfully generated {OUTPUT_FILE}")
-    print(f"  - {len(includes)} subdirectory files")
+    print(f"\nSuccessfully generated {STABLE_OUTPUT_FILE}")
+    print(f"Successfully generated {TEST_OUTPUT_FILE}")
+    print(f"  - {len(stable_includes)} stable subdirectory files")
+    print(f"  - {len(test_includes)} test subdirectory files")
     print(f"  - {len(root_extensions)} root-level extensions")
+    print(f"  - {len(stable_entries_by_path)} stable extensions")
     print(f"  - {total_extensions} total extensions")
     print(f"\nNote: Includes use relative paths, but extension URLs are absolute (based on {base_url}).")
 

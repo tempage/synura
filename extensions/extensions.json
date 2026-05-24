@@ -1,7 +1,7 @@
 {
-  "name": "Synura Example Repository",
-  "description": "A collection of example extensions for educational purposes.",
-  "version": 3.1,
+  "name": "Synura Stable Repository",
+  "description": "Stable Synura extensions.",
+  "version": 3.6,
   "extensions": [
     {
       "name": "test_youtube",
@@ -19,29 +19,8 @@
     }
   ],
   "includes": [
-    "ar_SA/extensions.json",
     "basic/extensions.json",
-    "bn_BD/extensions.json",
-    "de_DE/extensions.json",
     "en_US/extensions.json",
-    "es_419/extensions.json",
-    "es_ES/extensions.json",
-    "fa_IR/extensions.json",
-    "fr_FR/extensions.json",
-    "he_IL/extensions.json",
-    "hi_IN/extensions.json",
-    "id_ID/extensions.json",
-    "it_IT/extensions.json",
-    "ja_JP/extensions.json",
-    "ko_KR/extensions.json",
-    "pl_PL/extensions.json",
-    "pt_BR/extensions.json",
-    "pt_PT/extensions.json",
-    "ru_RU/extensions.json",
-    "th_TH/extensions.json",
-    "tr_TR/extensions.json",
-    "vi_VN/extensions.json",
-    "zh_CN/extensions.json",
-    "zh_TW/extensions.json"
+    "ko_KR/extensions.json"
   ]
 }

@@ -30,6 +30,38 @@
         "startups",
         "news"
       ]
+    },
+    {
+      "name": "lobsters",
+      "description": "Unofficial Lobsters.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/en_US/lobsters.js",
+      "api": 0,
+      "domain": "lobste.rs",
+      "author": "Synura Team",
+      "icon": "https://lobste.rs/favicon.ico",
+      "locale": "en_US",
+      "tags": [
+        "technology",
+        "programming",
+        "news"
+      ]
+    },
+    {
+      "name": "mumsnet",
+      "description": "Unofficial Mumsnet.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/en_US/mumsnet.js",
+      "api": 0,
+      "domain": "www.mumsnet.com",
+      "author": "Synura Team",
+      "icon": "https://www.mumsnet.com/favicon.ico",
+      "locale": "en_US",
+      "tags": [
+        "parenting",
+        "family",
+        "forum"
+      ]
     }
   ]
 }

@@ -22,9 +22,9 @@
       "version": 0.2,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ar_SA/hawamer.js",
       "api": 0,
-      "domain": "www.hawamer.com",
+      "domain": "hawamer.com",
       "author": "Synura Team",
-      "icon": "https://www.hawamer.com/favicon.ico",
+      "icon": "https://hawamer.com/favicon.ico",
       "locale": "ar_SA",
       "tags": [
         "finance",

@@ -105,9 +105,9 @@ build:
 	go build -o bin/synurart ./cmd/synurart
 	@echo "Build complete: bin/mock_server, bin/fetch, bin/synurart"
 
-# Generate extensions.json
+# Generate extension repository manifests
 generate_extensions:
-	@echo "Generating extensions.json..."
+	@echo "Generating stable and test extension repositories..."
 	python extensions/generate_extensions_json.py
 	@echo "Done."
 

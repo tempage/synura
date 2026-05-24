@@ -31,6 +31,22 @@
       ]
     },
     {
+      "name": "instiz",
+      "description": "Unofficial Instiz.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/instiz.js",
+      "api": 0,
+      "domain": "www.instiz.net",
+      "author": "Synura Team",
+      "icon": "https://www.instiz.net/favicon.ico",
+      "locale": "ko_KR",
+      "tags": [
+        "entertainment",
+        "fandom",
+        "forum"
+      ]
+    },
+    {
       "name": "pann",
       "description": "Unofficial Nate Pann extension",
       "version": 0.1,
@@ -176,6 +192,22 @@
       "tags": [
         "entertainment",
         "fandom",
+        "forum"
+      ]
+    },
+    {
+      "name": "todayhumor",
+      "description": "Unofficial Today Humor.",
+      "version": 0.2,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ko_KR/todayhumor.js",
+      "api": 0,
+      "domain": "www.todayhumor.co.kr",
+      "author": "Synura Team",
+      "icon": "https://www.todayhumor.co.kr/favicon.ico",
+      "locale": "ko_KR",
+      "tags": [
+        "humor",
+        "general",
         "forum"
       ]
     }

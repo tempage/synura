@@ -22,7 +22,7 @@
       "version": 0.2,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_PT/forum_da_casa.js",
       "api": 0,
-      "domain": "www.forumdacasa.com",
+      "domain": "forumdacasa.com",
       "author": "Synura Team",
       "icon": "https://www.forumdacasa.com/favicon.ico",
       "locale": "pt_PT",

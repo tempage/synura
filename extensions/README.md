@@ -1,8 +1,13 @@
 # Synura Extensions Repository
 
-**Repository URL (for app):**
+**Stable repository URL (for app):**
 ```
 https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/extensions.json
+```
+
+**Test/beta repository URL:**
+```
+https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/test.json
 ```
 
 A collection of example extensions for the Synura application.
@@ -11,7 +16,8 @@ A collection of example extensions for the Synura application.
 
 ```
 public/extensions/
-├── extensions.json              # Top-level index with includes
+├── extensions.json              # Stable repository index
+├── test.json                    # Full test/beta repository index
 ├── generate_extensions_json.py  # Script to generate JSON files
 ├── README.md
 ├── basic/                       # Example extensions (view demos)
@@ -19,16 +25,35 @@ public/extensions/
 │   ├── list.js
 │   └── ...
 ├── en_US/
-│   ├── extensions.json          # Generated index for this folder
+│   ├── extensions.json          # Stable index for this folder
+│   ├── test.json                # Full test/beta index for this folder
 │   └── reddit.js
 └── ko_KR/
     ├── extensions.json
+    ├── test.json
     └── damoang.js
 ```
 
 ## Repository JSON Format
 
-### Top-Level `extensions.json`
+### Repository Channels
+
+This repository publishes two top-level feeds:
+
+| File | Purpose |
+|------|---------|
+| `extensions.json` | Stable feed used by default. It is an explicit allowlist of promoted extensions. |
+| `test.json` | Full feed for beta/test extensions. It includes every generated locale `test.json`. |
+
+New extensions should land in `test.json` first. Promote an extension by adding
+its `.js` path to `STABLE_EXTENSION_PATHS` in `generate_extensions_json.py`.
+
+Each locale directory follows the same split: `extensions.json` contains only
+stable entries for that locale, while `test.json` contains every generated entry
+in that locale. Locales without promoted stable extensions have an empty
+`extensions.json`.
+
+### Top-Level Repository JSON
 
 The top-level file can contain root-level extensions and includes. Includes can
 use **relative paths** (recommended) or **absolute URLs**:
@@ -180,8 +205,9 @@ python3 generate_extensions_json.py
 This will:
 1. Scan root-level `.js` files and subdirectories in the repo root
 2. Extract metadata from each `SYNURA` object in `.js` files
-3. Generate `extensions.json` in each subdirectory
-4. Generate top-level `extensions.json` with root-level `extensions` and `includes`
+3. Generate stable `extensions.json` and full `test.json` in each subdirectory
+4. Generate top-level `test.json` with root-level `extensions` and locale `test.json` includes
+5. Generate top-level `extensions.json` with root-level stable extensions and stable locale includes
 
 ## Allowed Hosting Domains
 
