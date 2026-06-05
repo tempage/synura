@@ -123,6 +123,7 @@ var SITE = {
     ],
     "listLink": [
       "td.title a[href]",
+      "a.list-link[href]",
       "a[href^='/'][href*='/']",
       "a[href*='theqoo.net/']"
     ],
@@ -454,7 +455,7 @@ var SYNURA = {
     domain: "theqoo.net",
     name: "theqoo",
     description: "Unofficial theqoo.net extension",
-    version: 0.1,
+    version: 0.2,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
@@ -470,7 +471,7 @@ var SYNURA = {
 };
 
 var LIST_LINK_ALLOW_PATTERNS = ["^https://theqoo\\.net/[A-Za-z0-9_]+/\\d+"];
-var LIST_LINK_SELECTORS = ["td.title a[href]","a[href^='/'][href*='/']","a[href*='theqoo.net/']"];
+var LIST_LINK_SELECTORS = ["td.title a[href]","a.list-link[href]","a[href^='/'][href*='/']","a[href*='theqoo.net/']"];
 var LIST_TITLE_SELECTORS = ["td.title",".title_span",".title"];
 var LIST_AUTHOR_SELECTORS = [".name",".author",".writer"];
 var LIST_AVATAR_SELECTORS = [];
