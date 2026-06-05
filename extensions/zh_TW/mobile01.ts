@@ -650,3 +650,75 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "p", queryInt(info.query, "page", 1))
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://m.mobile01.com/",
+    "description": "technology forum",
+    "group": "Taiwan"
+  },
+  {
+    "id": "mobile",
+    "title": "Mobile",
+    "url": "https://m.mobile01.com/forumtopic.php?c=16",
+    "description": "technology forum",
+    "group": "Taiwan"
+  },
+  {
+    "id": "computer",
+    "title": "Computer",
+    "url": "https://m.mobile01.com/forumtopic.php?c=17",
+    "description": "technology forum",
+    "group": "Taiwan"
+  },
+  {
+    "id": "camera",
+    "title": "Camera",
+    "url": "https://m.mobile01.com/forumtopic.php?c=18",
+    "description": "technology forum",
+    "group": "Taiwan"
+  },
+  {
+    "id": "auto",
+    "title": "Auto",
+    "url": "https://m.mobile01.com/forumtopic.php?c=19",
+    "description": "technology forum",
+    "group": "Taiwan"
+  },
+  {
+    "id": "life",
+    "title": "Life",
+    "url": "https://m.mobile01.com/forumtopic.php?c=20",
+    "description": "technology forum",
+    "group": "Taiwan"
+  },
+  {
+    "id": "sports",
+    "title": "Sports",
+    "url": "https://m.mobile01.com/forumtopic.php?c=21",
+    "description": "technology forum",
+    "group": "Taiwan"
+  },
+  {
+    "id": "travel",
+    "title": "Travel",
+    "url": "https://m.mobile01.com/forumtopic.php?c=23",
+    "description": "technology forum",
+    "group": "Taiwan"
+  },
+  {
+    "id": "market",
+    "title": "Market",
+    "url": "https://m.mobile01.com/forumtopic.php?c=24",
+    "description": "technology forum",
+    "group": "Taiwan"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

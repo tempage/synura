@@ -597,3 +597,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "desktops_158_fdpxv2",
+    "title": "Desktops",
+    "url": "https://forum.zwame.pt/forums/desktops.158/",
+    "description": "https://forum.zwame.pt/forums/desktops.158/",
+    "group": "Portugal"
+  },
+  {
+    "id": "portateis_281_6fiz9z",
+    "title": "Portáteis",
+    "url": "https://forum.zwame.pt/forums/portateis.281/",
+    "description": "https://forum.zwame.pt/forums/portateis.281/",
+    "group": "Portugal"
+  },
+  {
+    "id": "perifericos_e_mobiliario_xatx2u",
+    "title": "Periféricos e Mobiliário",
+    "url": "https://forum.zwame.pt/forums/perifericos-e-mobiliario.329/",
+    "description": "https://forum.zwame.pt/forums/perifericos-e-mobiliario.329/",
+    "group": "Portugal"
+  },
+  {
+    "id": "hardware_analises_artigo_2mibs8",
+    "title": "Hardware - Análises, Artigos e Guias",
+    "url": "https://forum.zwame.pt/forums/hardware-analises-artigos-e-guias.110/",
+    "description": "https://forum.zwame.pt/forums/hardware-analises-artigos-e-guias.110/",
+    "group": "Portugal"
+  },
+  {
+    "id": "overclock_projetos_e_ele_ql5oq1",
+    "title": "Overclock, Projetos e Eletrónica",
+    "url": "https://forum.zwame.pt/forums/overclock-projetos-e-eletronica.6/",
+    "description": "https://forum.zwame.pt/forums/overclock-projetos-e-eletronica.6/",
+    "group": "Portugal"
+  },
+  {
+    "id": "overclock_benchmark_4_v6hfwf",
+    "title": "Overclock & Benchmark",
+    "url": "https://forum.zwame.pt/forums/overclock-benchmark.4/",
+    "description": "https://forum.zwame.pt/forums/overclock-benchmark.4/",
+    "group": "Portugal"
+  },
+  {
+    "id": "galeria_de_projectos_71_4hgwtu",
+    "title": "Galeria de projectos",
+    "url": "https://forum.zwame.pt/forums/galeria-de-projectos.71/",
+    "description": "https://forum.zwame.pt/forums/galeria-de-projectos.71/",
+    "group": "Portugal"
+  },
+  {
+    "id": "electronica_72_4k9brp",
+    "title": "Electrónica",
+    "url": "https://forum.zwame.pt/forums/electronica.72/",
+    "description": "https://forum.zwame.pt/forums/electronica.72/",
+    "group": "Portugal"
+  },
+  {
+    "id": "cooling_65_32x4yj",
+    "title": "Cooling",
+    "url": "https://forum.zwame.pt/forums/cooling.65/",
+    "description": "https://forum.zwame.pt/forums/cooling.65/",
+    "group": "Portugal"
+  },
+  {
+    "id": "impressao_3d_322_79xulj",
+    "title": "Impressão 3D",
+    "url": "https://forum.zwame.pt/forums/impressao-3d.322/",
+    "description": "https://forum.zwame.pt/forums/impressao-3d.322/",
+    "group": "Portugal"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

@@ -857,3 +857,19 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://www.turkiyeforum.com/",
+    "description": "general forum",
+    "group": "Turkey"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

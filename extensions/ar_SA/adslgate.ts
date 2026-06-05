@@ -945,3 +945,82 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "135_e23ttn",
+    "title": "قسم أنظمة التشغيل Windows & MacOS",
+    "url": "https://www.adslgate.com/forums/135",
+    "description": "https://www.adslgate.com/forums/135",
+    "group": "Arabic region"
+  },
+  {
+    "id": "188_e23tp9",
+    "title": "قسم الإستشارات و الإستفسارات",
+    "url": "https://www.adslgate.com/forums/188",
+    "description": "https://www.adslgate.com/forums/188",
+    "group": "Arabic region"
+  },
+  {
+    "id": "193_e23toj",
+    "title": "قسم الإستفسارات لأجهزة أندرويد Android",
+    "url": "https://www.adslgate.com/forums/193",
+    "description": "https://www.adslgate.com/forums/193",
+    "group": "Arabic region"
+  },
+  {
+    "id": "216_e23t4n",
+    "title": "قسم تجميعات الحاسب الآلي",
+    "url": "https://www.adslgate.com/forums/216",
+    "description": "https://www.adslgate.com/forums/216",
+    "group": "Arabic region"
+  },
+  {
+    "id": "369_e23s9k",
+    "title": "قسم برامج الهاردوير والحاسب الالي",
+    "url": "https://www.adslgate.com/forums/369",
+    "description": "https://www.adslgate.com/forums/369",
+    "group": "Arabic region"
+  },
+  {
+    "id": "223_e23t3v",
+    "title": "قسم برامج أنظمة التشغيل Windows & MacOS",
+    "url": "https://www.adslgate.com/forums/223",
+    "description": "https://www.adslgate.com/forums/223",
+    "group": "Arabic region"
+  },
+  {
+    "id": "247_e23t21",
+    "title": "قسم الاستفسارات والدعم الفني",
+    "url": "https://www.adslgate.com/forums/247",
+    "description": "https://www.adslgate.com/forums/247",
+    "group": "Arabic region"
+  },
+  {
+    "id": "96_e7915h",
+    "title": "قسم الاستفسارات والدعم الفني لجهاز Playstation",
+    "url": "https://www.adslgate.com/forums/96",
+    "description": "https://www.adslgate.com/forums/96",
+    "group": "Arabic region"
+  },
+  {
+    "id": "99_e7915e",
+    "title": "Playstation® Community",
+    "url": "https://www.adslgate.com/forums/99",
+    "description": "https://www.adslgate.com/forums/99",
+    "group": "Arabic region"
+  },
+  {
+    "id": "157_e23trv",
+    "title": "قسم البيع و الشراء لأجهزة و العاب الـ Xbox",
+    "url": "https://www.adslgate.com/forums/157",
+    "description": "https://www.adslgate.com/forums/157",
+    "group": "Arabic region"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

@@ -808,3 +808,75 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "latest_deals",
+    "title": "Latest Deals",
+    "url": "https://www.desidime.com/deals",
+    "description": "Latest deals",
+    "group": "India"
+  },
+  {
+    "id": "hot_deals_online_yz4utw",
+    "title": "Hot Deals Online",
+    "url": "https://www.desidime.com/forums/hot-deals-online",
+    "description": "https://www.desidime.com/forums/hot-deals-online",
+    "group": "India"
+  },
+  {
+    "id": "freebies_all_free_stuff_6tbsog",
+    "title": "Freebies & Contests",
+    "url": "https://www.desidime.com/forums/freebies-all-free-stuff",
+    "description": "https://www.desidime.com/forums/freebies-all-free-stuff",
+    "group": "India"
+  },
+  {
+    "id": "dost_and_dimes_13rwbe",
+    "title": "Dost and Dimes",
+    "url": "https://www.desidime.com/forums/dost-and-dimes",
+    "description": "https://www.desidime.com/forums/dost-and-dimes",
+    "group": "India"
+  },
+  {
+    "id": "finance_cqwybl",
+    "title": "Finance",
+    "url": "https://www.desidime.com/forums/finance",
+    "description": "https://www.desidime.com/forums/finance",
+    "group": "India"
+  },
+  {
+    "id": "trading_classifieds_fy99mh",
+    "title": "Trading and Classifieds",
+    "url": "https://www.desidime.com/forums/trading-classifieds",
+    "description": "https://www.desidime.com/forums/trading-classifieds",
+    "group": "India"
+  },
+  {
+    "id": "deal_baba_8ugh44",
+    "title": "Deal Baba",
+    "url": "https://www.desidime.com/forums/deal-baba",
+    "description": "https://www.desidime.com/forums/deal-baba",
+    "group": "India"
+  },
+  {
+    "id": "request_giveaways_a4si7v",
+    "title": "Request & Giveways",
+    "url": "https://www.desidime.com/forums/request-giveaways",
+    "description": "https://www.desidime.com/forums/request-giveaways",
+    "group": "India"
+  },
+  {
+    "id": "suggestions_issues_quest_ab6maa",
+    "title": "Questions, issues and suggestions for Desidime",
+    "url": "https://www.desidime.com/forums/suggestions-issues-questions-desidime",
+    "description": "https://www.desidime.com/forums/suggestions-issues-questions-desidime",
+    "group": "India"
+  }
+ ];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

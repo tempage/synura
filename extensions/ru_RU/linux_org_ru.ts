@@ -811,3 +811,75 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://www.linux.org.ru/",
+    "description": "technology forum",
+    "group": "Russia"
+  },
+  {
+    "id": "news",
+    "title": "News",
+    "url": "https://www.linux.org.ru/news/",
+    "description": "technology forum",
+    "group": "Russia"
+  },
+  {
+    "id": "talks",
+    "title": "Talks",
+    "url": "https://www.linux.org.ru/forum/talks/",
+    "description": "technology forum",
+    "group": "Russia"
+  },
+  {
+    "id": "general",
+    "title": "General",
+    "url": "https://www.linux.org.ru/forum/general/",
+    "description": "technology forum",
+    "group": "Russia"
+  },
+  {
+    "id": "development",
+    "title": "Development",
+    "url": "https://www.linux.org.ru/forum/development/",
+    "description": "technology forum",
+    "group": "Russia"
+  },
+  {
+    "id": "admin",
+    "title": "Admin",
+    "url": "https://www.linux.org.ru/forum/admin/",
+    "description": "technology forum",
+    "group": "Russia"
+  },
+  {
+    "id": "security",
+    "title": "Security",
+    "url": "https://www.linux.org.ru/forum/security/",
+    "description": "technology forum",
+    "group": "Russia"
+  },
+  {
+    "id": "desktop",
+    "title": "Desktop",
+    "url": "https://www.linux.org.ru/forum/desktop/",
+    "description": "technology forum",
+    "group": "Russia"
+  },
+  {
+    "id": "gallery",
+    "title": "Gallery",
+    "url": "https://www.linux.org.ru/gallery/",
+    "description": "technology forum",
+    "group": "Russia"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

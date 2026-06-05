@@ -601,3 +601,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "clubes_e_eventos_87_jkmpjj",
+    "title": "Clubes e Eventos",
+    "url": "https://portalclassicos.com/foruns/forums/clubes-e-eventos.87/",
+    "description": "https://portalclassicos.com/foruns/forums/clubes-e-eventos.87/",
+    "group": "Portugal"
+  },
+  {
+    "id": "o_portal_dos_cl_c3_a1ssi_1xze4o",
+    "title": "O Portal dos Clássicos",
+    "url": "https://portalclassicos.com/foruns/forums/o-portal-dos-cl%C3%A1ssicos.138/",
+    "description": "https://portalclassicos.com/foruns/forums/o-portal-dos-cl%C3%A1ssicos.138/",
+    "group": "Portugal"
+  },
+  {
+    "id": "iniciativas_do_portal_13_8uzmif",
+    "title": "Iniciativas do Portal",
+    "url": "https://portalclassicos.com/foruns/forums/iniciativas-do-portal.139/",
+    "description": "https://portalclassicos.com/foruns/forums/iniciativas-do-portal.139/",
+    "group": "Portugal"
+  },
+  {
+    "id": "os_entusiastas_do_portal_fprmjn",
+    "title": "Os Entusiastas do Portal",
+    "url": "https://portalclassicos.com/foruns/forums/os-entusiastas-do-portal.136/",
+    "description": "https://portalclassicos.com/foruns/forums/os-entusiastas-do-portal.136/",
+    "group": "Portugal"
+  },
+  {
+    "id": "f0_9f_93_93_di_c3_a1rios_m4mtbm",
+    "title": "📓 Diários de Bordo",
+    "url": "https://portalclassicos.com/foruns/forums/%F0%9F%93%93-di%C3%A1rios-de-bordo.93/",
+    "description": "https://portalclassicos.com/foruns/forums/%F0%9F%93%93-di%C3%A1rios-de-bordo.93/",
+    "group": "Portugal"
+  },
+  {
+    "id": "diario_restauro_5natzt",
+    "title": "🔧 Diários de Restauro",
+    "url": "https://portalclassicos.com/foruns/forums/diario-restauro/",
+    "description": "https://portalclassicos.com/foruns/forums/diario-restauro/",
+    "group": "Portugal"
+  },
+  {
+    "id": "apoio_tecnico_restauro_m_vb9slv",
+    "title": "🧰 Apoio Técnico – Restauro e Manutenção",
+    "url": "https://portalclassicos.com/foruns/forums/apoio-tecnico-restauro-manutencao/",
+    "description": "https://portalclassicos.com/foruns/forums/apoio-tecnico-restauro-manutencao/",
+    "group": "Portugal"
+  },
+  {
+    "id": "motos_e_motorizadas_123_ygbo0h",
+    "title": "Motos e Motorizadas",
+    "url": "https://portalclassicos.com/foruns/forums/motos-e-motorizadas.123/",
+    "description": "https://portalclassicos.com/foruns/forums/motos-e-motorizadas.123/",
+    "group": "Portugal"
+  },
+  {
+    "id": "acess_c3_b3rios_98_g4ikox",
+    "title": "Acessórios",
+    "url": "https://portalclassicos.com/foruns/forums/acess%C3%B3rios.98/",
+    "description": "https://portalclassicos.com/foruns/forums/acess%C3%B3rios.98/",
+    "group": "Portugal"
+  },
+  {
+    "id": "sistemas_el_c3_a9ctricos_pcr9ew",
+    "title": "Sistemas Eléctricos",
+    "url": "https://portalclassicos.com/foruns/forums/sistemas-el%C3%A9ctricos.122/",
+    "description": "https://portalclassicos.com/foruns/forums/sistemas-el%C3%A9ctricos.122/",
+    "group": "Portugal"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

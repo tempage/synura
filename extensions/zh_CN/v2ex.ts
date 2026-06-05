@@ -1008,3 +1008,82 @@ function v2exOwnText(node) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "all",
+    "title": "All",
+    "url": "https://www.v2ex.com/?tab=all",
+    "description": "technology community",
+    "group": "Mainland China"
+  },
+  {
+    "id": "tech",
+    "title": "Tech",
+    "url": "https://www.v2ex.com/?tab=tech",
+    "description": "technology community",
+    "group": "Mainland China"
+  },
+  {
+    "id": "creative",
+    "title": "Creative",
+    "url": "https://www.v2ex.com/?tab=creative",
+    "description": "technology community",
+    "group": "Mainland China"
+  },
+  {
+    "id": "play",
+    "title": "Play",
+    "url": "https://www.v2ex.com/?tab=play",
+    "description": "technology community",
+    "group": "Mainland China"
+  },
+  {
+    "id": "apple",
+    "title": "Apple",
+    "url": "https://www.v2ex.com/?tab=apple",
+    "description": "technology community",
+    "group": "Mainland China"
+  },
+  {
+    "id": "jobs",
+    "title": "Jobs",
+    "url": "https://www.v2ex.com/?tab=jobs",
+    "description": "technology community",
+    "group": "Mainland China"
+  },
+  {
+    "id": "deals",
+    "title": "Deals",
+    "url": "https://www.v2ex.com/?tab=deals",
+    "description": "technology community",
+    "group": "Mainland China"
+  },
+  {
+    "id": "city",
+    "title": "City",
+    "url": "https://www.v2ex.com/?tab=city",
+    "description": "technology community",
+    "group": "Mainland China"
+  },
+  {
+    "id": "qna",
+    "title": "Q&A",
+    "url": "https://www.v2ex.com/?tab=qna",
+    "description": "technology community",
+    "group": "Mainland China"
+  },
+  {
+    "id": "hot",
+    "title": "Hot",
+    "url": "https://www.v2ex.com/?tab=hot",
+    "description": "technology community",
+    "group": "Mainland China"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

@@ -1059,3 +1059,61 @@ function overclockzoneOwnText(node) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "game_forums_dtivf0",
+    "title": "Game Forums",
+    "url": "https://forum.overclockzone.com/forums/forum/game-forums",
+    "description": "https://forum.overclockzone.com/forums/forum/game-forums",
+    "group": "Thailand"
+  },
+  {
+    "id": "hardware_zone_i737nc",
+    "title": "Hardware Zone",
+    "url": "https://forum.overclockzone.com/forums/forum/hardware-zone",
+    "description": "https://forum.overclockzone.com/forums/forum/hardware-zone",
+    "group": "Thailand"
+  },
+  {
+    "id": "software_10j0sg",
+    "title": "Software",
+    "url": "https://forum.overclockzone.com/forums/forum/software",
+    "description": "https://forum.overclockzone.com/forums/forum/software",
+    "group": "Thailand"
+  },
+  {
+    "id": "mobile_device_e6ixw8",
+    "title": "Mobile Device",
+    "url": "https://forum.overclockzone.com/forums/forum/mobile-device",
+    "description": "https://forum.overclockzone.com/forums/forum/mobile-device",
+    "group": "Thailand"
+  },
+  {
+    "id": "data_center_xcimcf",
+    "title": "Data center",
+    "url": "https://forum.overclockzone.com/forums/forum/data-center",
+    "description": "https://forum.overclockzone.com/forums/forum/data-center",
+    "group": "Thailand"
+  },
+  {
+    "id": "show_it_off_3q9eho",
+    "title": "Show It Off !!",
+    "url": "https://forum.overclockzone.com/forums/forum/show-it-off",
+    "description": "https://forum.overclockzone.com/forums/forum/show-it-off",
+    "group": "Thailand"
+  },
+  {
+    "id": "marketplace_kns3ki",
+    "title": "Marketplace",
+    "url": "https://forum.overclockzone.com/forums/forum/marketplace",
+    "description": "https://forum.overclockzone.com/forums/forum/marketplace",
+    "group": "Thailand"
+  }
+ ];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

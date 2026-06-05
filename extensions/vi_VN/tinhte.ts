@@ -838,3 +838,19 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://tinhte.vn/",
+    "description": "technology community",
+    "group": "Vietnam"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

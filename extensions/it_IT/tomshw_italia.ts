@@ -599,3 +599,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "presentati_alla_communit_llad9o",
+    "title": "Presentati alla Community",
+    "url": "https://forum.tomshw.it/forums/presentati-alla-community.138/",
+    "description": "https://forum.tomshw.it/forums/presentati-alla-community.138/",
+    "group": "Italy"
+  },
+  {
+    "id": "cpu_topic_ufficiali_339_li3uny",
+    "title": "CPU Topic Ufficiali",
+    "url": "https://forum.tomshw.it/forums/cpu-topic-ufficiali.339/",
+    "description": "https://forum.tomshw.it/forums/cpu-topic-ufficiali.339/",
+    "group": "Italy"
+  },
+  {
+    "id": "crazy_topic_20_rqs1hh",
+    "title": "Crazy topic",
+    "url": "https://forum.tomshw.it/forums/crazy-topic.20/",
+    "description": "https://forum.tomshw.it/forums/crazy-topic.20/",
+    "group": "Italy"
+  },
+  {
+    "id": "crazy_topic_underground__rnbite",
+    "title": "Crazy topic Underground",
+    "url": "https://forum.tomshw.it/forums/crazy-topic-underground.221/",
+    "description": "https://forum.tomshw.it/forums/crazy-topic-underground.221/",
+    "group": "Italy"
+  },
+  {
+    "id": "notizie_di_toms_hardware_y21n84",
+    "title": "Notizie di Tom's Hardware",
+    "url": "https://forum.tomshw.it/forums/notizie-di-toms-hardware.346/",
+    "description": "https://forum.tomshw.it/forums/notizie-di-toms-hardware.346/",
+    "group": "Italy"
+  },
+  {
+    "id": "news_annunci_140_c3nr9t",
+    "title": "News & Annunci",
+    "url": "https://forum.tomshw.it/forums/news-annunci.140/",
+    "description": "https://forum.tomshw.it/forums/news-annunci.140/",
+    "group": "Italy"
+  },
+  {
+    "id": "computer_da_gioco_e_vr_1_841e5b",
+    "title": "Computer da Gioco e VR",
+    "url": "https://forum.tomshw.it/forums/computer-da-gioco-e-vr.195/",
+    "description": "https://forum.tomshw.it/forums/computer-da-gioco-e-vr.195/",
+    "group": "Italy"
+  },
+  {
+    "id": "computer_economici_e_uff_swjz3o",
+    "title": "Computer Economici e Ufficio",
+    "url": "https://forum.tomshw.it/forums/computer-economici-e-ufficio.194/",
+    "description": "https://forum.tomshw.it/forums/computer-economici-e-ufficio.194/",
+    "group": "Italy"
+  },
+  {
+    "id": "computer_workstation_329_j77znb",
+    "title": "Computer Workstation",
+    "url": "https://forum.tomshw.it/forums/computer-workstation.329/",
+    "description": "https://forum.tomshw.it/forums/computer-workstation.329/",
+    "group": "Italy"
+  },
+  {
+    "id": "computer_portatili_14_bfl6vt",
+    "title": "Computer Portatili",
+    "url": "https://forum.tomshw.it/forums/computer-portatili.14/",
+    "description": "https://forum.tomshw.it/forums/computer-portatili.14/",
+    "group": "Italy"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

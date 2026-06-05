@@ -783,3 +783,82 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "topic_xgcfko",
+    "title": "All Topics",
+    "url": "https://www.indiaforums.com/forum/topic",
+    "description": "https://www.indiaforums.com/forum/topic",
+    "group": "India"
+  },
+  {
+    "id": "bollywood_9uga0i",
+    "title": "Bollywood Forum",
+    "url": "https://www.indiaforums.com/forum/bollywood",
+    "description": "https://www.indiaforums.com/forum/bollywood",
+    "group": "India"
+  },
+  {
+    "id": "hollywood_rfzqrs",
+    "title": "Hollywood Forum",
+    "url": "https://www.indiaforums.com/forum/hollywood",
+    "description": "https://www.indiaforums.com/forum/hollywood",
+    "group": "India"
+  },
+  {
+    "id": "indian_premier_league_m44bmp",
+    "title": "Indian Premier League",
+    "url": "https://www.indiaforums.com/forum/indian-premier-league",
+    "description": "https://www.indiaforums.com/forum/indian-premier-league",
+    "group": "India"
+  },
+  {
+    "id": "sports_rxh57q",
+    "title": "Sports",
+    "url": "https://www.indiaforums.com/forum/sports",
+    "description": "https://www.indiaforums.com/forum/sports",
+    "group": "India"
+  },
+  {
+    "id": "suggestions_comments_am7guf",
+    "title": "Suggestions / Comments",
+    "url": "https://www.indiaforums.com/forum/suggestions-comments",
+    "description": "https://www.indiaforums.com/forum/suggestions-comments",
+    "group": "India"
+  },
+  {
+    "id": "mr_and_mrs_parshuram_dbqy21",
+    "title": "Mr. and Mrs. Parshuram 0",
+    "url": "https://www.indiaforums.com/forum/mr-and-mrs-parshuram",
+    "description": "https://www.indiaforums.com/forum/mr-and-mrs-parshuram",
+    "group": "India"
+  },
+  {
+    "id": "o_humnava_tum_dena_saath_ak5c0f",
+    "title": "O Humnava Tum Dena Saath Mera 0",
+    "url": "https://www.indiaforums.com/forum/o-humnava-tum-dena-saath-mera",
+    "description": "https://www.indiaforums.com/forum/o-humnava-tum-dena-saath-mera",
+    "group": "India"
+  },
+  {
+    "id": "yeh_rishta_kya_kehlata_h_bgt8sj",
+    "title": "Yeh Rishta Kya Kehlata Hai 1",
+    "url": "https://www.indiaforums.com/forum/yeh-rishta-kya-kehlata-hai",
+    "description": "https://www.indiaforums.com/forum/yeh-rishta-kya-kehlata-hai",
+    "group": "India"
+  },
+  {
+    "id": "kyunki_saas_bhi_kabhi_ba_io55sh",
+    "title": "Kyunki Saas Bhi Kabhi Bahu Thi 2 4",
+    "url": "https://www.indiaforums.com/forum/kyunki-saas-bhi-kabhi-bahu-thi-2",
+    "description": "https://www.indiaforums.com/forum/kyunki-saas-bhi-kabhi-bahu-thi-2",
+    "group": "India"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

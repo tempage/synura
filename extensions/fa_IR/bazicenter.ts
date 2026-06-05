@@ -591,3 +591,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "d8_a7_d8_ae_d8_a8_d8_a7__cfi9ne",
+    "title": "اخبار بازی‌ها",
+    "url": "https://forum.bazicenter.com/forums/%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1-%D8%A8%D8%A7%D8%B2%DB%8C%E2%80%8C%D9%87%D8%A7.69/",
+    "description": "https://forum.bazicenter.com/forums/%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1-%D8%A8%D8%A7%D8%B2%DB%8C%E2%80%8C%D9%87%D8%A7.69/",
+    "group": "Iran"
+  },
+  {
+    "id": "d8_a7_d9_85_d8_aa_db_8c__a140rw",
+    "title": "امتیاز‌های سایت‌‌ها و مجله‌ها به بازی‌ها",
+    "url": "https://forum.bazicenter.com/forums/%D8%A7%D9%85%D8%AA%DB%8C%D8%A7%D8%B2%E2%80%8C%D9%87%D8%A7%DB%8C-%D8%B3%D8%A7%DB%8C%D8%AA%E2%80%8C%E2%80%8C%D9%87%D8%A7-%D9%88-%D9%85%D8%AC%D9%84%D9%87%E2%80%8C%D9%87%D8%A7-%D8%A8%D9%87-%D8%A8%D8%A7%D8%B2%DB%8C%E2%80%8C%D9%87%D8%A7.84/",
+    "description": "https://forum.bazicenter.com/forums/%D8%A7%D9%85%D8%AA%DB%8C%D8%A7%D8%B2%E2%80%8C%D9%87%D8%A7%DB%8C-%D8%B3%D8%A7%DB%8C%D8%AA%E2%80%8C%E2%80%8C%D9%87%D8%A7-%D9%88-%D9%85%D8%AC%D9%84%D9%87%E2%80%8C%D9%87%D8%A7-%D8%A8%D9%87-%D8%A8%D8%A7%D8%B2%DB%8C%E2%80%8C%D9%87%D8%A7.84/",
+    "group": "Iran"
+  },
+  {
+    "id": "d8_a8_d8_a7_d8_b2_db_8c__frdhhv",
+    "title": "بازی‌های کنسول و کامپیوتر",
+    "url": "https://forum.bazicenter.com/forums/%D8%A8%D8%A7%D8%B2%DB%8C%E2%80%8C%D9%87%D8%A7%DB%8C-%DA%A9%D9%86%D8%B3%D9%88%D9%84-%D9%88-%DA%A9%D8%A7%D9%85%D9%BE%DB%8C%D9%88%D8%AA%D8%B1.207/",
+    "description": "https://forum.bazicenter.com/forums/%D8%A8%D8%A7%D8%B2%DB%8C%E2%80%8C%D9%87%D8%A7%DB%8C-%DA%A9%D9%86%D8%B3%D9%88%D9%84-%D9%88-%DA%A9%D8%A7%D9%85%D9%BE%DB%8C%D9%88%D8%AA%D8%B1.207/",
+    "group": "Iran"
+  },
+  {
+    "id": "da_af_d9_81_d8_aa_da_af__2cjvql",
+    "title": "گفتگوی آزاد پیرامون بازی‌ها",
+    "url": "https://forum.bazicenter.com/forums/%DA%AF%D9%81%D8%AA%DA%AF%D9%88%DB%8C-%D8%A2%D8%B2%D8%A7%D8%AF-%D9%BE%DB%8C%D8%B1%D8%A7%D9%85%D9%88%D9%86-%D8%A8%D8%A7%D8%B2%DB%8C%E2%80%8C%D9%87%D8%A7.48/",
+    "description": "https://forum.bazicenter.com/forums/%DA%AF%D9%81%D8%AA%DA%AF%D9%88%DB%8C-%D8%A2%D8%B2%D8%A7%D8%AF-%D9%BE%DB%8C%D8%B1%D8%A7%D9%85%D9%88%D9%86-%D8%A8%D8%A7%D8%B2%DB%8C%E2%80%8C%D9%87%D8%A7.48/",
+    "group": "Iran"
+  },
+  {
+    "id": "d8_a8_d8_a7_d8_b2_db_8c__bknay7",
+    "title": "بازی‌ها و پلتفرم‌های آنلاین",
+    "url": "https://forum.bazicenter.com/forums/%D8%A8%D8%A7%D8%B2%DB%8C%E2%80%8C%D9%87%D8%A7-%D9%88-%D9%BE%D9%84%D8%AA%D9%81%D8%B1%D9%85%E2%80%8C%D9%87%D8%A7%DB%8C-%D8%A2%D9%86%D9%84%D8%A7%DB%8C%D9%86.28/",
+    "description": "https://forum.bazicenter.com/forums/%D8%A8%D8%A7%D8%B2%DB%8C%E2%80%8C%D9%87%D8%A7-%D9%88-%D9%BE%D9%84%D8%AA%D9%81%D8%B1%D9%85%E2%80%8C%D9%87%D8%A7%DB%8C-%D8%A2%D9%86%D9%84%D8%A7%DB%8C%D9%86.28/",
+    "group": "Iran"
+  },
+  {
+    "id": "playstation_5_230_8vvkje",
+    "title": "PlayStation 5",
+    "url": "https://forum.bazicenter.com/forums/playstation-5.230/",
+    "description": "https://forum.bazicenter.com/forums/playstation-5.230/",
+    "group": "Iran"
+  },
+  {
+    "id": "xbox_series_231_fk86ik",
+    "title": "Xbox Series",
+    "url": "https://forum.bazicenter.com/forums/xbox-series.231/",
+    "description": "https://forum.bazicenter.com/forums/xbox-series.231/",
+    "group": "Iran"
+  },
+  {
+    "id": "nintendo_switch_218_i51di0",
+    "title": "Nintendo Switch",
+    "url": "https://forum.bazicenter.com/forums/nintendo-switch.218/",
+    "description": "https://forum.bazicenter.com/forums/nintendo-switch.218/",
+    "group": "Iran"
+  },
+  {
+    "id": "playstation_4_179_9cxqql",
+    "title": "PlayStation 4",
+    "url": "https://forum.bazicenter.com/forums/playstation-4.179/",
+    "description": "https://forum.bazicenter.com/forums/playstation-4.179/",
+    "group": "Iran"
+  },
+  {
+    "id": "trophies_guide_200_zd1svm",
+    "title": "Trophies Guide",
+    "url": "https://forum.bazicenter.com/forums/trophies-guide.200/",
+    "description": "https://forum.bazicenter.com/forums/trophies-guide.200/",
+    "group": "Iran"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

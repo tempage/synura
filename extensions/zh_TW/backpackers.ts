@@ -854,3 +854,82 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "forumdisplay_php_sxg77c",
+    "title": "好文投稿 〉",
+    "url": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=169",
+    "description": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=169",
+    "group": "Taiwan"
+  },
+  {
+    "id": "forumdisplay_php_sxg781",
+    "title": "東北亞旅遊好文 〉",
+    "url": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=173",
+    "description": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=173",
+    "group": "Taiwan"
+  },
+  {
+    "id": "forumdisplay_php_sxg780",
+    "title": "東南亞旅遊好文 〉",
+    "url": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=172",
+    "description": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=172",
+    "group": "Taiwan"
+  },
+  {
+    "id": "forumdisplay_php_sxg8oo",
+    "title": "韓國旅遊好文 〉",
+    "url": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=367",
+    "description": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=367",
+    "group": "Taiwan"
+  },
+  {
+    "id": "forumdisplay_php_5ikj19",
+    "title": "日本北海道 〉",
+    "url": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=56",
+    "description": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=56",
+    "group": "Taiwan"
+  },
+  {
+    "id": "forumdisplay_php_sxg74q",
+    "title": "日本九州 〉",
+    "url": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=138",
+    "description": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=138",
+    "group": "Taiwan"
+  },
+  {
+    "id": "forumdisplay_php_sxg75d",
+    "title": "日本沖繩 〉",
+    "url": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=140",
+    "description": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=140",
+    "group": "Taiwan"
+  },
+  {
+    "id": "forumdisplay_php_5ikj15",
+    "title": "越南 〉",
+    "url": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=52",
+    "description": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=52",
+    "group": "Taiwan"
+  },
+  {
+    "id": "forumdisplay_php_5ikj3r",
+    "title": "菲律賓及長灘島 〉",
+    "url": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=83",
+    "description": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=83",
+    "group": "Taiwan"
+  },
+  {
+    "id": "forumdisplay_php_5ikiyi",
+    "title": "中國港澳綜合 〉",
+    "url": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=20",
+    "description": "https://www.backpackers.com.tw/forum/forumdisplay.php?s=52eeec8475bfc5e411760928e66a5498&f=20",
+    "group": "Taiwan"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

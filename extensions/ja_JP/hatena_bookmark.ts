@@ -805,3 +805,82 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "all",
+    "title": "All Hotentries",
+    "url": "https://b.hatena.ne.jp/hotentry/all",
+    "description": "social bookmarking",
+    "group": "Japan"
+  },
+  {
+    "id": "general",
+    "title": "General",
+    "url": "https://b.hatena.ne.jp/hotentry/general",
+    "description": "social bookmarking",
+    "group": "Japan"
+  },
+  {
+    "id": "social",
+    "title": "Social",
+    "url": "https://b.hatena.ne.jp/hotentry/social",
+    "description": "social bookmarking",
+    "group": "Japan"
+  },
+  {
+    "id": "economics",
+    "title": "Economics",
+    "url": "https://b.hatena.ne.jp/hotentry/economics",
+    "description": "social bookmarking",
+    "group": "Japan"
+  },
+  {
+    "id": "life",
+    "title": "Life",
+    "url": "https://b.hatena.ne.jp/hotentry/life",
+    "description": "social bookmarking",
+    "group": "Japan"
+  },
+  {
+    "id": "knowledge",
+    "title": "Knowledge",
+    "url": "https://b.hatena.ne.jp/hotentry/knowledge",
+    "description": "social bookmarking",
+    "group": "Japan"
+  },
+  {
+    "id": "it",
+    "title": "IT",
+    "url": "https://b.hatena.ne.jp/hotentry/it",
+    "description": "social bookmarking",
+    "group": "Japan"
+  },
+  {
+    "id": "entertainment",
+    "title": "Entertainment",
+    "url": "https://b.hatena.ne.jp/hotentry/entertainment",
+    "description": "social bookmarking",
+    "group": "Japan"
+  },
+  {
+    "id": "game",
+    "title": "Game",
+    "url": "https://b.hatena.ne.jp/hotentry/game",
+    "description": "social bookmarking",
+    "group": "Japan"
+  },
+  {
+    "id": "fun",
+    "title": "Fun",
+    "url": "https://b.hatena.ne.jp/hotentry/fun",
+    "description": "social bookmarking",
+    "group": "Japan"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

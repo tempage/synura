@@ -602,3 +602,33 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://forum.outerspace.com.br/index.php",
+    "description": "gaming forum",
+    "group": "Brazil"
+  },
+  {
+    "id": "nintendo",
+    "title": "Nintendo",
+    "url": "https://forum.outerspace.com.br/index.php?forums/nintendo.4/",
+    "description": "gaming forum",
+    "group": "Brazil"
+  },
+  {
+    "id": "playstation",
+    "title": "PlayStation",
+    "url": "https://forum.outerspace.com.br/index.php?forums/playstation.5/",
+    "description": "gaming forum",
+    "group": "Brazil"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

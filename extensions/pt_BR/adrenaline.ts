@@ -597,3 +597,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "processadores_placas_mae_tp10gb",
+    "title": "Processadores, Placas-mãe e Memórias",
+    "url": "https://forum.adrenaline.com.br/forums/processadores-placas-mae-e-memorias.8/",
+    "description": "https://forum.adrenaline.com.br/forums/processadores-placas-mae-e-memorias.8/",
+    "group": "Brazil"
+  },
+  {
+    "id": "placas_de_video_e_monito_ltva7",
+    "title": "Placas de vídeo e Monitores",
+    "url": "https://forum.adrenaline.com.br/forums/placas-de-video-e-monitores.23/",
+    "description": "https://forum.adrenaline.com.br/forums/placas-de-video-e-monitores.23/",
+    "group": "Brazil"
+  },
+  {
+    "id": "overclock_177_871qxe",
+    "title": "Overclock",
+    "url": "https://forum.adrenaline.com.br/forums/overclock.177/",
+    "description": "https://forum.adrenaline.com.br/forums/overclock.177/",
+    "group": "Brazil"
+  },
+  {
+    "id": "fontes_de_energia_e_afin_7cu0dt",
+    "title": "Fontes de Energia e afins",
+    "url": "https://forum.adrenaline.com.br/forums/fontes-de-energia-e-afins.173/",
+    "description": "https://forum.adrenaline.com.br/forums/fontes-de-energia-e-afins.173/",
+    "group": "Brazil"
+  },
+  {
+    "id": "ssds_hdds_armazenamento__1ku5bk",
+    "title": "SSDs, HDDs, Armazenamento de dados",
+    "url": "https://forum.adrenaline.com.br/forums/ssds-hdds-armazenamento-de-dados.171/",
+    "description": "https://forum.adrenaline.com.br/forums/ssds-hdds-armazenamento-de-dados.171/",
+    "group": "Brazil"
+  },
+  {
+    "id": "sistema_de_audio_170_kbnqrm",
+    "title": "Sistema de Áudio",
+    "url": "https://forum.adrenaline.com.br/forums/sistema-de-audio.170/",
+    "description": "https://forum.adrenaline.com.br/forums/sistema-de-audio.170/",
+    "group": "Brazil"
+  },
+  {
+    "id": "coolers_e_componentes_pa_oq0usn",
+    "title": "Coolers e componentes para resfriar",
+    "url": "https://forum.adrenaline.com.br/forums/coolers-e-componentes-para-resfriar.225/",
+    "description": "https://forum.adrenaline.com.br/forums/coolers-e-componentes-para-resfriar.225/",
+    "group": "Brazil"
+  },
+  {
+    "id": "gabinetes_e_case_mod_44_lvx8mn",
+    "title": "Gabinetes e Case Mod",
+    "url": "https://forum.adrenaline.com.br/forums/gabinetes-e-case-mod.44/",
+    "description": "https://forum.adrenaline.com.br/forums/gabinetes-e-case-mod.44/",
+    "group": "Brazil"
+  },
+  {
+    "id": "notebooks_175_6g70eu",
+    "title": "Notebooks",
+    "url": "https://forum.adrenaline.com.br/forums/notebooks.175/",
+    "description": "https://forum.adrenaline.com.br/forums/notebooks.175/",
+    "group": "Brazil"
+  },
+  {
+    "id": "perifericos_e_acessorios_d9urjm",
+    "title": "Periféricos e Acessórios",
+    "url": "https://forum.adrenaline.com.br/forums/perifericos-e-acessorios.213/",
+    "description": "https://forum.adrenaline.com.br/forums/perifericos-e-acessorios.213/",
+    "group": "Brazil"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

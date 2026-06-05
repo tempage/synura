@@ -647,3 +647,75 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "bolsa",
+    "title": "Bolsa",
+    "url": "https://www.rankia.com/foros/bolsa/temas",
+    "description": "finance forum",
+    "group": "Spain"
+  },
+  {
+    "id": "fondos",
+    "title": "Fondos",
+    "url": "https://www.rankia.com/foros/fondos-inversion/temas",
+    "description": "finance forum",
+    "group": "Spain"
+  },
+  {
+    "id": "bancos",
+    "title": "Bancos",
+    "url": "https://www.rankia.com/foros/bancos-cajas/temas",
+    "description": "finance forum",
+    "group": "Spain"
+  },
+  {
+    "id": "hipotecas",
+    "title": "Hipotecas",
+    "url": "https://www.rankia.com/foros/hipotecas/temas",
+    "description": "finance forum",
+    "group": "Spain"
+  },
+  {
+    "id": "seguros",
+    "title": "Seguros",
+    "url": "https://www.rankia.com/foros/seguros/temas",
+    "description": "finance forum",
+    "group": "Spain"
+  },
+  {
+    "id": "depositos",
+    "title": "Depósitos",
+    "url": "https://www.rankia.com/foros/depositos/temas",
+    "description": "finance forum",
+    "group": "Spain"
+  },
+  {
+    "id": "fiscalidad",
+    "title": "Fiscalidad",
+    "url": "https://www.rankia.com/foros/fiscalidad/temas",
+    "description": "finance forum",
+    "group": "Spain"
+  },
+  {
+    "id": "economia",
+    "title": "Economía",
+    "url": "https://www.rankia.com/foros/economia/temas",
+    "description": "finance forum",
+    "group": "Spain"
+  },
+  {
+    "id": "empresas",
+    "title": "Empresas",
+    "url": "https://www.rankia.com/foros/empresas/temas",
+    "description": "finance forum",
+    "group": "Spain"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

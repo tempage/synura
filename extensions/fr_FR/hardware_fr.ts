@@ -788,3 +788,82 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "liste_sujet_1_htm_ngafmb",
+    "title": "Carte mère",
+    "url": "https://forum.hardware.fr/hfr/Hardware/carte-mere/liste_sujet-1.htm",
+    "description": "https://forum.hardware.fr/hfr/Hardware/carte-mere/liste_sujet-1.htm",
+    "group": "France"
+  },
+  {
+    "id": "liste_sujet_1_htm_sl5mi2",
+    "title": "Mémoire",
+    "url": "https://forum.hardware.fr/hfr/Hardware/Memoire/liste_sujet-1.htm",
+    "description": "https://forum.hardware.fr/hfr/Hardware/Memoire/liste_sujet-1.htm",
+    "group": "France"
+  },
+  {
+    "id": "liste_sujet_1_htm_sj76zx",
+    "title": "Processeur",
+    "url": "https://forum.hardware.fr/hfr/Hardware/Processeur/liste_sujet-1.htm",
+    "description": "https://forum.hardware.fr/hfr/Hardware/Processeur/liste_sujet-1.htm",
+    "group": "France"
+  },
+  {
+    "id": "liste_sujet_1_htm_bjvc68",
+    "title": "Carte graphique",
+    "url": "https://forum.hardware.fr/hfr/Hardware/2D-3D/liste_sujet-1.htm",
+    "description": "https://forum.hardware.fr/hfr/Hardware/2D-3D/liste_sujet-1.htm",
+    "group": "France"
+  },
+  {
+    "id": "liste_sujet_1_htm_6bhylq",
+    "title": "Boitier",
+    "url": "https://forum.hardware.fr/hfr/Hardware/Boitier/liste_sujet-1.htm",
+    "description": "https://forum.hardware.fr/hfr/Hardware/Boitier/liste_sujet-1.htm",
+    "group": "France"
+  },
+  {
+    "id": "liste_sujet_1_htm_1lm1zh",
+    "title": "Alimentation",
+    "url": "https://forum.hardware.fr/hfr/Hardware/Alimentation/liste_sujet-1.htm",
+    "description": "https://forum.hardware.fr/hfr/Hardware/Alimentation/liste_sujet-1.htm",
+    "group": "France"
+  },
+  {
+    "id": "liste_sujet_1_htm_3g9rfo",
+    "title": "Disque dur",
+    "url": "https://forum.hardware.fr/hfr/Hardware/HDD/liste_sujet-1.htm",
+    "description": "https://forum.hardware.fr/hfr/Hardware/HDD/liste_sujet-1.htm",
+    "group": "France"
+  },
+  {
+    "id": "liste_sujet_1_htm_4lya60",
+    "title": "Disque SSD",
+    "url": "https://forum.hardware.fr/hfr/Hardware/SSD/liste_sujet-1.htm",
+    "description": "https://forum.hardware.fr/hfr/Hardware/SSD/liste_sujet-1.htm",
+    "group": "France"
+  },
+  {
+    "id": "liste_sujet_1_htm_9n98vz",
+    "title": "CD/DVD/BD",
+    "url": "https://forum.hardware.fr/hfr/Hardware/lecteur-graveur/liste_sujet-1.htm",
+    "description": "https://forum.hardware.fr/hfr/Hardware/lecteur-graveur/liste_sujet-1.htm",
+    "group": "France"
+  },
+  {
+    "id": "liste_sujet_1_htm_8bgpd0",
+    "title": "Mini PC",
+    "url": "https://forum.hardware.fr/hfr/Hardware/minipc/liste_sujet-1.htm",
+    "description": "https://forum.hardware.fr/hfr/Hardware/minipc/liste_sujet-1.htm",
+    "group": "France"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

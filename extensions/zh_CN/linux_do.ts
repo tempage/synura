@@ -835,3 +835,19 @@ var linux_doPreviousRouteBoardCustom = SITE.routeBoardCustom;
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "latest",
+    "title": "Latest",
+    "url": "https://linux.do/latest",
+    "description": "technology community",
+    "group": "Mainland China"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

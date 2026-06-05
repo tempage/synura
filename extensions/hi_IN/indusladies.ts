@@ -888,3 +888,26 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "snippets",
+    "title": "Snippets of Life",
+    "url": "https://www.indusladies.com/community/forums/snippets-of-life-non-fiction/",
+    "description": "Snippets of Life",
+    "group": "India"
+  },
+  {
+    "id": "general",
+    "title": "General Discussions",
+    "url": "https://www.indusladies.com/community/forums/general-discussions/",
+    "description": "General Discussions",
+    "group": "India"
+  }
+ ];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

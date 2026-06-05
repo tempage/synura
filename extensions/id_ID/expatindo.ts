@@ -873,3 +873,26 @@ var expatindoPreviousBuildPostFetchUrls = SITE.buildPostFetchUrls;
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://www.expatindo.org/",
+    "description": "forum",
+    "group": "Indonesia"
+  },
+  {
+    "id": "community",
+    "title": "Community",
+    "url": "https://www.expatindo.org/community/",
+    "description": "forum",
+    "group": "Indonesia"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

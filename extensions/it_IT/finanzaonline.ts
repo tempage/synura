@@ -833,3 +833,82 @@ var finanzaonlinePreviousBuildPostFetchUrls = SITE.buildPostFetchUrls;
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "arena_club_11_hxb3os",
+    "title": "Arena Club",
+    "url": "https://forum.finanzaonline.com/forums/arena-club.11/",
+    "description": "https://forum.finanzaonline.com/forums/arena-club.11/",
+    "group": "Italy"
+  },
+  {
+    "id": "mercato_italiano_20_r3uqgz",
+    "title": "Mercato Italiano",
+    "url": "https://forum.finanzaonline.com/forums/mercato-italiano.20/",
+    "description": "https://forum.finanzaonline.com/forums/mercato-italiano.20/",
+    "group": "Italy"
+  },
+  {
+    "id": "euronext_growth_milan_73_iciui6",
+    "title": "Euronext Growth Milan",
+    "url": "https://forum.finanzaonline.com/forums/euronext-growth-milan.73/",
+    "description": "https://forum.finanzaonline.com/forums/euronext-growth-milan.73/",
+    "group": "Italy"
+  },
+  {
+    "id": "small_cap_40_vrsdyy",
+    "title": "Small Cap",
+    "url": "https://forum.finanzaonline.com/forums/small-cap.40/",
+    "description": "https://forum.finanzaonline.com/forums/small-cap.40/",
+    "group": "Italy"
+  },
+  {
+    "id": "futures_cfd_leverage_cer_y0xl0g",
+    "title": "Futures, CFD, Leverage certificates e Commodities",
+    "url": "https://forum.finanzaonline.com/forums/futures-cfd-leverage-certificates-e-commodities.3/",
+    "description": "https://forum.finanzaonline.com/forums/futures-cfd-leverage-certificates-e-commodities.3/",
+    "group": "Italy"
+  },
+  {
+    "id": "forex_51_4kiu9i",
+    "title": "Forex",
+    "url": "https://forum.finanzaonline.com/forums/forex.51/",
+    "description": "https://forum.finanzaonline.com/forums/forex.51/",
+    "group": "Italy"
+  },
+  {
+    "id": "mercati_europei_32_ynxfma",
+    "title": "Mercati Europei",
+    "url": "https://forum.finanzaonline.com/forums/mercati-europei.32/",
+    "description": "https://forum.finanzaonline.com/forums/mercati-europei.32/",
+    "group": "Italy"
+  },
+  {
+    "id": "wall_street_5_mqmvh5",
+    "title": "Wall Street",
+    "url": "https://forum.finanzaonline.com/forums/wall-street.5/",
+    "description": "https://forum.finanzaonline.com/forums/wall-street.5/",
+    "group": "Italy"
+  },
+  {
+    "id": "otcbb_pinksheet_39_e3wqf2",
+    "title": "OTCBB PINKSHEET",
+    "url": "https://forum.finanzaonline.com/forums/otcbb-pinksheet.39/",
+    "description": "https://forum.finanzaonline.com/forums/otcbb-pinksheet.39/",
+    "group": "Italy"
+  },
+  {
+    "id": "assicurazioni_75_fpiezi",
+    "title": "Assicurazioni",
+    "url": "https://forum.finanzaonline.com/forums/assicurazioni.75/",
+    "description": "https://forum.finanzaonline.com/forums/assicurazioni.75/",
+    "group": "Italy"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

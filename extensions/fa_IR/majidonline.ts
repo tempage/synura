@@ -604,3 +604,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "d8_a8_d8_b1_d8_aa_d8_b1__k46056",
+    "title": "برترين هاي مسابقات انجمن",
+    "url": "https://forum.majidonline.com/forums/%D8%A8%D8%B1%D8%AA%D8%B1%D9%8A%D9%86-%D9%87%D8%A7%D9%8A-%D9%85%D8%B3%D8%A7%D8%A8%D9%82%D8%A7%D8%AA-%D8%A7%D9%86%D8%AC%D9%85%D9%86.235/",
+    "description": "https://forum.majidonline.com/forums/%D8%A8%D8%B1%D8%AA%D8%B1%D9%8A%D9%86-%D9%87%D8%A7%D9%8A-%D9%85%D8%B3%D8%A7%D8%A8%D9%82%D8%A7%D8%AA-%D8%A7%D9%86%D8%AC%D9%85%D9%86.235/",
+    "group": "Iran"
+  },
+  {
+    "id": "d9_85_d8_b3_d8_a7_d8_a8__6ca0d8",
+    "title": "مسابقات انجمن فتوشاپ",
+    "url": "https://forum.majidonline.com/forums/%D9%85%D8%B3%D8%A7%D8%A8%D9%82%D8%A7%D8%AA-%D8%A7%D9%86%D8%AC%D9%85%D9%86-%D9%81%D8%AA%D9%88%D8%B4%D8%A7%D9%BE.158/",
+    "description": "https://forum.majidonline.com/forums/%D9%85%D8%B3%D8%A7%D8%A8%D9%82%D8%A7%D8%AA-%D8%A7%D9%86%D8%AC%D9%85%D9%86-%D9%81%D8%AA%D9%88%D8%B4%D8%A7%D9%BE.158/",
+    "group": "Iran"
+  },
+  {
+    "id": "d9_85_d8_b3_d8_a7_d8_a8__sziit9",
+    "title": "مسابقات انجمن 3D",
+    "url": "https://forum.majidonline.com/forums/%D9%85%D8%B3%D8%A7%D8%A8%D9%82%D8%A7%D8%AA-%D8%A7%D9%86%D8%AC%D9%85%D9%86-3d.151/",
+    "description": "https://forum.majidonline.com/forums/%D9%85%D8%B3%D8%A7%D8%A8%D9%82%D8%A7%D8%AA-%D8%A7%D9%86%D8%AC%D9%85%D9%86-3d.151/",
+    "group": "Iran"
+  },
+  {
+    "id": "d8_b3_db_8c_d8_b3_d8_aa__bqwvrf",
+    "title": "سیستم‌های انجمن ساز",
+    "url": "https://forum.majidonline.com/forums/%D8%B3%DB%8C%D8%B3%D8%AA%D9%85%E2%80%8C%D9%87%D8%A7%DB%8C-%D8%A7%D9%86%D8%AC%D9%85%D9%86-%D8%B3%D8%A7%D8%B2.34/",
+    "description": "https://forum.majidonline.com/forums/%D8%B3%DB%8C%D8%B3%D8%AA%D9%85%E2%80%8C%D9%87%D8%A7%DB%8C-%D8%A7%D9%86%D8%AC%D9%85%D9%86-%D8%B3%D8%A7%D8%B2.34/",
+    "group": "Iran"
+  },
+  {
+    "id": "d8_a7_d9_86_d8_ac_d9_85__4mv7q7",
+    "title": "انجمن صدا",
+    "url": "https://forum.majidonline.com/forums/%D8%A7%D9%86%D8%AC%D9%85%D9%86-%D8%B5%D8%AF%D8%A7.222/",
+    "description": "https://forum.majidonline.com/forums/%D8%A7%D9%86%D8%AC%D9%85%D9%86-%D8%B5%D8%AF%D8%A7.222/",
+    "group": "Iran"
+  },
+  {
+    "id": "d8_a7_d9_86_d8_ac_d9_85__9rqh92",
+    "title": "انجمن‌های Flash",
+    "url": "https://forum.majidonline.com/forums/%D8%A7%D9%86%D8%AC%D9%85%D9%86%E2%80%8C%D9%87%D8%A7%DB%8C-flash.9/",
+    "description": "https://forum.majidonline.com/forums/%D8%A7%D9%86%D8%AC%D9%85%D9%86%E2%80%8C%D9%87%D8%A7%DB%8C-flash.9/",
+    "group": "Iran"
+  },
+  {
+    "id": "d8_b3_d9_81_d8_a7_d8_b1__56yx8o",
+    "title": "سفارشهای انجمن فلش",
+    "url": "https://forum.majidonline.com/forums/%D8%B3%D9%81%D8%A7%D8%B1%D8%B4%D9%87%D8%A7%DB%8C-%D8%A7%D9%86%D8%AC%D9%85%D9%86-%D9%81%D9%84%D8%B4.327/",
+    "description": "https://forum.majidonline.com/forums/%D8%B3%D9%81%D8%A7%D8%B1%D8%B4%D9%87%D8%A7%DB%8C-%D8%A7%D9%86%D8%AC%D9%85%D9%86-%D9%81%D9%84%D8%B4.327/",
+    "group": "Iran"
+  },
+  {
+    "id": "d8_a7_d9_86_d8_ac_d9_85__lb0czv",
+    "title": "انجمن گاهنامه لپتاپ",
+    "url": "https://forum.majidonline.com/forums/%D8%A7%D9%86%D8%AC%D9%85%D9%86-%DA%AF%D8%A7%D9%87%D9%86%D8%A7%D9%85%D9%87-%D9%84%D9%BE%D8%AA%D8%A7%D9%BE.258/",
+    "description": "https://forum.majidonline.com/forums/%D8%A7%D9%86%D8%AC%D9%85%D9%86-%DA%AF%D8%A7%D9%87%D9%86%D8%A7%D9%85%D9%87-%D9%84%D9%BE%D8%AA%D8%A7%D9%BE.258/",
+    "group": "Iran"
+  },
+  {
+    "id": "d9_be_d8_b4_d8_aa_db_8c__fuu6oh",
+    "title": "پشتیبانی انجمن",
+    "url": "https://forum.majidonline.com/forums/%D9%BE%D8%B4%D8%AA%DB%8C%D8%A8%D8%A7%D9%86%DB%8C-%D8%A7%D9%86%D8%AC%D9%85%D9%86.42/",
+    "description": "https://forum.majidonline.com/forums/%D9%BE%D8%B4%D8%AA%DB%8C%D8%A8%D8%A7%D9%86%DB%8C-%D8%A7%D9%86%D8%AC%D9%85%D9%86.42/",
+    "group": "Iran"
+  },
+  {
+    "id": "d8_a7_d8_b7_d9_84_d8_a7__2brfhu",
+    "title": "اطلاعیه ها ، قوانین و مسائل مربوط به انجمن دانلود",
+    "url": "https://forum.majidonline.com/forums/%D8%A7%D8%B7%D9%84%D8%A7%D8%B9%DB%8C%D9%87-%D9%87%D8%A7-%D8%8C-%D9%82%D9%88%D8%A7%D9%86%DB%8C%D9%86-%D9%88-%D9%85%D8%B3%D8%A7%D8%A6%D9%84-%D9%85%D8%B1%D8%A8%D9%88%D8%B7-%D8%A8%D9%87-%D8%A7%D9%86%D8%AC%D9%85%D9%86-%D8%AF%D8%A7%D9%86%D9%84%D9%88%D8%AF.315/",
+    "description": "https://forum.majidonline.com/forums/%D8%A7%D8%B7%D9%84%D8%A7%D8%B9%DB%8C%D9%87-%D9%87%D8%A7-%D8%8C-%D9%82%D9%88%D8%A7%D9%86%DB%8C%D9%86-%D9%88-%D9%85%D8%B3%D8%A7%D8%A6%D9%84-%D9%85%D8%B1%D8%A8%D9%88%D8%B7-%D8%A8%D9%87-%D8%A7%D9%86%D8%AC%D9%85%D9%86-%D8%AF%D8%A7%D9%86%D9%84%D9%88%D8%AF.315/",
+    "group": "Iran"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

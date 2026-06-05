@@ -605,3 +605,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://www.forosdelweb.com/",
+    "description": "technology forum",
+    "group": "Latin America"
+  },
+  {
+    "id": "php",
+    "title": "PHP",
+    "url": "https://www.forosdelweb.com/f18/",
+    "description": "technology forum",
+    "group": "Latin America"
+  },
+  {
+    "id": "javascript",
+    "title": "JavaScript",
+    "url": "https://www.forosdelweb.com/f13/",
+    "description": "technology forum",
+    "group": "Latin America"
+  },
+  {
+    "id": "css",
+    "title": "CSS",
+    "url": "https://www.forosdelweb.com/f53/",
+    "description": "technology forum",
+    "group": "Latin America"
+  },
+  {
+    "id": "html",
+    "title": "HTML",
+    "url": "https://www.forosdelweb.com/f4/",
+    "description": "technology forum",
+    "group": "Latin America"
+  },
+  {
+    "id": "mysql",
+    "title": "MySQL",
+    "url": "https://www.forosdelweb.com/f86/",
+    "description": "technology forum",
+    "group": "Latin America"
+  },
+  {
+    "id": "webmasters",
+    "title": "Webmasters",
+    "url": "https://www.forosdelweb.com/f91/",
+    "description": "technology forum",
+    "group": "Latin America"
+  },
+  {
+    "id": "seo",
+    "title": "SEO",
+    "url": "https://www.forosdelweb.com/f64/",
+    "description": "technology forum",
+    "group": "Latin America"
+  },
+  {
+    "id": "linux",
+    "title": "Linux",
+    "url": "https://www.forosdelweb.com/f41/",
+    "description": "technology forum",
+    "group": "Latin America"
+  },
+  {
+    "id": "windows",
+    "title": "Windows",
+    "url": "https://www.forosdelweb.com/f42/",
+    "description": "technology forum",
+    "group": "Latin America"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

@@ -656,3 +656,33 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://www.gutefrage.net/",
+    "description": "q&a community",
+    "group": "Germany"
+  },
+  {
+    "id": "new_questions",
+    "title": "Neue Fragen",
+    "url": "https://www.gutefrage.net/fragen/neue",
+    "description": "q&a community",
+    "group": "Germany"
+  },
+  {
+    "id": "popular",
+    "title": "Beliebte Fragen",
+    "url": "https://www.gutefrage.net/fragen/beliebte",
+    "description": "q&a community",
+    "group": "Germany"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

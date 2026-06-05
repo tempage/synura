@@ -589,3 +589,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "2279_tag_heuer_connected_5vtjtj",
+    "title": "Tag Heuer Connected",
+    "url": "https://forum.frandroid.com/forum/2279-tag-heuer-connected/",
+    "description": "https://forum.frandroid.com/forum/2279-tag-heuer-connected/",
+    "group": "France"
+  },
+  {
+    "id": "2435_google_cardboard_5l8p5z",
+    "title": "Google Cardboard",
+    "url": "https://forum.frandroid.com/forum/2435-google-cardboard/",
+    "description": "https://forum.frandroid.com/forum/2435-google-cardboard/",
+    "group": "France"
+  },
+  {
+    "id": "428_autres_tablettes_non_8brq0d",
+    "title": "Autres tablettes non reprises sur le forum",
+    "url": "https://forum.frandroid.com/forum/428-autres-tablettes-non-reprises-sur-le-forum/",
+    "description": "https://forum.frandroid.com/forum/428-autres-tablettes-non-reprises-sur-le-forum/",
+    "group": "France"
+  },
+  {
+    "id": "164_portage_befjki",
+    "title": "Portage",
+    "url": "https://forum.frandroid.com/forum/164-portage/",
+    "description": "https://forum.frandroid.com/forum/164-portage/",
+    "group": "France"
+  },
+  {
+    "id": "1398_forum_firefox_os_q6iczi",
+    "title": "Forum Firefox OS",
+    "url": "https://forum.frandroid.com/forum/1398-forum-firefox-os/",
+    "description": "https://forum.frandroid.com/forum/1398-forum-firefox-os/",
+    "group": "France"
+  },
+  {
+    "id": "4_smartphones_5tk1bx",
+    "title": "Smartphones",
+    "url": "https://forum.frandroid.com/forum/4-smartphones/",
+    "description": "https://forum.frandroid.com/forum/4-smartphones/",
+    "group": "France"
+  },
+  {
+    "id": "128_tablettes_ghzkbw",
+    "title": "Tablettes",
+    "url": "https://forum.frandroid.com/forum/128-tablettes/",
+    "description": "https://forum.frandroid.com/forum/128-tablettes/",
+    "group": "France"
+  },
+  {
+    "id": "577_tv_android_tv_chrome_r5o1sd",
+    "title": "TV (Android TV, Chromecast etc.)",
+    "url": "https://forum.frandroid.com/forum/577-tv-android-tv-chromecast-dongle-tv-etc/",
+    "description": "https://forum.frandroid.com/forum/577-tv-android-tv-chromecast-dongle-tv-etc/",
+    "group": "France"
+  },
+  {
+    "id": "2640_photo_vid_c3_a9o_b7wu0c",
+    "title": "Photo & vidéo",
+    "url": "https://forum.frandroid.com/forum/2640-photo-vid%C3%A9o/",
+    "description": "https://forum.frandroid.com/forum/2640-photo-vid%C3%A9o/",
+    "group": "France"
+  },
+  {
+    "id": "2720_enceintes_connect_c_w2tjw1",
+    "title": "Enceintes Connectées",
+    "url": "https://forum.frandroid.com/forum/2720-enceintes-connect%C3%A9es/",
+    "description": "https://forum.frandroid.com/forum/2720-enceintes-connect%C3%A9es/",
+    "group": "France"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

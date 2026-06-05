@@ -839,3 +839,82 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Forum Auto",
+    "url": "https://forum-auto.caradisiac.com/",
+    "description": "automotive forum",
+    "group": "France"
+  },
+  {
+    "id": "1000_c3_a9v_c3_a9nements_ugympr",
+    "title": "Événements : Meetings, shows, vie des clubs",
+    "url": "https://forum-auto.caradisiac.com/forum/1000-%C3%A9v%C3%A9nements-meetings-shows-vie-des-clubs/",
+    "description": "https://forum-auto.caradisiac.com/forum/1000-%C3%A9v%C3%A9nements-meetings-shows-vie-des-clubs/",
+    "group": "France"
+  },
+  {
+    "id": "235_marques_ocqfxw",
+    "title": "Marques",
+    "url": "https://forum-auto.caradisiac.com/forum/235-marques/",
+    "description": "https://forum-auto.caradisiac.com/forum/235-marques/",
+    "group": "France"
+  },
+  {
+    "id": "365_vantage_i7lbl4",
+    "title": "Vantage",
+    "url": "https://forum-auto.caradisiac.com/forum/365-vantage/",
+    "description": "https://forum-auto.caradisiac.com/forum/365-vantage/",
+    "group": "France"
+  },
+  {
+    "id": "386_sportage_h2y3v0",
+    "title": "Sportage",
+    "url": "https://forum-auto.caradisiac.com/forum/386-sportage/",
+    "description": "https://forum-auto.caradisiac.com/forum/386-sportage/",
+    "group": "France"
+  },
+  {
+    "id": "784_clubman_mt3clb",
+    "title": "Clubman",
+    "url": "https://forum-auto.caradisiac.com/forum/784-clubman/",
+    "description": "https://forum-auto.caradisiac.com/forum/784-clubman/",
+    "group": "France"
+  },
+  {
+    "id": "1099_european_ford_gt_ow_muwbl2",
+    "title": "European Ford GT Owners Club",
+    "url": "https://forum-auto.caradisiac.com/forum/1099-european-ford-gt-owners-club/",
+    "description": "https://forum-auto.caradisiac.com/forum/1099-european-ford-gt-owners-club/",
+    "group": "France"
+  },
+  {
+    "id": "1449_pratique_erpfzb",
+    "title": "Pratique",
+    "url": "https://forum-auto.caradisiac.com/forum/1449-pratique/",
+    "description": "https://forum-auto.caradisiac.com/forum/1449-pratique/",
+    "group": "France"
+  },
+  {
+    "id": "1380_collection_hpgati",
+    "title": "Collections",
+    "url": "https://forum-auto.caradisiac.com/forum/1380-collection/",
+    "description": "https://forum-auto.caradisiac.com/forum/1380-collection/",
+    "group": "France"
+  },
+  {
+    "id": "1325_sport_mhyp6v",
+    "title": "Sport",
+    "url": "https://forum-auto.caradisiac.com/forum/1325-sport/",
+    "description": "https://forum-auto.caradisiac.com/forum/1325-sport/",
+    "group": "France"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

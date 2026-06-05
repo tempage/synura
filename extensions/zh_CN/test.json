@@ -47,6 +47,134 @@
         "developers",
         "forum"
       ]
+    },
+    {
+      "name": "tieba",
+      "description": "Unofficial Baidu Tieba.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/tieba.js",
+      "api": 0,
+      "domain": "tieba.baidu.com",
+      "author": "Synura Team",
+      "icon": "https://tieba.baidu.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "forums",
+        "communities",
+        "baidu"
+      ]
+    },
+    {
+      "name": "zhihu",
+      "description": "Unofficial Zhihu.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/zhihu.js",
+      "api": 0,
+      "domain": "www.zhihu.com",
+      "author": "Synura Team",
+      "icon": "https://static.zhihu.com/heifetz/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "q&a",
+        "knowledge",
+        "community"
+      ]
+    },
+    {
+      "name": "douban_groups",
+      "description": "Unofficial Douban Groups.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/douban_groups.js",
+      "api": 0,
+      "domain": "www.douban.com",
+      "author": "Synura Team",
+      "icon": "https://www.douban.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "groups",
+        "culture",
+        "community"
+      ]
+    },
+    {
+      "name": "hupu",
+      "description": "Unofficial Hupu.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/hupu.js",
+      "api": 0,
+      "domain": "bbs.hupu.com",
+      "author": "Synura Team",
+      "icon": "https://bbs.hupu.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "sports",
+        "basketball",
+        "forum"
+      ]
+    },
+    {
+      "name": "nga",
+      "description": "Unofficial NGA.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/nga.js",
+      "api": 0,
+      "domain": "bbs.nga.cn",
+      "author": "Synura Team",
+      "icon": "https://bbs.nga.cn/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "games",
+        "forum",
+        "community"
+      ]
+    },
+    {
+      "name": "csdn",
+      "description": "Unofficial CSDN.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/csdn.js",
+      "api": 0,
+      "domain": "blog.csdn.net",
+      "author": "Synura Team",
+      "icon": "https://blog.csdn.net/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "developers",
+        "blogs",
+        "q&a"
+      ]
+    },
+    {
+      "name": "xiaohongshu",
+      "description": "Unofficial Xiaohongshu.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/xiaohongshu.js",
+      "api": 0,
+      "domain": "www.xiaohongshu.com",
+      "author": "Synura Team",
+      "icon": "https://www.xiaohongshu.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "lifestyle",
+        "notes",
+        "social"
+      ]
+    },
+    {
+      "name": "stage1st",
+      "description": "Unofficial Stage1st.",
+      "version": 0.1,
+      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/stage1st.js",
+      "api": 0,
+      "domain": "stage1st.com",
+      "author": "Synura Team",
+      "icon": "https://stage1st.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "games",
+        "anime",
+        "forum"
+      ]
     }
   ]
 }

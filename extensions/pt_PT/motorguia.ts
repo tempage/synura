@@ -869,3 +869,75 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "forum_geral",
+    "title": "Forum Geral",
+    "url": "https://forum.motorguia.net/forum/motorguia-f%C3%B3rum/f%C3%93rum-geral",
+    "description": "Forum Geral",
+    "group": "Portugal"
+  },
+  {
+    "id": "off_topic",
+    "title": "Off Topic",
+    "url": "https://forum.motorguia.net/forum/motorguia-f%C3%B3rum/off-topic",
+    "description": "Off Topic",
+    "group": "Portugal"
+  },
+  {
+    "id": "funcionamento_do_f_rum_m_f8b1r",
+    "title": "Funcionamento do Fórum Motorguia",
+    "url": "https://forum.motorguia.net/forum/funcionamento-do-fórum-motorguia",
+    "description": "https://forum.motorguia.net/forum/funcionamento-do-fórum-motorguia",
+    "group": "Portugal"
+  },
+  {
+    "id": "motorguia_f_rum_i83qt8",
+    "title": "Motorguia Fórum",
+    "url": "https://forum.motorguia.net/forum/motorguia-fórum",
+    "description": "https://forum.motorguia.net/forum/motorguia-fórum",
+    "group": "Portugal"
+  },
+  {
+    "id": "eventos_clubes_xsf60y",
+    "title": "Eventos & Clubes",
+    "url": "https://forum.motorguia.net/forum/eventos-clubes",
+    "description": "https://forum.motorguia.net/forum/eventos-clubes",
+    "group": "Portugal"
+  },
+  {
+    "id": "clube_tt_h69kgb",
+    "title": "Clube TT",
+    "url": "https://forum.motorguia.net/forum/eventos-clubes/clube-tt",
+    "description": "https://forum.motorguia.net/forum/eventos-clubes/clube-tt",
+    "group": "Portugal"
+  },
+  {
+    "id": "clube_dos_cl_ssicos_anu7ei",
+    "title": "Clube dos Clássicos",
+    "url": "https://forum.motorguia.net/forum/eventos-clubes/clube-dos-clássicos",
+    "description": "https://forum.motorguia.net/forum/eventos-clubes/clube-dos-clássicos",
+    "group": "Portugal"
+  },
+  {
+    "id": "auto_ajuda_9cx9ku",
+    "title": "Auto Ajuda",
+    "url": "https://forum.motorguia.net/forum/motorguia-fórum/auto-ajuda",
+    "description": "https://forum.motorguia.net/forum/motorguia-fórum/auto-ajuda",
+    "group": "Portugal"
+  },
+  {
+    "id": "road_book_g9yonx",
+    "title": "Road-book",
+    "url": "https://forum.motorguia.net/forum/motorguia-fórum/road-book",
+    "description": "https://forum.motorguia.net/forum/motorguia-fórum/road-book",
+    "group": "Portugal"
+  }
+ ];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

@@ -605,3 +605,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "hersteller_und_online_sh_30xxrd",
+    "title": "Hersteller- und Online-Shop-Supportforum",
+    "url": "https://www.hardwareluxx.de/community/forums/hersteller-und-online-shop-supportforum.200/",
+    "description": "https://www.hardwareluxx.de/community/forums/hersteller-und-online-shop-supportforum.200/",
+    "group": "Germany"
+  },
+  {
+    "id": "mainboards_12_6lofza",
+    "title": "Mainboards",
+    "url": "https://www.hardwareluxx.de/community/forums/mainboards.12/",
+    "description": "https://www.hardwareluxx.de/community/forums/mainboards.12/",
+    "group": "Germany"
+  },
+  {
+    "id": "mainboard_sammelthreads__e7xu4x",
+    "title": "Mainboard-Sammelthreads",
+    "url": "https://www.hardwareluxx.de/community/forums/mainboard-sammelthreads.219/",
+    "description": "https://www.hardwareluxx.de/community/forums/mainboard-sammelthreads.219/",
+    "group": "Germany"
+  },
+  {
+    "id": "pc_zusammenstellungs_und_qh5qci",
+    "title": "PC-Zusammenstellungs- und Aufrüstungs-Forum",
+    "url": "https://www.hardwareluxx.de/community/forums/pc-zusammenstellungs-und-aufr%C3%BCstungs-forum.84/",
+    "description": "https://www.hardwareluxx.de/community/forums/pc-zusammenstellungs-und-aufr%C3%BCstungs-forum.84/",
+    "group": "Germany"
+  },
+  {
+    "id": "home_server_workstation__f8m3n4",
+    "title": "(Home-) Server/Workstation Forum",
+    "url": "https://www.hardwareluxx.de/community/forums/home-server-workstation-forum.101/",
+    "description": "https://www.hardwareluxx.de/community/forums/home-server-workstation-forum.101/",
+    "group": "Germany"
+  },
+  {
+    "id": "konstruktions_forum_345_habln1",
+    "title": "Konstruktions-Forum",
+    "url": "https://www.hardwareluxx.de/community/forums/konstruktions-forum.345/",
+    "description": "https://www.hardwareluxx.de/community/forums/konstruktions-forum.345/",
+    "group": "Germany"
+  },
+  {
+    "id": "off_topic_foren_102_a1fsk",
+    "title": "Off-Topic-Foren",
+    "url": "https://www.hardwareluxx.de/community/forums/off-topic-foren.102/",
+    "description": "https://www.hardwareluxx.de/community/forums/off-topic-foren.102/",
+    "group": "Germany"
+  },
+  {
+    "id": "forum_kultur_19_llq4i4",
+    "title": "Forum-Kultur",
+    "url": "https://www.hardwareluxx.de/community/forums/forum-kultur.19/",
+    "description": "https://www.hardwareluxx.de/community/forums/forum-kultur.19/",
+    "group": "Germany"
+  },
+  {
+    "id": "verf_c3_bcgbarkeitshinwe_axjh0p",
+    "title": "Verfügbarkeitshinweise",
+    "url": "https://www.hardwareluxx.de/community/forums/verf%C3%BCgbarkeitshinweise.338/",
+    "description": "https://www.hardwareluxx.de/community/forums/verf%C3%BCgbarkeitshinweise.338/",
+    "group": "Germany"
+  },
+  {
+    "id": "asus_248_fodqrt",
+    "title": "ASUS",
+    "url": "https://www.hardwareluxx.de/community/forums/asus.248/",
+    "description": "https://www.hardwareluxx.de/community/forums/asus.248/",
+    "group": "Germany"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

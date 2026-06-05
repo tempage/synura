@@ -775,3 +775,68 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "kraj",
+    "title": "Kraj",
+    "url": "https://forum.gazeta.pl/forum/f,28,Kraj.html",
+    "description": "forum",
+    "group": "Poland"
+  },
+  {
+    "id": "media",
+    "title": "Aktualności i Media",
+    "url": "https://forum.gazeta.pl/forum/k,1281212,Aktualnosci_i_Media.html",
+    "description": "forum",
+    "group": "Poland"
+  },
+  {
+    "id": "towarzyskie",
+    "title": "Towarzyskie",
+    "url": "https://forum.gazeta.pl/forum/f,45,Towarzyskie.html",
+    "description": "forum",
+    "group": "Poland"
+  },
+  {
+    "id": "polska",
+    "title": "Polska",
+    "url": "https://forum.gazeta.pl/forum/t,polska.html",
+    "description": "forum",
+    "group": "Poland"
+  },
+  {
+    "id": "polityka",
+    "title": "Polityka",
+    "url": "https://forum.gazeta.pl/forum/t,polityka.html",
+    "description": "forum",
+    "group": "Poland"
+  },
+  {
+    "id": "kraj_tag",
+    "title": "Kraj tag",
+    "url": "https://forum.gazeta.pl/forum/t,kraj.html",
+    "description": "forum",
+    "group": "Poland"
+  },
+  {
+    "id": "media_tag",
+    "title": "Media",
+    "url": "https://forum.gazeta.pl/forum/t,media.html",
+    "description": "forum",
+    "group": "Poland"
+  },
+  {
+    "id": "wybory",
+    "title": "Wybory",
+    "url": "https://forum.gazeta.pl/forum/t,wybory.html",
+    "description": "forum",
+    "group": "Poland"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

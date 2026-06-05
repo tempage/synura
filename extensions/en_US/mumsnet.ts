@@ -597,3 +597,33 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "aibu",
+    "title": "AIBU",
+    "url": "https://www.mumsnet.com/talk/am_i_being_unreasonable",
+    "description": "forum",
+    "group": "United States / United Kingdom"
+  },
+  {
+    "id": "relationships",
+    "title": "Relationships",
+    "url": "https://www.mumsnet.com/talk/relationships",
+    "description": "forum",
+    "group": "United States / United Kingdom"
+  },
+  {
+    "id": "baby_names",
+    "title": "Baby names",
+    "url": "https://www.mumsnet.com/talk/baby_names",
+    "description": "forum",
+    "group": "United States / United Kingdom"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

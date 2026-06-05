@@ -645,3 +645,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "top_today",
+    "title": "Top Today",
+    "url": "https://habr.com/ru/articles/top/daily/",
+    "description": "technology community",
+    "group": "Russia"
+  },
+  {
+    "id": "top_week",
+    "title": "Top Week",
+    "url": "https://habr.com/ru/articles/top/weekly/",
+    "description": "technology community",
+    "group": "Russia"
+  },
+  {
+    "id": "top_month",
+    "title": "Top Month",
+    "url": "https://habr.com/ru/articles/top/monthly/",
+    "description": "technology community",
+    "group": "Russia"
+  },
+  {
+    "id": "all_articles",
+    "title": "All Articles",
+    "url": "https://habr.com/ru/articles/",
+    "description": "technology community",
+    "group": "Russia"
+  },
+  {
+    "id": "admin",
+    "title": "Admin",
+    "url": "https://habr.com/ru/flows/admin/articles/",
+    "description": "technology community",
+    "group": "Russia"
+  },
+  {
+    "id": "design",
+    "title": "Design",
+    "url": "https://habr.com/ru/flows/design/articles/",
+    "description": "technology community",
+    "group": "Russia"
+  },
+  {
+    "id": "management",
+    "title": "Management",
+    "url": "https://habr.com/ru/flows/management/articles/",
+    "description": "technology community",
+    "group": "Russia"
+  },
+  {
+    "id": "popsci",
+    "title": "Pop Science",
+    "url": "https://habr.com/ru/flows/popsci/articles/",
+    "description": "technology community",
+    "group": "Russia"
+  },
+  {
+    "id": "python",
+    "title": "Python",
+    "url": "https://habr.com/ru/hubs/python/articles/",
+    "description": "technology community",
+    "group": "Russia"
+  },
+  {
+    "id": "programming",
+    "title": "Programming",
+    "url": "https://habr.com/ru/hubs/programming/articles/",
+    "description": "technology community",
+    "group": "Russia"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

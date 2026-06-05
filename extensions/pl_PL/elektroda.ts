@@ -708,3 +708,75 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://www.elektroda.pl/rtvforum/",
+    "description": "technology forum",
+    "group": "Poland"
+  },
+  {
+    "id": "computers",
+    "title": "Computers",
+    "url": "https://www.elektroda.pl/rtvforum/forum3.html",
+    "description": "technology forum",
+    "group": "Poland"
+  },
+  {
+    "id": "electronics",
+    "title": "Electronics",
+    "url": "https://www.elektroda.pl/rtvforum/forum4.html",
+    "description": "technology forum",
+    "group": "Poland"
+  },
+  {
+    "id": "automotive",
+    "title": "Automotive",
+    "url": "https://www.elektroda.pl/rtvforum/forum5.html",
+    "description": "technology forum",
+    "group": "Poland"
+  },
+  {
+    "id": "household",
+    "title": "Household",
+    "url": "https://www.elektroda.pl/rtvforum/forum6.html",
+    "description": "technology forum",
+    "group": "Poland"
+  },
+  {
+    "id": "gsm",
+    "title": "GSM",
+    "url": "https://www.elektroda.pl/rtvforum/forum7.html",
+    "description": "technology forum",
+    "group": "Poland"
+  },
+  {
+    "id": "software",
+    "title": "Software",
+    "url": "https://www.elektroda.pl/rtvforum/forum8.html",
+    "description": "technology forum",
+    "group": "Poland"
+  },
+  {
+    "id": "download",
+    "title": "Download",
+    "url": "https://www.elektroda.pl/rtvforum/forum9.html",
+    "description": "technology forum",
+    "group": "Poland"
+  },
+  {
+    "id": "bazaar",
+    "title": "Bazaar",
+    "url": "https://www.elektroda.pl/rtvforum/forum10.html",
+    "description": "technology forum",
+    "group": "Poland"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

@@ -923,3 +923,54 @@ var otofunStatusPreviousRouteBoardCustom = SITE.routeBoardCustom;
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "sua_chua_9_f9w8d",
+    "title": "Sửa chữa",
+    "url": "https://www.otofun.net/forums/sua-chua.9/",
+    "description": "https://www.otofun.net/forums/sua-chua.9/",
+    "group": "Vietnam"
+  },
+  {
+    "id": "moto_va_xe_may_125_b6jmca",
+    "title": "Xe hai bánh",
+    "url": "https://www.otofun.net/forums/moto-va-xe-may.125/",
+    "description": "https://www.otofun.net/forums/moto-va-xe-may.125/",
+    "group": "Vietnam"
+  },
+  {
+    "id": "of_vi_cong_dong_120_62a8qm",
+    "title": "OF vì Cộng đồng",
+    "url": "https://www.otofun.net/forums/of-vi-cong-dong.120/",
+    "description": "https://www.otofun.net/forums/of-vi-cong-dong.120/",
+    "group": "Vietnam"
+  },
+  {
+    "id": "chi_hoi_cau_lac_bo_91_rap155",
+    "title": "Chi hội",
+    "url": "https://www.otofun.net/forums/chi-hoi-cau-lac-bo.91/",
+    "description": "https://www.otofun.net/forums/chi-hoi-cau-lac-bo.91/",
+    "group": "Vietnam"
+  },
+  {
+    "id": "quan_cafe_otofun_77_yi1ni",
+    "title": "Funland",
+    "url": "https://www.otofun.net/forums/quan-cafe-otofun.77/",
+    "description": "https://www.otofun.net/forums/quan-cafe-otofun.77/",
+    "group": "Vietnam"
+  },
+  {
+    "id": "cho_gioi_89_kwedw7",
+    "title": "Chợ giời",
+    "url": "https://www.otofun.net/forums/cho-gioi.89/",
+    "description": "https://www.otofun.net/forums/cho-gioi.89/",
+    "group": "Vietnam"
+  }
+ ];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

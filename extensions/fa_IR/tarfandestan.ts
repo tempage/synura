@@ -607,3 +607,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "forum68_html_2awpen",
+    "title": "سیستم‌های مدیریت محتوا و مدیریت انجمن‌های آنلاین",
+    "url": "https://www.tarfandestan.com/forum/forum68.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "description": "https://www.tarfandestan.com/forum/forum68.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "group": "Iran"
+  },
+  {
+    "id": "forum43_html_blc4ri",
+    "title": "قوانین و مقررات سایت و انجمن‌های ترفندستان",
+    "url": "https://www.tarfandestan.com/forum/forum43.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "description": "https://www.tarfandestan.com/forum/forum43.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "group": "Iran"
+  },
+  {
+    "id": "forum222_html_zfpqcd",
+    "title": "مسابقات اختصاصی گروه «حالا»",
+    "url": "https://www.tarfandestan.com/forum/forum222.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "description": "https://www.tarfandestan.com/forum/forum222.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "group": "Iran"
+  },
+  {
+    "id": "forum80_html_q82xyh",
+    "title": "پرسش و پاسخ پیرامون کار با قسمت‌های مختلف سایت و انجمن",
+    "url": "https://www.tarfandestan.com/forum/forum80.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "description": "https://www.tarfandestan.com/forum/forum80.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "group": "Iran"
+  },
+  {
+    "id": "forum82_html_j7uq1z",
+    "title": "اخبار دنیای اینترنت",
+    "url": "https://www.tarfandestan.com/forum/forum82.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "description": "https://www.tarfandestan.com/forum/forum82.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "group": "Iran"
+  },
+  {
+    "id": "forum205_html_6bre5e",
+    "title": "پرسش و پاسخ و مباحث فنی پیرامون ویندوز 10 و 11",
+    "url": "https://www.tarfandestan.com/forum/forum205.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "description": "https://www.tarfandestan.com/forum/forum205.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "group": "Iran"
+  },
+  {
+    "id": "forum35_html_gjp14x",
+    "title": "اخبار موبایل و مخابرات",
+    "url": "https://www.tarfandestan.com/forum/forum35.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "description": "https://www.tarfandestan.com/forum/forum35.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "group": "Iran"
+  },
+  {
+    "id": "forum41_html_4l3wv0",
+    "title": "اخبار نرم‌افزار‌ها",
+    "url": "https://www.tarfandestan.com/forum/forum41.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "description": "https://www.tarfandestan.com/forum/forum41.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "group": "Iran"
+  },
+  {
+    "id": "forum207_html_dbzm1w",
+    "title": "معرفی سریال‌های فعال‌سازی دائم و لایسنس‌های اصل نرم‌‌افزارها",
+    "url": "https://www.tarfandestan.com/forum/forum207.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "description": "https://www.tarfandestan.com/forum/forum207.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "group": "Iran"
+  },
+  {
+    "id": "forum193_html_p7i6k6",
+    "title": "لپتاپ",
+    "url": "https://www.tarfandestan.com/forum/forum193.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "description": "https://www.tarfandestan.com/forum/forum193.html?s=1fb9505ff45dc7b98f1f88c7804b7670",
+    "group": "Iran"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

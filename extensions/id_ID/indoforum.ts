@@ -837,3 +837,82 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "forum_tanya_jawab_62_4bt2id",
+    "title": "Forum Tanya Jawab",
+    "url": "https://www.forum.or.id/forums/forum-tanya-jawab.62/",
+    "description": "https://www.forum.or.id/forums/forum-tanya-jawab.62/",
+    "group": "Indonesia"
+  },
+  {
+    "id": "forum_kesehatan_53_40bhf2",
+    "title": "Forum Kesehatan",
+    "url": "https://www.forum.or.id/forums/forum-kesehatan.53/",
+    "description": "https://www.forum.or.id/forums/forum-kesehatan.53/",
+    "group": "Indonesia"
+  },
+  {
+    "id": "irc_server_indoforum_63_rezxdt",
+    "title": "IRC Server IndoForum",
+    "url": "https://www.forum.or.id/forums/irc-server-indoforum.63/",
+    "description": "https://www.forum.or.id/forums/irc-server-indoforum.63/",
+    "group": "Indonesia"
+  },
+  {
+    "id": "forum_olahraga_74_34ol3y",
+    "title": "Forum Olahraga",
+    "url": "https://www.forum.or.id/forums/forum-olahraga.74/",
+    "description": "https://www.forum.or.id/forums/forum-olahraga.74/",
+    "group": "Indonesia"
+  },
+  {
+    "id": "forum_kuliner_77_x825yw",
+    "title": "Forum Kuliner",
+    "url": "https://www.forum.or.id/forums/forum-kuliner.77/",
+    "description": "https://www.forum.or.id/forums/forum-kuliner.77/",
+    "group": "Indonesia"
+  },
+  {
+    "id": "forum_ponsel_104_7c6f68",
+    "title": "Forum Ponsel",
+    "url": "https://www.forum.or.id/forums/forum-ponsel.104/",
+    "description": "https://www.forum.or.id/forums/forum-ponsel.104/",
+    "group": "Indonesia"
+  },
+  {
+    "id": "forum_komplain_139_q488vs",
+    "title": "Forum Komplain",
+    "url": "https://www.forum.or.id/forums/forum-komplain.139/",
+    "description": "https://www.forum.or.id/forums/forum-komplain.139/",
+    "group": "Indonesia"
+  },
+  {
+    "id": "forum_religi_109_70kjq4",
+    "title": "Forum Religi",
+    "url": "https://www.forum.or.id/forums/forum-religi.109/",
+    "description": "https://www.forum.or.id/forums/forum-religi.109/",
+    "group": "Indonesia"
+  },
+  {
+    "id": "forum_misteri_138_s0d68b",
+    "title": "Forum Misteri",
+    "url": "https://www.forum.or.id/forums/forum-misteri.138/",
+    "description": "https://www.forum.or.id/forums/forum-misteri.138/",
+    "group": "Indonesia"
+  },
+  {
+    "id": "forum_edukasi_115_ipfsdp",
+    "title": "Forum Edukasi",
+    "url": "https://www.forum.or.id/forums/forum-edukasi.115/",
+    "description": "https://www.forum.or.id/forums/forum-edukasi.115/",
+    "group": "Indonesia"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

@@ -599,3 +599,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "d7_a9_d7_a2_d7_a8_d7_94__8nibmo",
+    "title": "שער הקהילה",
+    "url": "https://www.hasolidit.com/kehila/forums/%D7%A9%D7%A2%D7%A8-%D7%94%D7%A7%D7%94%D7%99%D7%9C%D7%94.14/",
+    "description": "https://www.hasolidit.com/kehila/forums/%D7%A9%D7%A2%D7%A8-%D7%94%D7%A7%D7%94%D7%99%D7%9C%D7%94.14/",
+    "group": "Israel"
+  },
+  {
+    "id": "d7_99_d7_95_d7_9e_d7_a0__gi7dnq",
+    "title": "יומני מסע אישיים",
+    "url": "https://www.hasolidit.com/kehila/forums/%D7%99%D7%95%D7%9E%D7%A0%D7%99-%D7%9E%D7%A1%D7%A2-%D7%90%D7%99%D7%A9%D7%99%D7%99%D7%9D.4/",
+    "description": "https://www.hasolidit.com/kehila/forums/%D7%99%D7%95%D7%9E%D7%A0%D7%99-%D7%9E%D7%A1%D7%A2-%D7%90%D7%99%D7%A9%D7%99%D7%99%D7%9D.4/",
+    "group": "Israel"
+  },
+  {
+    "id": "d7_93_d7_99_d7_95_d7_a0__z1n6to",
+    "title": "דיוני עומק על פוסטים מהבלוג",
+    "url": "https://www.hasolidit.com/kehila/forums/%D7%93%D7%99%D7%95%D7%A0%D7%99-%D7%A2%D7%95%D7%9E%D7%A7-%D7%A2%D7%9C-%D7%A4%D7%95%D7%A1%D7%98%D7%99%D7%9D-%D7%9E%D7%94%D7%91%D7%9C%D7%95%D7%92.27/",
+    "description": "https://www.hasolidit.com/kehila/forums/%D7%93%D7%99%D7%95%D7%A0%D7%99-%D7%A2%D7%95%D7%9E%D7%A7-%D7%A2%D7%9C-%D7%A4%D7%95%D7%A1%D7%98%D7%99%D7%9D-%D7%9E%D7%94%D7%91%D7%9C%D7%95%D7%92.27/",
+    "group": "Israel"
+  },
+  {
+    "id": "d7_a9_d7_95_d7_a7_d7_94__jsejju",
+    "title": "שוק ההון",
+    "url": "https://www.hasolidit.com/kehila/forums/%D7%A9%D7%95%D7%A7-%D7%94%D7%94%D7%95%D7%9F.7/",
+    "description": "https://www.hasolidit.com/kehila/forums/%D7%A9%D7%95%D7%A7-%D7%94%D7%94%D7%95%D7%9F.7/",
+    "group": "Israel"
+  },
+  {
+    "id": "d7_91_d7_a8_d7_95_d7_a7__s93x1b",
+    "title": "ברוקרים ופלטפורמות מסחר",
+    "url": "https://www.hasolidit.com/kehila/forums/%D7%91%D7%A8%D7%95%D7%A7%D7%A8%D7%99%D7%9D-%D7%95%D7%A4%D7%9C%D7%98%D7%A4%D7%95%D7%A8%D7%9E%D7%95%D7%AA-%D7%9E%D7%A1%D7%97%D7%A8.33/",
+    "description": "https://www.hasolidit.com/kehila/forums/%D7%91%D7%A8%D7%95%D7%A7%D7%A8%D7%99%D7%9D-%D7%95%D7%A4%D7%9C%D7%98%D7%A4%D7%95%D7%A8%D7%9E%D7%95%D7%AA-%D7%9E%D7%A1%D7%97%D7%A8.33/",
+    "group": "Israel"
+  },
+  {
+    "id": "d7_a0_d7_93_d7_9c_d7_9f__1pq6e3",
+    "title": "נדל\"ן",
+    "url": "https://www.hasolidit.com/kehila/forums/%D7%A0%D7%93%D7%9C-%D7%9F.28/",
+    "description": "https://www.hasolidit.com/kehila/forums/%D7%A0%D7%93%D7%9C-%D7%9F.28/",
+    "group": "Israel"
+  },
+  {
+    "id": "d7_a4_d7_a0_d7_a1_d7_99__4kk7rk",
+    "title": "פנסיה, גמל וקרנות השתלמות",
+    "url": "https://www.hasolidit.com/kehila/forums/%D7%A4%D7%A0%D7%A1%D7%99%D7%94-%D7%92%D7%9E%D7%9C-%D7%95%D7%A7%D7%A8%D7%A0%D7%95%D7%AA-%D7%94%D7%A9%D7%AA%D7%9C%D7%9E%D7%95%D7%AA.34/",
+    "description": "https://www.hasolidit.com/kehila/forums/%D7%A4%D7%A0%D7%A1%D7%99%D7%94-%D7%92%D7%9E%D7%9C-%D7%95%D7%A7%D7%A8%D7%A0%D7%95%D7%AA-%D7%94%D7%A9%D7%AA%D7%9C%D7%9E%D7%95%D7%AA.34/",
+    "group": "Israel"
+  },
+  {
+    "id": "d7_a6_d7_a8_d7_9b_d7_a0__2b8ok3",
+    "title": "צרכנות פיננסית",
+    "url": "https://www.hasolidit.com/kehila/forums/%D7%A6%D7%A8%D7%9B%D7%A0%D7%95%D7%AA-%D7%A4%D7%99%D7%A0%D7%A0%D7%A1%D7%99%D7%AA.8/",
+    "description": "https://www.hasolidit.com/kehila/forums/%D7%A6%D7%A8%D7%9B%D7%A0%D7%95%D7%AA-%D7%A4%D7%99%D7%A0%D7%A0%D7%A1%D7%99%D7%AA.8/",
+    "group": "Israel"
+  },
+  {
+    "id": "d7_9e_d7_99_d7_a1_d7_99__e038xf",
+    "title": "מיסים",
+    "url": "https://www.hasolidit.com/kehila/forums/%D7%9E%D7%99%D7%A1%D7%99%D7%9D.32/",
+    "description": "https://www.hasolidit.com/kehila/forums/%D7%9E%D7%99%D7%A1%D7%99%D7%9D.32/",
+    "group": "Israel"
+  },
+  {
+    "id": "d7_99_d7_96_d7_9e_d7_95__gjg976",
+    "title": "יזמות והגדלת הכנסות",
+    "url": "https://www.hasolidit.com/kehila/forums/%D7%99%D7%96%D7%9E%D7%95%D7%AA-%D7%95%D7%94%D7%92%D7%93%D7%9C%D7%AA-%D7%94%D7%9B%D7%A0%D7%A1%D7%95%D7%AA.36/",
+    "description": "https://www.hasolidit.com/kehila/forums/%D7%99%D7%96%D7%9E%D7%95%D7%AA-%D7%95%D7%94%D7%92%D7%93%D7%9C%D7%AA-%D7%94%D7%9B%D7%A0%D7%A1%D7%95%D7%AA.36/",
+    "group": "Israel"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

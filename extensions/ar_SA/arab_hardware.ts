@@ -831,3 +831,47 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://arabhardware.net/",
+    "description": "technology forum",
+    "group": "Arabic region"
+  },
+  {
+    "id": "news",
+    "title": "News",
+    "url": "https://arabhardware.net/news",
+    "description": "technology forum",
+    "group": "Arabic region"
+  },
+  {
+    "id": "articles",
+    "title": "Articles",
+    "url": "https://arabhardware.net/articles",
+    "description": "technology forum",
+    "group": "Arabic region"
+  },
+  {
+    "id": "reviews",
+    "title": "Reviews",
+    "url": "https://arabhardware.net/reviews",
+    "description": "technology forum",
+    "group": "Arabic region"
+  },
+  {
+    "id": "how_to",
+    "title": "How To",
+    "url": "https://arabhardware.net/how",
+    "description": "technology forum",
+    "group": "Arabic region"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

@@ -663,3 +663,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "javascript",
+    "title": "JavaScript",
+    "url": "https://teratail.com/search?q=JavaScript&sort=created-desc",
+    "description": "developer q&a community",
+    "group": "Japan"
+  },
+  {
+    "id": "python",
+    "title": "Python",
+    "url": "https://teratail.com/search?q=Python&sort=created-desc",
+    "description": "developer q&a community",
+    "group": "Japan"
+  },
+  {
+    "id": "php",
+    "title": "PHP",
+    "url": "https://teratail.com/search?q=PHP&sort=created-desc",
+    "description": "developer q&a community",
+    "group": "Japan"
+  },
+  {
+    "id": "ruby",
+    "title": "Ruby",
+    "url": "https://teratail.com/search?q=Ruby&sort=created-desc",
+    "description": "developer q&a community",
+    "group": "Japan"
+  },
+  {
+    "id": "react",
+    "title": "React",
+    "url": "https://teratail.com/search?q=React&sort=created-desc",
+    "description": "developer q&a community",
+    "group": "Japan"
+  },
+  {
+    "id": "java",
+    "title": "Java",
+    "url": "https://teratail.com/search?q=Java&sort=created-desc",
+    "description": "developer q&a community",
+    "group": "Japan"
+  },
+  {
+    "id": "html",
+    "title": "HTML",
+    "url": "https://teratail.com/search?q=HTML&sort=created-desc",
+    "description": "developer q&a community",
+    "group": "Japan"
+  },
+  {
+    "id": "css",
+    "title": "CSS",
+    "url": "https://teratail.com/search?q=CSS&sort=created-desc",
+    "description": "developer q&a community",
+    "group": "Japan"
+  },
+  {
+    "id": "typescript",
+    "title": "TypeScript",
+    "url": "https://teratail.com/search?q=TypeScript&sort=created-desc",
+    "description": "developer q&a community",
+    "group": "Japan"
+  },
+  {
+    "id": "laravel",
+    "title": "Laravel",
+    "url": "https://teratail.com/search?q=Laravel&sort=created-desc",
+    "description": "developer q&a community",
+    "group": "Japan"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

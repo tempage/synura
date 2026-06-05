@@ -826,75 +826,11 @@ SITE.matchBoard = function (info) {
     }
     return out;
   };
-var clube_do_hardwareStatusPreviousRouteBoardCustom = SITE.routeBoardCustom;
-  var clube_do_hardwareStatusPreviousRouteCustom = SITE.routeCustom;
-  function clube_do_hardwareStatusItem(url) {
-    var link = String(url || SITE.browserHomeUrl || "");
-    link += (link.indexOf("?") >= 0 ? "&" : "?") + "synura_status=site";
-    return {
-      id: SITE.siteKey + ":status",
-      link: link,
-      title: "Clube do Hardware site status",
-      author: SITE.displayName,
-      avatar: "",
-      date: "",
-      category: SITE.country || "",
-      commentCount: "1",
-      viewCount: "",
-      likeCount: "",
-      mediaUrl: "",
-      mediaType: "",
-      types: ["link"],
-      menus: [],
-      hotCount: 1,
-      coldCount: 0
-    };
-  }
-  function clube_do_hardwareStatusBoard(url, match) {
-    var item = clube_do_hardwareStatusItem(url);
-    var board = match && match.board ? match.board : null;
-    return {
-      kind: "board",
-      url: url,
-      viewData: {
-        view: "/views/list",
-        styles: { title: board && board.title ? board.title : SITE.displayName, menu: true, pagination: false, history: true },
-        models: { contents: [item], menus: [] }
-      },
-      context: { kind: "board", link: url, boardId: board && board.id ? board.id : "", boardTitle: board && board.title ? board.title : SITE.displayName, boardUrl: board && board.url ? board.url : url, title: board && board.title ? board.title : SITE.displayName, page: 1, nextUrl: "", seenLinks: [item.link] }
-    };
-  }
-  SITE.routeCustom = function (url, info, force) {
-    if (String(url || "").indexOf("synura_status=site") >= 0) {
-      return {
-        kind: "post",
-        url: url,
-        viewData: {
-          view: "/views/post",
-          styles: { title: "Clube do Hardware site status", menu: true, history: true },
-          models: {
-            author: SITE.displayName,
-            avatar: "",
-            date: "",
-            category: SITE.country || "",
-            viewCount: "",
-            likeCount: "",
-            content: [{ type: "text", value: "Clube do Hardware did not return a public forum list during this request. Open in browser to continue reading the site." }],
-            comments: [{ id: SITE.siteKey + ":comment:status", link: url + "#status", author: SITE.displayName, avatar: "", date: "", content: [{ type: "text", value: "Clube do Hardware did not return a public forum list during this request. Open in browser to continue reading the site." }], likeCount: "", dislikeCount: "", level: 0, menus: [], hotCount: 0, coldCount: 0 }],
-            link: url,
-            menus: [],
-            buttons: []
-          }
-        },
-        context: { kind: "post", link: url, boardId: "", boardTitle: SITE.displayName, boardUrl: SITE.browserHomeUrl }
-      };
-    }
-    return clube_do_hardwareStatusPreviousRouteCustom ? clube_do_hardwareStatusPreviousRouteCustom(url, info, force) : null;
-  };
+  var clube_do_hardwarePreviousRouteBoardCustom = SITE.routeBoardCustom;
   SITE.routeBoardCustom = function (url, info, match, force) {
     try {
-      if (clube_do_hardwareStatusPreviousRouteBoardCustom) {
-        var previous = clube_do_hardwareStatusPreviousRouteBoardCustom(url, info, match, force);
+      if (clube_do_hardwarePreviousRouteBoardCustom) {
+        var previous = clube_do_hardwarePreviousRouteBoardCustom(url, info, match, force);
         if (previous) return previous;
       }
       var response = fetchWithLogging(url, buildFetchOptions());
@@ -911,7 +847,7 @@ var clube_do_hardwareStatusPreviousRouteBoardCustom = SITE.routeBoardCustom;
         };
       }
     } catch (e) {}
-    return clube_do_hardwareStatusBoard(url, match);
+    return null;
   };
 })();
 // END synurart-own-extension-validation-fix

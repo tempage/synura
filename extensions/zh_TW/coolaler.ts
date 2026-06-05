@@ -640,3 +640,82 @@ function coolalerInfoUrl(info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "xin_xing_monitor_keyboar_201nsi",
+    "title": "新型 Monitor / Keyboard / Mouse 等輸出入設備",
+    "url": "https://www.coolaler.com/forums/forums/xin-xing-monitor-keyboard-mouse-deng-shu-chu-ru-she-bei.161/",
+    "description": "https://www.coolaler.com/forums/forums/xin-xing-monitor-keyboard-mouse-deng-shu-chu-ru-she-bei.161/",
+    "group": "Taiwan"
+  },
+  {
+    "id": "dian_wan_ying_shi_yin_le_9qwv8s",
+    "title": "電玩 / 影視 / 音樂",
+    "url": "https://www.coolaler.com/forums/forums/dian-wan-ying-shi-yin-le.113/",
+    "description": "https://www.coolaler.com/forums/forums/dian-wan-ying-shi-yin-le.113/",
+    "group": "Taiwan"
+  },
+  {
+    "id": "xin_xing_case_an_zhuang__4q2j4g",
+    "title": "新型 Case 安裝發表及硬體改裝",
+    "url": "https://www.coolaler.com/forums/forums/xin-xing-case-an-zhuang-fa-biao-ji-ying-ti-gai-zhuang.108/",
+    "description": "https://www.coolaler.com/forums/forums/xin-xing-case-an-zhuang-fa-biao-ji-ying-ti-gai-zhuang.108/",
+    "group": "Taiwan"
+  },
+  {
+    "id": "xin_xing_psu_dian_yuan_g_guh2k2",
+    "title": "新型 PSU 電源供電設備",
+    "url": "https://www.coolaler.com/forums/forums/xin-xing-psu-dian-yuan-gong-dian-she-bei.267/",
+    "description": "https://www.coolaler.com/forums/forums/xin-xing-psu-dian-yuan-gong-dian-she-bei.267/",
+    "group": "Taiwan"
+  },
+  {
+    "id": "lga_1851_1700_arrow_lake_fwp6d",
+    "title": "[LGA 1851/1700]Arrow Lake-S、Raptor Lake-S 等及相關主板",
+    "url": "https://www.coolaler.com/forums/forums/lga-1851-1700-arrow-lake-s-raptor-lake-s-deng-ji-xiang-guan-zhu-ban.501/",
+    "description": "https://www.coolaler.com/forums/forums/lga-1851-1700-arrow-lake-s-raptor-lake-s-deng-ji-xiang-guan-zhu-ban.501/",
+    "group": "Taiwan"
+  },
+  {
+    "id": "xin_xing_san_re_zhuang_z_vklg8c",
+    "title": "新型散熱裝置 / 散熱膏",
+    "url": "https://www.coolaler.com/forums/forums/xin-xing-san-re-zhuang-zhi-san-re-gao.172/",
+    "description": "https://www.coolaler.com/forums/forums/xin-xing-san-re-zhuang-zhi-san-re-gao.172/",
+    "group": "Taiwan"
+  },
+  {
+    "id": "xian_shi_qi_129_fqaz16",
+    "title": "顯示器",
+    "url": "https://www.coolaler.com/forums/forums/xian-shi-qi.129/",
+    "description": "https://www.coolaler.com/forums/forums/xian-shi-qi.129/",
+    "group": "Taiwan"
+  },
+  {
+    "id": "qi_ta_133_c3k667",
+    "title": "其他",
+    "url": "https://www.coolaler.com/forums/forums/qi-ta.133/",
+    "description": "https://www.coolaler.com/forums/forums/qi-ta.133/",
+    "group": "Taiwan"
+  },
+  {
+    "id": "lga1150_1151_1155_1700_2_temblm",
+    "title": "LGA1150 /1151/1155/1700/2011/2066",
+    "url": "https://www.coolaler.com/forums/forums/lga1150-1151-1155-1700-2011-2066.433/",
+    "description": "https://www.coolaler.com/forums/forums/lga1150-1151-1155-1700-2011-2066.433/",
+    "group": "Taiwan"
+  },
+  {
+    "id": "lga1200_1150_1151_1155_1_h7pijw",
+    "title": "LGA1200/1150/1151/1155/1700/2011/2066",
+    "url": "https://www.coolaler.com/forums/forums/lga1200-1150-1151-1155-1700-2011-2066.437/",
+    "description": "https://www.coolaler.com/forums/forums/lga1200-1150-1151-1155-1700-2011-2066.437/",
+    "group": "Taiwan"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

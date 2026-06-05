@@ -897,3 +897,82 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://pantip.com/",
+    "description": "forum",
+    "group": "Thailand"
+  },
+  {
+    "id": "siliconvalley",
+    "title": "Silicon Valley",
+    "url": "https://pantip.com/forum/siliconvalley",
+    "description": "forum",
+    "group": "Thailand"
+  },
+  {
+    "id": "mbk",
+    "title": "MBK",
+    "url": "https://pantip.com/forum/mbk",
+    "description": "forum",
+    "group": "Thailand"
+  },
+  {
+    "id": "ratchada",
+    "title": "Ratchada",
+    "url": "https://pantip.com/forum/ratchada",
+    "description": "forum",
+    "group": "Thailand"
+  },
+  {
+    "id": "blueplanet",
+    "title": "Blue Planet",
+    "url": "https://pantip.com/forum/blueplanet",
+    "description": "forum",
+    "group": "Thailand"
+  },
+  {
+    "id": "chalermthai",
+    "title": "Chalermthai",
+    "url": "https://pantip.com/forum/chalermthai",
+    "description": "forum",
+    "group": "Thailand"
+  },
+  {
+    "id": "klaibann",
+    "title": "Klaibann",
+    "url": "https://pantip.com/forum/klaibann",
+    "description": "forum",
+    "group": "Thailand"
+  },
+  {
+    "id": "wahkor",
+    "title": "Wahkor",
+    "url": "https://pantip.com/forum/wahkor",
+    "description": "forum",
+    "group": "Thailand"
+  },
+  {
+    "id": "lumpini",
+    "title": "Lumpini",
+    "url": "https://pantip.com/forum/lumpini",
+    "description": "forum",
+    "group": "Thailand"
+  },
+  {
+    "id": "supachalasai",
+    "title": "Supachalasai",
+    "url": "https://pantip.com/forum/supachalasai",
+    "description": "forum",
+    "group": "Thailand"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

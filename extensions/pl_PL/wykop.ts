@@ -707,3 +707,75 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://wykop.pl/",
+    "description": "social news",
+    "group": "Poland"
+  },
+  {
+    "id": "najnowsze",
+    "title": "Najnowsze",
+    "url": "https://wykop.pl/najnowsze",
+    "description": "social news",
+    "group": "Poland"
+  },
+  {
+    "id": "mikroblog",
+    "title": "Mikroblog",
+    "url": "https://wykop.pl/mikroblog",
+    "description": "social news",
+    "group": "Poland"
+  },
+  {
+    "id": "technologia",
+    "title": "Technologia",
+    "url": "https://wykop.pl/tag/technologia",
+    "description": "social news",
+    "group": "Poland"
+  },
+  {
+    "id": "programowanie",
+    "title": "Programowanie",
+    "url": "https://wykop.pl/tag/programowanie",
+    "description": "social news",
+    "group": "Poland"
+  },
+  {
+    "id": "polityka",
+    "title": "Polityka",
+    "url": "https://wykop.pl/tag/polityka",
+    "description": "social news",
+    "group": "Poland"
+  },
+  {
+    "id": "nauka",
+    "title": "Nauka",
+    "url": "https://wykop.pl/tag/nauka",
+    "description": "social news",
+    "group": "Poland"
+  },
+  {
+    "id": "gry",
+    "title": "Gry",
+    "url": "https://wykop.pl/tag/gry",
+    "description": "social news",
+    "group": "Poland"
+  },
+  {
+    "id": "sport",
+    "title": "Sport",
+    "url": "https://wykop.pl/tag/sport",
+    "description": "social news",
+    "group": "Poland"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

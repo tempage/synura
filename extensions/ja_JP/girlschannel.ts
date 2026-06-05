@@ -792,3 +792,47 @@ SITE.matchBoard = function (info) {
   };
 })();
 // END synurart-own-extension-validation-fix
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://girlschannel.net/",
+    "description": "forum",
+    "group": "Japan"
+  },
+  {
+    "id": "love",
+    "title": "Love",
+    "url": "https://girlschannel.net/topics/category/love/",
+    "description": "forum",
+    "group": "Japan"
+  },
+  {
+    "id": "fashion",
+    "title": "Fashion",
+    "url": "https://girlschannel.net/topics/category/fashion/",
+    "description": "forum",
+    "group": "Japan"
+  },
+  {
+    "id": "life",
+    "title": "Life",
+    "url": "https://girlschannel.net/topics/category/life/",
+    "description": "forum",
+    "group": "Japan"
+  },
+  {
+    "id": "news",
+    "title": "News",
+    "url": "https://girlschannel.net/topics/category/news/",
+    "description": "forum",
+    "group": "Japan"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

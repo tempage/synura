@@ -586,3 +586,82 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "mainboards_und_cpus_kauf_x42waa",
+    "title": "Mainboards und CPUs: Kaufberatung",
+    "url": "https://www.computerbase.de/forum/forums/mainboards-und-cpus-kaufberatung.51/",
+    "description": "https://www.computerbase.de/forum/forums/mainboards-und-cpus-kaufberatung.51/",
+    "group": "Germany"
+  },
+  {
+    "id": "mainboards_und_cpus_prob_uobsac",
+    "title": "Mainboards und CPUs: Probleme mit AMD",
+    "url": "https://www.computerbase.de/forum/forums/mainboards-und-cpus-probleme-mit-amd.98/",
+    "description": "https://www.computerbase.de/forum/forums/mainboards-und-cpus-probleme-mit-amd.98/",
+    "group": "Germany"
+  },
+  {
+    "id": "mainboards_und_cpus_prob_i3taof",
+    "title": "Mainboards und CPUs: Probleme mit Intel",
+    "url": "https://www.computerbase.de/forum/forums/mainboards-und-cpus-probleme-mit-intel.99/",
+    "description": "https://www.computerbase.de/forum/forums/mainboards-und-cpus-probleme-mit-intel.99/",
+    "group": "Germany"
+  },
+  {
+    "id": "mainboards_und_cpus_disk_7st9oj",
+    "title": "Mainboards und CPUs: Diskussionen",
+    "url": "https://www.computerbase.de/forum/forums/mainboards-und-cpus-diskussionen.100/",
+    "description": "https://www.computerbase.de/forum/forums/mainboards-und-cpus-diskussionen.100/",
+    "group": "Germany"
+  },
+  {
+    "id": "extraleben_community_gen_olgcwz",
+    "title": "Extraleben, Community, Genrepolitik",
+    "url": "https://www.computerbase.de/forum/forums/extraleben-community-genrepolitik.128/",
+    "description": "https://www.computerbase.de/forum/forums/extraleben-community-genrepolitik.128/",
+    "group": "Germany"
+  },
+  {
+    "id": "aquatuning_support_forum_fsr963",
+    "title": "Aquatuning Support-Forum",
+    "url": "https://www.computerbase.de/forum/forums/aquatuning-support-forum.185/",
+    "description": "https://www.computerbase.de/forum/forums/aquatuning-support-forum.185/",
+    "group": "Germany"
+  },
+  {
+    "id": "nanoxia_support_forum_20_n4gitp",
+    "title": "Nanoxia Support-Forum",
+    "url": "https://www.computerbase.de/forum/forums/nanoxia-support-forum.209/",
+    "description": "https://www.computerbase.de/forum/forums/nanoxia-support-forum.209/",
+    "group": "Germany"
+  },
+  {
+    "id": "leserartikel_xtfd2u",
+    "title": "Leserartikel",
+    "url": "https://www.computerbase.de/forum/leserartikel/",
+    "description": "https://www.computerbase.de/forum/leserartikel/",
+    "group": "Germany"
+  },
+  {
+    "id": "arbeitsspeicher_49_qgyf7e",
+    "title": "Arbeitsspeicher",
+    "url": "https://www.computerbase.de/forum/forums/arbeitsspeicher.49/",
+    "description": "https://www.computerbase.de/forum/forums/arbeitsspeicher.49/",
+    "group": "Germany"
+  },
+  {
+    "id": "overclocking_und_undervo_4tv99p",
+    "title": "Overclocking und Undervolting von AMD-Systemen",
+    "url": "https://www.computerbase.de/forum/forums/overclocking-und-undervolting-von-amd-systemen.182/",
+    "description": "https://www.computerbase.de/forum/forums/overclocking-und-undervolting-von-amd-systemen.182/",
+    "group": "Germany"
+  }
+];
+  SITE.minimumHomeBoards = Math.max(parseInt(String(SITE.minimumHomeBoards || 10), 10) || 10, 10);
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed

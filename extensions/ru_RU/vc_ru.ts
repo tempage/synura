@@ -821,3 +821,75 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+// BEGIN synurart-home-board-seed
+(function () {
+  var seededHomeBoards = [
+  {
+    "id": "home",
+    "title": "Home",
+    "url": "https://vc.ru/",
+    "description": "business community",
+    "group": "Russia"
+  },
+  {
+    "id": "new",
+    "title": "New",
+    "url": "https://vc.ru/new",
+    "description": "business community",
+    "group": "Russia"
+  },
+  {
+    "id": "popular",
+    "title": "Popular",
+    "url": "https://vc.ru/popular",
+    "description": "business community",
+    "group": "Russia"
+  },
+  {
+    "id": "marketing",
+    "title": "Marketing",
+    "url": "https://vc.ru/marketing",
+    "description": "business community",
+    "group": "Russia"
+  },
+  {
+    "id": "design",
+    "title": "Design",
+    "url": "https://vc.ru/design",
+    "description": "business community",
+    "group": "Russia"
+  },
+  {
+    "id": "dev",
+    "title": "Development",
+    "url": "https://vc.ru/dev",
+    "description": "business community",
+    "group": "Russia"
+  },
+  {
+    "id": "future",
+    "title": "Future",
+    "url": "https://vc.ru/future",
+    "description": "business community",
+    "group": "Russia"
+  },
+  {
+    "id": "social",
+    "title": "Social",
+    "url": "https://vc.ru/social",
+    "description": "business community",
+    "group": "Russia"
+  },
+  {
+    "id": "transport",
+    "title": "Transport",
+    "url": "https://vc.ru/transport",
+    "description": "business community",
+    "group": "Russia"
+  }
+];
+  SITE.minimumHomeBoards = seededHomeBoards.length;
+  SITE.boards = seededHomeBoards;
+  SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
+})();
+// END synurart-home-board-seed
