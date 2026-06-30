@@ -2270,17 +2270,17 @@
 
     function buildHomeItems(entries) {
         var items = [];
+        var secondaryField = SITE.homeListSecondaryField || "category";
         for (var i = 0; i < (entries || []).length; i++) {
             var entry = entries[i];
             if (!entry) continue;
             if (entry.kind === "group") {
                 var parentPath = entry.parentPath || "";
-                items.push({
+                var groupItem = {
                     id: homeGroupOrderId(entry.path),
                     link: buildCategoryRouteUrl(entry.path),
                     title: entry.title,
                     description: entry.description || communityMessage("categoryShortcut"),
-                    category: parentPath || MENU_ALL_BOARDS,
                     author: boardCountText(entry.totalCount),
                     date: "",
                     commentCount: "",
@@ -2290,16 +2290,17 @@
                     menus: [MENU_HOME_REMOVE],
                     hotCount: entry.visibleCount || 0,
                     coldCount: Math.max(0, (entry.totalCount || 0) - (entry.visibleCount || 0))
-                });
+                };
+                groupItem[secondaryField] = parentPath || MENU_ALL_BOARDS;
+                items.push(groupItem);
                 continue;
             }
             var board = entry.board || entry;
-            items.push({
+            var boardItem = {
                 id: board.id,
                 link: board.url,
                 title: board.title,
                 description: board.description || board.url.replace(/^https?:\/\//, ""),
-                category: SITE.displayName,
                 author: "",
                 date: "",
                 commentCount: "",
@@ -2309,7 +2310,9 @@
                 menus: [],
                 hotCount: 0,
                 coldCount: 0
-            });
+            };
+            boardItem[secondaryField] = SITE.displayName;
+            items.push(boardItem);
         }
         return items;
     }

@@ -15,12 +15,12 @@ KO_KR_EXTENSION_TARGETS = arca clien damoang dcinside fmkorea geeknews instiz in
 KO_KR_TARGETS = $(addprefix ko_KR/,$(KO_KR_EXTENSION_TARGETS))
 KO_KR_OUTPUTS = $(addsuffix .js,$(KO_KR_TARGETS))
 
-EN_US_EXTENSION_TARGETS = hackernews
+EN_US_EXTENSION_TARGETS = hackernews reddit
 EN_US_TARGETS = $(addprefix en_US/,$(EN_US_EXTENSION_TARGETS))
 EN_US_OUTPUTS = $(addsuffix .js,$(EN_US_TARGETS))
 
 LOCAL_COMMUNITY_DIRS = ar_SA bn_BD de_DE en_US es_419 es_ES fa_IR fr_FR he_IL hi_IN id_ID it_IT ja_JP pl_PL pt_BR pt_PT ru_RU th_TH tr_TR vi_VN zh_CN zh_TW
-LOCAL_COMMUNITY_TS = $(filter-out en_US/hackernews.ts,$(foreach dir,$(LOCAL_COMMUNITY_DIRS),$(wildcard $(dir)/*.ts)))
+LOCAL_COMMUNITY_TS = $(filter-out en_US/hackernews.ts en_US/reddit.ts,$(foreach dir,$(LOCAL_COMMUNITY_DIRS),$(wildcard $(dir)/*.ts)))
 LOCAL_COMMUNITY_TARGETS = $(basename $(LOCAL_COMMUNITY_TS))
 LOCAL_COMMUNITY_OUTPUTS = $(addsuffix .js,$(LOCAL_COMMUNITY_TARGETS))
 
@@ -118,6 +118,9 @@ ko_KR/geeknews.js: ko_KR/geeknews.ts
 	$(compile_js)
 
 en_US/hackernews.js: en_US/hackernews.ts community_common_en_US.ts $(COMMUNITY_COMMON_TS)
+	$(compile_js)
+
+en_US/reddit.js: en_US/reddit.ts
 	$(compile_js)
 
 define community_locale_compile_rule

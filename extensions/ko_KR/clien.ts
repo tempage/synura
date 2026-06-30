@@ -1,7 +1,7 @@
 // @ts-nocheck
 
 // To refresh the preloaded Clien board catalog:
-// 1. Run `go run ./cmd/synurart -json -ext extensions/ko_KR/clien.js -e "eval JSON.stringify(SITE.loadDynamicBoards({allowNetwork:true,force:true}))"`.
+// 1. Run `./synurart -json -ext extensions/ko_KR/clien.js -e "eval JSON.stringify(SITE.loadDynamicBoards({allowNetwork:true,force:true}))"`.
 // 2. Convert the returned objects to `[id, title]` rows and replace `CLIEN_PRELOADED_DYNAMIC_BOARD_ROWS`.
 
 var CLIEN_PRELOADED_DYNAMIC_BOARD_ROWS = [

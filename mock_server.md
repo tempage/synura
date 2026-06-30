@@ -101,4 +101,5 @@ The server also serves example extensions from the `extensions` directory:
 - `internal/mockserver/server.go` - server implementation
 - `internal/mockserver/server_test.go` - unit tests
 - `cmd/fetch/main.go` - curl-like fetch helper
-- `cmd/synurart/main.go` - CLI runtime shell for extension simulation
+- `rust/synurart/src/lib.rs` - Rust Synurart runtime engine and shell implementation
+- `rust/synurart/src/main.rs` - thin CLI binary entrypoint

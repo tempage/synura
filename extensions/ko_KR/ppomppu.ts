@@ -1204,6 +1204,9 @@ function ppomppuBuildPostRoute(url, match) {
 
     var rememberedItem = getRememberedItemPreview(url);
     var comments = ppomppuParseComments(root, url);
+    if (!comments || comments.length === 0) {
+        comments = ppomppuParseInitialCommentData(fetched.html, url);
+    }
     if (!content || content.length === 0) {
         content = [{
             type: "text",
@@ -1420,6 +1423,130 @@ function formatPpomppuCommentDate(value) {
     return matched[4] ? (shortDate + " " + matched[4]) : shortDate;
 }
 
+function ppomppuExtractJsonAssignment(html, name) {
+    var source = String(html || "");
+    var marker = String(name || "");
+    if (!source || !marker) return null;
+
+    var markerIndex = source.indexOf(marker);
+    while (markerIndex >= 0) {
+        var equalsIndex = source.indexOf("=", markerIndex + marker.length);
+        if (equalsIndex < 0) return null;
+
+        var start = -1;
+        for (var i = equalsIndex + 1; i < source.length; i++) {
+            var ch = source.charAt(i);
+            if (/\s/.test(ch)) continue;
+            if (ch === "{") start = i;
+            break;
+        }
+        if (start < 0) {
+            markerIndex = source.indexOf(marker, markerIndex + marker.length);
+            continue;
+        }
+
+        var inString = false;
+        var quote = "";
+        var escaped = false;
+        var depth = 0;
+        for (var j = start; j < source.length; j++) {
+            var current = source.charAt(j);
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (current === "\\") {
+                    escaped = true;
+                } else if (current === quote) {
+                    inString = false;
+                    quote = "";
+                }
+                continue;
+            }
+
+            if (current === "\"" || current === "'") {
+                inString = true;
+                quote = current;
+                continue;
+            }
+            if (current === "{") {
+                depth += 1;
+            } else if (current === "}") {
+                depth -= 1;
+                if (depth === 0) {
+                    try {
+                        return JSON.parse(source.slice(start, j + 1));
+                    } catch (e) {
+                        return null;
+                    }
+                }
+            }
+        }
+
+        markerIndex = source.indexOf(marker, markerIndex + marker.length);
+    }
+
+    return null;
+}
+
+function ppomppuTextFromMarkup(markup) {
+    var root = ppomppuParseFragmentRoot(markup);
+    return textOf(root);
+}
+
+function ppomppuImageFromMarkup(markup, baseUrl) {
+    var root = ppomppuParseFragmentRoot(markup);
+    if (!root) return "";
+    var image = root.querySelector ? root.querySelector("img") : null;
+    return imageUrlFromNode(image || root, baseUrl);
+}
+
+function ppomppuParseCommentMarkup(markup, postUrl) {
+    var content = parseMarkupDetails(String(markup || ""), postUrl);
+    if ((!content || content.length === 0) && markup) {
+        var text = ppomppuTextFromMarkup(markup);
+        if (text) content = [{ type: "text", value: text }];
+    }
+    return content || [];
+}
+
+function ppomppuParseInitialCommentData(html, postUrl) {
+    var data = ppomppuExtractJsonAssignment(html, "initialCommentData");
+    var rows = data && Array.isArray(data.comments) ? data.comments : [];
+    var comments = [];
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i] || {};
+        var content = ppomppuParseCommentMarkup(row.memo || row.comment || row.content || "", postUrl);
+        if (!content || content.length === 0) continue;
+
+        var likeCount = hideZeroCount(parseCount(row.vote_btn ? row.vote_btn.vote_count : row.vote_count));
+        var dislikeCount = hideZeroCount(parseCount(row.anti_vote_btn ? row.anti_vote_btn.anti_vote_count : row.anti_vote_count));
+        var rowId = firstNonEmpty([
+            row.no ? ("comment_" + row.no) : "",
+            row.id ? String(row.id) : "",
+            "comment-" + (i + 1)
+        ]);
+        var date = row.meta ? firstNonEmpty([
+            row.meta.time_display,
+            row.meta.time_detail
+        ]) : "";
+
+        comments.push({
+            link: postUrl + "#" + rowId,
+            author: ppomppuTextFromMarkup(row.name || row.author || ""),
+            avatar: ppomppuImageFromMarkup(row.image || row.avatar || "", postUrl),
+            content: content,
+            date: formatPpomppuCommentDate(date || row.date || row.regdate || ""),
+            likeCount: likeCount,
+            dislikeCount: dislikeCount,
+            level: Math.max(0, toInt(row.depth, 0)),
+            menus: [],
+            hotCount: toInt(likeCount, 0),
+            coldCount: toInt(dislikeCount, 0)
+        });
+    }
+    return comments;
+}
+
 function ppomppuParseComments(doc, postUrl) {
     var rows = allNodes(doc, SITE.selectors.commentRows);
     var comments = [];
@@ -1468,7 +1595,7 @@ var SYNURA = {
     domain: "m.ppomppu.co.kr",
     name: "ppomppu",
     description: "Unofficial Ppomppu extension",
-    version: 0.1,
+    version: 0.2,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",

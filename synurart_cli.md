@@ -1,253 +1,100 @@
-# synurart CLI Shell Guide (AI-Friendly)
+# synurart CLI Shell Guide
 
-This document is a practical command reference for the Synura runtime shell (`cmd/synurart`), optimized for AI agents and scripted terminal workflows.
-
-## What It Is
-
-`synurart` runs a Synura extension JavaScript file in a local Go-based runtime and lets you:
-
-- Load an extension
-- Open and inspect view stack state
-- Emit view events (`CLICK`, `QUERY`, `SUBMIT`, etc.)
-- Simulate lifecycle calls (`home`, `deeplink`, `resume`)
-- Inspect storage and execute ad-hoc JS
-
-It is the fastest way to validate extension behavior without launching the mobile app.
-
-`localStorage` is persisted automatically in `.synurart/local_storage.json`, namespaced by the loaded extension's absolute path. Each extension reload restores its last saved `localStorage` snapshot before the JS file is evaluated.
-
-The runtime exposes the same browser-like `navigator` globals as Synura extensions.
-
-- `navigator.language` defaults to `en-US` and can be changed with `locale <tag>`.
-
-## Network Host Rule
-
-Extension network requests must stay inside the extension's effective host permissions.
-
-- `synurart` and the real Synura app follow the same rule.
-- If `SYNURA.host_permissions` is omitted, only `http://<SYNURA.domain>/*` and `https://<SYNURA.domain>/*` are allowed.
-- If `SYNURA.host_permissions` is present, it replaces the default scope. Use patterns such as `https://api.example.com/*` or `https://*.github.io/*`.
-- Permission hosts must stay within the same registrable domain family as `SYNURA.domain`.
-- Wildcards must be left-most only and cannot target ICANN public suffixes such as `*.io`, `*.com`, or `*.co.kr`.
-- Localhost and raw IP permissions are port-strict. `127.0.0.1:8080` does not grant `127.0.0.1:9090`.
-
-Example:
-
-```javascript
-var SYNURA = {
-  domain: "github.io",
-  host_permissions: ["https://*.github.io/*"]
-};
-```
+`synurart` runs a Synura extension JavaScript file in a local Rust runtime simulator. Use it to load an extension, inspect view state, and emit common view events without launching the mobile app.
 
 ## Start Commands
 
 ```bash
 # Recommended wrapper from this repo
-make synurart
-
-# Start with an extension and auto-call home()
 make synurart EXT=extensions/basic/list.js
 
-# Direct command form
-go run ./cmd/synurart -ext extensions/basic/list.js
+# Direct wrapper
+./synurart -ext extensions/basic/list.js
+
+# One-shot command
+./synurart -json -ext extensions/basic/list.js -e "views"
+
+# Build a reusable binary
+make build
+./bin/synurart -ext extensions/basic/list.js
 ```
+
+The root `./synurart` wrapper runs an incremental Cargo build and then executes `target/debug/synurart` from this checkout.
 
 ## CLI Flags
 
 | Flag | Meaning |
 |---|---|
-| `-ext <path>` | Path to extension JS file. |
-| `-no-home` | Load extension but do not call `SYNURA.main.home()`. |
+| `-ext <path>` | Path to the extension JavaScript file. |
+| `-no-home` | Load the extension but do not call `SYNURA.main.home()`. |
 | `-e "<command>"` | Execute one shell command and exit. |
-| `-json` | Emit machine-friendly JSON (NDJSON style) for automation. |
+| `-json` | Emit command result objects as JSON where supported. Runtime console logs may still be text. |
 
-Notes:
-
-- If `-ext` is omitted, first positional arg is treated as extension path.
-- `-e` is single-command mode. It does not enter interactive REPL.
+The first positional argument is also treated as the extension path when `-ext` is omitted.
 
 ## REPL Behavior
 
-- Prompt is `synurart> `.
+- Prompt is `synurart> ` when stdin is interactive.
+- Interactive terminals support line editing, in-session history, and tab completion for commands, paths, view IDs, item indexes, menu labels, and common event names.
 - Empty lines are ignored.
 - `quit`, `q`, or `exit` terminates.
-- In TTY mode, tab completion is enabled.
-- In non-TTY mode (piped stdin), prompt text is still printed before each input line.
+- In non-interactive mode, pipe commands on stdin.
+- Color is enabled automatically on terminals. Set `SYNURART_COLOR=always` or `SYNURART_COLOR=never` to override.
 
-## Output Contract (Important for AI)
+Example:
 
-When `-json` is enabled, two output channels are used:
+```bash
+printf 'views\ntap index 1\nviews\nquit\n' | ./synurart -json -ext extensions/basic/list.js
+```
 
-- `stdout`: command results from the shell (`views`, `render`, `timeout`, etc.)
-- `stderr`: runtime telemetry (`open`, `update`, `event`, `console`, `fetch`, runtime `error`)
-
-If your environment merges streams, parse line-by-line JSON and ignore optional `synurart> ` prefixes.
-
-## Command Reference
+## Commands
 
 | Command | Effect |
 |---|---|
-| `help` / `h` / `?` | Show command help. |
-| `load <path> [--no-home]` | Reset runtime, load extension, optional `home()` call. |
-| `timeout [duration]` | Show or set fetch timeout (`10s`, `500ms`, `2.5`). |
-| `locale [tag]` | Show or set `navigator.language` (`ko-KR`, `pt-BR`, `en-US`). |
-| `mapurl <url> <file>` | Map one exact fetch URL to a local file for the current runtime. |
-| `mapurl list` | Show current URL-to-file overrides. |
-| `mapurl clear` | Clear all URL-to-file overrides. |
+| `help` / `h` | Show command help. |
+| `load <path> [--no-home]` | Load an extension into a fresh runtime. |
 | `views` / `ls` | Show stack summary and active view. |
-| `v [id]` | Show stack summary, or show one view JSON + render when `id` is given. |
-| `view <id>` | Show one view JSON + render output. |
-| `render [id]` | Render one view (defaults to top view). |
-| `home` | Call `SYNURA.main.home()`. |
-| `deeplink <url>` | Call `SYNURA.main.deeplink(url)`. |
-| `resume <id> [jsonObject]` | Call `SYNURA.main.resume(id, context)`. |
-| `s <n> [id]` | Alias for `tap index <n> [id]`. |
-| `tap` or `click` | Same command; `click` is an alias of `tap`. |
-| `tap title <text> [id]` | Emit `CLICK` by title match in list contents. |
-| `tap author <name> [id]` | Emit `AUTHOR_CLICK` by author match (list/post). |
-| `tap category <name> [id]` | Emit `CATEGORY_CLICK` by category match (list/post). |
-| `tap index <n> [id]` | Emit `CLICK` by 1-based list index. |
-| `itemmenu <id> <label> [index]` | Emit `ITEM_MENU_CLICK` using list item/comment data. |
-| `reorder <id> <fromIndex> <toIndex>` | Emit `REORDER` with `_index` and `_newIndex`. |
-| `r [id]` | Alias for `refresh <id>`; defaults to the top view. |
-| `refresh <id>` | Emit `REFRESH`. |
-| `n [id]` | Alias for `event <id> SCROLL_TO_END`; defaults to the top view. |
-| `c [id]` | Alias for `close <id>`; defaults to the top view. |
-| `menu <id> <label>` | Emit `MENU_CLICK` with `{"menu": "<label>"}`. |
-| `query <id> <text>` | Emit `QUERY` with `{"query": "<text>"}`. |
-| `submit <id> <jsonObject>` | Emit `SUBMIT` with object payload. |
-| `event <id> <EVENT_ID> [jsonObject]` | Emit custom event (event ID is uppercased). |
-| `close <id>` | Close view by ID (`synura.close`). |
-| `storage [local|session]` | Print storage snapshot(s). |
-| `storage clear [local|session|all]` | Clear storage. `local` is persisted to disk immediately. |
-| `eval <javascript>` | Run JS directly in runtime VM. |
-| `quit` / `q` / `exit` | Exit shell. |
+| `v [id]` | Show stack summary, or one view when `id` is given. |
+| `view <id>` | Show one view's compact data and render. |
+| `render [id]` | Render one view; defaults to the top view. |
+| `home` | Call `SYNURA.main.home()` and show views. |
+| `deeplink <url>` | Call `SYNURA.main.deeplink(url)` and show views. |
+| `resume <id> [context]` | Resume a view with optional context. |
+| `tap index <n> [id]` | Emit `CLICK` for a 1-based list item index. |
+| `tap title <text> [id]` | Emit `CLICK` by exact title match. |
+| `tap author <name> [id]` | Emit `AUTHOR_CLICK` by author match. |
+| `tap category <name> [id]` | Emit `CATEGORY_CLICK` by category match. |
+| `click ...` | Alias of `tap ...`. |
+| `s <n> [id]` | Alias of `tap index <n> [id]`. |
+| `itemmenu <id> <label> [index]` | Emit `ITEM_MENU_CLICK` using list/comment item data. |
+| `reorder <id> <fromIndex> <toIndex>` | Emit `REORDER`. |
+| `refresh [id]` / `r [id]` | Emit `REFRESH`; defaults to the top view. |
+| `n [id]` / `next [id]` | Emit `SCROLL_TO_END`; defaults to the top view. |
+| `close [id]` / `c [id]` | Close a view; defaults to the top view. |
+| `menu <id> <label>` | Emit `MENU_CLICK`. |
+| `query <id> <text>` | Emit `QUERY`. |
+| `submit <id> <jsonObject>` | Emit `SUBMIT`. |
+| `event <id> <EVENT_ID> [jsonObject]` | Emit a custom event. |
+| `timeout [duration]` | Show or set fetch timeout, for example `10s` or `500ms`. |
+| `locale [tag]` | Show or set `navigator.language`, for example `ko-KR`. |
+| `mapurl <url> <file>` | Map one exact fetch URL to a local file for this runtime. |
+| `mapurl list` | Show fetch URL overrides. |
+| `mapurl clear` | Clear fetch URL overrides. |
+| `storage [local|session]` | Show storage snapshots. |
+| `storage clear [local|session|all]` | Clear storage. |
+| `eval <javascript>` | Evaluate JavaScript in the current runtime. |
 
-## JSON Event Types You May See
+## Practical Workflow
 
-### Shell result objects (stdout, `-json`)
+1. Start with `./synurart -json -ext <ext.js> -e "views"`.
+2. Read the active view from the `type=views` output.
+3. Pick an action by path:
+   - `/views/list`: `tap index`, `query`, `menu`, `n`
+   - `/views/post`: `refresh`, `menu`, `event`
+4. Re-run `views` or `view <id>` to confirm state changes.
 
-- `{"type":"help","commands":[...]}`
-- `{"type":"views","views":[...],"activeView":{"viewId":1,"path":"...","models":{...},"styles":{...},"rendered":{...}}}`
-- `{"type":"view","viewId":1,"path":"...","data":{...},"rendered":{...}}`
-- `{"type":"render","viewId":1,"path":"...","models":{...},"styles":{...},"rendered":{...}}`
-- `{"type":"timeout","timeout":"10s","seconds":10}`
-- `{"type":"locale","locale":"ko-KR"}`
-- `{"type":"mapurl","overrides":{"https://...":"/abs/path/file.html"}}`
-- `{"type":"mapurl_set","url":"https://...","file":"fixture.html"}`
-- `{"type":"mapurl_cleared"}`
-- `{"type":"storage","local":{...},"session":{...}}`
-- `{"type":"storage_cleared","local":true,"session":false}`
-- `{"type":"eval","result":...}`
-- `{"type":"ok"}`
+## Notes
 
-### Runtime telemetry (stderr, `-json`)
-
-- `{"type":"open","viewId":1,"path":"/views/list"}`
-- `{"type":"update","viewId":1,"diff":{...}}`
-- `{"type":"close","viewId":1}`
-- `{"type":"event","viewId":1,"eventId":"CLICK","data":{...}}`
-- `{"type":"event_done","viewId":1,"eventId":"QUERY","depth":1,"totalMs":182,"backendMs":41,"backendTime":"41ms","fetchMs":141,"fetchTime":"141ms","fetchCount":1,"fetchLogicMs":18,"fetchTotalMs":159,"exclusiveTime":"182ms"}`
-- `{"type":"fetch","method":"GET","url":"...","status":200,"totalMs":141,"logicMs":18,"logicTime":"18ms","networkMs":123,"networkTime":"123ms"}`
-- `{"type":"console","level":"log","message":"..."}`
-- `{"type":"error","message":"..."}`
-
-In text mode, callback completion now prints lines like:
-
-- `[EVENT←EXT] #1 QUERY done (total=182ms, b=41ms, f=141ms, fetches=1, depth=1)`
-
-`event_done` is exclusive per callback. If a parent event opens another view and triggers a nested `LOAD`, the nested `LOAD` receives its own timing line and the parent line does not double-count that child callback's fetch time.
-
-## Available Events By View Path
-
-This list is aligned with the current view/dialog docs in this repository.
-
-| View path | Available events |
-|---|---|
-| `/views/list` | `REFRESH`, `SCROLL_TO_END` (when `pagination: true`), `CLICK`, `ITEM_MENU_CLICK`, `MENU_CLICK`, `REORDER`, `AUTHOR_CLICK` (when `authorClickable: true`), `CATEGORY_CLICK` (when `categoryClickable: true`), `QUERY` (when `appbar: "query"`). |
-| `/views/post` | `REFRESH`, `SCROLL_TO_END`, `MENU_CLICK`, `AUTHOR_CLICK` (when author click is enabled), `CATEGORY_CLICK` (when category click is enabled), `SUBMIT` (buttons), `ITEM_MENU_CLICK` (comment item menus). |
-| `/views/chat` | `SUBMIT`, `MENU_CLICK`. |
-| `/views/markdown` | `REFRESH`, `SCROLL_TO_END`, `MENU_CLICK`, `CLICK` (link click). |
-| `/views/source` | `REFRESH`, `SCROLL_TO_END`. |
-| `/views/settings` | `SUBMIT`. |
-| `/views/editor` | `SUBMIT`, `CLOSE`. |
-| `/views/browser` | `SUBMIT`, `CLOSE`. |
-| `/views/simple` | No specific view events (navigation/back only). |
-| `/dialogs/input` | `SUBMIT`, `CLOSE` (when close button is enabled). |
-| `/dialogs/confirmation` | `SUBMIT`, `CLOSE` (dismiss/close interaction). |
-
-Notes:
-
-- `LOAD` is a lifecycle event commonly observed when a view is opened/connected.
-- You can always send custom events with: `event <id> <EVENT_ID> [jsonObject]`.
-
-## High-Confidence Agent Workflow
-
-1. Start with JSON mode:
-   - `go run ./cmd/synurart -json -ext <ext.js> -e "views"`
-2. Read active view from `type=views`.
-3. Pick action by path:
-   - `/views/list`: `tap index`, `query`, `menu`, `event ... SCROLL_TO_END`
-   - `/views/post`: `refresh`, custom `event`
-4. Re-run `views` to confirm state changes.
-5. Use `view <id>` or `render <id>` for detailed inspection.
-
-## Examples
-
-```bash
-# 1) One-shot introspection (best for simple automation)
-go run ./cmd/synurart -json -ext extensions/basic/list.js -e "views"
-
-# 2) Interactive human flow
-make synurart EXT=extensions/basic/list.js
-# then type:
-# views
-# tap index 1
-# views
-
-# 3) Piped multi-command flow (non-TTY)
-printf 'views\ntap index 1\nviews\nquit\n' | \
-  go run ./cmd/synurart -json -ext extensions/basic/list.js
-```
-
-## `mapurl` Use Case
-
-`mapurl` is useful when a site blocks direct fetches in normal HTTP clients, but you can save the fully rendered page from Chrome and replay it inside `synurart`.
-
-Example with a saved page:
-
-```bash
-go run ./cmd/synurart
-# then type:
-load /path/to/extension.js
-mapurl https://example.com/page /path/to/saved-page.html
-deeplink https://example.com/page
-```
-
-What this does:
-
-- Any extension `fetch("https://example.com/page")` during this runtime returns the local file body.
-- The response still looks like the original URL to the extension.
-- Only exact URL matches are overridden.
-- Overrides are not persisted; `load ...` creates a fresh runtime and clears them.
-
-## Input Parsing Rules
-
-- Quote text with spaces: `query 1 "hello world"`
-- Pass JSON objects as one argument: `submit 3 '{"q":"abc","page":2}'`
-- `resume`, `event` optional data, and `submit` require JSON object shape (not array).
-
-## Error and Exit Behavior
-
-- Startup or `-e` command failures exit with code `1`.
-- In REPL mode, command errors are printed but REPL continues.
-- Unknown command message: `unknown command: <cmd> (type 'help')`.
-
-## Practical Notes
-
-- `load` creates a fresh runtime (view IDs restart from `1`).
-- `timeout` and `locale` values are preserved when reloading via `load`.
-- `mapurl` overrides are runtime-only and are cleared by `load`.
-- `render` and `tap ... [id]` default to the current top view when ID is omitted.
-- Pretty render output is specialized for: list, post, chat, browser, markdown, source, settings, editor, simple, input dialog, confirmation dialog.
+- `localStorage` is persisted in `.synurart/local_storage.json`, namespaced by the loaded extension path.
+- `navigator.language` defaults to `en-US` and can be changed with `locale <tag>`.
+- This is a standalone `synurart` simulator, not the full Synura Rust app backend.
