@@ -422,8 +422,8 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "www.fmkorea.com",
     name: "fmkorea",
-    description: "Unofficial FMKorea extension",
-    version: 0.1,
+    description: "www.fmkorea.com",
+    version: 0.2,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/windows",

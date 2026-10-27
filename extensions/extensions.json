@@ -1,12 +1,12 @@
 {
   "name": "Synura Stable Repository",
   "description": "Stable Synura extensions.",
-  "version": 3.8,
+  "version": 3.9,
   "extensions": [
     {
-      "name": "test_youtube",
-      "description": "Unofficial YouTube extension with search, comments, and related videos.",
-      "version": 0.1,
+      "name": "youtube",
+      "description": "m.youtube.com",
+      "version": 0.2,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/youtube.js",
       "api": 0,
       "domain": "m.youtube.com",

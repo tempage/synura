@@ -286,8 +286,8 @@ var SYNURA = {
   domain: "lobste.rs",
   name: "lobsters",
   author: "Synura Team",
-  description: "Unofficial Lobsters.",
-  version: 0.2,
+  description: "lobste.rs",
+  version: 0.3,
   api: 0,
   license: "Apache-2.0",
   locale: "en_US",
@@ -660,7 +660,9 @@ SITE.loadDynamicBoards = function (options) {
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {
-  return setQueryParam(url, "page", nextPage);
+  var info = parseAbsoluteUrl(url);
+  var path = info.path.replace(/\/page\/\d+\/?$/, "").replace(/\/+$/, "");
+  return info.scheme + "://" + info.host + path + "/page/" + nextPage + (info.query ? "?" + info.query : "");
 };
 
 SITE.matchPost = function (info) {
@@ -678,9 +680,12 @@ SITE.matchBoard = function (info) {
   if (!info || !isKnownHost(info.host)) return null;
   var url = localUrlFromInfo(info);
   if (localLooksLikeAssetUrl(url) || localLooksLikePostUrl(url)) return null;
-  var board = localFindConfiguredBoard(url) || ensureBoard(localBoardIdFromUrl(url), url, localTitleFromBoardUrl(url));
+  var pageMatch = info.path.match(/\/page\/(\d+)\/?$/);
+  var boardUrl = url.replace(/\/page\/\d+\/?(?=\?|$)/, "/");
+  var board = localFindConfiguredBoard(boardUrl) || localFindConfiguredBoard(boardUrl.replace(/\/$/, "")) ||
+    ensureBoard(localBoardIdFromUrl(boardUrl), boardUrl, localTitleFromBoardUrl(boardUrl));
   return {
     board: board,
-    page: queryInt(info.query, "page", 1)
+    page: pageMatch ? parseInt(pageMatch[1], 10) : 1
   };
 };

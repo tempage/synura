@@ -8,3 +8,4 @@ scripts/
 .synurart/
 extensions/temp/
 temp/
+.extension-tests/

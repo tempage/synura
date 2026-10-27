@@ -141,6 +141,7 @@ var SITE = {
       "img"
     ],
     "postTitle": [
+      "[data-section='TalkArticleHead'] h1",
       ".pann-title h1",
       ".pann-title",
       "h1",
@@ -152,6 +153,7 @@ var SITE = {
       ".nick"
     ],
     "postDate": [
+      "[data-section='TalkArticleHead-meta'] time",
       ".pann-title .writer .sub:first-of-type .num",
       ".writer .sub:first-of-type .num",
       ".writer .date",
@@ -171,6 +173,7 @@ var SITE = {
       ".view"
     ],
     "postLikeCount": [
+      "[data-section='TalkReactionBar'] [data-gb='R'] [data-cnt]",
       "#R_cnt > span:last-child",
       ".updown .btnbox.up .count > span:last-child",
       ".pann-title .writer .sub:last-of-type .num:last-of-type",
@@ -179,10 +182,12 @@ var SITE = {
       ".like"
     ],
     "postCategory": [
+      "[data-section='TalkArticleHead-nav'] a[data-ndr='MTV34']",
       ".cate",
       ".category"
     ],
     "postContent": [
+      "[data-section='TalkArticleBody-blocks']",
       "#pann-content",
       ".content"
     ],
@@ -400,6 +405,16 @@ SITE.routeBoardCustom = function (url, urlInfo, match, force) {
 SITE.routePostCustom = function (url, urlInfo, match, force) {
     return null;
 };
+var pannFirstText = firstText;
+firstText = function (root, selectors) {
+    if (selectors === SITE.selectors.postViewCount) {
+        // The new header puts views and recommendations in the same paragraph.
+        var stats = firstNode(root, ["[data-section='TalkArticleHead-meta'] p:nth-child(2)"]);
+        var views = textOf(stats).match(/(?:^|\s)조회\s*([\d,]+)/);
+        if (views) return parseCount(views[1]);
+    }
+    return pannFirstText(root, selectors);
+};
 function pannParseHtml(html) {
     try {
         return new DOMParser().parseFromString(String(html || ""), "text/html");
@@ -615,8 +630,8 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "m.pann.nate.com",
     name: "pann",
-    description: "Unofficial Nate Pann extension",
-    version: 0.1,
+    description: "m.pann.nate.com",
+    version: 0.2,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",

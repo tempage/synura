@@ -104,6 +104,9 @@ build_local_community_extensions build_all_country_community_extensions: $(KO_KR
 
 $(ROOT_EXTENSION_TARGETS): %: %.js
 
+# Keep YouTube's locale bundle and metadata parsers within the script size limit.
+youtube.js: TERSER_COMPRESS_FLAGS := $(TERSER_COMPRESS_FLAGS),passes=3,hoist_vars=true
+
 $(KO_KR_EXTENSION_TARGETS): %: ko_KR/%.js
 
 $(EN_US_EXTENSION_TARGETS): %: en_US/%.js

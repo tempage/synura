@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "meneame",
-      "description": "Unofficial Meneame.",
-      "version": 0.2,
+      "description": "www.meneame.net",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_ES/meneame.js",
       "api": 0,
       "domain": "www.meneame.net",
@@ -18,8 +18,8 @@
     },
     {
       "name": "rankia",
-      "description": "Unofficial Rankia.",
-      "version": 0.2,
+      "description": "www.rankia.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_ES/rankia.js",
       "api": 0,
       "domain": "www.rankia.com",
@@ -34,8 +34,8 @@
     },
     {
       "name": "foros_acb",
-      "description": "Unofficial Foros ACB.",
-      "version": 0.2,
+      "description": "foros.acb.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_ES/foros_acb.js",
       "api": 0,
       "domain": "foros.acb.com",

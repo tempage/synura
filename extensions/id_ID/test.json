@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "indoforum",
-      "description": "Unofficial IndoForum.",
-      "version": 0.2,
+      "description": "www.forum.or.id",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/id_ID/indoforum.js",
       "api": 0,
       "domain": "www.forum.or.id",
@@ -18,8 +18,8 @@
     },
     {
       "name": "expatindo",
-      "description": "Unofficial Expat Indo Forum.",
-      "version": 0.2,
+      "description": "www.expatindo.org",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/id_ID/expatindo.js",
       "api": 0,
       "domain": "www.expatindo.org",
@@ -34,8 +34,8 @@
     },
     {
       "name": "bersosial",
-      "description": "Unofficial Bersosial Forum.",
-      "version": 0.2,
+      "description": "forum.bersosial.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/id_ID/bersosial.js",
       "api": 0,
       "domain": "forum.bersosial.com",

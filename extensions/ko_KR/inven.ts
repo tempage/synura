@@ -23,7 +23,7 @@ var SITE = {
     "come_2898",
     "come_2887"
   ],
-  "hostAliases": [],
+  "hostAliases": ["m.inven.co.kr"],
   "challengeMarkers": [],
   "titleSuffixes": [
     " - 인벤",
@@ -417,10 +417,25 @@ SITE.routeBoardCustom = function (url, urlInfo, match, force) {
 SITE.routePostCustom = function (url, urlInfo, match, force) {
     return null;
 };
-SITE.filterPostContent = function (content, url, doc) {
+function invenNormalizeLazyMediaMarkup(html) {
+    return String(html || "").replace(/<(?:video|source|img)\b[^>]*>/gi, function (tag) {
+        var source = tag.match(/\s+src\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+        if (source && normalizeWhitespace(source[1] || source[2] || source[3] || "")) return tag;
+        var lazy = tag.match(/\s+data-src\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+        if (!lazy || !normalizeWhitespace(lazy[1] || lazy[2] || lazy[3] || "")) return tag;
+        return tag.replace(/\s+src\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+            .replace(/\s+data-src(?=\s*=)/i, " src");
+    });
+}
+SITE.filterPostContent = function (content, url, doc, page) {
+    var html = page && page.response ? page.response.text() : "";
+    if (html) {
+        var normalized = invenNormalizeLazyMediaMarkup(html);
+        if (normalized !== html) doc = new DOMParser().parseFromString(normalized, "text/html");
+    }
     var contentNode = doc ? doc.querySelector("#powerbbsContent") : null;
     if (!contentNode) return content;
-    var reparsed = parseMarkupDetails(String(contentNode.innerHTML || ""), url);
+    var reparsed = parseDetails(contentNode, url);
     return reparsed && reparsed.length > 0 ? reparsed : content;
 };
 function invenParseComments(doc, postUrl) {
@@ -877,8 +892,8 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "www.inven.co.kr",
     name: "inven",
-    description: "Unofficial Inven extension",
-    version: 0.1,
+    description: "www.inven.co.kr",
+    version: 0.2,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/windows",

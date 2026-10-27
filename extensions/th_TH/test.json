@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "pantip",
-      "description": "Unofficial Pantip.",
-      "version": 0.2,
+      "description": "pantip.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/th_TH/pantip.js",
       "api": 0,
       "domain": "pantip.com",
@@ -18,8 +18,8 @@
     },
     {
       "name": "overclockzone",
-      "description": "Unofficial Overclockzone.",
-      "version": 0.2,
+      "description": "forum.overclockzone.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/th_TH/overclockzone.js",
       "api": 0,
       "domain": "forum.overclockzone.com",
@@ -34,8 +34,8 @@
     },
     {
       "name": "soccersuck",
-      "description": "Unofficial Soccersuck.",
-      "version": 0.2,
+      "description": "www.soccersuck.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/th_TH/soccersuck.js",
       "api": 0,
       "domain": "www.soccersuck.com",

@@ -1,9 +1,9 @@
 {
   "extensions": [
     {
-      "name": "test_reddit",
-      "description": "Unofficial example extension for educational purposes.",
-      "version": 0.1,
+      "name": "reddit",
+      "description": "www.reddit.com",
+      "version": 0.2,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/en_US/reddit.js",
       "api": 0,
       "domain": "www.reddit.com",
@@ -18,8 +18,8 @@
     },
     {
       "name": "hackernews",
-      "description": "Unofficial Hacker News extension with feeds, stories, and comments.",
-      "version": 0.2,
+      "description": "news.ycombinator.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/en_US/hackernews.js",
       "api": 0,
       "domain": "news.ycombinator.com",

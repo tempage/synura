@@ -84,8 +84,8 @@ Extension URLs must be **absolute**, but includes can be relative:
 {
   "extensions": [
     {
-      "name": "test_reddit",
-      "description": "Unofficial example extension",
+      "name": "reddit",
+      "description": "www.reddit.com",
       "version": 0.1,
       "domain": "www.reddit.com",
       "url": "https://raw.githubusercontent.com/.../reddit.js",
@@ -107,7 +107,7 @@ Each `.js` extension file must define a `SYNURA` object:
 ```javascript
 var SYNURA = {
     name: "extension_name",
-    description: "What this extension does",
+    description: "example.com",
     version: 0.1,
     domain: "example.com",
     api: 0,
@@ -127,7 +127,7 @@ var SYNURA = {
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | ✅ | Unique extension identifier |
-| `description` | ✅ | Brief description |
+| `description` | ✅ | Website domain (for site extensions) |
 | `version` | ✅ | Semantic version number |
 | `domain` | ✅ | Target website domain |
 | `api` | ✅ | API version (currently `0`) |

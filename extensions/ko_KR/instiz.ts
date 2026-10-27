@@ -48,9 +48,7 @@ var SITE = {
   selectors: {
     boardTitle: ["#nowsubject", ".board_name"],
     listRows: [
-      "#mainboard tr.cmt_view", "#mainboard tr[data-no]", ".board_list li[data-no]", ".article-list li[data-no]",
-      "a[href*='/pt/']", "a[href*='/name/']", "a[href*='/name_enter/']",
-      "a[href*='/market/']", "a[href*='/writing/']", "a[href*='/ogong/']"
+      "tr[id^='list']", "[id^='green_mainboard'] tr[id='detour']", ".market_item"
     ],
     listLink: [
       "a[href*='/pt/']", "a[href*='/name/']", "a[href*='/name_enter/']",
@@ -76,7 +74,7 @@ var SITE = {
     postViewCount: [".hit"],
     postLikeCount: [".recommend"],
     postCategory: [".board_name", ".cate"],
-    postContent: ["#memo_content", "#content .memo_content", ".view-content"],
+    postContent: ["#memo_content", "[id^='memo_content_']", "#content .memo_content", ".view-content"],
     commentRows: ["#ajax_comment tr.cmt_view", "#ajax_comment .memo", "#ajax_comment .comment_row"],
     commentAuthor: ["#ajax_comment .cmt_name", "#ajax_comment .name", "#ajax_comment .nick"],
     commentAvatar: ["#ajax_comment .cmt_td img", "#ajax_comment .profile img"],
@@ -94,8 +92,8 @@ var SYNURA = {
   domain: "www.instiz.net",
   name: "instiz",
   author: "Synura Team",
-  description: "Unofficial Instiz.",
-  version: 0.2,
+  description: "www.instiz.net",
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   bypass: "chrome/android",
@@ -113,7 +111,8 @@ var SYNURA = {
 var LIST_LINK_ALLOW_PATTERNS = SITE.linkAllowPatterns;
 
 function extractListItem(row, baseUrl) {
-  return localCommunityExtractListItem(row, baseUrl, LIST_LINK_ALLOW_PATTERNS);
+  var info = parseAbsoluteUrl(baseUrl);
+  return instizExtractBoardRow(row, baseUrl, info ? pathSegments(info.path)[0] : "");
 }
 
 SITE.parseComments = function (doc, postUrl) {
@@ -137,7 +136,25 @@ SITE.cleanPostTitle = function (title, doc, match) {
 
 SITE.parseBoardItemsCustom = function (doc, baseUrl, match, boardPage) {
   var boardId = match && match.board ? normalizeWhitespace(match.board.id) : "";
-  if (boardId !== "home" && boardId !== "hot.htm") return [];
+  if (boardId !== "home" && boardId !== "hot.htm") {
+    var rows = [];
+    var pinnedRows = doc.querySelectorAll("tr[id='detour']");
+    var latestRows = doc.querySelectorAll("tr[id^='list']");
+    var marketRows = boardId === "market" ? doc.querySelectorAll(".market_item") : [];
+    for (var p = 0; p < pinnedRows.length; p++) rows.push(pinnedRows[p]);
+    for (var s = 0; s < latestRows.length; s++) rows.push(latestRows[s]);
+    for (var m = 0; m < marketRows.length; m++) rows.push(marketRows[m]);
+    var boardItems = [];
+    var boardSeen = {};
+    for (var j = 0; j < rows.length; j++) {
+      var item = instizExtractBoardRow(rows[j], baseUrl, boardId);
+      var itemKey = item ? item.link.split("?")[0] : "";
+      if (!item || boardSeen[itemKey]) continue;
+      boardSeen[itemKey] = true;
+      boardItems.push(item);
+    }
+    return boardItems;
+  }
 
   var links = allNodes(doc, ["#boardhot .realchart_item_a a[href]", ".realchart_item_a a[href]"]);
   var items = [];
@@ -175,6 +192,88 @@ SITE.parseBoardItemsCustom = function (doc, baseUrl, match, boardPage) {
 
   return items;
 };
+
+SITE.filterAppendItems = function (items, context) {
+  var seen = {};
+  var previous = context.seenLinks || [];
+  for (var i = 0; i < previous.length; i++) seen[previous[i].split("?")[0]] = true;
+  var result = [];
+  for (var j = 0; j < items.length; j++) {
+    var key = items[j].link.split("?")[0];
+    if (seen[key]) continue;
+    seen[key] = true;
+    result.push(items[j]);
+  }
+  return result;
+};
+
+function instizExtractBoardRow(row, baseUrl, boardId) {
+  if (!row || !boardId) return null;
+  var subject = firstNode(row, [".listsubject"]);
+  var thumbnail = firstNode(row, [".market_thumbnail"]);
+  var marketTitle = firstNode(row, [".market_item_title"]);
+  var link = "";
+  if (subject) {
+    var anchors = subject.querySelectorAll("a[href]");
+    for (var i = 0; i < anchors.length; i++) {
+      var candidate = normalizeUrl(ensureAbsoluteUrl(attrOf(anchors[i], "href"), baseUrl));
+      var info = parseAbsoluteUrl(candidate);
+      var parts = info ? pathSegments(info.path) : [];
+      if (info && info.host === SYNURA.domain && parts[0] === boardId && /^\d+$/.test(parts[1] || "")) {
+        link = candidate;
+        break;
+      }
+    }
+  } else if (thumbnail && marketTitle && boardId === "market") {
+    var locationMatch = attrOf(thumbnail, "onclick").match(/location\s*=\s*['"]([^'"]+)['"]/);
+    var marketInfo = parseAbsoluteUrl(locationMatch ? ensureAbsoluteUrl(locationMatch[1], baseUrl) : "");
+    var marketParts = marketInfo ? pathSegments(marketInfo.path) : [];
+    if (marketInfo && marketInfo.host === SYNURA.domain && marketParts[0] === boardId && /^\d+$/.test(marketParts[1] || "")) {
+      link = normalizeUrl(ensureAbsoluteUrl(locationMatch[1], baseUrl));
+    }
+  }
+  if (!link) return null;
+
+  var titleRoot = subject ? firstNode(subject, [".sbj", ".texthead_notice", "a[href]"]) : marketTitle;
+  var excludes = [".cmt", ".cmt2", ".cmt3", ".minitext", ".list_subtitle"];
+  if (!subject) excludes = excludes.concat([".texthead", ".market_pick"]);
+  var title = normalizeWhitespace(textOfNodeWithoutSelectors(titleRoot, excludes));
+  if (!title) return null;
+
+  var metadata = firstNode(row, [".regdate"]);
+  var metadataText = textOf(metadata);
+  var metadataParts = metadataText.split(/\s*[l|]\s*/);
+  var date = metadataParts[0] || "";
+  var viewMatch = metadataText.match(/조회\s*([\d,]+)/);
+  var likeMatch = metadataText.match(/추천\s*([\d,]+)/);
+  var cells = row.querySelectorAll("td.listno");
+  if (!metadata && cells.length) date = textOf(cells[0]);
+  if (!subject) date = textOfNodeWithoutSelectors(firstNode(row, [".market_item_date"]), [".itsme4"]);
+  var commentCount = hideZeroCount(parseCount(firstText(subject || titleRoot, [".cmt", ".cmt2", ".cmt3"])));
+  var viewCount = hideZeroCount(parseCount(viewMatch ? viewMatch[1] : (!metadata && cells.length > 1 ? textOf(cells[1]) : "")));
+  var likeCount = hideZeroCount(parseCount(likeMatch ? likeMatch[1] : (!metadata && cells.length > 2 ? textOf(cells[2]) : "")));
+  var author = firstAuthorText(row, [".listname", ".listnm a[onclick*='prlayer_print']"]);
+  var mediaMatch = thumbnail ? attrOf(thumbnail, "style").match(/url\(\s*['"]?([^'"\)]+)['"]?\s*\)/i) : null;
+  var mediaUrl = mediaMatch ? normalizeUrl(ensureAbsoluteUrl(mediaMatch[1], baseUrl)) : "";
+  return {
+    link: link,
+    title: title,
+    author: author,
+    avatar: "",
+    date: normalizeWhitespace(date),
+    category: firstText(row, [".list_category"]),
+    description: subject ? "" : firstText(row, [".texthead"]),
+    commentCount: commentCount,
+    viewCount: viewCount,
+    likeCount: likeCount,
+    mediaUrl: mediaUrl,
+    mediaType: mediaUrl ? "image" : "",
+    types: mediaUrl ? ["image"] : [],
+    menus: [],
+    hotCount: toInt(viewCount || commentCount, 0),
+    coldCount: toInt(likeCount || commentCount, 0)
+  };
+}
 
 function localCommunityCleanTitle(value) {
   return normalizeWhitespace(value)
@@ -340,6 +439,8 @@ SITE.buildBoardUrlFromId = function (boardId) {
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {
+  var info = parseAbsoluteUrl(url);
+  if (info && info.path === "/") return "";
   return setQueryParam(url, "page", nextPage);
 };
 

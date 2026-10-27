@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "habr",
-      "description": "Unofficial Habr.",
-      "version": 0.2,
+      "description": "habr.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ru_RU/habr.js",
       "api": 0,
       "domain": "habr.com",
@@ -18,8 +18,8 @@
     },
     {
       "name": "vc_ru",
-      "description": "Unofficial VC.ru.",
-      "version": 0.2,
+      "description": "vc.ru",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ru_RU/vc_ru.js",
       "api": 0,
       "domain": "vc.ru",
@@ -34,8 +34,8 @@
     },
     {
       "name": "linux_org_ru",
-      "description": "Unofficial Linux.org.ru.",
-      "version": 0.2,
+      "description": "www.linux.org.ru",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/ru_RU/linux_org_ru.js",
       "api": 0,
       "domain": "www.linux.org.ru",

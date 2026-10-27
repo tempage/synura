@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "hardwareluxx",
-      "description": "Unofficial Hardwareluxx.",
-      "version": 0.2,
+      "description": "www.hardwareluxx.de",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/de_DE/hardwareluxx.js",
       "api": 0,
       "domain": "www.hardwareluxx.de",
@@ -18,8 +18,8 @@
     },
     {
       "name": "gutefrage",
-      "description": "Unofficial gutefrage.",
-      "version": 0.2,
+      "description": "www.gutefrage.net",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/de_DE/gutefrage.js",
       "api": 0,
       "domain": "www.gutefrage.net",
@@ -34,8 +34,8 @@
     },
     {
       "name": "computerbase",
-      "description": "Unofficial ComputerBase Forum.",
-      "version": 0.2,
+      "description": "www.computerbase.de",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/de_DE/computerbase.js",
       "api": 0,
       "domain": "www.computerbase.de",

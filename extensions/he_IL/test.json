@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "carsforum",
-      "description": "Unofficial CarsForum.",
-      "version": 0.2,
+      "description": "carsforum.co.il",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/he_IL/carsforum.js",
       "api": 0,
       "domain": "carsforum.co.il",
@@ -18,8 +18,8 @@
     },
     {
       "name": "hwzone",
-      "description": "Unofficial HWzone.",
-      "version": 0.2,
+      "description": "hwzone.co.il",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/he_IL/hwzone.js",
       "api": 0,
       "domain": "hwzone.co.il",
@@ -34,8 +34,8 @@
     },
     {
       "name": "hasolidit",
-      "description": "Unofficial Hasolidit Forum.",
-      "version": 0.2,
+      "description": "www.hasolidit.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/he_IL/hasolidit.js",
       "api": 0,
       "domain": "www.hasolidit.com",

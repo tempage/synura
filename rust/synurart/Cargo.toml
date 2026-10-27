@@ -10,9 +10,12 @@ base64 = "0.22"
 encoding_rs = "0.8"
 kuchiki = "0.8"
 mime_guess = "2"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "brotli", "deflate", "gzip", "rustls-tls"] }
+psl = "2.1.210"
 rquickjs = { version = "0.11", features = ["bindgen"] }
 rustyline = "18"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "sync", "macros"] }
 url = "2"
+wreq = { version = "=6.0.0-rc.28", features = ["brotli", "deflate", "gzip", "prefix-symbols", "zstd"] }
+wreq-util = "=3.0.0-rc.11"

@@ -21,6 +21,8 @@ make build
 
 The root `./synurart` wrapper runs an incremental Cargo build and then executes `target/debug/synurart` from this checkout.
 
+Building the HTTP client requires a C/C++ toolchain, CMake, Perl, and libclang in addition to Rust. On Debian/Ubuntu, install `build-essential cmake perl libclang-dev pkg-config`. The first build compiles BoringSSL and takes longer than subsequent builds.
+
 ## CLI Flags
 
 | Flag | Meaning |
@@ -95,6 +97,20 @@ printf 'views\ntap index 1\nviews\nquit\n' | ./synurart -json -ext extensions/ba
 
 ## Notes
 
+- `fetch` uses browser TLS/HTTP profiles when `SYNURA.bypass` is set, with the extension's request headers preserved. It does not execute page JavaScript or provide a WebView.
+- Response headers support property access plus case-insensitive `get(name)` and `getAll(name)`. `entries()` returns an array of all header pairs. Multiple `Set-Cookie` values remain separate in `getAll()` and are joined with newlines for property access or `get()`.
+- `fetch` follows redirects within host permissions, with a limit of 10 requests. It preserves the method/body, checks each destination, and carries matching cookies within that redirect chain. An explicit `Cookie` header takes precedence; cookies are not automatically retained between separate `fetch` calls.
+- Fetch errors throw JavaScript exceptions. `text()` uses UTF-8; extensions select other encodings explicitly with `TextDecoder(label).decode(response.arrayBuffer())`. Decoder labels use the common encoding registry, with no site or language-specific runtime branches.
+- Network metadata is validated and bound when the extension is loaded. In a fresh shell without a loaded extension, the first fetch binds the declared metadata. Reload the extension to change its network scope.
+- `onProgress` callbacks receive recorded byte counts before fetch returns. A missing response header returns `undefined`; empty `json()` throws `SyntaxError`.
 - `localStorage` is persisted in `.synurart/local_storage.json`, namespaced by the loaded extension path.
 - `navigator.language` defaults to `en-US` and can be changed with `locale <tag>`.
 - This is a standalone `synurart` simulator, not the full Synura Rust app backend.
+
+## Embedded Runtime Network Settings
+
+Rust hosts can configure `SynurartRuntime::set_timeout(milliseconds)` and `set_fetch_proxy(Some(url))`; use `set_fetch_proxy(None)` to clear the explicit proxy. These settings do not widen extension host permissions.
+
+To cancel an in-flight fetch, create a `FetchCancellation::default()`, pass a clone to `set_fetch_cancellation(handle)`, and call `cancel()` on the other clone from the host thread. Supply a fresh handle for the next request. Cancellation interrupts network work; it is not a JavaScript CPU execution limit.
+
+The fetch implementation and its local HTTP tests build from this repository alone. The extension-facing contract is described in `api_reference.md`; no application backend source or service is required.

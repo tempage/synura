@@ -6,15 +6,13 @@ use std::fs;
 use std::io::{self, BufRead, IsTerminal};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use base64::{engine::general_purpose, Engine as _};
-use encoding_rs::{EUC_KR, UTF_8};
+use encoding_rs::{Encoding, UTF_8};
 use kuchiki::traits::TendrilSink;
 use kuchiki::{NodeData, NodeRef};
-use reqwest::blocking::Client;
-use reqwest::redirect::Policy;
-use rquickjs::{CatchResultExt, Coerced, Context, Ctx, Function, Runtime as JsRuntime};
+use rquickjs::{CatchResultExt, Coerced, Context, Ctx, Exception, Function, Runtime as JsRuntime};
 use rustyline::completion::{Completer, Pair};
 use rustyline::error::ReadlineError;
 use rustyline::highlight::Highlighter;
@@ -24,6 +22,17 @@ use rustyline::{CompletionType, Config, Editor, Helper};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use url::Url;
+
+mod fetch_scope;
+mod fetch_session;
+#[cfg(test)]
+mod fetch_tests;
+mod fetch_transport;
+
+use fetch_scope::{FetchScope, NetworkPackage};
+use fetch_session::RedirectCookies;
+pub use fetch_transport::FetchCancellation;
+use fetch_transport::{HttpResponse, HttpTransport, TransportSettings, MAX_BODY_BYTES};
 
 const DEFAULT_TIMEOUT_MS: u64 = 10_000;
 const DEFAULT_LOCALE: &str = "en-US";
@@ -1232,10 +1241,16 @@ impl SynurartRuntime {
         let abs = absolute_path(path)?;
         let script =
             fs::read_to_string(&abs).map_err(|e| format!("read {}: {e}", abs.display()))?;
+        self.host.borrow_mut().fetch_scope = Some(FetchScope::default());
         self.ctx.with(|ctx| -> Result<(), String> {
             ctx.eval::<(), _>(script)
                 .catch(&ctx)
-                .map_err(|e| format!("evaluate extension: {e}"))
+                .map_err(|e| format!("evaluate extension: {e}"))?;
+            let package = ctx
+                .eval::<String, _>("__synurart_network_package()")
+                .catch(&ctx)
+                .map_err(|e| format!("read extension network metadata: {e}"))?;
+            self.host.borrow_mut().bind_network(&package)
         })
     }
 
@@ -1303,6 +1318,21 @@ impl SynurartRuntime {
     pub fn set_timeout(&self, timeout_ms: u64) -> Result<(), String> {
         self.host.borrow_mut().timeout_ms = timeout_ms;
         self.eval_unit(&format!("__synurart_set_timeout({timeout_ms});"))
+    }
+
+    /// Set the host's proxy; this setting is not controlled by extension scripts.
+    pub fn set_fetch_proxy(&self, proxy: Option<&str>) -> Result<(), String> {
+        let proxy = proxy.map(str::trim).filter(|value| !value.is_empty());
+        if let Some(proxy) = proxy {
+            wreq::Proxy::all(proxy).map_err(|e| format!("invalid proxy: {e}"))?;
+        }
+        self.host.borrow_mut().fetch_proxy = proxy.map(str::to_string);
+        Ok(())
+    }
+
+    /// Replace the request's cancellation handle before invoking an extension.
+    pub fn set_fetch_cancellation(&self, cancellation: FetchCancellation) {
+        self.host.borrow_mut().fetch_cancellation = cancellation;
     }
 
     pub fn set_locale(&self, locale: &str) -> Result<(), String> {
@@ -1379,10 +1409,16 @@ fn install_host_functions(ctx: &Ctx<'_>, host: Rc<RefCell<HostState>>) -> rquick
         "__host_fetch",
         Function::new(ctx.clone(), {
             let host = host.clone();
-            move |req_json: Coerced<String>| -> rquickjs::Result<String> {
+            move |ctx: Ctx<'_>, req_json: Coerced<String>| -> rquickjs::Result<String> {
+                if host.borrow().fetch_scope.is_none() {
+                    let package: String = ctx.eval("__synurart_network_package()")?;
+                    host.borrow_mut()
+                        .bind_network(&package)
+                        .map_err(|e| Exception::throw_message(&ctx, &e))?;
+                }
                 host.borrow_mut()
                     .fetch(&req_json.0)
-                    .map_err(|e| rquickjs::Error::new_into_js_message("rust", "js", e))
+                    .map_err(|e| Exception::throw_message(&ctx, &e))
             }
         })?,
     )?;
@@ -1549,6 +1585,10 @@ struct HostState {
     storage_namespace: PathBuf,
     local_storage: HashMap<String, String>,
     fetch_overrides: HashMap<String, String>,
+    fetch_scope: Option<FetchScope>,
+    fetch_proxy: Option<String>,
+    fetch_cancellation: FetchCancellation,
+    transport: Option<HttpTransport>,
     doms: HashMap<i64, DomDoc>,
     next_doc_id: i64,
 }
@@ -1568,6 +1608,10 @@ impl HostState {
             storage_namespace,
             local_storage,
             fetch_overrides: HashMap::new(),
+            fetch_scope: None,
+            fetch_proxy: None,
+            fetch_cancellation: FetchCancellation::default(),
+            transport: None,
             doms: HashMap::new(),
             next_doc_id: 1,
         }
@@ -1689,98 +1733,28 @@ impl HostState {
         )
     }
 
+    fn bind_network(&mut self, package: &str) -> Result<(), String> {
+        let package: NetworkPackage =
+            serde_json::from_str(package).map_err(|e| format!("invalid network metadata: {e}"))?;
+        self.fetch_scope = Some(FetchScope::new(package)?);
+        Ok(())
+    }
+
     fn fetch(&mut self, req_json: &str) -> Result<String, String> {
         let req: FetchRequest =
             serde_json::from_str(req_json).map_err(|e| format!("parse fetch request: {e}"))?;
-        let normalized = normalize_url(&req.url)?;
-        validate_fetch_host(&req)?;
-
-        let (status, status_text, final_url, headers, body, network_ms) =
-            if let Some(file) = self.fetch_overrides.get(&normalized) {
-                let body = fs::read(file).map_err(|e| format!("read override file {file}: {e}"))?;
-                let content_type = mime_guess::from_path(file)
-                    .first_or_text_plain()
-                    .to_string();
-                let headers = HashMap::from([("content-type".to_string(), content_type)]);
-                (200, "OK".to_string(), req.url.clone(), headers, body, 0)
-            } else {
-                let started = Instant::now();
-                let client = Client::builder()
-                    .timeout(Duration::from_millis(
-                        req.timeout_ms.unwrap_or(self.timeout_ms),
-                    ))
-                    .redirect(Policy::none())
-                    .build()
-                    .map_err(|e| format!("build fetch client: {e}"))?;
-                let method = req
-                    .method
-                    .as_deref()
-                    .unwrap_or("GET")
-                    .parse()
-                    .map_err(|e| {
-                        format!(
-                            "invalid fetch method {:?}: {e}",
-                            req.method.as_deref().unwrap_or("GET")
-                        )
-                    })?;
-                let mut builder = client.request(method, &req.url);
-                if let Some(headers) = req.headers.as_ref() {
-                    for (key, value) in headers {
-                        builder = builder.header(key, value);
-                    }
-                }
-                let has_user_agent = req
-                    .headers
-                    .as_ref()
-                    .map(|headers| {
-                        headers
-                            .keys()
-                            .any(|key| key.eq_ignore_ascii_case("user-agent"))
-                    })
-                    .unwrap_or(false);
-                if !has_user_agent {
-                    if let Some(ua) = req.bypass.as_deref().and_then(user_agent_from_bypass) {
-                        builder = builder.header("User-Agent", ua);
-                    }
-                }
-                if let Some(body) = req.body.as_ref() {
-                    builder = builder.body(body.clone());
-                }
-                let response = builder
-                    .send()
-                    .map_err(|e| format!("fetch {}: {e}", req.url))?;
-                let status = response.status();
-                let final_url = response.url().to_string();
-                let headers = response
-                    .headers()
-                    .iter()
-                    .filter_map(|(key, value)| {
-                        value
-                            .to_str()
-                            .ok()
-                            .map(|v| (key.to_string(), v.to_string()))
-                    })
-                    .collect::<HashMap<_, _>>();
-                let body = response
-                    .bytes()
-                    .map_err(|e| format!("read fetch body: {e}"))?
-                    .to_vec();
-                (
-                    status.as_u16(),
-                    status.canonical_reason().unwrap_or("").to_string(),
-                    final_url,
-                    headers,
-                    body,
-                    started.elapsed().as_millis() as u64,
-                )
-            };
+        let (response, network_ms) = self.fetch_response(&req)?;
+        let HttpResponse {
+            status,
+            status_text,
+            url: final_url,
+            headers,
+            body,
+            progress,
+        } = response;
 
         let body_text = String::from_utf8_lossy(&body).into_owned();
-        let method_label = req
-            .method
-            .clone()
-            .unwrap_or_else(|| "GET".to_string())
-            .to_ascii_uppercase();
+        let method_label = req.method.to_ascii_uppercase();
         let logic_ms = 0u64;
         if self.json_mode {
             let mut data = json!({
@@ -1796,7 +1770,10 @@ impl HostState {
                 "logicTime": format_go_duration_ms(logic_ms),
                 "networkTime": format_go_duration_ms(network_ms),
             });
-            if let Some(location) = headers.get("location").filter(|value| !value.is_empty()) {
+            if let Some((_, location)) = headers
+                .iter()
+                .find(|(name, value)| name.eq_ignore_ascii_case("location") && !value.is_empty())
+            {
                 data["redirectTo"] = json!(location);
             }
             eprintln!("{}", data);
@@ -1825,9 +1802,105 @@ impl HostState {
             headers,
             body_text,
             body_base64: general_purpose::STANDARD.encode(&body),
-            network_ms,
+            progress,
         })
         .map_err(|e| format!("encode fetch response: {e}"))
+    }
+
+    fn fetch_response(&mut self, req: &FetchRequest) -> Result<(HttpResponse, u64), String> {
+        let mut url = Url::parse(&req.url).map_err(|e| format!("invalid fetch url: {e}"))?;
+        let scope = self
+            .fetch_scope
+            .as_ref()
+            .ok_or("network scope is not initialized")?;
+        let mut cookies = RedirectCookies::default();
+        let mut network_ms = 0;
+        for _ in 0..10 {
+            if self.fetch_cancellation.is_cancelled() {
+                return Err("context canceled".into());
+            }
+            scope.check(&url)?;
+            let response = if let Some(file) = self.fetch_overrides.get(url.as_str()) {
+                let body = fs::read(file).map_err(|e| format!("read override file {file}: {e}"))?;
+                if body.len() > MAX_BODY_BYTES {
+                    return Err(format!(
+                        "fetch response exceeds {MAX_BODY_BYTES} bytes: {url}"
+                    ));
+                }
+                let size = body.len() as i64;
+                HttpResponse {
+                    status: 200,
+                    status_text: "200 OK".into(),
+                    url: url.to_string(),
+                    headers: vec![(
+                        "content-type".into(),
+                        mime_guess::from_path(file)
+                            .first_or_text_plain()
+                            .to_string(),
+                    )],
+                    body,
+                    progress: if req.progress {
+                        vec![(size, size)]
+                    } else {
+                        Vec::new()
+                    },
+                }
+            } else {
+                let started = Instant::now();
+                let mut headers = req.headers.clone();
+                if !headers
+                    .iter()
+                    .any(|(name, _)| name.eq_ignore_ascii_case("user-agent"))
+                {
+                    let ua = scope
+                        .bypass
+                        .as_deref()
+                        .and_then(user_agent_from_bypass)
+                        .unwrap_or("Go-http-client/1.1");
+                    headers.insert(0, ("User-Agent".into(), ua.into()));
+                }
+                if !headers
+                    .iter()
+                    .any(|(name, _)| name.eq_ignore_ascii_case("cookie"))
+                {
+                    if let Some(value) = cookies.header(&url) {
+                        headers.push(("Cookie".into(), value));
+                    }
+                }
+                if self.transport.is_none() {
+                    self.transport = Some(HttpTransport::new()?);
+                }
+                let response = self.transport.as_mut().unwrap().fetch(
+                    url.as_str(),
+                    req,
+                    &headers,
+                    TransportSettings {
+                        bypass: scope.bypass.as_deref(),
+                        timeout_ms: self.timeout_ms,
+                        proxy: self.fetch_proxy.as_deref(),
+                        cancellation: &self.fetch_cancellation,
+                    },
+                )?;
+                network_ms += started.elapsed().as_millis() as u64;
+                response
+            };
+            if (300..400).contains(&response.status) {
+                cookies.collect(&url, &response.headers);
+                if let Some((_, location)) = response
+                    .headers
+                    .iter()
+                    .find(|(name, _)| name.eq_ignore_ascii_case("location"))
+                {
+                    url = url
+                        .join(location)
+                        .map_err(|e| format!("invalid redirect URL: {e}"))?;
+                    scope.check(&url)?;
+                    continue;
+                }
+            }
+            return Ok((response, network_ms));
+        }
+        Err("stopped after 10 redirects".into())
     }
 
     fn dom_parse(&mut self, html: &str) -> i64 {
@@ -2042,13 +2115,11 @@ fn node_key(node: &NodeRef) -> usize {
 #[derive(Deserialize)]
 struct FetchRequest {
     url: String,
-    method: Option<String>,
-    headers: Option<HashMap<String, String>>,
-    body: Option<String>,
-    bypass: Option<String>,
-    domain: Option<String>,
-    host_permissions: Option<Vec<String>>,
-    timeout_ms: Option<u64>,
+    method: String,
+    #[serde(default)]
+    headers: Vec<(String, String)>,
+    body: String,
+    progress: bool,
 }
 
 #[derive(Serialize)]
@@ -2057,13 +2128,12 @@ struct FetchResponse {
     #[serde(rename = "statusText")]
     status_text: String,
     url: String,
-    headers: HashMap<String, String>,
+    headers: Vec<(String, String)>,
     #[serde(rename = "bodyText")]
     body_text: String,
     #[serde(rename = "bodyBase64")]
     body_base64: String,
-    #[serde(rename = "networkMs")]
-    network_ms: u64,
+    progress: Vec<(i64, i64)>,
 }
 
 const BOOTSTRAP: &str = r#"
@@ -2438,6 +2508,10 @@ const BOOTSTRAP: &str = r#"
       this._pairs = [];
       if (init == null) return;
       if (typeof init === "string") {
+        const decode = (part) => {
+          const text = part.replace(/\+/g, " ");
+          try { return decodeURIComponent(text); } catch (_) { return text; }
+        };
         const text = init.charAt(0) === "?" ? init.slice(1) : init;
         if (!text) return;
         for (const part of text.split("&")) {
@@ -2445,10 +2519,10 @@ const BOOTSTRAP: &str = r#"
           const index = part.indexOf("=");
           const key = index < 0 ? part : part.slice(0, index);
           const value = index < 0 ? "" : part.slice(index + 1);
-          this.append(decodeURIComponent(key.replace(/\+/g, " ")), decodeURIComponent(value.replace(/\+/g, " ")));
+          this.append(decode(key), decode(value));
         }
-      } else if (Array.isArray(init)) {
-        for (const pair of init) if (pair && pair.length >= 2) this.append(pair[0], pair[1]);
+      } else if (typeof init[Symbol.iterator] === "function") {
+        for (const pair of init) this.append(pair[0], pair[1]);
       } else if (typeof init === "object") {
         for (const key of Object.keys(init)) this.append(key, init[key]);
       }
@@ -2458,9 +2532,13 @@ const BOOTSTRAP: &str = r#"
     get(key) { key = String(key); const pair = this._pairs.find((pair) => pair[0] === key); return pair ? pair[1] : null; }
     getAll(key) { key = String(key); return this._pairs.filter((pair) => pair[0] === key).map((pair) => pair[1]); }
     has(key) { key = String(key); return this._pairs.some((pair) => pair[0] === key); }
-    set(key, value) { key = String(key); this.delete(key); this.append(key, value); }
-    sort() { this._pairs.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0); }
-    forEach(callback, thisArg) { for (const pair of this._pairs) callback.call(thisArg, pair[1], pair[0], this); }
+    set(key, value) {
+      key = String(key);
+      const first = this._pairs.findIndex((pair) => pair[0] === key);
+      if (first < 0) { this.append(key, value); return; }
+      this._pairs[first][1] = String(value);
+      this._pairs = this._pairs.filter((pair, index) => pair[0] !== key || index === first);
+    }
     keys() { return this._pairs.map((pair) => pair[0])[Symbol.iterator](); }
     values() { return this._pairs.map((pair) => pair[1])[Symbol.iterator](); }
     entries() { return this._pairs.map((pair) => pair.slice())[Symbol.iterator](); }
@@ -2471,55 +2549,84 @@ const BOOTSTRAP: &str = r#"
     }
   };
   function makeResponse(res) {
-    function header(name) {
+    const pairs = Array.isArray(res.headers) ? res.headers : Object.entries(res.headers || {});
+    const headers = {};
+    function allHeaders(name) {
+      if (!arguments.length) throw new TypeError("header name is required");
       const lower = String(name).toLowerCase();
-      for (const key of Object.keys(res.headers || {})) if (String(key).toLowerCase() === lower) return String(res.headers[key] || "");
-      return "";
+      return pairs.filter(pair => pair[0].toLowerCase() === lower).map(pair => pair[1]);
     }
-    function encoding() {
-      const match = header("content-type").match(/charset\s*=\s*([^;\s]+)/i);
-      return match ? match[1].replace(/^["']|["']$/g, "") : "utf-8";
+    function header(name) {
+      if (!arguments.length) throw new TypeError("header name is required");
+      const values = allHeaders(name);
+      return values.length ? values.join(String(name).toLowerCase() === "set-cookie" ? "\n" : ", ") : undefined;
     }
-    function bodyText() {
-      if (!res.bodyBase64) return res.bodyText || "";
-      return __host_decode(encoding(), res.bodyBase64 || "");
-    }
+    for (const [name] of pairs) headers[name] = header(name);
+    headers.get = header;
+    headers.getAll = allHeaders;
+    headers.entries = () => pairs.map(pair => pair.slice());
+    const text = res.bodyText;
     return {
       status: res.status,
       statusText: res.statusText,
       ok: res.status >= 200 && res.status < 300,
       url: res.url,
-      error: res.error || "",
-      networkMs: res.networkMs || 0,
-      headers: res.headers || {},
-      text() { return bodyText(); },
-      json() { return JSON.parse(bodyText() || "null"); },
+      headers,
+      text() { return text; },
+      json() { return JSON.parse(text); },
       arrayBuffer() { return b64ToBytes(res.bodyBase64 || "").buffer; },
-      dom() { return new DOMParser().parseFromString(bodyText(), "text/html"); }
+      dom(mimeType = "text/html") {
+        if (String(mimeType).toLowerCase() !== "text/html") throw new TypeError("Unsupported mimeType for dom(): " + mimeType);
+        return new DOMParser().parseFromString(text, "text/html");
+      }
     };
   }
-  function errorResponse(message) {
-    return makeResponse({ status: 0, statusText: "", url: "", headers: {}, bodyText: "", bodyBase64: "", networkMs: 0, error: String(message || "") });
-  }
-  globalThis.fetch = function(url, options) {
-    options = asObject(options);
-    const req = {
-      url: String(url),
-      method: options.method || "GET",
-      headers: asObject(options.headers),
-      body: options.body == null ? undefined : String(options.body),
-      bypass: synuraPackage() && synuraPackage().bypass,
-      domain: synuraPackage() && synuraPackage().domain,
-      host_permissions: synuraPackage() && synuraPackage().host_permissions,
-      timeout_ms: state.timeoutMs
-    };
-    try {
-      return makeResponse(JSON.parse(__host_fetch(JSON.stringify(req))));
-    } catch (err) {
-      return errorResponse(err && err.message ? err.message : String(err));
-    }
+  globalThis.__synurart_network_package = function() {
+    const pkg = synuraPackage() || {};
+    const domain = pkg.domain;
+    const permissions = pkg.host_permissions;
+    return JSON.stringify({domain: typeof domain === "string" ? domain : "", host_permissions: permissions == null ? [] : permissions, bypass: pkg.bypass});
   };
-  globalThis.synura.fetch = globalThis.fetch;
+  globalThis.fetch = function(url, options) {
+    if (!arguments.length) throw new TypeError("fetch URL is required");
+    url = String(url);
+    const progress = options && typeof options.onProgress === "function" ? options.onProgress : null;
+    if (arguments.length >= 2) {
+      const serialized = JSON.stringify(options);
+      if (serialized === undefined) throw new TypeError("expected a JSON-serializable value");
+      options = asObject(JSON.parse(serialized));
+    } else {
+      options = {};
+    }
+    let headers = [];
+    if (Object.prototype.hasOwnProperty.call(options, "headers")) {
+      const source = options.headers;
+      if (!source || typeof source !== "object" || Array.isArray(source)) throw new TypeError("fetch headers must be an object");
+      headers = Object.keys(source).sort().map(name => {
+        if (typeof source[name] !== "string") throw new TypeError("fetch headers values must be strings");
+        return [name, source[name]];
+      });
+    }
+    function bodyJson(value) {
+      if (Array.isArray(value)) return "[" + value.map(bodyJson).join(",") + "]";
+      if (value && typeof value === "object") return "{" + Object.keys(value).sort().map(key => JSON.stringify(key) + ":" + bodyJson(value[key])).join(",") + "}";
+      return JSON.stringify(value);
+    }
+    const req = {
+      url,
+      method: typeof options.method === "string" && options.method.trim() ? options.method : "GET",
+      headers,
+      body: options.body == null ? "" : typeof options.body === "string" ? options.body : bodyJson(options.body),
+      progress: !!progress
+    };
+    const response = JSON.parse(__host_fetch(JSON.stringify(req)));
+    if (progress) {
+      for (const [current, total] of response.progress) {
+        try { progress(current, total); } catch (_) {}
+      }
+    }
+    return makeResponse(response);
+  };
   globalThis.TextEncoder = class {
     constructor() { this.encoding = "utf-8"; }
     encode(input) { return new Uint8Array(Array.from(unescape(encodeURIComponent(String(input))), (ch) => ch.charCodeAt(0))); }
@@ -2538,7 +2645,7 @@ const BOOTSTRAP: &str = r#"
     }
   };
   globalThis.TextDecoder = class {
-    constructor(label) { this.encoding = String(label || "utf-8").toLowerCase().replace("_", "-"); this.fatal = false; this.ignoreBOM = false; }
+    constructor(label) { this.encoding = String(label || "utf-8").trim().toLowerCase(); this.fatal = false; this.ignoreBOM = false; }
     decode(input) {
       const bytes = input ? (input.buffer ? new Uint8Array(input.buffer, input.byteOffset || 0, input.byteLength) : new Uint8Array(input)) : new Uint8Array();
       return __host_decode(this.encoding, bytesToB64(bytes));
@@ -2546,40 +2653,6 @@ const BOOTSTRAP: &str = r#"
   };
 })();
 "#;
-
-fn validate_fetch_host(req: &FetchRequest) -> Result<(), String> {
-    let parsed = Url::parse(&req.url).map_err(|e| format!("invalid fetch url: {e}"))?;
-    let host = parsed.host_str().unwrap_or("").to_ascii_lowercase();
-    if host.is_empty() {
-        return Err("fetch url must be absolute with a host".to_string());
-    }
-    let domain = req
-        .domain
-        .as_deref()
-        .map(normalize_host)
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| "SYNURA.domain is required for fetch".to_string())?;
-    if let Some(patterns) = req
-        .host_permissions
-        .as_ref()
-        .filter(|patterns| !patterns.is_empty())
-    {
-        if patterns
-            .iter()
-            .any(|pattern| host_permission_matches(pattern, &parsed))
-        {
-            return Ok(());
-        }
-        return Err(format!("fetch host {host:?} is not allowed"));
-    }
-    if host == domain {
-        Ok(())
-    } else {
-        Err(format!(
-            "fetch host {host:?} is not allowed (allowed={domain:?})"
-        ))
-    }
-}
 
 fn node_matches(node: &NodeRef, selector: &str) -> bool {
     let Some(parent) = node.parent() else {
@@ -2595,13 +2668,7 @@ fn decode_text(label: &str, body_base64: &str) -> Result<String, String> {
     let bytes = general_purpose::STANDARD
         .decode(body_base64)
         .map_err(|e| format!("decode base64 text body: {e}"))?;
-    let normalized = label.trim().to_ascii_lowercase().replace('_', "-");
-    let encoding = match normalized.as_str() {
-        "" | "utf-8" | "utf8" | "unicode-1-1-utf-8" => UTF_8,
-        "euc-kr" | "cseuckr" | "csksc56011987" | "iso-ir-149" | "korean" | "ks-c-5601"
-        | "ks-c-5601-1987" | "ks-c-5601-1989" | "ksc-5601" | "ksc5601" => EUC_KR,
-        other => return Err(format!("unsupported TextDecoder encoding: {other}")),
-    };
+    let encoding = Encoding::for_label(label.as_bytes()).unwrap_or(UTF_8);
     let (text, _, _) = encoding.decode(&bytes);
     Ok(text.into_owned())
 }
@@ -2641,57 +2708,29 @@ fn user_agent_from_bypass(bypass: &str) -> Option<&'static str> {
     Some(ua)
 }
 
-fn host_permission_matches(pattern: &str, url: &Url) -> bool {
-    let Some((scheme, rest)) = pattern.split_once("://") else {
-        return false;
-    };
-    if scheme != "*" && scheme != url.scheme() {
-        return false;
-    }
-    let (host_pattern, path_pattern) = rest.split_once('/').unwrap_or((rest, "*"));
-    let host = url.host_str().unwrap_or("").to_ascii_lowercase();
-    let host_pattern = normalize_host(host_pattern);
-    let host_ok = if let Some(suffix) = host_pattern.strip_prefix("*.") {
-        host == suffix || host.ends_with(&format!(".{suffix}"))
-    } else {
-        host == host_pattern
-    };
-    if !host_ok {
-        return false;
-    }
-    wildcard_match(
-        &format!("/{}", path_pattern.trim_start_matches('/')),
-        url.path(),
-    )
-}
-
 fn wildcard_match(pattern: &str, value: &str) -> bool {
-    if pattern == "*" || pattern == "/*" {
-        return true;
-    }
-    let mut rest = value;
-    for part in pattern.split('*') {
-        if part.is_empty() {
-            continue;
-        }
-        let Some(index) = rest.find(part) else {
+    let (pattern, value) = (pattern.as_bytes(), value.as_bytes());
+    let (mut p, mut v, mut star, mut retry) = (0, 0, None, 0);
+    while v < value.len() {
+        if p < pattern.len() && pattern[p] == b'*' {
+            star = Some(p);
+            p += 1;
+            retry = v;
+        } else if p < pattern.len() && pattern[p] == value[v] {
+            p += 1;
+            v += 1;
+        } else if let Some(previous) = star {
+            retry += 1;
+            v = retry;
+            p = previous + 1;
+        } else {
             return false;
-        };
-        rest = &rest[index + part.len()..];
+        }
     }
-    true
-}
-
-fn normalize_host(value: &str) -> String {
-    value
-        .trim()
-        .trim_end_matches('.')
-        .trim_start_matches("http://")
-        .trim_start_matches("https://")
-        .split('/')
-        .next()
-        .unwrap_or("")
-        .to_ascii_lowercase()
+    while p < pattern.len() && pattern[p] == b'*' {
+        p += 1;
+    }
+    p == pattern.len()
 }
 
 fn normalize_url(value: &str) -> Result<String, String> {
@@ -4447,7 +4486,7 @@ mod tests {
         path
     }
 
-    fn runtime() -> SynurartRuntime {
+    pub(super) fn runtime() -> SynurartRuntime {
         let dir = temp_dir();
         SynurartRuntime::new(
             true,
@@ -4457,7 +4496,7 @@ mod tests {
         .unwrap()
     }
 
-    fn result(rt: &SynurartRuntime, code: &str) -> Value {
+    pub(super) fn result(rt: &SynurartRuntime, code: &str) -> Value {
         rt.eval_js(code).unwrap().get("result").cloned().unwrap()
     }
 
@@ -4479,7 +4518,33 @@ mod tests {
         assert_eq!(out["a"], "1");
         assert_eq!(out["all"], json!(["1", "3 4"]));
         assert_eq!(out["hasB"], true);
-        assert_eq!(out["s"], "a=1&a=3+4&b=9&c=x+y");
+        assert_eq!(out["s"], "a=1&b=9&a=3+4&c=x+y");
+    }
+
+    #[test]
+    fn url_search_params_matches_app_iteration_and_mutation_contract() {
+        let rt = runtime();
+        let out = result(
+            &rt,
+            r#"(() => {
+            const params = new URLSearchParams("a=1&b=2&a=3");
+            params.set("a", "9");
+            const copy = new URLSearchParams(params);
+            copy.append("c", "x y");
+            const malformed = new URLSearchParams("bad=%ZZ&plus=a+b");
+            return {query:params.toString(), copy:copy.toString(),
+                pairs:Array.from(params), keys:Array.from(params.keys()), values:Array.from(params.values()),
+                map:new URLSearchParams(new Map([["q", "test"]])).toString(),
+                malformed:malformed.get("bad"), plus:malformed.get("plus"),
+                forEach:typeof params.forEach, sort:typeof params.sort};
+        })()"#,
+        );
+        assert_eq!(
+            out,
+            json!({"query":"a=9&b=2", "copy":"a=9&b=2&c=x+y",
+            "pairs":[["a","9"],["b","2"]], "keys":["a","b"], "values":["9","2"],
+            "map":"q=test", "malformed":"%ZZ", "plus":"a b", "forEach":"undefined", "sort":"undefined"})
+        );
     }
 
     #[test]
@@ -4498,29 +4563,23 @@ mod tests {
     }
 
     #[test]
-    fn text_encoder_and_decoder_runtime_apis() {
+    fn text_encoder_runtime_apis() {
         let rt = runtime();
-        let want = "\u{bf50}\u{bfcc} \u{c790}\u{c720}\u{ac8c}\u{c2dc}\u{d310}";
-        let (encoded, _, _) = EUC_KR.encode(want);
-        let bytes = serde_json::to_string(encoded.as_ref()).unwrap();
         let out = result(
             &rt,
-            &format!(
-                r#"
-(() => {{
+            r#"
+(() => {
   const encoder = new TextEncoder();
   const dest = new Uint8Array(3);
-  const partial = encoder.encodeInto("A\uD55C", dest);
-  const decoded = new TextDecoder("euc-kr").decode(new Uint8Array({bytes}));
-  return {{ encoding: encoder.encoding, partial, dest: Array.from(dest), decoded }};
-}})()
-"#
-            ),
+  const partial = encoder.encodeInto("A\u{1F642}", dest);
+  return { encoding: encoder.encoding, partial, dest: Array.from(dest), bytes: Array.from(encoder.encode("A\u00e9")) };
+})()
+"#,
         );
         assert_eq!(out["encoding"], "utf-8");
         assert_eq!(out["partial"], json!({"read": 1, "written": 1}));
         assert_eq!(out["dest"], json!([65, 0, 0]));
-        assert_eq!(out["decoded"], want);
+        assert_eq!(out["bytes"], json!([65, 195, 169]));
     }
 
     #[test]
@@ -4568,7 +4627,7 @@ mod tests {
     }
 
     #[test]
-    fn fetch_override_and_cross_domain_errors_are_runtime_responses() {
+    fn fetch_override_uses_the_bound_domain_and_throws_for_other_hosts() {
         let dir = temp_dir();
         let fixture = dir.join("saved.html");
         fs::write(
@@ -4592,25 +4651,27 @@ mod tests {
   const ok = fetch("https://saved.example/path");
   const doc = ok.dom();
   SYNURA.domain = "allowed.example";
-  const blocked = fetch("https://saved.example/path");
+  const pinned = fetch("https://saved.example/path");
+  let blockedError;
+  try { fetch("https://allowed.example/path"); } catch (error) { blockedError = error.message; }
   return {
     status: ok.status,
     url: ok.url,
-    networkMs: ok.networkMs,
+    networkMs: typeof ok.networkMs,
     title: doc.querySelector("title").textContent,
     body: doc.querySelector(".item").textContent,
-    blockedStatus: blocked.status,
-    blockedError: blocked.error
+    pinnedStatus: pinned.status,
+    blockedError
   };
 })()
 "#,
         );
         assert_eq!(out["status"], 200);
         assert_eq!(out["url"], "https://saved.example/path");
-        assert_eq!(out["networkMs"], 0);
+        assert_eq!(out["networkMs"], "undefined");
         assert_eq!(out["title"], "Saved Page");
         assert_eq!(out["body"], "fixture-body");
-        assert_eq!(out["blockedStatus"], 0);
+        assert_eq!(out["pinnedStatus"], 200);
         assert!(out["blockedError"]
             .as_str()
             .unwrap()

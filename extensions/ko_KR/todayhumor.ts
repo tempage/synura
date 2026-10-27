@@ -85,10 +85,14 @@ var SITE = {
 
 var SYNURA = {
   domain: "www.todayhumor.co.kr",
+  host_permissions: [
+    "https://www.todayhumor.co.kr/*",
+    "https://m.todayhumor.co.kr/*"
+  ],
   name: "todayhumor",
   author: "Synura Team",
-  description: "Unofficial Today Humor.",
-  version: 0.2,
+  description: "www.todayhumor.co.kr",
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   bypass: "chrome/android",
@@ -436,10 +440,8 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
   SITE.selectors["postContent"] = [
   "#content .viewContent",
   "#content .view_content",
-  "#content .board_view",
   ".viewContent",
-  ".view_content",
-  "body"
+  ".view_content"
 ];
   SITE.selectors["commentRows"] = [
   "#memo_list .memo",
@@ -453,15 +455,7 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
   ".memo_content",
   ".comment_text"
 ];
-  var todayhumorPostContentSelectors = [
-  "#content .viewContent",
-  "#content .view_content",
-  "#content .board_view",
-  ".viewContent",
-  ".view_content",
-  "body"
-];
-  var todayhumorPreviousFilterPostContent = SITE.filterPostContent;
+  var todayhumorPostContentSelectors = SITE.selectors["postContent"];
   function todayhumorText(node) {
     return String(node && node.textContent || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
   }
@@ -477,37 +471,39 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
   }
   function todayhumorDetailsFromRoot(root, url) {
     if (!root) return [];
-    var text = todayhumorText(root);
-    if (text.length < 2) return [];
     var details = [];
     try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-    if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-    return details;
+    for (var i = 0; i < details.length; i++) {
+      // A post can consist entirely of images or a single character.
+      if (String(details[i] && (details[i].value || details[i].link) || "").trim()) {
+        return absolutizeDetails(details, url);
+      }
+    }
+    return [];
   }
   SITE.filterPostContent = function (content, url, doc, page, match) {
-    var previous = [];
-    try {
-      if (todayhumorPreviousFilterPostContent) previous = todayhumorPreviousFilterPostContent(content, url, doc, page, match) || [];
-    } catch (e) {}
-    var nodes = todayhumorNodes(doc, todayhumorPostContentSelectors);
-    var seen = {};
-    var out = [];
-    for (var i = 0; i < nodes.length && out.length < 80; i++) {
-      var text = todayhumorText(nodes[i]);
-      var key = text.substring(0, 220).toLowerCase();
-      if (!key || seen[key]) continue;
-      seen[key] = true;
-      var details = todayhumorDetailsFromRoot(nodes[i], url);
-      for (var j = 0; j < details.length && out.length < 80; j++) out.push(details[j]);
-      if (out.length && todayhumorPostContentSelectors[i] !== "body") break;
+    for (var i = 0; doc && i < todayhumorPostContentSelectors.length; i++) {
+      var selector = todayhumorPostContentSelectors[i];
+      var nodes = [];
+      try { nodes = doc.querySelectorAll(selector); } catch (e) {}
+      var covered = [];
+      var out = [];
+      for (var j = 0; j < nodes.length; j++) {
+        if (covered.indexOf(nodes[j]) !== -1) continue;
+        var details = todayhumorDetailsFromRoot(nodes[j], url);
+        if (!details.length) continue;
+        out = out.concat(details);
+        // Overlapping content containers must not duplicate nested text/media.
+        covered.push(nodes[j]);
+        try {
+          var descendants = nodes[j].querySelectorAll(selector);
+          for (var k = 0; k < descendants.length; k++) covered.push(descendants[k]);
+        } catch (e) {}
+      }
+      if (out.length) return out;
     }
-    if (!out.length) out = previous;
-    if (!out.length) {
-      var title = "";
-      try { title = firstNonEmpty([firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["meta[property='og:description']", "meta[name='description']", "title"])]); } catch (e) {}
-      if (title) out = [{ type: "text", value: title }];
-    }
-    return out;
+    // Missing content is an extraction failure, not the title or the whole page.
+    return [];
   };
   var todayhumorCommentRowSelectors = [
   "#memo_list .memo",
@@ -520,15 +516,6 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
   "#memo_list .comment_text",
   ".memo_content",
   ".comment_text"
-];
-  var todayhumorCommentSummarySelectors = [
-  ".list_memo_count_span",
-  ".comment_count",
-  ".reply_count",
-  "#memo_list .memo",
-  ".memo",
-  "tr.memo",
-  ".comment_row"
 ];
   var todayhumorPreviousFetchPostComments = SITE.fetchPostComments;
   function todayhumorMergeComment(target, seen, item) {
@@ -582,25 +569,6 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
       }
     } catch (e) {}
     if (!out.length) todayhumorParseVisibleComments(doc, url, out, seen);
-    if (!out.length) {
-      var summary = "";
-      try { summary = firstNonEmpty([firstText(doc, todayhumorCommentSummarySelectors), firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["title"])]); } catch (e) {}
-      summary = String(summary || SITE.displayName || "Comments").replace(/\s+/g, " ").trim();
-      if (summary) todayhumorMergeComment(out, seen, {
-        id: SITE.siteKey + ":comment:summary",
-        link: url + "#comments",
-        author: SITE.displayName,
-        avatar: "",
-        date: "",
-        content: [{ type: "text", value: summary }],
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
     return out;
   };
 function todayhumorOwnText(node) {
@@ -779,12 +747,14 @@ function todayhumorOwnText(node) {
     }
     if (!items.length && todayhumorRegexPreviousRouteBoardCustom) return todayhumorRegexPreviousRouteBoardCustom(url, info, match, force);
     var board = match && match.board ? match.board : null;
+    var page = match && match.page ? match.page : 1;
+    var nextUrl = items.length ? SITE.buildNextPageUrl(match, url, page + 1) : "";
     return {
       kind: "board",
       url: url,
       viewData: {
         view: "/views/list",
-        styles: { title: board && board.title ? board.title : SITE.displayName, menu: true, pagination: true, history: true, layout: "card" },
+        styles: { title: board && board.title ? board.title : SITE.displayName, menu: true, pagination: !!nextUrl, history: true, layout: "card" },
         models: { contents: items, menus: [] }
       },
       context: {
@@ -794,8 +764,8 @@ function todayhumorOwnText(node) {
         boardTitle: board && board.title ? board.title : SITE.displayName,
         boardUrl: board && board.url ? board.url : url,
         title: board && board.title ? board.title : SITE.displayName,
-        page: match && match.page ? match.page : 1,
-        nextUrl: "",
+        page: page,
+        nextUrl: nextUrl,
         seenLinks: items.map(function (item) { return item.link; })
       }
     };

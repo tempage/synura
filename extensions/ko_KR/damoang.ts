@@ -723,8 +723,8 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "damoang.net",
     name: "damoang",
-    description: "Unofficial damoang.net extension",
-    version: 0.7,
+    description: "damoang.net",
+    version: 0.8,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
@@ -1030,8 +1030,9 @@ function dA(value) {
 function damoangDecodeEscapedHtml(text) {
     var raw = String(text || "");
     if (!raw || raw.indexOf("&") < 0) return raw;
-    var doc = new DOMParser().parseFromString(raw, "text/html");
-    return doc && doc.body ? String(doc.body.textContent || "") : raw;
+    var doc = new DOMParser().parseFromString("<div id='damoang-escaped-markup'>" + raw.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</div>", "text/html");
+    var root = doc.querySelector("#damoang-escaped-markup");
+    return root ? String(root.textContent || "") : raw;
 }
 
 function damoangNormalizeEscapedVideoMarkup(markup) {
@@ -1126,6 +1127,13 @@ function damoangToCommentModel(item, postAuthor) {
 
 function damoangBuildPostViewData(post, comments) {
     var details = damoangParseContentDetails(post && post.content || "");
+    var videos = post && Array.isArray(post.videos) ? post.videos : [];
+    for (var v = 0; v < videos.length; v++) {
+        var video = videos[v] || {};
+        var url = dA(typeof video === "string" ? video : video.url);
+        if (!/^https?:\/\//i.test(url) || details.some(function (item) { return item && item.type === "video" && (item.value === url || item.link === url); })) continue;
+        details.push({ type: "video", value: url, title: video.filename || "", poster: dA(video.poster || video.thumbnail) });
+    }
     if (!details || details.length === 0) {
         details = [{ type: "text", value: "Could not load post content." }];
     }

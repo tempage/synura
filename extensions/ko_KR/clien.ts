@@ -788,8 +788,8 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "m.clien.net",
     name: "clien",
-    description: "Unofficial Clien extension",
-    version: 0.6,
+    description: "m.clien.net",
+    version: 0.7,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",

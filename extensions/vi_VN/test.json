@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "voz",
-      "description": "Unofficial Voz.vn.",
-      "version": 0.2,
+      "description": "voz.vn",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/vi_VN/voz.js",
       "api": 0,
       "domain": "voz.vn",
@@ -18,8 +18,8 @@
     },
     {
       "name": "otofun",
-      "description": "Unofficial Otofun.",
-      "version": 0.2,
+      "description": "www.otofun.net",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/vi_VN/otofun.js",
       "api": 0,
       "domain": "www.otofun.net",
@@ -34,8 +34,8 @@
     },
     {
       "name": "tinhte",
-      "description": "Unofficial Tinhte.vn.",
-      "version": 0.2,
+      "description": "tinhte.vn",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/vi_VN/tinhte.js",
       "api": 0,
       "domain": "tinhte.vn",

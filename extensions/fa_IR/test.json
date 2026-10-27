@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "tarfandestan",
-      "description": "Unofficial Tarfandestan.",
-      "version": 0.2,
+      "description": "www.tarfandestan.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fa_IR/tarfandestan.js",
       "api": 0,
       "domain": "www.tarfandestan.com",
@@ -18,8 +18,8 @@
     },
     {
       "name": "bazicenter",
-      "description": "Unofficial BaziCenter Forum.",
-      "version": 0.2,
+      "description": "forum.bazicenter.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fa_IR/bazicenter.js",
       "api": 0,
       "domain": "forum.bazicenter.com",
@@ -33,8 +33,8 @@
     },
     {
       "name": "majidonline",
-      "description": "Unofficial MajidOnline Forum.",
-      "version": 0.2,
+      "description": "forum.majidonline.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fa_IR/majidonline.js",
       "api": 0,
       "domain": "forum.majidonline.com",

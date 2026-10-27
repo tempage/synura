@@ -1,6 +1,6 @@
 // @ts-nocheck
 // =============================================================================
-// test_reddit.js - Synura Extension for Reddit
+// reddit.js - Synura Extension for Reddit
 // =============================================================================
 //
 // Sections:
@@ -21,10 +21,10 @@
 
 var SYNURA = {
     domain: "www.reddit.com",
-    name: "test_reddit",
+    name: "reddit",
     author: "Synura Team",
-    description: "Unofficial example extension for educational purposes.",
-    version: 0.1,
+    description: "www.reddit.com",
+    version: 0.2,
     api: 0,
     license: "Apache-2.0",
     locale: "en_US",
@@ -33,6 +33,8 @@ var SYNURA = {
     tags:["social","news","images","video"],
     get main() { return handler; }
 }
+// Keep the extension entry point visible to the host after minification.
+globalThis.SYNURA = SYNURA;
 
 // =============================================================================
 // 2. SUBREDDIT DATA
@@ -230,13 +232,14 @@ var setCachedRoute = (url, routeData) => {
 };
 
 var createPostRouteData = (link, postData, anchor) => {
-    const styles = { ...postData.styles, hotThreshold: 100, coldThreshold: 100, commentHotThreshold: 50, commentColdThreshold: 50, authorClickable: true };
+    const styles = { ...postData.styles, pagination: true, hotThreshold: 100, coldThreshold: 100, commentHotThreshold: 50, commentColdThreshold: 50, authorClickable: true };
     if (anchor) styles.anchor = anchor;
     return {
         view: '/views/post',
         timestamp: Date.now(),
         styles: styles,
-        models: { ...postData.models, link: link, menus: ["Open in Browser"], buttons: ["Refresh"] }
+        models: { ...postData.models, link: link, menus: ["Open in Browser"], buttons: ["Refresh"] },
+        meta: postData.meta
     };
 };
 
@@ -459,26 +462,26 @@ var getSortMenuItems = (currentSort, currentTimeFilter) => {
     return menus;
 };
 
-var unescapeHtml = (html) => {
-    if (!html) return '';
-    return html.replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'");
-};
-
 var normalizeRedditUrl = (url) => {
     if (!url) return '';
     if (url.startsWith('//')) return 'https:' + url;
     if (url.startsWith('/')) return 'https://www.reddit.com' + url;
-    return url;
+    return /^https?:\/\//i.test(url) ? url : '';
+};
+
+var redditRequestUrl = (url) => {
+    const normalized = normalizeRedditUrl(String(url || '')).replace(
+        /^https?:\/\/(?:www\.|old\.|new\.)?reddit\.com(?=\/|$)/i, 'https://www.reddit.com'
+    ).split('#')[0];
+    if (!/^https:\/\/www\.reddit\.com\//.test(normalized)) {
+        throw new Error('Invalid Reddit request URL');
+    }
+    return normalized;
 };
 
 var formatIsoTimeAgo = (value) => {
-    const ms = Date.parse(value || '');
-    if (!ms || isNaN(ms)) return '';
-    return formatTimeAgo(Math.floor(ms / 1000));
+    const ms = Date.parse((value || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2'));
+    return isNaN(ms) ? '' : formatTimeAgo(Math.floor(ms / 1000));
 };
 
 var nodeText = (node, selector) => {
@@ -491,106 +494,139 @@ var nodeAttr = (node, selector, attr) => {
     return found ? (found.getAttribute(attr) || '').trim() : '';
 };
 
-var parseHtmlFragment = (html) => {
-    return new DOMParser().parseFromString(unescapeHtml(html || ''), "text/html");
+// Anonymous cookies stay in memory and do not change the Login/Logout setting.
+var redditSession = { login: null, cookies: [] };
+
+var redditCookies = (url) => {
+    const login = getCookie() || '';
+    if (login !== redditSession.login) {
+        redditSession = { login, cookies: [] };
+        login.split(';').forEach(pair => {
+            const separator = pair.indexOf('=');
+            if (separator > 0) redditSession.cookies.push({
+                name: pair.slice(0, separator).trim(), value: pair.slice(separator + 1).trim(), path: '/', expires: 0
+            });
+        });
+    }
+    const path = url.replace('https://www.reddit.com', '').split('?')[0];
+    redditSession.cookies = redditSession.cookies.filter(cookie => !cookie.expires || cookie.expires > Date.now());
+    return redditSession.cookies.filter(cookie => path === cookie.path ||
+        (path.startsWith(cookie.path) && (cookie.path.endsWith('/') || path[cookie.path.length] === '/')))
+        .map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
 };
 
-var atomEntries = (doc) => {
-    return Array.from(doc.querySelectorAll("entry"));
-};
-
-var atomContentHtml = (entry) => {
-    return nodeText(entry, "content");
-};
-
-var atomAuthor = (entry) => {
-    return nodeText(entry, "author name").replace(/^\/u\//, '');
-};
-
-var atomCommentsLink = (entry) => {
-    return normalizeRedditUrl(nodeAttr(entry, "link", "href"));
-};
-
-var atomExternalLink = (entry, commentsLink) => {
-    const contentDoc = parseHtmlFragment(atomContentHtml(entry));
-    const links = Array.from(contentDoc.querySelectorAll("a"));
-    for (let i = 0; i < links.length; i++) {
-        const label = (links[i].textContent || '').trim().toLowerCase();
-        const href = normalizeRedditUrl(links[i].getAttribute("href") || '');
-        if (label === "[link]" && href && href !== commentsLink) {
-            return href;
+var saveRedditCookies = (response, url) => {
+    const headers = response.headers || {};
+    const values = typeof headers.getAll === 'function' ? headers.getAll('set-cookie') :
+        String(headers['set-cookie'] || headers['Set-Cookie'] || '').split('\n');
+    const path = url.replace('https://www.reddit.com', '').split('?')[0];
+    for (const value of values) {
+        const parts = value.split(';');
+        const pair = parts.shift();
+        const separator = pair.indexOf('=');
+        if (separator <= 0) continue;
+        const cookie = {
+            name: pair.slice(0, separator).trim(), value: pair.slice(separator + 1).trim(),
+            path: path.slice(0, path.lastIndexOf('/')) || '/', expires: 0
+        };
+        let validDomain = true, maxAge = null;
+        for (const part of parts) {
+            const index = part.indexOf('=');
+            const key = (index < 0 ? part : part.slice(0, index)).trim().toLowerCase();
+            const value = index < 0 ? '' : part.slice(index + 1).trim();
+            if (key === 'domain') validDomain = /^(?:www\.)?reddit\.com$/i.test(value.replace(/^\./, ''));
+            if (key === 'path' && value.startsWith('/')) cookie.path = value;
+            if (key === 'expires') cookie.expires = Date.parse(value) || 0;
+            if (key === 'max-age' && /^-?\d+$/.test(value)) maxAge = Number(value);
         }
+        if (!validDomain) continue;
+        if (maxAge !== null) cookie.expires = Date.now() + maxAge * 1000;
+        redditSession.cookies = redditSession.cookies.filter(old => old.name !== cookie.name || old.path !== cookie.path);
+        if (!cookie.expires || cookie.expires > Date.now()) redditSession.cookies.push(cookie);
     }
-    return '';
 };
 
-var parseRedditContent = (html, externalLink) => {
-    const doc = parseHtmlFragment(html);
-    const body = doc.querySelector(".md") || doc.body;
-    let content = [];
-    if (body) {
-        try {
-            const parsed = synura.parse('post', body);
-            if (parsed && parsed.length > 0) {
-                content = parsed;
-            }
-        } catch (e) {
-            console.log("Error parsing HTML content:", e);
-        }
-    }
-
-    if (externalLink && !content.some(item => item.value === externalLink)) {
-        if (/\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(externalLink)) {
-            content.push({ type: 'image', value: externalLink });
-        } else {
-            content.push({ type: 'link', value: externalLink, label: externalLink });
-        }
-    }
-
-    if (content.length === 0) {
-        content.push({ type: 'text', value: '(No text content)' });
-    }
-    return content;
-};
-
-var PAGE_SIZE = 25;
-
-var appendQueryParam = (url, key, value) => {
-    if (value === undefined || value === null || value === "") return url;
-    const separator = url.includes("?") ? "&" : "?";
-    return `${url}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
-};
-
-var buildRedditFeedUrl = (subredditId, sort, timeFilter, query, after) => {
-    const safeSubreddit = encodeURIComponent(subredditId);
-    if (query) {
-        let searchUrl = `https://www.reddit.com/r/${safeSubreddit}/search.rss?q=${encodeURIComponent(query)}&restrict_sr=1`;
-        if (sort) searchUrl += `&sort=${encodeURIComponent(sort)}`;
-        if (timeFilter) searchUrl += `&t=${encodeURIComponent(timeFilter)}`;
-        searchUrl = appendQueryParam(searchUrl, "limit", PAGE_SIZE);
-        searchUrl = appendQueryParam(searchUrl, "after", after);
-        return searchUrl;
-    }
-
-    const safeSort = encodeURIComponent(sort || "new");
-    let url = `https://www.reddit.com/r/${safeSubreddit}/${safeSort}/.rss`;
-    if (sort === "top" && timeFilter) {
-        url += `?t=${encodeURIComponent(timeFilter)}`;
-    }
-    url = appendQueryParam(url, "limit", PAGE_SIZE);
-    url = appendQueryParam(url, "after", after);
-    return url;
-};
-
-var redditFetchOptions = (accept) => {
+var redditFetchOptions = (url) => {
     const headers = {
-        "Accept": accept || "application/atom+xml,application/xml,text/xml,*/*"
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
     };
-    const cookie = getCookie();
-    if (cookie) {
-        headers["Cookie"] = cookie;
+    const cookie = redditCookies(url);
+    if (cookie) headers['Cookie'] = cookie;
+    return { headers };
+};
+
+var redditFetchDocument = (rawUrl) => {
+    const url = redditRequestUrl(rawUrl);
+    let requestUrl = url;
+    for (let attempt = 0; attempt < 2; attempt++) {
+        const options = redditFetchOptions(requestUrl);
+        if (attempt) options.headers['Referer'] = url;
+        const response = fetch(requestUrl, options);
+        saveRedditCookies(response, requestUrl);
+        if (!response.ok) {
+            if (response.status === 429) throw new Error('Reddit is rate limiting requests. Please try again later.');
+            if (response.status === 403) throw new Error('Reddit blocked this request. Please try again later or open it in a browser.');
+            // Transport errors can contain the challenge URL; do not expose its tokens.
+            throw new Error(response.status ? `Reddit HTTP ${response.status}` : 'Unable to connect to Reddit');
+        }
+        // Streamed page fragments (including comments) arrive in inert templates.
+        // Expose their markup to the static parser without running page scripts.
+        const html = response.text().replace(/<(\/?)template\b/gi, '<$1div');
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const challenge = doc.querySelector('input[name="js_challenge"]');
+        if (!challenge) return doc;
+        if (attempt) throw new Error('Reddit browser verification did not complete. Please try again later.');
+
+        // Handle only the observed nonce-doubling form, never execute page scripts.
+        const scripts = Array.from(doc.querySelectorAll('script')).map(node => node.textContent).join('\n');
+        const nonce = scripts.match(/await\s*\(\s*async\s+([A-Za-z_$][\w$]*)\s*=>\s*\1\s*\+\s*\1\s*\)\s*\(\s*["']([a-f0-9]{8,128})["']\s*\)/i);
+        const form = doc.querySelector('form');
+        if (!form || !nonce || (form.getAttribute('method') || 'get').toLowerCase() !== 'get') {
+            throw new Error('Reddit requires unsupported browser verification. Please open it in a browser.');
+        }
+        const action = redditRequestUrl(form.getAttribute('action') || url.split('?')[0]);
+        if (action.split('?')[0] !== url.split('?')[0]) throw new Error('Unexpected Reddit verification destination');
+        const params = new URLSearchParams(action.split('?')[1] || '');
+        for (const input of Array.from(form.querySelectorAll('input'))) {
+            const name = input.getAttribute('name');
+            if (name) params.set(name, name === 'solution' ? nonce[2] + nonce[2] : input.getAttribute('value') || '');
+        }
+        if (!params.has('solution')) throw new Error('Invalid Reddit verification form');
+        for (const [name, value] of new URLSearchParams(url.split('?')[1] || '')) {
+            if (!params.has(name)) params.append(name, value);
+        }
+        requestUrl = action.split('?')[0] + '?' + params.toString();
     }
-    return { headers: headers };
+};
+
+var buildRedditListingUrl = (subredditId, sort, timeFilter, query, after) => {
+    if (after) {
+        const url = redditRequestUrl(after);
+        if (!/^https:\/\/www\.reddit\.com\/svc\/shreddit\/(?:community-more-posts\/|(?:r\/[^/?]+\/)?search\/)/.test(url)) {
+            throw new Error('Invalid Reddit next page');
+        }
+        return url;
+    }
+    const base = `https://www.reddit.com/r/${encodeURIComponent(subredditId)}/`;
+    if (query) {
+        const searchSort = ['new', 'top', 'comments', 'relevance'].includes(sort) ? sort : 'relevance';
+        return `${base}search/?q=${encodeURIComponent(query)}&restrict_sr=on&sort=${searchSort}&t=${encodeURIComponent(timeFilter || 'all')}`;
+    }
+    const selected = sortOptions.some(option => option.id === sort) ? sort : 'hot';
+    return base + selected + '/' + (selected === 'top' ? `?t=${encodeURIComponent(timeFilter || 'all')}` : '');
+};
+
+var redditNextPage = (doc, url, search) => {
+    for (const partial of Array.from(doc.querySelectorAll('faceplate-partial[src]'))) {
+        const src = partial.getAttribute('src') || '';
+        const path = src.replace(/^https:\/\/www\.reddit\.com/, '');
+        const expected = search ? /^\/svc\/shreddit\/(?:r\/[^/?]+\/)?search\// : /^\/svc\/shreddit\/community-more-posts\//;
+        if (!expected.test(path)) continue;
+        const next = redditRequestUrl(src);
+        if (next !== url) return next;
+    }
+    return null;
 };
 
 // Helper: Build subreddit list items from visible subreddits
@@ -643,184 +679,257 @@ var buildSubredditMenus = (sort, timeFilter, showMedia, galleryMode) => {
 // 5. CORE FETCH FUNCTIONS
 // =============================================================================
 
-var fetchSubredditPosts = (subredditId, sort, after, timeFilter, query, videoInList) => {
-    const url = buildRedditFeedUrl(subredditId, sort, timeFilter, query, after);
-    console.log("Fetching:", url);
-
-    const response = fetch(url, redditFetchOptions());
-
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+var redditMedia = (post) => {
+    const container = post.querySelector('[slot="post-media-container"]');
+    const images = [];
+    if (container) {
+        const gallery = container.querySelector('gallery-carousel');
+        const primary = Array.from(container.querySelectorAll('img[data-post-media-primary]'));
+        const candidates = gallery ? Array.from(gallery.querySelectorAll('li[slot]')).map(page => page.querySelector('img:not([role="presentation"])')).filter(Boolean) :
+            primary.length ? primary : Array.from(container.querySelectorAll('img'));
+        for (const image of candidates) {
+            if (image.getAttribute('role') === 'presentation') continue;
+            const src = normalizeRedditUrl(image.getAttribute('src') || image.getAttribute('data-lazy-src') || '');
+            if (src && !images.includes(src)) images.push(src);
+        }
     }
+    const player = post.querySelector('shreddit-player') || post.querySelector('shreddit-player-2') || post.querySelector('video');
+    let video = player ? normalizeRedditUrl(player.getAttribute('src') || nodeAttr(player, 'source', 'src')) : '';
+    const poster = player ? normalizeRedditUrl(player.getAttribute('poster') || '') : '';
+    const external = normalizeRedditUrl(post.getAttribute('content-href') || '');
+    if (!video && /(?:youtube\.com|youtu\.be|\.mp4)(\/|\?|$)/i.test(external)) video = external;
+    return { images, video, poster };
+};
 
-    const doc = new DOMParser().parseFromString(response.text(), "application/xml");
-    const posts = atomEntries(doc);
+var redditCard = (post, videoInList) => {
+    const link = normalizeRedditUrl(post.getAttribute('permalink') || nodeAttr(post, '[slot="title"]', 'href'));
+    const external = normalizeRedditUrl(post.getAttribute('content-href') || '');
+    const media = redditMedia(post);
+    if (!media.images.length && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(external)) media.images.push(external);
+    const type = post.getAttribute('post-type') || '';
+    const isVideo = !!media.video || type === 'video';
+    const score = parseInt(post.getAttribute('score') || '0', 10) || 0;
+    const types = [];
+    if (type === 'link') types.push('link');
+    if (media.images.length) types.push('image');
+    if (isVideo) types.push('video');
+    return {
+        link, title: post.getAttribute('post-title') || nodeText(post, '[slot="title"]'), types,
+        author: post.getAttribute('author') || '[deleted]', avatar: normalizeRedditUrl(post.getAttribute('icon') || ''),
+        mediaUrl: videoInList && media.video ? media.video : media.images[0] || media.poster,
+        mediaType: videoInList && media.video ? 'video' : media.images.length || media.poster ? 'image' : 'none',
+        thumbnail: media.images[0] || media.poster, date: formatIsoTimeAgo(post.getAttribute('created-timestamp')),
+        likeCount: formatNumber(score), dislikeCount: '',
+        commentCount: formatNumber(parseInt(post.getAttribute('comment-count') || '0', 10)),
+        viewCount: '', menus: [], hotCount: score, coldCount: score, _name: post.getAttribute('id') || link
+    };
+};
 
-    const cardItems = posts.map(entry => {
-        const commentsLink = atomCommentsLink(entry);
-        const externalLink = atomExternalLink(entry, commentsLink);
+var redditSearchCard = (node) => {
+    let context = {};
+    try { context = JSON.parse(node.getAttribute('data-faceplate-tracking-context') || '{}'); } catch (e) { }
+    const link = normalizeRedditUrl(nodeAttr(node, '[data-testid="post-title"]', 'href'));
+    const counter = node.querySelector('[data-testid="search-counter-row"]');
+    const numbers = counter ? Array.from(counter.querySelectorAll('faceplate-number')).map(n => parseInt(n.getAttribute('number') || '0', 10)) : [];
+    const image = normalizeRedditUrl(nodeAttr(node, '[data-testid="search_post_thumbnail"]', 'src'));
+    return {
+        link, title: nodeText(node, '[data-testid="post-title-text"]') || context.post?.title || nodeAttr(node, '[data-testid="post-title"]', 'aria-label'),
+        author: context.profile?.name || '', avatar: '', types: image ? ['image'] : [],
+        mediaUrl: image, mediaType: image ? 'image' : 'none', thumbnail: image,
+        date: formatIsoTimeAgo(nodeAttr(node, 'faceplate-timeago', 'ts')),
+        likeCount: formatNumber(numbers[0]), commentCount: formatNumber(numbers[1]), dislikeCount: '', viewCount: '',
+        menus: [], hotCount: numbers[0] || 0, coldCount: numbers[0] || 0, _name: context.post?.id || link
+    };
+};
 
-        // Determine media type and URL
-        let mediaUrl = '';
-        let mediaType = 'none';
-        let types = [];
+var fetchSubredditPosts = (subredditId, sort, after, timeFilter, query, videoInList) => {
+    const url = buildRedditListingUrl(subredditId, sort, timeFilter, query, after);
+    const doc = redditFetchDocument(url);
+    const search = !!query;
+    const nodes = Array.from(doc.querySelectorAll(search ? '[data-testid="search-sdui-post"]' : 'shreddit-post'));
+    const seen = new Set();
+    const items = nodes.filter(node => !node.hasAttribute('promoted')).map(node => search ? redditSearchCard(node) : redditCard(node, videoInList))
+        .filter(item => {
+            if (!item.title || !item.link || seen.has(item._name)) return false;
+            seen.add(item._name);
+            return true;
+        });
+    if (!items.length && !after && !doc.querySelector(search ? 'search-dynamic-id-cache-controller' : 'shreddit-feed')) {
+        throw new Error('Reddit did not return a readable listing. The community may be unavailable.');
+    }
+    return { items, after: redditNextPage(doc, url, search) };
+};
 
-        if (externalLink) {
-            types.push('link');
-        }
+var redditContent = (node) => {
+    if (!node) return [];
+    try {
+        const parsed = synura.parse('post', node);
+        if (parsed && parsed.length) return parsed;
+    } catch (e) { }
+    const text = node.textContent.trim();
+    return text ? [{ type: 'text', value: text }] : [];
+};
 
-        if (externalLink && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(externalLink)) {
-            types.push('image');
-            mediaType = 'image';
-            mediaUrl = externalLink;
-        }
+var redditImageHeaders = (content, referer) => {
+    const seen = new Set();
+    return content.filter(item => {
+        if (item.type !== 'image') return true;
+        const image = normalizeRedditUrl(item.value || item.link || '');
+        // Reddit includes both visible images and identical fallback markup.
+        if (seen.has(image)) return false;
+        seen.add(image);
+        const match = normalizeRedditUrl(item.value || item.link || '').match(/^https?:\/\/([^/?#]+)/i);
+        if (!match || !/(^|\.)(redd\.it|redditmedia\.com|redditstatic\.com|reddit\.com)$/i.test(match[1])) return true;
+        const headers = { ...(item.headers || {}) };
+        if (!Object.keys(headers).some(name => name.toLowerCase() === 'referer')) headers.Referer = referer;
+        item.headers = headers;
+        return true;
+    });
+};
 
-        if (externalLink && /(?:youtube\.com|youtu\.be|v\.redd\.it|\.mp4)(\/|\?|$)/i.test(externalLink)) {
-            types.push('video');
-            if (videoInList) {
-                mediaType = 'video';
-                mediaUrl = externalLink;
-            }
-        }
-
+var parseRedditComments = (doc, refererUrl) => {
+    return Array.from(doc.querySelectorAll('shreddit-comment')).map(comment => {
+        const id = comment.getAttribute('thingid') || '';
+        const body = /^[a-z0-9_]+$/i.test(id) ? comment.querySelector(`#${id}-comment-rtjson-content`) : null;
+        const content = redditContent(body);
+        const score = parseInt(comment.getAttribute('score') || '0', 10) || 0;
         return {
-            link: commentsLink,
-            title: nodeText(entry, "title"),
-            types: types,
-            author: atomAuthor(entry),
-            avatar: '',
-            mediaUrl: mediaUrl,
-            mediaType: mediaType,
-            thumbnail: mediaType === 'image' ? mediaUrl : '',
-            date: formatIsoTimeAgo(nodeText(entry, "updated") || nodeText(entry, "published")),
-            likeCount: '',
-            dislikeCount: '',
-            commentCount: '',
-            viewCount: '',
-            menus: [],
-            hotCount: 0,
-            coldCount: 0,
-            _name: nodeText(entry, "id")
+            id, author: comment.getAttribute('author') || '[deleted]', avatar: normalizeRedditUrl(comment.getAttribute('avatar') || ''),
+            content: redditImageHeaders(content.length ? content : [{ type: 'text', value: '[removed]' }], refererUrl),
+            date: formatIsoTimeAgo(comment.getAttribute('created')), likeCount: formatNumber(score), dislikeCount: '',
+            level: Math.max(0, parseInt(comment.getAttribute('depth') || '0', 10) || 0),
+            menus: ['Reply', 'Report'], hotCount: score, coldCount: score
         };
     });
+};
 
+var extractRedditPostInfo = (url, postElement) => {
+    let subreddit = '';
+    let postId = '';
+    if (postElement) {
+        const fullId = postElement.getAttribute('id') || postElement.getAttribute('thingid') || '';
+        if (fullId) postId = fullId.startsWith('t3_') ? fullId : `t3_${fullId}`;
+        const sub = postElement.getAttribute('subreddit-prefixed-name') || postElement.getAttribute('subreddit-name') || '';
+        if (sub) subreddit = sub.replace(/^r\//i, '');
+    }
+    if (!postId || !subreddit) {
+        const match = String(url || '').match(/reddit\.com\/r\/([^/?#]+)\/comments\/([a-z0-9]+)/i);
+        if (match) {
+            if (!subreddit) subreddit = match[1];
+            if (!postId) postId = `t3_${match[2]}`;
+        }
+    }
+    return { subreddit, postId };
+};
 
+var initPostCommentsMeta = (url, subreddit, postId, initialComments) => {
+    const seenCommentIds = initialComments.map(c => c.id).filter(Boolean);
     return {
-        items: cardItems,
-        after: cardItems.length >= PAGE_SIZE ? cardItems[cardItems.length - 1]._name : null
+        url,
+        subreddit,
+        postId,
+        sortQueue: ['top', 'new', 'old'],
+        afterQueue: [...seenCommentIds],
+        afterIndex: 0,
+        seenCommentIds,
+        allComments: [...initialComments],
+        loadingComments: false
+    };
+};
+
+var fetchNextCommentsBatch = (params) => {
+    const { url, subreddit, postId, sortQueue, afterQueue, afterIndex, seenCommentIds, allComments } = params;
+    const seen = new Set(seenCommentIds || []);
+    const newItems = [];
+    const updatedSortQueue = sortQueue ? [...sortQueue] : [];
+    const updatedAfterQueue = afterQueue ? [...afterQueue] : [];
+    let updatedAfterIndex = typeof afterIndex === 'number' ? afterIndex : 0;
+
+    // Phase 1: Alternate sort passes (top, new, old)
+    while (updatedSortQueue.length > 0 && newItems.length === 0) {
+        const nextSort = updatedSortQueue.shift();
+        try {
+            const separator = url.includes('?') ? '&' : '?';
+            const sortUrl = `${url}${separator}sort=${encodeURIComponent(nextSort)}`;
+            const doc = redditFetchDocument(sortUrl);
+            const batch = parseRedditComments(doc, url);
+            for (const c of batch) {
+                if (c.id && !seen.has(c.id)) {
+                    seen.add(c.id);
+                    newItems.push(c);
+                    updatedAfterQueue.push(c.id);
+                }
+            }
+        } catch (e) {
+            console.log(`Failed to fetch alternate sort comments (${nextSort}):`, e);
+        }
+    }
+
+    // Phase 2: Expand nested comments using after={commentId}
+    if (newItems.length === 0 && subreddit && postId) {
+        let attempts = 0;
+        while (updatedAfterIndex < updatedAfterQueue.length && newItems.length === 0 && attempts < 5) {
+            const cId = updatedAfterQueue[updatedAfterIndex++];
+            attempts++;
+            try {
+                const afterUrl = `https://www.reddit.com/svc/shreddit/comments/r/${encodeURIComponent(subreddit)}/${encodeURIComponent(postId)}?render-mode=partial&after=${encodeURIComponent(cId)}&sort=confidence`;
+                const doc = redditFetchDocument(afterUrl);
+                const batch = parseRedditComments(doc, url);
+                for (const c of batch) {
+                    if (c.id && !seen.has(c.id)) {
+                        seen.add(c.id);
+                        newItems.push(c);
+                        updatedAfterQueue.push(c.id);
+                    }
+                }
+            } catch (e) {
+                console.log(`Failed to fetch nested comments after ${cId}:`, e);
+            }
+        }
+    }
+
+    const updatedAllComments = (allComments || []).concat(newItems);
+    return {
+        newItems,
+        updatedParams: {
+            ...params,
+            sortQueue: updatedSortQueue,
+            afterQueue: updatedAfterQueue,
+            afterIndex: updatedAfterIndex,
+            seenCommentIds: Array.from(seen),
+            allComments: updatedAllComments,
+            loadingComments: false
+        }
     };
 };
 
 var fetchPost = (permalink) => {
-    const url = permalink.replace(/\/?$/, "/") + ".rss";
-    console.log("Fetching post:", url);
-
-    const response = fetch(url, redditFetchOptions());
-
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const url = redditRequestUrl(permalink);
+    const doc = redditFetchDocument(url);
+    const post = doc.querySelector('shreddit-post');
+    if (!post) throw new Error('Reddit did not return this post. It may be private, removed, or unavailable.');
+    const card = redditCard(post, false);
+    const body = post.querySelector('[property="schema:articleBody"]') || post.querySelector('[slot="text-body"]');
+    const content = redditContent(body);
+    const media = redditMedia(post);
+    const external = normalizeRedditUrl(post.getAttribute('content-href') || '');
+    const originalImage = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(external);
+    const images = originalImage ? [external] : media.video && post.getAttribute('post-type') === 'video' ? [] : media.images;
+    for (const image of images) if (!content.some(item => item.value === image)) content.push({ type: 'image', value: image });
+    if (media.video) content.push({ type: 'video', value: media.video, poster: media.poster });
+    if (external && external !== card.link && !external.includes('/comments/') && !media.video && !images.includes(external)) {
+        content.push({ type: 'link', value: external, link: external });
     }
-
-    const doc = new DOMParser().parseFromString(response.text(), "application/xml");
-    const entries = atomEntries(doc);
-    if (entries.length === 0) {
-        throw new Error("Invalid response from Reddit");
-    }
-
-    const postEntry = entries[0];
-    const commentsLink = atomCommentsLink(postEntry);
-    const externalLink = atomExternalLink(postEntry, commentsLink);
-    const content = parseRedditContent(atomContentHtml(postEntry), externalLink);
-    const comments = parseAtomComments(entries.slice(1));
+    if (!content.length) content.push({ type: 'text', value: '(No text content)' });
+    const comments = parseRedditComments(doc, url);
+    const { subreddit, postId } = extractRedditPostInfo(url, post);
 
     return {
-        styles: {
-            title: nodeText(postEntry, "title") || '',
-        },
-        models: {
-            author: atomAuthor(postEntry) || '',
-            viewCount: '',
-            likeCount: '',
-            dislikeCount: '',
-            date: formatIsoTimeAgo(nodeText(postEntry, "updated") || nodeText(postEntry, "published")) || '',
-            avatar: '',
-            content: content,
-            comments: comments,
-        }
+        styles: { title: card.title, pagination: true },
+        models: { author: card.author, avatar: card.avatar, date: card.date, likeCount: card.likeCount,
+            dislikeCount: '', viewCount: '', content: redditImageHeaders(content, url), comments },
+        meta: initPostCommentsMeta(url, subreddit, postId, comments)
     };
-};
-
-var parseAtomComments = (entries) => {
-    return entries.map(entry => {
-        const content = parseRedditContent(atomContentHtml(entry), '');
-        return {
-            author: atomAuthor(entry) || '[deleted]',
-            avatar: '',
-            content: content,
-            date: formatIsoTimeAgo(nodeText(entry, "updated") || nodeText(entry, "published")),
-            likeCount: '',
-            dislikeCount: '',
-            level: 0,
-            menus: ["Reply", "Report"],
-            hotCount: 0,
-            coldCount: 0,
-        };
-    });
-};
-
-var parseComments = (commentsData, level) => {
-    const comments = [];
-
-    for (const comment of commentsData) {
-        if (comment.kind !== 't1') continue; // Skip non-comment items
-
-        const data = comment.data;
-
-        let content = [];
-        if (data.body_html) {
-            try {
-                const html = unescapeHtml(data.body_html);
-                const doc = new DOMParser().parseFromString(html, "text/html");
-                const parsed = synura.parse('post', doc.body);
-                if (parsed && parsed.length > 0) {
-                    content.push(...parsed);
-                } else {
-                    content.push({ type: 'text', value: data.body });
-                }
-            } catch (e) {
-                content.push({ type: 'text', value: data.body });
-            }
-        } else if (data.body) {
-            content.push({ type: 'text', value: data.body });
-        }
-
-        const likesInt = data.score || 0;
-
-        comments.push({
-            author: data.author || '[deleted]',
-            avatar: '',
-            content: content,
-            date: formatTimeAgo(data.created_utc),
-            likeCount: formatNumber(data.score),
-            dislikeCount: '',
-            level: level,
-            menus: ["Reply", "Report"],
-            hotCount: likesInt,
-            coldCount: likesInt,
-        });
-
-        // Parse nested replies
-        if (data.replies && data.replies.data && data.replies.data.children) {
-            // Check recursion depth if needed, but for now typical Reddit threads are okay.
-            // A simple safety check could be added if crashes occur.
-            if (level < 20) {
-                const nestedComments = parseComments(data.replies.data.children, level + 1);
-                comments.push(...nestedComments);
-            }
-        }
-    }
-
-    return comments;
 };
 
 // =============================================================================
@@ -862,6 +971,9 @@ var openPost = (parentViewId, link) => {
             try {
                 const postData = fetchPost(link);
                 if (postData) {
+                    if (postData.meta) {
+                        setParams(viewId, { ...postData.meta });
+                    }
                     synura.update(viewId, postData);
                     // Update Cache
                     setCachedRoute(link, createPostRouteData(link, postData));
@@ -1155,7 +1267,7 @@ var handleSubredditEvent = (viewId, event) => {
 
         const sort = params.sort || event.context.sort || "new";
         // Default to saved value for top sort if not specified
-        const timeFilter = params.timeFilter || event.context.timeFilter || (sort === 'top' ? getTimeFilter() : null);
+        const timeFilter = params.timeFilter !== undefined ? params.timeFilter : event.context.timeFilter || (sort === 'top' ? getTimeFilter() : null);
         const query = params.searchQuery || null;
 
         // Save back to params so it persists
@@ -1166,7 +1278,7 @@ var handleSubredditEvent = (viewId, event) => {
             const result = fetchSubredditPosts(event.context.subredditId, sort, null, timeFilter, query, videoInList);
             console.log(`[DEBUG] fetchSubredditPosts returned items: ${result.items.length}, after: ${result.after}`);
 
-            setParams(viewId, { after: result.after });
+            setParams(viewId, { after: result.after, seenPostLinks: result.items.map(item => item.link) });
 
             synura.update(viewId, {
                 models: {
@@ -1184,7 +1296,7 @@ var handleSubredditEvent = (viewId, event) => {
         console.log(`[DEBUG] SCROLL_TO_END viewId: ${viewId}, params:`, JSON.stringify(params));
 
         const sort = params.sort || event.context.sort || "new";
-        const timeFilter = params.timeFilter || event.context.timeFilter;
+        const timeFilter = params.timeFilter !== undefined ? params.timeFilter : event.context.timeFilter;
         const query = params.searchQuery || null;
         const after = params.after;
 
@@ -1201,11 +1313,14 @@ var handleSubredditEvent = (viewId, event) => {
 
         try {
             const result = fetchSubredditPosts(event.context.subredditId, sort, after, timeFilter, query, videoInList);
-            setParams(viewId, { after: result.after });
+            const seen = new Set(params.seenPostLinks || []);
+            const items = result.items.filter(item => !seen.has(item.link));
+            items.forEach(item => seen.add(item.link));
+            setParams(viewId, { after: result.after, seenPostLinks: Array.from(seen) });
 
             synura.update(viewId, {
                 models: {
-                    append: result.items
+                    append: items
                 }
             });
             console.log("✅ Successfully appended posts.");
@@ -1225,6 +1340,9 @@ var handleSubredditEvent = (viewId, event) => {
             const result = synura.open(routeData);
             if (result.success) {
                 console.log("✅ Opened post view (via cache). View ID:", result.viewId);
+                if (routeData.meta) {
+                    setParams(result.viewId, { ...routeData.meta });
+                }
                 synura.connect(result.viewId, { from: "post", link: link }, (event) => {
                     SYNURA.main.onViewEvent(event.viewId, event);
                 });
@@ -1269,7 +1387,7 @@ var handleSubredditEvent = (viewId, event) => {
             // Update View
             const params = getParams(viewId);
             const sort = params.sort || event.context.sort || "new";
-            const timeFilter = params.timeFilter || event.context.timeFilter;
+            const timeFilter = params.timeFilter !== undefined ? params.timeFilter : event.context.timeFilter;
             const menus = buildSubredditMenus(sort, timeFilter, newState, galleryMode);
 
             synura.update(viewId, {
@@ -1288,7 +1406,7 @@ var handleSubredditEvent = (viewId, event) => {
             // Update View
             const params = getParams(viewId);
             const sort = params.sort || event.context.sort || "new";
-            const timeFilter = params.timeFilter || event.context.timeFilter;
+            const timeFilter = params.timeFilter !== undefined ? params.timeFilter : event.context.timeFilter;
             const menus = buildSubredditMenus(sort, timeFilter, showMedia, newState);
 
             synura.update(viewId, {
@@ -1329,8 +1447,8 @@ var handleSubredditEvent = (viewId, event) => {
 
         try {
             const params = getParams(viewId);
-            const result = fetchSubredditPosts(event.context.subredditId, null, null, null, query, videoInList);
-            setParams(viewId, { after: result.after });
+            const result = fetchSubredditPosts(event.context.subredditId, params.sort || event.context.sort, null, params.timeFilter, query, videoInList);
+            setParams(viewId, { after: result.after, seenPostLinks: result.items.map(item => item.link) });
             synura.update(viewId, {
                 models: {
                     contents: result.items
@@ -1359,8 +1477,8 @@ var updateMenuAndReload = (viewId, subredditId, sort, timeFilter) => {
 
     // Reload
     try {
-        const result = fetchSubredditPosts(subredditId, sort, null, timeFilter, null, videoInList);
-        setParams(viewId, { after: result.after });
+        const result = fetchSubredditPosts(subredditId, sort, null, timeFilter, getParams(viewId).searchQuery, videoInList);
+        setParams(viewId, { after: result.after, seenPostLinks: result.items.map(item => item.link) });
 
         synura.update(viewId, {
             models: {
@@ -1378,11 +1496,81 @@ var handlePostEvent = (viewId, event) => {
         if (event.context && event.context.anchor) {
             synura.update(viewId, { styles: { anchor: event.context.anchor } });
         }
+    } else if (event.eventId === "SCROLL_TO_END") {
+        console.log("Received SCROLL_TO_END for post view. Fetching next comments... ViewId:", viewId);
+        const params = getParams(viewId);
+        if (params.loadingComments) {
+            console.log("Already loading comments, ignoring.");
+            return;
+        }
+
+        let subreddit = params.subreddit;
+        let postId = params.postId;
+        let url = params.url || event.context.link || (event.data && event.data.link);
+
+        if (!subreddit || !postId) {
+            if (url) {
+                const info = extractRedditPostInfo(url, null);
+                subreddit = subreddit || info.subreddit;
+                postId = postId || info.postId;
+            }
+        }
+
+        if (!params.allComments) {
+            params.allComments = [];
+        }
+        if (!params.sortQueue) {
+            params.sortQueue = ['top', 'new', 'old'];
+        }
+        if (!params.afterQueue) {
+            params.afterQueue = params.allComments.map(c => c.id).filter(Boolean);
+            params.afterIndex = 0;
+        }
+        if (!params.seenCommentIds) {
+            params.seenCommentIds = params.allComments.map(c => c.id).filter(Boolean);
+        }
+        params.url = url;
+        params.subreddit = subreddit;
+        params.postId = postId;
+
+        const hasMore = (params.sortQueue && params.sortQueue.length > 0) ||
+                        (params.afterQueue && params.afterIndex < params.afterQueue.length);
+        if (!hasMore) {
+            console.log("No more comments to fetch for post.");
+            synura.update(viewId, { models: { snackbar: "No more comments to load" } });
+            return;
+        }
+
+        setParams(viewId, { loadingComments: true });
+
+        try {
+            const { newItems, updatedParams } = fetchNextCommentsBatch(params);
+            setParams(viewId, updatedParams);
+
+            if (newItems.length === 0) {
+                console.log("No additional comments found.");
+                synura.update(viewId, { models: { snackbar: "No more comments to load" } });
+            } else {
+                synura.update(viewId, {
+                    models: {
+                        comments: updatedParams.allComments
+                    }
+                });
+                console.log(`✅ Loaded ${newItems.length} more comments (total: ${updatedParams.allComments.length}).`);
+            }
+        } catch (e) {
+            console.log("❌ Error fetching more comments:", e);
+            setParams(viewId, { loadingComments: false });
+            synura.update(viewId, { models: { snackbar: "Failed to load more comments: " + e.toString() } });
+        }
     } else if (event.eventId === "REFRESH") {
         const link = event.context.link;
         console.log("Refreshing post:", link);
         try {
             const postData = fetchPost(link);
+            if (postData.meta) {
+                setParams(viewId, { ...postData.meta });
+            }
             synura.update(viewId, {
                 ...postData,
                 models: { ...postData.models, snackbar: "Refreshed" }
@@ -1407,6 +1595,9 @@ var handlePostEvent = (viewId, event) => {
             const link = event.context.link;
             try {
                 const postData = fetchPost(link);
+                if (postData.meta) {
+                    setParams(viewId, { ...postData.meta });
+                }
                 synura.update(viewId, {
                     ...postData,
                     models: { ...postData.models, snackbar: "Refreshed" }
@@ -2096,6 +2287,9 @@ var handler = {
             if (routeData) {
                 const v = synura.open(routeData);
                 if (v.success) {
+                    if (routeData.meta) {
+                        setParams(v.viewId, { ...routeData.meta });
+                    }
                     synura.connect(v.viewId, { from: "post", link: url }, (event) => {
                         SYNURA.main.onViewEvent(event.viewId, event);
                     });

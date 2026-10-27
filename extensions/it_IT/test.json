@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "androidiani",
-      "description": "Unofficial Androidiani Forum.",
-      "version": 0.2,
+      "description": "www.androidiani.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/it_IT/androidiani.js",
       "api": 0,
       "domain": "www.androidiani.com",
@@ -18,8 +18,8 @@
     },
     {
       "name": "tomshw_italia",
-      "description": "Unofficial Tom",
-      "version": 0.2,
+      "description": "forum.tomshw.it",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/it_IT/tomshw_italia.js",
       "api": 0,
       "domain": "forum.tomshw.it",
@@ -34,8 +34,8 @@
     },
     {
       "name": "finanzaonline",
-      "description": "Unofficial FinanzaOnline Forum.",
-      "version": 0.2,
+      "description": "forum.finanzaonline.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/it_IT/finanzaonline.js",
       "api": 0,
       "domain": "forum.finanzaonline.com",

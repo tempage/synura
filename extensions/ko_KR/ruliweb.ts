@@ -1006,8 +1006,8 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "m.ruliweb.com",
     name: "ruliweb",
-    description: "Unofficial Ruliweb extension",
-    version: 0.1,
+    description: "m.ruliweb.com",
+    version: 0.2,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",

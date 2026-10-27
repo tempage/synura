@@ -986,8 +986,8 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "mlbpark.donga.com",
     name: "mlbpark",
-    description: "Unofficial MLBPark extension",
-    version: 0.1,
+    description: "mlbpark.donga.com",
+    version: 0.2,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/windows",

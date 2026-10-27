@@ -755,12 +755,12 @@ var PPOMPPU_BOARD_LINK_FALLBACK_SELECTORS = [
     "a[href*='bbs_view.php']",
     "a[href*='zboard/view.php']"
 ];
-var PPOMPPU_BOARD_TITLE_FALLBACK_SELECTORS = [".thumb_sec strong", "span.cont"];
-var PPOMPPU_BOARD_COMMENT_FALLBACK_SELECTORS = [".rp", ".reply"];
+var PPOMPPU_BOARD_TITLE_FALLBACK_SELECTORS = [".thumb_sec strong", "span.cont", ".thumb_subject strong"];
+var PPOMPPU_BOARD_COMMENT_FALLBACK_SELECTORS = [".rp", ".reply", ".thumb_vote span:first-child"];
 var PPOMPPU_BOARD_VIEW_FALLBACK_SELECTORS = [".view", ".hit"];
-var PPOMPPU_BOARD_LIKE_FALLBACK_SELECTORS = [".recs", ".rec", ".recom", ".recommend"];
-var PPOMPPU_BOARD_DATE_FALLBACK_SELECTORS = ["time", ".hi", ".date", ".time"];
-var PPOMPPU_BOARD_NAME_FALLBACK_SELECTORS = [".names", ".name", ".writer"];
+var PPOMPPU_BOARD_LIKE_FALLBACK_SELECTORS = [".recs", ".rec", ".recom", ".recommend", ".thumb_vote span:nth-child(2)"];
+var PPOMPPU_BOARD_DATE_FALLBACK_SELECTORS = ["time", ".hi", ".date", ".time", ".thumb_time"];
+var PPOMPPU_BOARD_NAME_FALLBACK_SELECTORS = [".names", ".name", ".writer", ".thumb_name"];
 var PPOMPPU_BOARD_IMAGE_FALLBACK_SELECTORS = [".thmb_N > img", ".thumb_img", "img"];
 var PPOMPPU_BOARD_REFRESH_HTMLS = {};
 
@@ -859,7 +859,9 @@ function ppomppuListHtmlFromHtml(html) {
             return ppomppuExtractTagBlock(source, start, "ul");
         }
     }
-    return ppomppuExtractTagByClasses(source, "ul", ["bbsList_new"]);
+    return ppomppuExtractTagByClasses(source, "ul", ["bbsList_new"])
+        || ppomppuExtractTagByClasses(source, "ul", ["bbsList"])
+        || ppomppuExtractTagByClasses(source, "div", ["bbsGallery"]);
 }
 
 function ppomppuListRootFromHtml(html) {
@@ -869,26 +871,24 @@ function ppomppuListRootFromHtml(html) {
 
 function ppomppuBoardListNode(root) {
     if (!root) return null;
-    if (String(root.tagName || "").toUpperCase() === "UL" && ppomppuHasClass(root, "bbsList_new")) {
+    if (String(root.tagName || "").toUpperCase() === "UL" && (ppomppuHasClass(root, "bbsList_new") || ppomppuHasClass(root, "bbsList"))) {
         return root;
     }
     return ppomppuDirectChild(root, "ul", "bbsList_new")
         || root.querySelector("ul.bbsList_new")
+        || root.querySelector("ul.bbsList")
+        || root.querySelector(".bbsGallery > ul")
         || null;
 }
 
 function ppomppuListRowElements(listRoot) {
     listRoot = ppomppuBoardListNode(listRoot) || listRoot;
-    var queryRows = listRoot && listRoot.querySelectorAll ? listRoot.querySelectorAll("li.bbs_list_thumbnail") : [];
-    if (queryRows && queryRows.length > 0) {
-        return queryRows;
-    }
     var rows = [];
     var children = listRoot && listRoot.children ? listRoot.children : [];
     for (var i = 0; i < children.length; i++) {
         var child = children[i];
         if (!child || !child.querySelector) continue;
-        if (!/\bbbs_list_thumbnail\b/.test(" " + String(child.className || "") + " ")) continue;
+        if (String(child.tagName || "").toUpperCase() !== "LI") continue;
         rows.push(child);
     }
     return rows;
@@ -912,7 +912,8 @@ function ppomppuExtractBoardItems(listRoot, baseUrl) {
         if (!isAllowedListLink(link, LIST_LINK_ALLOW_PATTERNS) || seen[link]) continue;
 
         var thumbNode = ppomppuDirectChild(linkNode, "div", "thmb_N");
-        var bodyNode = ppomppuDirectChild(linkNode, "div", "thmb_N2")
+        var bodyNode = row.querySelector(".thumb_box")
+            || ppomppuDirectChild(linkNode, "div", "thmb_N2")
             || linkNode.querySelector(".thmb_N2")
             || linkNode;
         var bodyListNode = ppomppuDirectChild(bodyNode, "ul", "");
@@ -1203,9 +1204,10 @@ function ppomppuBuildPostRoute(url, match) {
     }
 
     var rememberedItem = getRememberedItemPreview(url);
-    var comments = ppomppuParseComments(root, url);
+    // The JSON includes replies even when the HTML only contains a hot-comment preview.
+    var comments = ppomppuParseInitialCommentData(fetched.html, url);
     if (!comments || comments.length === 0) {
-        comments = ppomppuParseInitialCommentData(fetched.html, url);
+        comments = ppomppuParseComments(root, url);
     }
     if (!content || content.length === 0) {
         content = [{
@@ -1513,37 +1515,47 @@ function ppomppuParseInitialCommentData(html, postUrl) {
     var data = ppomppuExtractJsonAssignment(html, "initialCommentData");
     var rows = data && Array.isArray(data.comments) ? data.comments : [];
     var comments = [];
-    for (var i = 0; i < rows.length; i++) {
-        var row = rows[i] || {};
-        var content = ppomppuParseCommentMarkup(row.memo || row.comment || row.content || "", postUrl);
-        if (!content || content.length === 0) continue;
-
-        var likeCount = hideZeroCount(parseCount(row.vote_btn ? row.vote_btn.vote_count : row.vote_count));
-        var dislikeCount = hideZeroCount(parseCount(row.anti_vote_btn ? row.anti_vote_btn.anti_vote_count : row.anti_vote_count));
-        var rowId = firstNonEmpty([
-            row.no ? ("comment_" + row.no) : "",
-            row.id ? String(row.id) : "",
-            "comment-" + (i + 1)
-        ]);
-        var date = row.meta ? firstNonEmpty([
-            row.meta.time_display,
-            row.meta.time_detail
-        ]) : "";
-
-        comments.push({
-            link: postUrl + "#" + rowId,
-            author: ppomppuTextFromMarkup(row.name || row.author || ""),
-            avatar: ppomppuImageFromMarkup(row.image || row.avatar || "", postUrl),
-            content: content,
-            date: formatPpomppuCommentDate(date || row.date || row.regdate || ""),
-            likeCount: likeCount,
-            dislikeCount: dislikeCount,
-            level: Math.max(0, toInt(row.depth, 0)),
-            menus: [],
-            hotCount: toInt(likeCount, 0),
-            coldCount: toInt(dislikeCount, 0)
-        });
+    var seen = Object.create(null);
+    function appendRows(entries, parentLevel) {
+        for (var i = 0; i < entries.length; i++) {
+            var row = entries[i] || {};
+            var level = Math.max(0, toInt(row.depth, parentLevel));
+            var rowId = firstNonEmpty([
+                row.no ? ("comment_" + row.no) : "",
+                row.id ? String(row.id) : "",
+                "comment-" + (comments.length + 1)
+            ]);
+            if (!seen[rowId]) {
+                seen[rowId] = true;
+                var content = ppomppuParseCommentMarkup(row.memo || row.comment || row.content || "", postUrl);
+                if (!content || content.length === 0) {
+                    content = [{ type: "text", value: "삭제되었거나 표시할 수 없는 댓글입니다." }];
+                }
+                var likeCount = hideZeroCount(parseCount(row.vote_btn ? row.vote_btn.vote_count : row.vote_count));
+                var dislikeCount = hideZeroCount(parseCount(row.anti_vote_btn ? row.anti_vote_btn.anti_vote_count : row.anti_vote_count));
+                var date = row.meta ? firstNonEmpty([
+                    row.meta.time_display,
+                    row.meta.time_detail
+                ]) : "";
+                comments.push({
+                    link: postUrl + "#" + rowId,
+                    author: ppomppuTextFromMarkup(row.name || row.author || ""),
+                    avatar: ppomppuImageFromMarkup(row.image || row.avatar || "", postUrl),
+                    content: content,
+                    date: formatPpomppuCommentDate(date || row.date || row.regdate || ""),
+                    likeCount: likeCount,
+                    dislikeCount: dislikeCount,
+                    level: level,
+                    menus: [],
+                    hotCount: toInt(likeCount, 0),
+                    coldCount: toInt(dislikeCount, 0)
+                });
+            }
+            // Visit children even when a parent has no body or was already displayed.
+            if (Array.isArray(row.sub_cmt)) appendRows(row.sub_cmt, level + 1);
+        }
     }
+    appendRows(rows, 0);
     return comments;
 }
 
@@ -1594,8 +1606,8 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "m.ppomppu.co.kr",
     name: "ppomppu",
-    description: "Unofficial Ppomppu extension",
-    version: 0.2,
+    description: "m.ppomppu.co.kr",
+    version: 0.3,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",

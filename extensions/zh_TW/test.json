@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "coolaler",
-      "description": "Unofficial Coolaler Forum.",
-      "version": 0.2,
+      "description": "www.coolaler.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_TW/coolaler.js",
       "api": 0,
       "domain": "www.coolaler.com",
@@ -18,8 +18,8 @@
     },
     {
       "name": "backpackers",
-      "description": "Unofficial Backpackers.",
-      "version": 0.2,
+      "description": "www.backpackers.com.tw",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_TW/backpackers.js",
       "api": 0,
       "domain": "www.backpackers.com.tw",
@@ -33,8 +33,8 @@
     },
     {
       "name": "mobile01",
-      "description": "Unofficial Mobile01.",
-      "version": 0.2,
+      "description": "m.mobile01.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_TW/mobile01.js",
       "api": 0,
       "domain": "m.mobile01.com",

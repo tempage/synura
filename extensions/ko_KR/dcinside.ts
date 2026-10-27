@@ -185,8 +185,8 @@ var SITE = {
 var SYNURA = {
   domain: DC_HOST,
   name: "dcinside",
-  description: "Unofficial dcinside extension",
-  version: 0.2,
+  description: "m.dcinside.com",
+  version: 0.3,
   api: 0,
   license: "Apache-2.0",
   bypass: "chrome/android",
@@ -414,13 +414,49 @@ function dcAttachImageHeaders(details, refererUrl) {
     var value = normalizeUrl(item && item.value) || normalizeUrl(item && item.link) || "";
     var info = parseAbsoluteUrl(value);
     var host = info && info.host ? String(info.host).toLowerCase() : "";
-    if(!item||item.type!=="image"||!host||!/(^|\.)(dcinside\.co\.kr|dcinside\.com)$/.test(host)) continue;
+    if(!item||(item.type!=="image"&&item.type!=="video")||!host||!/(^|\.)(dcinside\.co\.kr|dcinside\.com)$/.test(host)) continue;
     var headers = item.headers || {};
     if(!headers.Referer&&!headers.referer) headers.Referer = referer;
     item.headers = headers;
   }
 
   return details;
+}
+
+function dcRestoreMediaDetails(details, root, baseUrl, preferGif) {
+  var out = details || [];
+  var images = root && root.querySelectorAll ? root.querySelectorAll("img") : [];
+  var used = {};
+  for (var i = 0; i < images.length; i++) {
+    var node = images[i];
+    var mp4 = ensureAbsoluteUrl(attrOf(node, "data-mp4"), baseUrl);
+    var gif = ensureAbsoluteUrl(attrOf(node, "data-gif"), baseUrl);
+    var original = ensureAbsoluteUrl(attrOf(node, "data-original") || attrOf(node, "data-src"), baseUrl);
+    var src = ensureAbsoluteUrl(attrOf(node, "src"), baseUrl);
+    var value = preferGif && gif ? gif : mp4 || gif || original;
+    if (!value || /\/dccon_loading[^/]*\.png(?:[?#]|$)/i.test(value)) continue;
+    var type = value === mp4 ? "video" : "image";
+    var found = -1;
+    for (var j = 0; j < out.length; j++) {
+      var item = out[j];
+      if (used[j] || !item || (item.type !== "image" && item.type !== "video")) continue;
+      if (item.value === src || item.value === original || item.value === gif || item.value === mp4) {
+        found = j;
+        break;
+      }
+    }
+    if (found < 0) {
+      // Some parsers omit the loading image entirely.
+      if (!mp4 && !gif) continue;
+      found = out.length;
+      out.push({ type: type, value: value });
+    }
+    used[found] = true;
+    out[found].type = type;
+    out[found].value = value;
+    out[found].link = value;
+  }
+  return dcAttachImageHeaders(out, baseUrl);
 }
 
 function dcAttachCommentImageHeaders(comments, refererUrl) {
@@ -2257,7 +2293,7 @@ function dcParseComments(doc, postUrl) {
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     var contentRoot = firstNode(row, SITE.selectors.commentContent);
-    var content = dcAttachImageHeaders(parseDetails(contentRoot, postUrl), postUrl);
+    var content = dcRestoreMediaDetails(parseDetails(contentRoot, postUrl), contentRoot, postUrl, true);
     if (!content || content.length === 0) {
       var rawText = firstText(row, SITE.selectors.commentContent);
       if (rawText) content = [{ type: "text", value: rawText }];
@@ -2297,7 +2333,9 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
   return dcAttachCommentImageHeaders(comments, url);
 };
 
-SITE.filterPostContent = dcAttachImageHeaders;
+SITE.filterPostContent = function (details, postUrl, doc) {
+  return dcRestoreMediaDetails(details, firstNode(doc, SITE.selectors.postContent), postUrl, false);
+};
 
 SITE.matchBoard = function (urlInfo) {
   var parts = pathSegments(urlInfo.path);

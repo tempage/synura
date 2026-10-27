@@ -63,8 +63,8 @@ var SYNURA = {
   domain: "news.ycombinator.com",
   name: "hackernews",
   author: "Synura Team",
-  description: "Unofficial Hacker News extension with feeds, stories, and comments.",
-  version: 0.2,
+  description: "news.ycombinator.com",
+  version: 0.3,
   api: 0,
   license: "Apache-2.0",
   locale: "en_US",
@@ -116,6 +116,16 @@ function hnSiteHost(url) {
   return info.host.replace(/^www\./, "");
 }
 
+function hnStoryTitle(value) {
+  var title = normalizeWhitespace(value);
+  var prefix = title.match(/^(Show|Ask) HN:\s*/i);
+  if (!prefix) return { title: title, category: "" };
+  return {
+    title: title.slice(prefix[0].length) || title,
+    category: prefix[1].toLowerCase() === "show" ? "SH" : "AH"
+  };
+}
+
 function hnSubtextForRow(row) {
   var next = row ? row.nextSibling : null;
   while (next && next.nodeType !== 1) next = next.nextSibling;
@@ -135,22 +145,27 @@ function hnExtractListItems(doc, baseUrl) {
   for (var i = 0; i < rows.length && items.length < 40; i++) {
     var id = attrOf(rows[i], "id");
     var titleNode = firstNode(rows[i], [".titleline a[href]", "a.storylink"]);
-    var title = textOf(titleNode);
-    if (!id || !title) continue;
+    var parsedTitle = hnStoryTitle(textOf(titleNode));
+    if (!id || !parsedTitle.title) continue;
 
     var subtext = hnSubtextForRow(rows[i]);
     var externalUrl = ensureAbsoluteUrl(attrOf(titleNode, "href"), baseUrl);
     var discussionUrl = hnDiscussionUrl(id);
-    var commentsLink = firstNode(subtext, ["a[href*='item?id=']"]);
+    var discussionLinks = allNodes(subtext, ["a[href]"]);
     var scoreText = firstText(subtext, [".score"]);
-    var commentCount = hnCommentCount(textOf(commentsLink));
+    var commentCount = "";
+    for (var j = 0; j < discussionLinks.length; j++) {
+      var target = ensureAbsoluteUrl(attrOf(discussionLinks[j], "href"), baseUrl);
+      if (hnItemIdFromUrl(target) !== id) continue;
+      commentCount = hnCommentCount(textOf(discussionLinks[j]));
+      if (commentCount) break;
+    }
     var host = hnSiteHost(externalUrl);
 
-    items.push({
+    var item = {
       id: SITE.siteKey + ":" + id,
-      title: title,
-      description: host || "news.ycombinator.com",
-      memo: host || SITE.displayName,
+      title: parsedTitle.title,
+      memo: host || "HN",
       author: firstText(subtext, [".hnuser"]),
       avatar: "",
       date: firstText(subtext, [".age"]),
@@ -162,7 +177,9 @@ function hnExtractListItems(doc, baseUrl) {
       types: ["link"],
       menus: [],
       link: discussionUrl
-    });
+    };
+    if (parsedTitle.category) item.category = parsedTitle.category;
+    items.push(item);
   }
   return items;
 }

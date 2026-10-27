@@ -53,18 +53,20 @@ The core object for interacting with the Synura application.
 ### `fetch(url, options)`
 A custom **synchronous** HTTP client (unlike Web API, it does **not** return a Promise).
 
+Network failures, invalid URLs, denied permissions, timeouts, cancellation, and oversized responses throw an `Error`. HTTP error statuses such as 404 still return a response with `ok: false`. Invalid request headers throw a `TypeError`.
+
 > **Host restriction:** By default, extension requests must target `SYNURA.domain`. If an extension needs sibling subdomains or path-scoped hosts, declare `SYNURA.host_permissions`. `synurart` and the real Synura app use the same rule.
 
-`SYNURA.host_permissions` is optional. When it is omitted, the effective permission is:
+Network declarations (`domain`, `host_permissions`, and `bypass`) are validated and captured when the extension is loaded. Changing the JavaScript package object later does not change these settings. `SYNURA.host_permissions` is optional. When it is omitted or empty, the effective permission uses the host portion of `SYNURA.domain`:
 
 ```javascript
 [
-  "http://<SYNURA.domain>/*",
-  "https://<SYNURA.domain>/*"
+  "http://<host>/*",
+  "https://<host>/*"
 ]
 ```
 
-When it is present, it replaces the default fetch scope. Each pattern must be one of:
+When it is nonempty, it replaces the default fetch scope. Each pattern must be one of:
 
 ```text
 http://host/path
@@ -72,7 +74,7 @@ https://host/path
 *://host/path
 ```
 
-The host can be exact (`api.example.com`) or a left-most wildcard (`*.example.com`). The path can contain `*`. Query strings and fragments are not allowed in permission patterns.
+The host can be exact (`api.example.com`) or a left-most wildcard (`*.example.com`). The path can contain `*`. Omitting the path means `/`, not `/*`. Query strings and fragments are not allowed in permission patterns.
 
 Examples:
 
@@ -90,25 +92,25 @@ Security boundaries:
 - Permission hosts must stay in the same registrable domain family as `SYNURA.domain`.
 - Wildcards cannot target ICANN public suffixes such as `*.io`, `*.com`, or `*.co.kr`.
 - Private/public-suffix service domains such as `github.io` are handled by the public suffix list. For example, `*.github.io` is allowed only when the extension identity is scoped to `github.io`; a `user.github.io` extension cannot broaden to sibling pages.
-- For raw IPs and localhost, ports are part of the boundary. `127.0.0.1:8080` cannot request `127.0.0.1:9090`.
+- For raw IPs and localhost, explicit permission ports must match the extension's domain declaration. A portless pattern, including the implicit host scope, accepts any port. To restrict a non-default port, include it in `host_permissions`, for example `http://127.0.0.1:8080/*`. Requests normalize default ports, so omit `:80` and `:443` from their respective HTTP/HTTPS patterns.
 
 -   **Options**:
     -   `method`: `'GET'` | `'POST'`
-    -   `headers`: Object `{ "Key": "Value" }`
-    -   `body`: String
-    -   `onProgress`: **Synura Custom Option**. Function `(current, total) => { ... }`. Called during download. `current` and `total` are in bytes. `total` is -1 if unknown (e.g., chunked encoding).
+    -   `headers`: Object `{ "Key": "Value" }`. Values must be strings; `null` and arrays are not header objects.
+    -   `body`: String. Non-string JSON values are serialized as JSON; `null` means an empty body.
+    -   `onProgress`: **Synura Custom Option**. Function `(current, total) => { ... }`. Download positions are collected and delivered synchronously before `fetch()` returns. `current` and `total` are in bytes; `total` is -1 if unknown (e.g., chunked encoding). Only the final response in a redirect chain reports progress. Callback exceptions are ignored.
 -   **Returns**: A `Response` object with:
     -   `status`: (Number) The HTTP status code (e.g., 200, 404).
-    -   `statusText`: (String) The status message corresponding to the status code (e.g., "OK", "Not Found").
+    -   `statusText`: (String) The status description (e.g., "200 OK", "404 Not Found"). Use `status` for comparisons; older runtimes may omit the numeric prefix.
     -   `ok`: (Boolean) `true` if the status code is in the range 200-299.
     -   `url`: (String) The response URL visible to the runtime. If a runtime follows redirects internally, this can be the final URL. If a `3xx` response is exposed to the extension, this remains the requested URL.
-    -   `headers`: (Object) Response headers flattened as `{ "Header-Name": "value" }`. For redirect handling, inspect `response.headers["Location"]` when present.
-    -   `text()`: Returns response body as a JavaScript string without Synura-specific charset guessing. For legacy encodings, prefer `arrayBuffer()` with `TextDecoder(...)`.
+    -   `headers`: (Object) Response header properties plus case-insensitive `get(name)` (string or `undefined`), `getAll(name)` (array), and `entries()` (array of all `[name, value]` pairs). Duplicate values are joined with `", "` for property access and `get()`, except `Set-Cookie`, which uses newlines. Use `getAll("set-cookie")` to read individual cookies without splitting `Expires` dates.
+    -   `text()`: Decodes the body as UTF-8, replacing invalid byte sequences and retaining a leading BOM. It does not inspect the Content-Type charset or guess a language. Extensions handle other encodings explicitly with `arrayBuffer()` and `TextDecoder(label)`.
     -   `arrayBuffer()`: Returns the raw response body bytes as an `ArrayBuffer`.
-    -   `json()`: Returns response body as JSON object.
+    -   `json()`: Parses the same string as `text()`. Empty or invalid JSON throws a `SyntaxError`.
     -   `dom(mimeType)`: **Synura Custom Function**. Parses the current response string as HTML (only `'text/html'` supported). For non-UTF-8 pages, decode bytes first and use `new DOMParser().parseFromString(...)`.
 
-> **Redirect note:** Do not rely on `followRedirects` or `redirect: "follow"` as a portable Synura extension contract. Extensions should inspect `response.status`, `response.url`, and `response.headers` and handle `3xx` responses explicitly when needed.
+> **Redirects and limits:** Fetch follows `3xx` responses with a Location header, preserving method/body and checking each destination, up to 10 requests. `followRedirects` and `redirect` are not supported options. The response body limit is 8 MiB. Matching redirect cookies last for that fetch call only, and an explicit Cookie header takes precedence. Cookie names replace earlier names case-insensitively; this temporary redirect store does not process expiry attributes.
 
 #### Legacy Charset Example
 ```javascript
@@ -201,7 +203,16 @@ const cache = sessionStorage.getItem("cache");
 ```
 
 ### `URLSearchParams`
-The standard Web API for working with URL query strings is available. See [MDN documentation](https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams) for full API reference.
+Query-string helpers available in the app and `synurart`: `append`, `delete`, `get`, `getAll`, `has`, `set`, `keys`, `values`, `entries`, and `toString`.
+The constructor accepts a query string, an iterable of pairs, or an object. `set` preserves the first matching parameter's position and removes duplicate values.
+
+Use `for...of` to iterate. `forEach` and `sort` are not available.
+
+```javascript
+for (const [name, value] of new URLSearchParams("q=hello&page=2")) {
+    console.log(name, value);
+}
+```
 
 ### `TextEncoder`
 Browser-like UTF-8 encoder.

@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "adrenaline",
-      "description": "Unofficial Adrenaline Forum.",
-      "version": 0.2,
+      "description": "forum.adrenaline.com.br",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_BR/adrenaline.js",
       "api": 0,
       "domain": "forum.adrenaline.com.br",
@@ -18,8 +18,8 @@
     },
     {
       "name": "clube_do_hardware",
-      "description": "Unofficial Clube do Hardware.",
-      "version": 0.2,
+      "description": "www.clubedohardware.com.br",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_BR/clube_do_hardware.js",
       "api": 0,
       "domain": "www.clubedohardware.com.br",
@@ -34,8 +34,8 @@
     },
     {
       "name": "outer_space",
-      "description": "Unofficial Forum Outer Space.",
-      "version": 0.2,
+      "description": "forum.outerspace.com.br",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_BR/outer_space.js",
       "api": 0,
       "domain": "forum.outerspace.com.br",

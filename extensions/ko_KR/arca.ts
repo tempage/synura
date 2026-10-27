@@ -248,12 +248,17 @@ SITE.buildNextPageUrl = function (match, currentUrl, nextPage) {
 };
 SITE.isAuthRequiredResponse = function (url, status, html) {
     var body = String(html || "").toLowerCase();
-    if (status === 429 || status === 430) {
-        return true;
+    var doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+    // Normal pages also contain Turnstile configuration and may discuss verification.
+    if (status >= 200 && status < 300 &&
+        (doc.querySelector(".article-list") || doc.querySelector(".article-content"))) {
+        return false;
     }
-    return body.indexOf("id=\"hcaptcha-form\"") >= 0 ||
+    // A rate-limit status alone is not a challenge that browser verification can solve.
+    return !!doc.querySelector("#hcaptcha-form") ||
+        !!doc.querySelector(".h-captcha") ||
         body.indexOf("window.hcaptchacallback") >= 0 ||
-        body.indexOf("class=\"h-captcha\"") >= 0 ||
+        (/\b_cf_chl_opt\s*=/.test(body) && body.indexOf("challenge-platform") >= 0) ||
         body.indexOf("비정상적인 접속을 감지했습니다.") >= 0;
 };
 SITE.buildPostFetchUrls = function (match, currentUrl) {
@@ -519,8 +524,8 @@ SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
 var SYNURA = {
     domain: "arca.live",
     name: "arca",
-    description: "Unofficial arca.live extension",
-    version: 0.1,
+    description: "arca.live",
+    version: 0.2,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",

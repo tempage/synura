@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "bigganblog",
-      "description": "Unofficial Biggan Blog.",
-      "version": 0.2,
+      "description": "bigganblog.org",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/bn_BD/bigganblog.js",
       "api": 0,
       "domain": "bigganblog.org",
@@ -17,8 +17,8 @@
     },
     {
       "name": "cadetcollegeblog",
-      "description": "Unofficial Cadet College Blog.",
-      "version": 0.2,
+      "description": "cadetcollegeblog.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/bn_BD/cadetcollegeblog.js",
       "api": 0,
       "domain": "cadetcollegeblog.com",
@@ -33,8 +33,8 @@
     },
     {
       "name": "somewhereinblog",
-      "description": "Unofficial Somewhere in Blog.",
-      "version": 0.2,
+      "description": "m.somewhereinblog.net",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/bn_BD/somewhereinblog.js",
       "api": 0,
       "domain": "m.somewhereinblog.net",

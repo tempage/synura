@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "frandroid",
-      "description": "Unofficial Frandroid Forum.",
-      "version": 0.2,
+      "description": "forum.frandroid.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fr_FR/frandroid.js",
       "api": 0,
       "domain": "forum.frandroid.com",
@@ -18,8 +18,8 @@
     },
     {
       "name": "forum_auto",
-      "description": "Unofficial Forum-Auto.",
-      "version": 0.2,
+      "description": "forum-auto.caradisiac.com",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fr_FR/forum_auto.js",
       "api": 0,
       "domain": "forum-auto.caradisiac.com",
@@ -34,8 +34,8 @@
     },
     {
       "name": "hardware_fr",
-      "description": "Unofficial Hardware.fr Forum.",
-      "version": 0.2,
+      "description": "forum.hardware.fr",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/fr_FR/hardware_fr.js",
       "api": 0,
       "domain": "forum.hardware.fr",

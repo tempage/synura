@@ -2,8 +2,8 @@
   "extensions": [
     {
       "name": "wykop",
-      "description": "Unofficial Wykop.",
-      "version": 0.2,
+      "description": "wykop.pl",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pl_PL/wykop.js",
       "api": 0,
       "domain": "wykop.pl",
@@ -18,8 +18,8 @@
     },
     {
       "name": "elektroda",
-      "description": "Unofficial Elektroda.",
-      "version": 0.2,
+      "description": "www.elektroda.pl",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pl_PL/elektroda.js",
       "api": 0,
       "domain": "www.elektroda.pl",
@@ -34,8 +34,8 @@
     },
     {
       "name": "kafeteria",
-      "description": "Unofficial Kafeteria Forum.",
-      "version": 0.2,
+      "description": "f.kafeteria.pl",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pl_PL/kafeteria.js",
       "api": 0,
       "domain": "f.kafeteria.pl",
@@ -50,8 +50,8 @@
     },
     {
       "name": "forum_gazeta",
-      "description": "Unofficial Forum Gazeta.",
-      "version": 0.2,
+      "description": "forum.gazeta.pl",
+      "version": 0.3,
       "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pl_PL/forum_gazeta.js",
       "api": 0,
       "domain": "forum.gazeta.pl",
