@@ -1,0 +1,36 @@
+{
+  "extensions": [
+    {
+      "name": "adslgate",
+      "description": "www.adslgate.com",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/ar_SA/adslgate.js",
+      "api": 0,
+      "domain": "www.adslgate.com",
+      "author": "Synura Team",
+      "icon": "https://www.adslgate.com/favicon.ico",
+      "locale": "ar_SA",
+      "tags": [
+        "technology",
+        "telecom",
+        "forum"
+      ]
+    },
+    {
+      "name": "arab_hardware",
+      "description": "arabhardware.net",
+      "version": 0.4,
+      "url": "https://tempage.github.io/synura/extensions/ar_SA/arab_hardware.js",
+      "api": 0,
+      "domain": "arabhardware.net",
+      "author": "Synura Team",
+      "icon": "https://arabhardware.net/favicon.png",
+      "locale": "ar_SA",
+      "tags": [
+        "hardware",
+        "technology",
+        "forum"
+      ]
+    }
+  ]
+}

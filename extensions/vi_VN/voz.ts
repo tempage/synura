@@ -28,7 +28,6 @@ var SITE = {
   "hostAliases": [],
   "acceptLanguage": "vi-VN,vi;q=0.9,en-US;q=0.6,en;q=0.5",
   "fetchHeaders": {
-    "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36 Synura/1.0",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.6,en;q=0.5"
   },
@@ -38,31 +37,69 @@ var SITE = {
     " | Voz.vn",
     " : Voz.vn"
   ],
+  "isAuthRequiredResponse": function(url, status, html) {
+    if (status === 401 || status === 403 || status === 429) return true;
+    var body = String(html || "").toLowerCase();
+    return (body.indexOf("just a moment") >= 0 && body.indexOf("cf_chl_opt") >= 0) ||
+           body.indexOf("checking your browser") >= 0 ||
+           body.indexOf("verify you are human") >= 0;
+  },
   "boards": [
     {
-      "id": "home",
-      "title": "Home",
-      "url": "https://voz.vn/",
-      "description": "forum",
-      "group": "Vietnam"
+      "id": "f17",
+      "title": "Chuyện trò linh tinh",
+      "url": "https://voz.vn/f/chuyen-tro-linh-tinh.17/",
+      "description": "F17 linh tinh",
+      "group": "Voz"
+    },
+    {
+      "id": "f33",
+      "title": "Điểm báo",
+      "url": "https://voz.vn/f/diem-bao.33/",
+      "description": "F33 tin tức",
+      "group": "Voz"
+    },
+    {
+      "id": "phan_cung",
+      "title": "Phần cứng chung",
+      "url": "https://voz.vn/f/phan-cung-chung.9/",
+      "description": "Hardware",
+      "group": "Công nghệ"
+    },
+    {
+      "id": "laptop",
+      "title": "Máy tính xách tay",
+      "url": "https://voz.vn/f/may-tinh-xach-tay.47/",
+      "description": "Laptop",
+      "group": "Công nghệ"
+    },
+    {
+      "id": "tu_van",
+      "title": "Tư vấn cấu hình",
+      "url": "https://voz.vn/f/tu-van-cau-hinh.70/",
+      "description": "PC Build",
+      "group": "Công nghệ"
     }
   ],
   "selectors": {
     "boardTitle": [
-      ".contentTitle",
       ".p-title-value",
+      ".contentTitle",
       ".ipsType_pageTitle",
       ".forum-title"
     ],
     "listRows": [
+      ".structItem--thread",
       "a[href*='/t/']",
       "a[href*='/threads/']"
     ],
     "listLink": [
+      ".structItem-title a[href*='/t/']",
       "a[href*='/t/']",
       "a[href*='/threads/']"
     ],
     "listTitle": [
+      ".structItem-title a[href*='/t/']",
       "a[href*='/t/']",
       "a[href*='/threads/']"
     ],
@@ -73,6 +110,7 @@ var SITE = {
       ".meta"
     ],
     "listAuthor": [
+      ".structItem-parts .username",
       ".username",
       ".userLink",
       ".author"
@@ -82,16 +120,20 @@ var SITE = {
       ".userAvatarImage"
     ],
     "listDate": [
+      ".structItem-startDate time",
       "time",
       "time[datetime]"
     ],
     "listCommentCount": [
+      ".structItem-cell--meta dl:first-child dd",
+      ".pairs--justified dd",
       ".replies",
       ".comments",
       ".reply-count",
       ".comment-count"
     ],
     "listViewCount": [
+      ".structItem-cell--meta dl:last-child dd",
       ".views",
       ".view-count"
     ],
@@ -207,7 +249,7 @@ var SYNURA = {
   license: "Apache-2.0",
   locale: "vi_VN",
   icon: "https://voz.vn/favicon.ico",
-  bypass: "chrome/android",
+  bypass: "chrome/windows",
   deeplink: true,
   tags: [
     "technology",
@@ -224,6 +266,7 @@ var LOCAL_POST_PATTERNS = [
 
 
 var LOCAL_BOARD_LINK_SELECTORS = [
+  "a[href*='/f/']",
   "a[href*='/forum']",
   "a[href*='/forums']",
   "a[href*='/board']",

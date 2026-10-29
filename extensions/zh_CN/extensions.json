@@ -1,0 +1,100 @@
+{
+  "extensions": [
+    {
+      "name": "csdn",
+      "description": "blog.csdn.net",
+      "version": 0.2,
+      "url": "https://tempage.github.io/synura/extensions/zh_CN/csdn.js",
+      "api": 0,
+      "domain": "blog.csdn.net",
+      "author": "Synura Team",
+      "icon": "https://www.csdn.net/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "developers",
+        "blogs",
+        "q&a"
+      ]
+    },
+    {
+      "name": "douban_groups",
+      "description": "www.douban.com",
+      "version": 0.2,
+      "url": "https://tempage.github.io/synura/extensions/zh_CN/douban_groups.js",
+      "api": 0,
+      "domain": "www.douban.com",
+      "author": "Synura Team",
+      "icon": "https://www.douban.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "groups",
+        "culture",
+        "community"
+      ]
+    },
+    {
+      "name": "hupu",
+      "description": "bbs.hupu.com",
+      "version": 0.2,
+      "url": "https://tempage.github.io/synura/extensions/zh_CN/hupu.js",
+      "api": 0,
+      "domain": "bbs.hupu.com",
+      "author": "Synura Team",
+      "icon": "https://bbs.hupu.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "sports",
+        "basketball",
+        "forum"
+      ]
+    },
+    {
+      "name": "stage1st",
+      "description": "stage1st.com",
+      "version": 0.2,
+      "url": "https://tempage.github.io/synura/extensions/zh_CN/stage1st.js",
+      "api": 0,
+      "domain": "stage1st.com",
+      "author": "Synura Team",
+      "icon": "https://stage1st.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "games",
+        "anime",
+        "forum"
+      ]
+    },
+    {
+      "name": "v2ex",
+      "description": "www.v2ex.com",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/zh_CN/v2ex.js",
+      "api": 0,
+      "domain": "www.v2ex.com",
+      "author": "Synura Team",
+      "icon": "https://www.v2ex.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "developers",
+        "startups",
+        "forum"
+      ]
+    },
+    {
+      "name": "zhihu",
+      "description": "www.zhihu.com",
+      "version": 0.2,
+      "url": "https://tempage.github.io/synura/extensions/zh_CN/zhihu.js",
+      "api": 0,
+      "domain": "www.zhihu.com",
+      "author": "Synura Team",
+      "icon": "https://static.zhihu.com/heifetz/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "q&a",
+        "knowledge",
+        "community"
+      ]
+    }
+  ]
+}

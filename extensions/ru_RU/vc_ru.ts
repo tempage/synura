@@ -221,11 +221,11 @@ var SYNURA = {
   name: "vc_ru",
   author: "Synura Team",
   description: "vc.ru",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "ru_RU",
-  icon: "https://vc.ru/favicon.ico",
+  icon: "https://vc.ru/assets/favicon.ico",
   bypass: "chrome/android",
   deeplink: true,
   tags: [

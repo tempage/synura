@@ -679,23 +679,49 @@ var buildSubredditMenus = (sort, timeFilter, showMedia, galleryMode) => {
 // 5. CORE FETCH FUNCTIONS
 // =============================================================================
 
+var cleanRedditImageUrl = (url) => {
+    if (!url) return '';
+    url = normalizeRedditUrl(url).replace(/&amp;/g, '&');
+    const m = url.match(/^https?:\/\/(?:[a-z0-9_-]+\.)?preview\.redd\.it\/(?:.*-)?([a-z0-9]+)\.(jpg|jpeg|png|gif|webp)(?:\?|$)/i);
+    if (m) {
+        return `https://i.redd.it/${m[1]}.${m[2]}`;
+    }
+    return url;
+};
+
 var redditMedia = (post) => {
-    const container = post.querySelector('[slot="post-media-container"]');
+    const container = post.querySelector('[slot="post-media-container"]') || post;
     const images = [];
     if (container) {
         const gallery = container.querySelector('gallery-carousel');
-        const primary = Array.from(container.querySelectorAll('img[data-post-media-primary]'));
-        const candidates = gallery ? Array.from(gallery.querySelectorAll('li[slot]')).map(page => page.querySelector('img:not([role="presentation"])')).filter(Boolean) :
-            primary.length ? primary : Array.from(container.querySelectorAll('img'));
+        let candidates = [];
+        if (gallery) {
+            const lightboxed = Array.from(gallery.querySelectorAll('.lightboxed-content img, img[src*="i.redd.it"]'));
+            if (lightboxed.length > 0) {
+                candidates = lightboxed;
+            } else {
+                const pages = Array.from(gallery.querySelectorAll('li'));
+                if (pages.length > 0) {
+                    candidates = pages.map(page => page.querySelector('img:not([role="presentation"])')).filter(Boolean);
+                } else {
+                    candidates = Array.from(gallery.querySelectorAll('img:not([role="presentation"])'));
+                }
+            }
+        } else {
+            const primary = Array.from(container.querySelectorAll('img[data-post-media-primary]'));
+            candidates = primary.length ? primary : Array.from(container.querySelectorAll('img:not([role="presentation"])'));
+        }
+
         for (const image of candidates) {
             if (image.getAttribute('role') === 'presentation') continue;
-            const src = normalizeRedditUrl(image.getAttribute('src') || image.getAttribute('data-lazy-src') || '');
+            let src = image.getAttribute('src') || image.getAttribute('data-lazy-src') || image.getAttribute('data-src') || '';
+            src = cleanRedditImageUrl(src);
             if (src && !images.includes(src)) images.push(src);
         }
     }
     const player = post.querySelector('shreddit-player') || post.querySelector('shreddit-player-2') || post.querySelector('video');
     let video = player ? normalizeRedditUrl(player.getAttribute('src') || nodeAttr(player, 'source', 'src')) : '';
-    const poster = player ? normalizeRedditUrl(player.getAttribute('poster') || '') : '';
+    const poster = cleanRedditImageUrl(player ? (player.getAttribute('poster') || '') : '');
     const external = normalizeRedditUrl(post.getAttribute('content-href') || '');
     if (!video && /(?:youtube\.com|youtu\.be|\.mp4)(\/|\?|$)/i.test(external)) video = external;
     return { images, video, poster };
@@ -774,15 +800,11 @@ var redditImageHeaders = (content, referer) => {
     const seen = new Set();
     return content.filter(item => {
         if (item.type !== 'image') return true;
-        const image = normalizeRedditUrl(item.value || item.link || '');
-        // Reddit includes both visible images and identical fallback markup.
-        if (seen.has(image)) return false;
+        let image = cleanRedditImageUrl(item.value || item.link || '');
+        if (!image || seen.has(image)) return false;
         seen.add(image);
-        const match = normalizeRedditUrl(item.value || item.link || '').match(/^https?:\/\/([^/?#]+)/i);
-        if (!match || !/(^|\.)(redd\.it|redditmedia\.com|redditstatic\.com|reddit\.com)$/i.test(match[1])) return true;
-        const headers = { ...(item.headers || {}) };
-        if (!Object.keys(headers).some(name => name.toLowerCase() === 'referer')) headers.Referer = referer;
-        item.headers = headers;
+        item.value = image;
+        if (item.headers) delete item.headers;
         return true;
     });
 };

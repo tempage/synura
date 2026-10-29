@@ -160,11 +160,11 @@ var SYNURA = {
   name: "foros_acb",
   author: "Synura Team",
   description: "foros.acb.com",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "es_ES",
-  icon: "https://foros.acb.com/favicon.ico",
+  icon: "https://foros.acb.com/images/style-2/favicon-48x48.png",
   bypass: "chrome/android",
   deeplink: true,
   tags: [

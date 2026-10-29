@@ -4,7 +4,7 @@
       "name": "chiphell",
       "description": "www.chiphell.com",
       "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/chiphell.js",
+      "url": "https://tempage.github.io/synura/extensions/zh_CN/chiphell.js",
       "api": 0,
       "domain": "www.chiphell.com",
       "author": "Synura Team",
@@ -17,138 +17,10 @@
       ]
     },
     {
-      "name": "v2ex",
-      "description": "www.v2ex.com",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/v2ex.js",
-      "api": 0,
-      "domain": "www.v2ex.com",
-      "author": "Synura Team",
-      "icon": "https://www.v2ex.com/favicon.ico",
-      "locale": "zh_CN",
-      "tags": [
-        "developers",
-        "startups",
-        "forum"
-      ]
-    },
-    {
-      "name": "linux_do",
-      "description": "linux.do",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/linux_do.js",
-      "api": 0,
-      "domain": "linux.do",
-      "author": "Synura Team",
-      "icon": "https://linux.do/favicon.ico",
-      "locale": "zh_CN",
-      "tags": [
-        "linux",
-        "developers",
-        "forum"
-      ]
-    },
-    {
-      "name": "tieba",
-      "description": "tieba.baidu.com",
-      "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/tieba.js",
-      "api": 0,
-      "domain": "tieba.baidu.com",
-      "author": "Synura Team",
-      "icon": "https://tieba.baidu.com/favicon.ico",
-      "locale": "zh_CN",
-      "tags": [
-        "forums",
-        "communities",
-        "baidu"
-      ]
-    },
-    {
-      "name": "zhihu",
-      "description": "www.zhihu.com",
-      "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/zhihu.js",
-      "api": 0,
-      "domain": "www.zhihu.com",
-      "author": "Synura Team",
-      "icon": "https://static.zhihu.com/heifetz/favicon.ico",
-      "locale": "zh_CN",
-      "tags": [
-        "q&a",
-        "knowledge",
-        "community"
-      ]
-    },
-    {
-      "name": "douban_groups",
-      "description": "www.douban.com",
-      "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/douban_groups.js",
-      "api": 0,
-      "domain": "www.douban.com",
-      "author": "Synura Team",
-      "icon": "https://www.douban.com/favicon.ico",
-      "locale": "zh_CN",
-      "tags": [
-        "groups",
-        "culture",
-        "community"
-      ]
-    },
-    {
-      "name": "hupu",
-      "description": "bbs.hupu.com",
-      "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/hupu.js",
-      "api": 0,
-      "domain": "bbs.hupu.com",
-      "author": "Synura Team",
-      "icon": "https://bbs.hupu.com/favicon.ico",
-      "locale": "zh_CN",
-      "tags": [
-        "sports",
-        "basketball",
-        "forum"
-      ]
-    },
-    {
-      "name": "nga",
-      "description": "bbs.nga.cn",
-      "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/nga.js",
-      "api": 0,
-      "domain": "bbs.nga.cn",
-      "author": "Synura Team",
-      "icon": "https://bbs.nga.cn/favicon.ico",
-      "locale": "zh_CN",
-      "tags": [
-        "games",
-        "forum",
-        "community"
-      ]
-    },
-    {
-      "name": "csdn",
-      "description": "blog.csdn.net",
-      "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/csdn.js",
-      "api": 0,
-      "domain": "blog.csdn.net",
-      "author": "Synura Team",
-      "icon": "https://blog.csdn.net/favicon.ico",
-      "locale": "zh_CN",
-      "tags": [
-        "developers",
-        "blogs",
-        "q&a"
-      ]
-    },
-    {
       "name": "xiaohongshu",
       "description": "www.xiaohongshu.com",
       "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/xiaohongshu.js",
+      "url": "https://tempage.github.io/synura/extensions/zh_CN/xiaohongshu.js",
       "api": 0,
       "domain": "www.xiaohongshu.com",
       "author": "Synura Team",
@@ -161,18 +33,50 @@
       ]
     },
     {
-      "name": "stage1st",
-      "description": "stage1st.com",
+      "name": "nga",
+      "description": "bbs.nga.cn",
       "version": 0.2,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_CN/stage1st.js",
+      "url": "https://tempage.github.io/synura/extensions/zh_CN/nga.js",
       "api": 0,
-      "domain": "stage1st.com",
+      "domain": "bbs.nga.cn",
       "author": "Synura Team",
-      "icon": "https://stage1st.com/favicon.ico",
+      "icon": "https://bbs.nga.cn/favicon.ico",
       "locale": "zh_CN",
       "tags": [
         "games",
-        "anime",
+        "forum",
+        "community"
+      ]
+    },
+    {
+      "name": "tieba",
+      "description": "tieba.baidu.com",
+      "version": 0.2,
+      "url": "https://tempage.github.io/synura/extensions/zh_CN/tieba.js",
+      "api": 0,
+      "domain": "tieba.baidu.com",
+      "author": "Synura Team",
+      "icon": "https://tieba.baidu.com/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "forums",
+        "communities",
+        "baidu"
+      ]
+    },
+    {
+      "name": "linux_do",
+      "description": "linux.do",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/zh_CN/linux_do.js",
+      "api": 0,
+      "domain": "linux.do",
+      "author": "Synura Team",
+      "icon": "https://linux.do/favicon.ico",
+      "locale": "zh_CN",
+      "tags": [
+        "linux",
+        "developers",
         "forum"
       ]
     }

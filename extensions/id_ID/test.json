@@ -1,34 +1,36 @@
 {
   "extensions": [
     {
-      "name": "indoforum",
-      "description": "www.forum.or.id",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/id_ID/indoforum.js",
+      "name": "kaskus",
+      "description": "kaskus.co.id",
+      "version": 0.1,
+      "url": "https://tempage.github.io/synura/extensions/id_ID/kaskus.js",
       "api": 0,
-      "domain": "www.forum.or.id",
+      "domain": "kaskus.co.id",
       "author": "Synura Team",
-      "icon": "https://www.forum.or.id/favicon.ico",
+      "icon": "https://www.kaskus.co.id/favicon.ico",
       "locale": "id_ID",
       "tags": [
-        "general",
-        "discussion",
+        "indonesia",
+        "community",
+        "lifestyle",
         "forum"
       ]
     },
     {
-      "name": "expatindo",
-      "description": "www.expatindo.org",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/id_ID/expatindo.js",
+      "name": "ads_id",
+      "description": "ads.id",
+      "version": 0.1,
+      "url": "https://tempage.github.io/synura/extensions/id_ID/ads_id.js",
       "api": 0,
-      "domain": "www.expatindo.org",
+      "domain": "www.ads.id",
       "author": "Synura Team",
-      "icon": "https://www.expatindo.org/favicon.ico",
+      "icon": "https://www.ads.id/favicon.ico",
       "locale": "id_ID",
       "tags": [
-        "expat",
-        "indonesia",
+        "business",
+        "seo",
+        "marketing",
         "forum"
       ]
     },
@@ -36,7 +38,7 @@
       "name": "bersosial",
       "description": "forum.bersosial.com",
       "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/id_ID/bersosial.js",
+      "url": "https://tempage.github.io/synura/extensions/id_ID/bersosial.js",
       "api": 0,
       "domain": "forum.bersosial.com",
       "author": "Synura Team",

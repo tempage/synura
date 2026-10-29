@@ -32,7 +32,7 @@ impl FetchCancellation {
 pub(super) struct TransportSettings<'a> {
     pub bypass: Option<&'a str>,
     pub timeout_ms: u64,
-    pub proxy: Option<&'a str>,
+    pub proxy: &'a super::FetchProxy,
     pub cancellation: &'a FetchCancellation,
 }
 
@@ -48,7 +48,7 @@ pub(crate) struct HttpResponse {
 
 pub(crate) struct HttpTransport {
     runtime: tokio::runtime::Runtime,
-    clients: VecDeque<((String, u64, String), wreq::Client)>,
+    clients: VecDeque<((String, u64, super::FetchProxy), wreq::Client)>,
 }
 
 impl HttpTransport {
@@ -78,7 +78,7 @@ impl HttpTransport {
         let key = (
             settings.bypass.unwrap_or_default().trim().to_string(),
             settings.timeout_ms,
-            settings.proxy.unwrap_or_default().trim().to_string(),
+            settings.proxy.clone(),
         );
         let client = if let Some(index) = self.clients.iter().position(|(cached, _)| cached == &key)
         {
@@ -93,9 +93,13 @@ impl HttpTransport {
             if !key.0.is_empty() {
                 builder = builder.emulation(profile(&key.0));
             }
-            if !key.2.is_empty() {
-                builder = builder.proxy(wreq::Proxy::all(&key.2).map_err(|e| e.to_string())?);
-            }
+            builder = match &key.2 {
+                super::FetchProxy::System => builder,
+                super::FetchProxy::Disabled => builder.no_proxy(),
+                super::FetchProxy::Explicit(url) => {
+                    builder.proxy(wreq::Proxy::all(url).map_err(|e| e.to_string())?)
+                }
+            };
             let client = builder
                 .build()
                 .map_err(|error| format!("create HTTP client: {error}"))?;

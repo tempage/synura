@@ -31,28 +31,53 @@ var SITE = {
   ],
   "acceptLanguage": "he-IL,he;q=0.9,en-US;q=0.6,en;q=0.5",
   "fetchHeaders": {
-    "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36 Synura/1.0",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.6,en;q=0.5"
   },
   "challengeMarkers": [
     "Just a moment",
-    "cf_chl_opt",
-    "challenge-platform",
-    "Enable JavaScript and cookies"
+    "cf_chl_opt"
   ],
   "titleSuffixes": [
     " - CarsForum",
     " | CarsForum",
     " : CarsForum"
   ],
+  "isAuthRequiredResponse": function(url, status, html) {
+    if (status === 401 || status === 403 || status === 429) return true;
+    var body = String(html || "").toLowerCase();
+    return (body.indexOf("just a moment") >= 0 && body.indexOf("cf_chl_opt") >= 0) ||
+           body.indexOf("checking your browser") >= 0 ||
+           body.indexOf("verify you are human") >= 0;
+  },
   "boards": [
     {
-      "id": "home",
-      "title": "Home",
-      "url": "https://carsforum.co.il/",
-      "description": "automotive forum",
-      "group": "Israel"
+      "id": "general",
+      "title": "רכב כללי",
+      "url": "https://carsforum.co.il/forum/7-%D7%A8%D7%9B%D7%91-%D7%9B%D7%9C%D7%9C%D7%99/",
+      "description": "General Automotive",
+      "group": "CarsForum"
+    },
+    {
+      "id": "technical",
+      "title": "טכני אחזקה וטיפולים",
+      "url": "https://carsforum.co.il/forum/9-%D7%98%D7%9B%D7%A0%D7%99-%D7%90%D7%97%D7%96%D7%A7%D7%94-%D7%95%D7%98%D7%99%D7%A4%D7%95%D7%9C%D7%99%D7%9D/",
+      "description": "Maintenance & Repair",
+      "group": "CarsForum"
+    },
+    {
+      "id": "car_sales",
+      "title": "מכירה - מכוניות",
+      "url": "https://carsforum.co.il/forum/32-%D7%9E%D7%9B%D7%99%D7%A8%D7%94-%D7%9E%D7%9B%D7%95%D7%A0%D7%99%D7%95%D7%AA-%D7%95%D7%90%D7%95%D7%A4%D7%A0%D7%95%D7%A2%D7%99%D7%9D-%D7%91%D7%9C%D7%91%D7%93/",
+      "description": "Car Sales",
+      "group": "לוח רכב"
+    },
+    {
+      "id": "car_buy",
+      "title": "קניה - מכוניות",
+      "url": "https://carsforum.co.il/forum/31-%D7%A7%D7%A0%D7%99%D7%94-%D7%9E%D7%9B%D7%95%D7%A0%D7%99%D7%95%D7%AA-%D7%95%D7%90%D7%95%D7%A4%D7%A0%D7%95%D7%A2%D7%99%D7%9D-%D7%91%D7%9C%D7%91%D7%93/",
+      "description": "Car Buying",
+      "group": "לוח רכב"
     }
   ],
   "selectors": {
@@ -215,7 +240,7 @@ var SYNURA = {
   license: "Apache-2.0",
   locale: "he_IL",
   icon: "https://carsforum.co.il/favicon.ico",
-  bypass: "chrome/android",
+  bypass: "chrome/windows",
   deeplink: true,
   tags: [
     "automotive",
@@ -231,6 +256,7 @@ var LOCAL_POST_PATTERNS = [
 
 
 var LOCAL_BOARD_LINK_SELECTORS = [
+  "a[href*='/forum/']",
   "a[href*='/forum']",
   "a[href*='/forums']",
   "a[href*='/board']",
@@ -602,96 +628,87 @@ SITE.matchBoard = function (info) {
 (function () {
   SITE.selectors = SITE.selectors || {};
   SITE.linkAllowPatterns = [
-  "/topic/",
-  "/threads/"
+  "/topic/"
 ];
   try {
     if (typeof LIST_LINK_ALLOW_PATTERNS !== "undefined") LIST_LINK_ALLOW_PATTERNS = SITE.linkAllowPatterns;
   } catch (e) {}
   try {
-    if (typeof LOCAL_POST_PATTERNS !== "undefined") LOCAL_POST_PATTERNS = [new RegExp("/topic/", "i"), new RegExp("/threads/", "i")];
+    if (typeof LOCAL_POST_PATTERNS !== "undefined") LOCAL_POST_PATTERNS = [new RegExp("/topic/", "i")];
   } catch (e) {}
   SITE.selectors["listRows"] = [
-  ".structItem--thread",
-  ".structItemContainer .structItem",
-  "article.message",
-  "a[href*='/threads/']"
+  ".ipsDataItem",
+  "li.ipsDataItem",
+  "article.ipsDataItem"
 ];
   SITE.selectors["listLink"] = [
-  ".structItem-title a[href*='/threads/']",
-  "a[href*='/threads/']"
+  ".ipsDataItem_title a",
+  "a[href*='/topic/']"
 ];
   SITE.selectors["listTitle"] = [
-  ".structItem-title a[href*='/threads/']",
-  "a[href*='/threads/']"
+  ".ipsDataItem_title a",
+  "a[href*='/topic/']"
 ];
   SITE.selectors["listAuthor"] = [
-  ".structItem-minor .username",
-  ".username",
-  ".u-concealed"
+  ".ipsUserPhoto img",
+  ".ipsDataItem_meta .ipsType_blendLinks",
+  ".ipsDataItem_meta a",
+  "[data-ipsHover]"
 ];
   SITE.selectors["listDate"] = [
-  "time.u-dt",
   "time[datetime]",
-  ".structItem-latestDate"
+  "time"
 ];
   SITE.selectors["listCommentCount"] = [
-  ".pairs--justified dd",
-  ".structItem-cell--meta dd",
-  ".replies"
+  ".ipsDataItem_stats_number",
+  ".ipsDataItem_stats"
 ];
   SITE.selectors["postTitle"] = [
-  ".p-title-value",
+  ".ipsType_pageTitle",
   "h1"
 ];
   SITE.selectors["postAuthor"] = [
-  "article.message .message-name .username",
-  ".message-name .username",
-  ".username"
+  "[data-role='authorName']",
+  ".cAuthorPane_author a",
+  ".ipsComment_author"
 ];
   SITE.selectors["postDate"] = [
-  "article.message time.u-dt",
-  "time[datetime]"
+  "time[datetime]",
+  "time"
 ];
   SITE.selectors["postContent"] = [
-  "article.message .message-body .bbWrapper",
-  ".message-content .bbWrapper",
-  ".message-body .bbWrapper",
-  ".bbWrapper",
-  "article.message",
-  "body"
-];
+    "[data-role='commentContent']",
+    ".ipsType_richText",
+    ".ipsComment_content"
+  ];
   SITE.selectors["commentRows"] = [
-  "article.message",
-  ".message--post",
-  ".message"
-];
+    "[data-role='comment']",
+    "article.ipsComment",
+    ".ipsComment"
+  ];
   SITE.selectors["commentContent"] = [
-  ".message-body .bbWrapper",
-  ".message-content .bbWrapper",
-  ".bbWrapper",
-  ".message-body"
-];
+    "[data-role='commentContent']",
+    ".ipsType_richText",
+    ".ipsComment_content"
+  ];
   SITE.selectors["commentAuthor"] = [
-  ".message-name .username",
-  ".username"
-];
+    "[data-role='authorName']",
+    ".cAuthorPane_author a",
+    ".ipsComment_author"
+  ];
   SITE.selectors["commentDate"] = [
-  "time.u-dt",
-  "time[datetime]"
-];
+    "time[datetime]",
+    "time"
+  ];
   SITE.selectors["listViewCount"] = [
-  ".structItem-cell--meta dd",
-  ".views"
-];
+    ".ipsDataItem_stats_number",
+    ".views"
+  ];
   var carsforumPostContentSelectors = [
-  "article.message .message-body .bbWrapper",
-  ".message-content .bbWrapper",
-  ".message-body .bbWrapper",
-  ".bbWrapper",
-  "article.message",
-  "body"
-];
+    "[data-role='commentContent']",
+    ".ipsType_richText",
+    ".ipsComment_content"
+  ];
   var carsforumPreviousFilterPostContent = SITE.filterPostContent;
   function carsforumText(node) {
     return String(node && node.textContent || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();

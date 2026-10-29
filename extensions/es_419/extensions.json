@@ -1,0 +1,52 @@
+{
+  "extensions": [
+    {
+      "name": "ba_k",
+      "description": "ba-k.com",
+      "version": 0.4,
+      "url": "https://tempage.github.io/synura/extensions/es_419/ba_k.js",
+      "api": 0,
+      "domain": "ba-k.com",
+      "author": "Synura Team",
+      "icon": "https://ba-k.com/foro/data/assets/logo_default/bakonly_logo110.webp",
+      "locale": "es_419",
+      "tags": [
+        "general",
+        "discussion",
+        "forum"
+      ]
+    },
+    {
+      "name": "forosdelweb",
+      "description": "www.forosdelweb.com",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/es_419/forosdelweb.js",
+      "api": 0,
+      "domain": "www.forosdelweb.com",
+      "author": "Synura Team",
+      "icon": "https://www.forosdelweb.com/favicon.ico",
+      "locale": "es_419",
+      "tags": [
+        "web-development",
+        "programming",
+        "forum"
+      ]
+    },
+    {
+      "name": "forosperu",
+      "description": "www.forosperu.net",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/es_419/forosperu.js",
+      "api": 0,
+      "domain": "www.forosperu.net",
+      "author": "Synura Team",
+      "icon": "https://www.forosperu.net/favicon.ico",
+      "locale": "es_419",
+      "tags": [
+        "peru",
+        "general",
+        "forum"
+      ]
+    }
+  ]
+}

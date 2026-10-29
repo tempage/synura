@@ -1372,31 +1372,149 @@ fetchWithLogging = function (url, options) {
     return response;
 };
 
-function ppomppuPreviewLinkMap(root, baseUrl) {
-    var out = {};
-    if (!root || !root.querySelectorAll) return out;
-
-    var previewAnchors = root.querySelectorAll("a.scrap_bx_href");
-    for (var i = 0; i < previewAnchors.length; i++) {
-        var href = ensureAbsoluteUrl(attrOf(previewAnchors[i], "href"), baseUrl);
-        if (href) out[href] = true;
+function ppomppuDecodeBase64(input) {
+    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    var str = String(input || "").replace(/=+$/, "");
+    var output = "";
+    if (str.length % 4 === 1) return "";
+    for (var bc = 0, bs, buffer, idx = 0; buffer = str.charAt(idx++); ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer, bc++ % 4) ? output += String.fromCharCode(255 & bs >> (-2 * bc & 6)) : 0) {
+        buffer = chars.indexOf(buffer);
     }
-    return out;
+    return output;
+}
+
+function ppomppuResolveTargetUrl(url) {
+    if (!url) return "";
+    var str = String(url);
+    var match = str.match(/[?&]target=([A-Za-z0-9+/=]+)/);
+    if (match && match[1]) {
+        try {
+            var decoded = ppomppuDecodeBase64(decodeURIComponent(match[1]));
+            if (decoded && /^https?:\/\//i.test(decoded)) {
+                return decoded;
+            }
+        } catch (e) {
+        }
+    }
+    return str;
+}
+
+function ppomppuExtractScrapCard(root, baseUrl) {
+    if (!root || !root.querySelectorAll) return null;
+    var scrapNodes = root.querySelectorAll(".scrap_bx");
+    if (!scrapNodes || scrapNodes.length === 0) return null;
+
+    var sn = scrapNodes[0];
+    var imgSpan = sn.querySelector ? sn.querySelector(".scrap_img") : null;
+    var style = imgSpan ? attrOf(imgSpan, "style") : "";
+    var bgMatch = style.match(/background-image:\s*url\(['"]?(https?:\/\/[^'"\)]+)['"]?\)/i);
+    var image = bgMatch ? bgMatch[1] : "";
+
+    var strong = sn.querySelector ? sn.querySelector("strong") : null;
+    var title = strong ? normalizeWhitespace(textOf(strong)) : "";
+
+    var small = sn.querySelector ? sn.querySelector("small") : null;
+    var description = small ? normalizeWhitespace(textOf(small)) : "";
+
+    var anchor = sn.closest ? sn.closest("a") : null;
+    var rawHref = anchor ? attrOf(anchor, "href") : "";
+    if (!rawHref) {
+        var parent = sn.parentNode;
+        while (parent && !rawHref) {
+            if (String(parent.tagName || "").toLowerCase() === "a") {
+                rawHref = attrOf(parent, "href");
+            }
+            parent = parent.parentNode;
+        }
+    }
+    var targetUrl = rawHref ? ppomppuResolveTargetUrl(ensureAbsoluteUrl(rawHref, baseUrl)) : "";
+
+    return {
+        image: image,
+        title: title,
+        description: description,
+        link: targetUrl
+    };
 }
 
 var ppomppuOriginalParseDetails = parseDetails;
 parseDetails = function (element, baseUrl) {
-    var previewLinks = ppomppuPreviewLinkMap(element, baseUrl);
-    var details = ppomppuOriginalParseDetails(element, baseUrl);
-    if (!details || details.length === 0) return details;
+    var details = ppomppuOriginalParseDetails(element, baseUrl) || [];
+    var scrapCard = ppomppuExtractScrapCard(element, baseUrl);
 
     var filtered = [];
+    var seenLinks = {};
+    var hasMeaningfulContent = false;
+
+    if (scrapCard && scrapCard.image) {
+        filtered.push({
+            type: "image",
+            value: scrapCard.image,
+            link: scrapCard.link || scrapCard.image
+        });
+        hasMeaningfulContent = true;
+    }
+
     for (var i = 0; i < details.length; i++) {
         var item = details[i];
-        var itemLink = ensureAbsoluteUrl(item && (item.link || item.value), baseUrl);
-        if (item && item.type === "link" && itemLink && previewLinks[itemLink]) continue;
+        if (!item) continue;
+
+        if (item.type === "text") {
+            var trimmed = normalizeWhitespace(item.value);
+            if (!trimmed) continue;
+            hasMeaningfulContent = true;
+            filtered.push({ type: "text", value: trimmed });
+            continue;
+        }
+
+        if (item.type === "link") {
+            var resolvedLink = ppomppuResolveTargetUrl(ensureAbsoluteUrl(item.link || item.value, baseUrl));
+            if (!resolvedLink || seenLinks[resolvedLink]) continue;
+            seenLinks[resolvedLink] = true;
+
+            var linkText = normalizeWhitespace(item.value);
+            if (scrapCard && scrapCard.title && (resolvedLink === scrapCard.link || (linkText && linkText.indexOf(scrapCard.title.slice(0, 20)) >= 0))) {
+                linkText = scrapCard.title;
+            } else if (!linkText || linkText === resolvedLink) {
+                linkText = resolvedLink;
+            }
+
+            hasMeaningfulContent = true;
+            filtered.push({
+                type: "link",
+                value: linkText,
+                link: resolvedLink
+            });
+
+            if (scrapCard && scrapCard.description && resolvedLink === scrapCard.link) {
+                filtered.push({
+                    type: "text",
+                    value: scrapCard.description
+                });
+            }
+            continue;
+        }
+
+        hasMeaningfulContent = true;
         filtered.push(item);
     }
+
+    if (!hasMeaningfulContent && element && element.querySelectorAll) {
+        var anchors = element.querySelectorAll("a[href]");
+        for (var a = 0; a < anchors.length; a++) {
+            var rawHref = attrOf(anchors[a], "href");
+            var resolved = ppomppuResolveTargetUrl(ensureAbsoluteUrl(rawHref, baseUrl));
+            if (!resolved || seenLinks[resolved] || /javascript:|#$/i.test(resolved)) continue;
+            seenLinks[resolved] = true;
+            var text = normalizeWhitespace(textOf(anchors[a])) || resolved;
+            filtered.push({
+                type: "link",
+                value: text,
+                link: resolved
+            });
+        }
+    }
+
     return filtered;
 };
 

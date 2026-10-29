@@ -202,11 +202,11 @@ var SYNURA = {
   name: "finanzaonline",
   author: "Synura Team",
   description: "forum.finanzaonline.com",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "it_IT",
-  icon: "https://forum.finanzaonline.com/favicon.ico",
+  icon: "https://www.finanzaonline.com/favicon.ico",
   bypass: "chrome/android",
   deeplink: true,
   tags: [

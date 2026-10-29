@@ -202,11 +202,11 @@ var SYNURA = {
   name: "wykop",
   author: "Synura Team",
   description: "wykop.pl",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "pl_PL",
-  icon: "https://wykop.pl/favicon.ico",
+  icon: "https://wykop.pl/static/img/favicons/favicon.png",
   bypass: "chrome/android",
   deeplink: true,
   tags: [

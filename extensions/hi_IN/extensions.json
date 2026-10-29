@@ -1,0 +1,38 @@
+{
+  "extensions": [
+    {
+      "name": "desidime",
+      "description": "www.desidime.com",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/hi_IN/desidime.js",
+      "api": 0,
+      "domain": "www.desidime.com",
+      "author": "Synura Team",
+      "icon": "https://www.desidime.com/favicon.ico",
+      "locale": "hi_IN",
+      "tags": [
+        "deals",
+        "shopping",
+        "coupons"
+      ]
+    },
+    {
+      "name": "techenclave",
+      "description": "techenclave.com",
+      "version": 0.1,
+      "url": "https://tempage.github.io/synura/extensions/hi_IN/techenclave.js",
+      "api": 0,
+      "domain": "techenclave.com",
+      "author": "Synura Team",
+      "icon": "https://techenclave.com/uploads/default/optimized/3X/6/7/6772377a1bd34f65012f268a3816b27bb26d52ab_2_32x32.png",
+      "locale": "hi_IN",
+      "tags": [
+        "india",
+        "tech",
+        "hardware",
+        "pc-builds",
+        "forum"
+      ]
+    }
+  ]
+}

@@ -11,7 +11,7 @@ ROOT_EXTENSION_TARGETS = youtube
 ROOT_OUTPUTS = $(addsuffix .js,$(ROOT_EXTENSION_TARGETS))
 
 COMMUNITY_COMMON_TS = community_common.ts
-KO_KR_EXTENSION_TARGETS = arca clien damoang dcinside fmkorea geeknews instiz inven mlbpark pann ppomppu ruliweb theqoo todayhumor
+KO_KR_EXTENSION_TARGETS = arca clien damoang dcinside fmkorea geeknews instiz inven mlbpark pann ppomppu ruliweb theqoo todayhumor naver_news naver_webtoon
 KO_KR_TARGETS = $(addprefix ko_KR/,$(KO_KR_EXTENSION_TARGETS))
 KO_KR_OUTPUTS = $(addsuffix .js,$(KO_KR_TARGETS))
 
@@ -118,6 +118,9 @@ $(EN_US_TARGETS): %: %.js
 $(LOCAL_COMMUNITY_TARGETS): %: %.js
 
 ko_KR/geeknews.js: ko_KR/geeknews.ts
+	$(compile_js)
+
+ko_KR/naver_webtoon.js: ko_KR/naver_webtoon.ts
 	$(compile_js)
 
 en_US/hackernews.js: en_US/hackernews.ts community_common_en_US.ts $(COMMUNITY_COMMON_TS)

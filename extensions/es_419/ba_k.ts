@@ -31,7 +31,6 @@ var SITE = {
   ],
   "acceptLanguage": "es-419,es;q=0.9,en-US;q=0.6,en;q=0.5",
   "fetchHeaders": {
-    "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36 Synura/1.0",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "es-419,es;q=0.9,en-US;q=0.6,en;q=0.5"
   },
@@ -46,33 +45,71 @@ var SITE = {
     " | Ba-k",
     " : Ba-k"
   ],
+  "isAuthRequiredResponse": function(url, status, html) {
+    if (status === 401 || status === 403 || status === 429) return true;
+    var body = String(html || "").toLowerCase();
+    return (body.indexOf("just a moment") >= 0 && body.indexOf("cf_chl_opt") >= 0) ||
+           body.indexOf("checking your browser") >= 0 ||
+           body.indexOf("verify you are human") >= 0;
+  },
   "boards": [
     {
-      "id": "home",
-      "title": "Home",
-      "url": "https://ba-k.com/foro/",
-      "description": "forum",
-      "group": "Latin America"
+      "id": "foro_libre",
+      "title": "Foro libre",
+      "url": "https://ba-k.com/foro/foro-libre/",
+      "description": "Temas libres y variados",
+      "group": "General"
+    },
+    {
+      "id": "tecnologia",
+      "title": "Tecnología y Gadgets",
+      "url": "https://ba-k.com/foro/tecnologia-y-gadgets/",
+      "description": "Tecnología, informática y gadgets",
+      "group": "Tecnología"
+    },
+    {
+      "id": "deportes",
+      "title": "Deportes y estilo de vida",
+      "url": "https://ba-k.com/foro/deportes-y-estilo-de-vida/",
+      "description": "Deportes, salud y estilo de vida",
+      "group": "Estilo de vida"
+    },
+    {
+      "id": "politica",
+      "title": "Política y finanzas",
+      "url": "https://ba-k.com/foro/politica-y-finanzas/",
+      "description": "Política, economía y finanzas",
+      "group": "General"
+    },
+    {
+      "id": "comida",
+      "title": "Comida",
+      "url": "https://ba-k.com/foro/comida/",
+      "description": "Recetas, cocina y gastronomía",
+      "group": "Estilo de vida"
     }
   ],
   "selectors": {
     "boardTitle": [
-      ".contentTitle",
       ".p-title-value",
+      ".contentTitle",
       ".ipsType_pageTitle",
       ".forum-title"
     ],
     "listRows": [
-      "a[href*='/foro/']",
-      "a[href*='/foros/']"
+      ".structItem--thread",
+      "a[href*='/foro/tema/']",
+      "a[href*='/tema/']"
     ],
     "listLink": [
-      "a[href*='/foro/']",
-      "a[href*='/foros/']"
+      ".structItem-title a",
+      "a[href*='/foro/tema/']",
+      "a[href*='/tema/']"
     ],
     "listTitle": [
-      "a[href*='/foro/']",
-      "a[href*='/foros/']"
+      ".structItem-title a",
+      "a[href*='/foro/tema/']",
+      "a[href*='/tema/']"
     ],
     "listTitleExclude": [
       ".badge",
@@ -81,6 +118,7 @@ var SITE = {
       ".meta"
     ],
     "listAuthor": [
+      ".structItem-parts .username",
       ".username",
       ".userLink",
       ".author"
@@ -90,16 +128,20 @@ var SITE = {
       ".userAvatarImage"
     ],
     "listDate": [
+      ".structItem-startDate time",
       "time",
       "time[datetime]"
     ],
     "listCommentCount": [
+      ".structItem-cell--meta dl:first-child dd",
+      ".pairs--justified dd",
       ".replies",
       ".comments",
       ".reply-count",
       ".comment-count"
     ],
     "listViewCount": [
+      ".structItem-cell--meta dl:last-child dd",
       ".views",
       ".view-count"
     ],
@@ -210,12 +252,12 @@ var SYNURA = {
   name: "ba_k",
   author: "Synura Team",
   description: "ba-k.com",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "es_419",
-  icon: "https://ba-k.com/favicon.ico",
-  bypass: "chrome/android",
+  icon: "https://ba-k.com/foro/data/assets/logo_default/bakonly_logo110.webp",
+  bypass: "chrome/windows",
   deeplink: true,
   tags: [
     "general",
@@ -226,11 +268,14 @@ var SYNURA = {
 };
 
 var LOCAL_POST_PATTERNS = [
-  /\/foros?\/[^\/?#]+\/[^\/?#]+/i
+  /\/foro\/tema\/[^\/?#]+/i,
+  /\/tema\/[^\/?#]+/i,
+  /\/threads\/[^\/?#]+/i
 ];
 
 
 var LOCAL_BOARD_LINK_SELECTORS = [
+  "a[href*='/foro/']",
   "a[href*='/forum']",
   "a[href*='/forums']",
   "a[href*='/board']",
@@ -420,6 +465,10 @@ function localExtractCommentCount(title) {
 function extractListItem(row, baseUrl) {
   if (!row) return null;
   var linkNode = firstNode(row, selectorList("listLink", [])) || (attrOf(row, "href") ? row : null);
+  if (!globalThis._log_item) {
+    globalThis._log_item = true;
+    console.log("DEBUG linkNode:", linkNode ? linkNode.getAttribute("href") : "null", "selectors:", JSON.stringify(selectorList("listLink", [])));
+  }
   var link = linkNode ? (normalizeUrl(attrOf(linkNode, "href")) || ensureAbsoluteUrl(attrOf(linkNode, "href"), baseUrl)) : "";
   if (!link || localLooksLikeAssetUrl(link) || !localLooksLikePostUrl(link)) return null;
   var title = firstNonEmpty([
@@ -602,27 +651,30 @@ SITE.matchBoard = function (info) {
 (function () {
   SITE.selectors = SITE.selectors || {};
   SITE.linkAllowPatterns = [
+  "/foro/tema/",
+  "/tema/",
   "/threads/"
 ];
   try {
     if (typeof LIST_LINK_ALLOW_PATTERNS !== "undefined") LIST_LINK_ALLOW_PATTERNS = SITE.linkAllowPatterns;
   } catch (e) {}
   try {
-    if (typeof LOCAL_POST_PATTERNS !== "undefined") LOCAL_POST_PATTERNS = [new RegExp("/threads/", "i")];
+    if (typeof LOCAL_POST_PATTERNS !== "undefined") LOCAL_POST_PATTERNS = [new RegExp("/foro/tema/", "i"), new RegExp("/tema/", "i"), new RegExp("/threads/", "i")];
   } catch (e) {}
   SITE.selectors["listRows"] = [
   ".structItem--thread",
   ".structItemContainer .structItem",
-  "article.message",
-  "a[href*='/threads/']"
+  "article.message"
 ];
   SITE.selectors["listLink"] = [
-  ".structItem-title a[href*='/threads/']",
-  "a[href*='/threads/']"
+  ".structItem-title a",
+  "a[href*='/foro/tema/']",
+  "a[href*='/tema/']"
 ];
   SITE.selectors["listTitle"] = [
-  ".structItem-title a[href*='/threads/']",
-  "a[href*='/threads/']"
+  ".structItem-title a",
+  "a[href*='/foro/tema/']",
+  "a[href*='/tema/']"
 ];
   SITE.selectors["listAuthor"] = [
   ".structItem-minor .username",

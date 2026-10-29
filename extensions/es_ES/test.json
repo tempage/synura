@@ -4,7 +4,7 @@
       "name": "meneame",
       "description": "www.meneame.net",
       "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_ES/meneame.js",
+      "url": "https://tempage.github.io/synura/extensions/es_ES/meneame.js",
       "api": 0,
       "domain": "www.meneame.net",
       "author": "Synura Team",
@@ -14,38 +14,6 @@
         "social-news",
         "news",
         "links"
-      ]
-    },
-    {
-      "name": "rankia",
-      "description": "www.rankia.com",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_ES/rankia.js",
-      "api": 0,
-      "domain": "www.rankia.com",
-      "author": "Synura Team",
-      "icon": "https://www.rankia.com/favicon.ico",
-      "locale": "es_ES",
-      "tags": [
-        "finance",
-        "investing",
-        "forum"
-      ]
-    },
-    {
-      "name": "foros_acb",
-      "description": "foros.acb.com",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/es_ES/foros_acb.js",
-      "api": 0,
-      "domain": "foros.acb.com",
-      "author": "Synura Team",
-      "icon": "https://foros.acb.com/favicon.ico",
-      "locale": "es_ES",
-      "tags": [
-        "basketball",
-        "sports",
-        "forum"
       ]
     }
   ]

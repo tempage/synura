@@ -29,10 +29,13 @@ Building the HTTP client requires a C/C++ toolchain, CMake, Perl, and libclang i
 |---|---|
 | `-ext <path>` | Path to the extension JavaScript file. |
 | `-no-home` | Load the extension but do not call `SYNURA.main.home()`. |
+| `-proxy <url\|off\|system>` | Use an explicit HTTP/HTTPS/SOCKS proxy, disable all proxies, or use system/environment proxies (default). |
 | `-e "<command>"` | Execute one shell command and exit. |
 | `-json` | Emit command result objects as JSON where supported. Runtime console logs may still be text. |
 
 The first positional argument is also treated as the extension path when `-ext` is omitted.
+
+By default, proxy routing follows the environment's protocol-specific `HTTP_PROXY` / `HTTPS_PROXY`, `ALL_PROXY`, and `NO_PROXY` settings (including lowercase forms). An explicit proxy URL overrides those settings for all requests. Use `-proxy off` to force direct connections.
 
 ## REPL Behavior
 
@@ -85,6 +88,7 @@ printf 'views\ntap index 1\nviews\nquit\n' | ./synurart -json -ext extensions/ba
 | `storage [local|session]` | Show storage snapshots. |
 | `storage clear [local|session|all]` | Clear storage. |
 | `eval <javascript>` | Evaluate JavaScript in the current runtime. |
+| `proxy [url\|clear\|system]` | Show proxy mode, set an explicit URL, disable all proxies with `clear`, or restore system/environment routing with `system`. |
 
 ## Practical Workflow
 
@@ -109,7 +113,7 @@ printf 'views\ntap index 1\nviews\nquit\n' | ./synurart -json -ext extensions/ba
 
 ## Embedded Runtime Network Settings
 
-Rust hosts can configure `SynurartRuntime::set_timeout(milliseconds)` and `set_fetch_proxy(Some(url))`; use `set_fetch_proxy(None)` to clear the explicit proxy. These settings do not widen extension host permissions.
+Rust hosts can configure `SynurartRuntime::set_timeout(milliseconds)` and `set_fetch_proxy(Some(url))`; use `set_fetch_proxy(None)` to clear the explicit proxy and restore system/environment routing, or `disable_fetch_proxy()` to force direct connections. These settings do not widen extension host permissions.
 
 To cancel an in-flight fetch, create a `FetchCancellation::default()`, pass a clone to `set_fetch_cancellation(handle)`, and call `cancel()` on the other clone from the host thread. Supply a fresh handle for the next request. Cancellation interrupts network work; it is not a JavaScript CPU execution limit.
 

@@ -2,12 +2,12 @@
 
 **Stable repository URL (for app):**
 ```
-https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/extensions.json
+https://tempage.github.io/synura/extensions.json
 ```
 
 **Test/beta repository URL:**
 ```
-https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/test.json
+https://tempage.github.io/synura/test.json
 ```
 
 A collection of example extensions for the Synura application.
@@ -15,23 +15,25 @@ A collection of example extensions for the Synura application.
 ## Repository Structure
 
 ```
-public/extensions/
+synura/
 ├── extensions.json              # Stable repository index
 ├── test.json                    # Full test/beta repository index
-├── generate_extensions_json.py  # Script to generate JSON files
-├── README.md
-├── basic/                       # Example extensions (view demos)
-│   ├── extensions.json
-│   ├── list.js
-│   └── ...
-├── en_US/
-│   ├── extensions.json          # Stable index for this folder
-│   ├── test.json                # Full test/beta index for this folder
-│   └── reddit.js
-└── ko_KR/
-    ├── extensions.json
-    ├── test.json
-    └── damoang.js
+├── .nojekyll                    # GitHub Pages static serving flag
+└── extensions/
+    ├── generate_extensions_json.py  # Script to generate JSON files
+    ├── README.md
+    ├── basic/                   # Example extensions (view demos)
+    │   ├── extensions.json
+    │   ├── list.js
+    │   └── ...
+    ├── en_US/
+    │   ├── extensions.json      # Stable index for this folder
+    │   ├── test.json            # Full test/beta index for this folder
+    │   └── reddit.js
+    └── ko_KR/
+        ├── extensions.json
+        ├── test.json
+        └── damoang.js
 ```
 
 ## Repository JSON Format

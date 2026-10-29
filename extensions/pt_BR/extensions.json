@@ -1,0 +1,20 @@
+{
+  "extensions": [
+    {
+      "name": "adrenaline",
+      "description": "forum.adrenaline.com.br",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/pt_BR/adrenaline.js",
+      "api": 0,
+      "domain": "forum.adrenaline.com.br",
+      "author": "Synura Team",
+      "icon": "https://forum.adrenaline.com.br/favicon.ico",
+      "locale": "pt_BR",
+      "tags": [
+        "hardware",
+        "gaming",
+        "forum"
+      ]
+    }
+  ]
+}

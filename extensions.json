@@ -1,0 +1,47 @@
+{
+  "name": "Synura Stable Repository",
+  "description": "Stable Synura extensions.",
+  "version": 5.5,
+  "extensions": [
+    {
+      "name": "youtube",
+      "description": "m.youtube.com",
+      "version": 0.2,
+      "url": "https://tempage.github.io/synura/extensions/youtube.js",
+      "api": 0,
+      "domain": "m.youtube.com",
+      "author": "Synura Team",
+      "tags": [
+        "video",
+        "streaming",
+        "search"
+      ]
+    }
+  ],
+  "includes": [
+    "extensions/ar_SA/extensions.json",
+    "extensions/basic/extensions.json",
+    "extensions/bn_BD/extensions.json",
+    "extensions/de_DE/extensions.json",
+    "extensions/en_US/extensions.json",
+    "extensions/es_419/extensions.json",
+    "extensions/es_ES/extensions.json",
+    "extensions/fa_IR/extensions.json",
+    "extensions/fr_FR/extensions.json",
+    "extensions/he_IL/extensions.json",
+    "extensions/hi_IN/extensions.json",
+    "extensions/id_ID/extensions.json",
+    "extensions/it_IT/extensions.json",
+    "extensions/ja_JP/extensions.json",
+    "extensions/ko_KR/extensions.json",
+    "extensions/pl_PL/extensions.json",
+    "extensions/pt_BR/extensions.json",
+    "extensions/pt_PT/extensions.json",
+    "extensions/ru_RU/extensions.json",
+    "extensions/th_TH/extensions.json",
+    "extensions/tr_TR/extensions.json",
+    "extensions/vi_VN/extensions.json",
+    "extensions/zh_CN/extensions.json",
+    "extensions/zh_TW/extensions.json"
+  ]
+}

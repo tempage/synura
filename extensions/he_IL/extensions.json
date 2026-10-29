@@ -1,0 +1,36 @@
+{
+  "extensions": [
+    {
+      "name": "carsforum",
+      "description": "carsforum.co.il",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/he_IL/carsforum.js",
+      "api": 0,
+      "domain": "carsforum.co.il",
+      "author": "Synura Team",
+      "icon": "https://carsforum.co.il/favicon.ico",
+      "locale": "he_IL",
+      "tags": [
+        "automotive",
+        "cars",
+        "forum"
+      ]
+    },
+    {
+      "name": "hasolidit",
+      "description": "www.hasolidit.com",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/he_IL/hasolidit.js",
+      "api": 0,
+      "domain": "www.hasolidit.com",
+      "author": "Synura Team",
+      "icon": "https://www.hasolidit.com/favicon.ico",
+      "locale": "he_IL",
+      "tags": [
+        "finance",
+        "investing",
+        "forum"
+      ]
+    }
+  ]
+}

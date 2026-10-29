@@ -4,7 +4,7 @@ var SITE = {
   siteKey: "instiz",
   displayName: "인스티즈",
   browserHomeUrl: "https://www.instiz.net/",
-  browserCookieAuth: false,
+  browserCookieAuth: true,
   minimumHomeBoards: 10,
   defaultCacheTtlMs: 600000,
   showCacheSnackbarByDefault: true,
@@ -74,7 +74,7 @@ var SITE = {
     postViewCount: [".hit"],
     postLikeCount: [".recommend"],
     postCategory: [".board_name", ".cate"],
-    postContent: ["#memo_content", "[id^='memo_content_']", "#content .memo_content", ".view-content"],
+    postContent: ["#content_td .memo_content", "#memo_content", "#memo_content_1", "article[itemprop='articleBody']", "#content .memo_content", ".view-content"],
     commentRows: ["#ajax_comment tr.cmt_view", "#ajax_comment .memo", "#ajax_comment .comment_row"],
     commentAuthor: ["#ajax_comment .cmt_name", "#ajax_comment .name", "#ajax_comment .nick"],
     commentAvatar: ["#ajax_comment .cmt_td img", "#ajax_comment .profile img"],
@@ -93,7 +93,7 @@ var SYNURA = {
   name: "instiz",
   author: "Synura Team",
   description: "www.instiz.net",
-  version: 0.4,
+  version: 0.1, // Intentionally pinned at 0.1.
   api: 0,
   license: "Apache-2.0",
   bypass: "chrome/android",
@@ -109,6 +109,11 @@ var SYNURA = {
 };
 
 var LIST_LINK_ALLOW_PATTERNS = SITE.linkAllowPatterns;
+
+SITE.isAuthRequiredResponse = function (url, status, html) {
+  // Instiz can block requests with a plain 403 page, without challenge markup.
+  if (status === 403) return true;
+};
 
 function extractListItem(row, baseUrl) {
   var info = parseAbsoluteUrl(baseUrl);
@@ -139,10 +144,12 @@ SITE.parseBoardItemsCustom = function (doc, baseUrl, match, boardPage) {
   if (boardId !== "home" && boardId !== "hot.htm") {
     var rows = [];
     var pinnedRows = doc.querySelectorAll("tr[id='detour']");
-    var latestRows = doc.querySelectorAll("tr[id^='list']");
+    var latestRows = doc.querySelectorAll("tr[id]");
     var marketRows = boardId === "market" ? doc.querySelectorAll(".market_item") : [];
     for (var p = 0; p < pinnedRows.length; p++) rows.push(pinnedRows[p]);
-    for (var s = 0; s < latestRows.length; s++) rows.push(latestRows[s]);
+    for (var s = 0; s < latestRows.length; s++) {
+      if (attrOf(latestRows[s], "id").indexOf("list") === 0) rows.push(latestRows[s]);
+    }
     for (var m = 0; m < marketRows.length; m++) rows.push(marketRows[m]);
     var boardItems = [];
     var boardSeen = {};

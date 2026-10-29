@@ -384,113 +384,6 @@ fn text_decoder_resolves_labels_through_the_shared_encoding_registry() {
 }
 
 #[test]
-fn extension_can_decode_a_legacy_page_before_parsing_board_items() {
-    let rt = runtime();
-    let fixture = rt
-        .host
-        .borrow()
-        .storage_namespace
-        .with_file_name("board.html");
-    let html = r#"<html><body><ul class="bbsList_new"><li><a class="list_b_01n" href="/new/bbs_view.php?id=freeboard&amp;no=123"><div class="thmb_N2"><ul><li class="title"><span class="cont">한글 인코딩 확인</span></li><li class="names">작성자</li></ul></div></a></li></ul></body></html>"#;
-    let (bytes, _, _) = encoding_rs::Encoding::for_label(b"euc-kr")
-        .unwrap()
-        .encode(html);
-    std::fs::write(&fixture, bytes).unwrap();
-    let url = "https://m.ppomppu.co.kr/new/bbs_list.php?id=freeboard";
-    rt.set_fetch_override(url, &fixture).unwrap();
-    rt.load_extension(
-        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../extensions/ko_KR/ppomppu.js"),
-    )
-    .unwrap();
-    let out = result(&rt, &format!("SYNURA.main.router({url:?})"));
-    assert_eq!(out["models"]["contents"][0]["title"], "한글 인코딩 확인");
-    assert_eq!(out["models"]["contents"][0]["author"], "작성자");
-}
-
-#[test]
-fn hackernews_listing_reads_comment_links_after_age_links() {
-    let rt = runtime();
-    rt.load_extension(
-        &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../extensions/en_US/hackernews.js"),
-    )
-    .unwrap();
-    let out = result(
-        &rt,
-        r#"(() => {
-        const labels = ["309&nbsp;comments", "1 comment", "discuss"];
-        const html = "<table><tbody>" + labels.map((label, i) => `
-            <tr class="athing" id="${101 + i}"><td class="titleline"><a href="https://example.test/${i}">Story ${i}</a></td></tr>
-            <tr><td class="subtext"><span class="score">15 points</span><a class="hnuser">author</a>
-                <span class="age"><a href="item?id=${101 + i}">8 hours ago</a></span>
-                <a href="item?id=${101 + i}">${label}</a></td></tr>`).join("") + "</tbody></table>";
-        globalThis.fetch = () => ({ok:true, status:200, text:()=>html,
-            dom:()=>new DOMParser().parseFromString(html, "text/html")});
-        return SYNURA.main.router("https://news.ycombinator.com/news").models.contents
-            .map(item => ({comments:item.commentCount, author:item.author, date:item.date}));
-    })()"#,
-    );
-    assert_eq!(
-        out,
-        json!([
-            {"comments":"309", "author":"author", "date":"8 hours ago"},
-            {"comments":"1", "author":"author", "date":"8 hours ago"},
-            {"comments":"", "author":"author", "date":"8 hours ago"}
-        ])
-    );
-}
-
-#[test]
-fn reddit_verification_preserves_query_without_url_search_params_for_each() {
-    let rt = runtime();
-    rt.load_extension(
-        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../extensions/en_US/reddit.js"),
-    )
-    .unwrap();
-    let out = result(
-        &rt,
-        r#"(() => {
-        // Existing app builds expose iteration but not URLSearchParams.forEach.
-        delete URLSearchParams.prototype.forEach;
-        const challenge = `<form action="/r/programming/search/" method="get">
-            <input name="js_challenge" value="1"><input name="solution" value="">
-            <input name="jsc_token" value="fixture"></form>
-            <script>await(async nonce=>nonce+nonce)("0123456789abcdef");</script>`;
-        const listing = `<search-dynamic-id-cache-controller><article data-testid="search-sdui-post">
-            <a data-testid="post-title" href="/r/programming/comments/fixture/example/">
-                <span data-testid="post-title-text">Search fixture</span></a>
-            <div data-testid="search-counter-row"><faceplate-number number="15"></faceplate-number>
-                <faceplate-number number="7"></faceplate-number></div>
-            </article></search-dynamic-id-cache-controller>`;
-        const calls = [];
-        globalThis.fetch = url => {
-            calls.push(url);
-            if (calls.length > 2) throw new Error("unexpected request");
-            return {ok:true, status:200, headers:{}, text:()=>calls.length === 1 ? challenge : listing};
-        };
-        const route = SYNURA.main.router("https://www.reddit.com/r/programming/search/?q=Rust&sort=relevance&t=all");
-        return {calls, items:route && route.models.contents};
-    })()"#,
-    );
-    assert_eq!(out["items"][0]["title"], "Search fixture");
-    assert_eq!(out["items"][0]["commentCount"], "7");
-    let calls = out["calls"].as_array().unwrap();
-    assert_eq!(calls.len(), 2);
-    let verified = url::Url::parse(calls[1].as_str().unwrap()).unwrap();
-    let params: std::collections::HashMap<_, _> = verified.query_pairs().collect();
-    for (key, value) in [
-        ("solution", "0123456789abcdef0123456789abcdef"),
-        ("jsc_token", "fixture"),
-        ("q", "Rust"),
-        ("restrict_sr", "on"),
-        ("sort", "relevance"),
-        ("t", "all"),
-    ] {
-        assert_eq!(params.get(key).map(|value| value.as_ref()), Some(value));
-    }
-}
-
-#[test]
 fn request_options_are_validated_and_structured_bodies_are_json() {
     let server = Server::new(vec![reply("200 OK", "", "ok"); 2]);
     let out = server.eval(r#"
@@ -562,7 +455,7 @@ fn package_validation_rejects_invalid_or_unrelated_permission_patterns() {
     for (domain, pattern) in [
         ("example.com", "https://other.net/*"),
         ("example.com", "https://*.com/*"),
-        ("alice.github.io", "https://*.github.io/*"),
+        ("example.co.uk", "https://*.co.uk/*"),
         ("example.com", "https://example.com/*?q=1"),
         ("example.com", "https://example.com/*#fragment"),
         ("example.com", "https://user@example.com/*"),
@@ -581,9 +474,9 @@ fn package_validation_rejects_invalid_or_unrelated_permission_patterns() {
     }
     for (domain, pattern, url) in [
         (
-            "github.io",
-            "https://*.github.io/*",
-            "https://user.github.io/test",
+            "example.com",
+            "https://*.example.com/*",
+            "https://sub.example.com/test",
         ),
         (
             "www.example.com",

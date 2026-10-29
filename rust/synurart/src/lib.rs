@@ -120,7 +120,12 @@ fn run() -> Result<(), String> {
         .join(".synurart")
         .join("local_storage.json");
 
-    let mut state = ShellState::new(opts.json, storage_path, opts.ext_path.as_deref())?;
+    let mut state = ShellState::new(
+        opts.json,
+        storage_path,
+        opts.ext_path.as_deref(),
+        FetchProxy::from_cli(opts.proxy.as_deref()),
+    )?;
     state.render_load_after_command = opts.eval.is_none();
     if let Some(path) = opts.ext_path.as_deref() {
         state.load(path, !opts.no_home, opts.eval.is_none())?;
@@ -479,7 +484,7 @@ const REPL_COMMAND_SUGGESTIONS: &[&str] = &[
     "help", "h", "?", "load", "quit", "q", "exit", "views", "ls", "v", "view", "render", "home",
     "deeplink", "resume", "event", "refresh", "r", "n", "next", "menu", "query", "submit", "tap",
     "click", "s", "itemmenu", "reorder", "c", "close", "timeout", "locale", "mapurl", "storage",
-    "eval",
+    "eval", "proxy",
 ];
 
 const REPL_EVENT_SUGGESTIONS: &[&str] = &[
@@ -497,6 +502,23 @@ const REPL_EVENT_SUGGESTIONS: &[&str] = &[
     "SCROLL_TO_END",
 ];
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum FetchProxy {
+    System,
+    Disabled,
+    Explicit(String),
+}
+
+impl FetchProxy {
+    fn from_cli(value: Option<&str>) -> Self {
+        match value.map(str::trim) {
+            None | Some("system") => Self::System,
+            Some("" | "clear" | "none" | "off" | "disable") => Self::Disabled,
+            Some(url) => Self::Explicit(url.to_string()),
+        }
+    }
+}
+
 #[derive(Default)]
 struct Options {
     ext_path: Option<PathBuf>,
@@ -504,6 +526,7 @@ struct Options {
     eval: Option<String>,
     json: bool,
     help: bool,
+    proxy: Option<String>,
 }
 
 impl Options {
@@ -518,6 +541,10 @@ impl Options {
                 }
                 "-no-home" | "--no-home" => opts.no_home = true,
                 "-json" | "--json" => opts.json = true,
+                "-proxy" | "--proxy" => {
+                    i += 1;
+                    opts.proxy = args.get(i).cloned();
+                }
                 "-e" | "--eval" => {
                     i += 1;
                     opts.eval = args.get(i).cloned();
@@ -525,6 +552,9 @@ impl Options {
                 "-h" | "--help" => opts.help = true,
                 other if other.starts_with("--ext=") => {
                     opts.ext_path = Some(PathBuf::from(&other["--ext=".len()..]));
+                }
+                other if other.starts_with("--proxy=") => {
+                    opts.proxy = Some(other["--proxy=".len()..].to_string());
                 }
                 other if !other.starts_with('-') && opts.ext_path.is_none() => {
                     opts.ext_path = Some(PathBuf::from(other));
@@ -545,14 +575,21 @@ struct ShellState {
     timeout_ms: u64,
     locale: String,
     render_load_after_command: bool,
+    proxy: FetchProxy,
 }
 
 impl ShellState {
-    fn new(json: bool, storage_path: PathBuf, ext_path: Option<&Path>) -> Result<Self, String> {
+    fn new(
+        json: bool,
+        storage_path: PathBuf,
+        ext_path: Option<&Path>,
+        proxy: FetchProxy,
+    ) -> Result<Self, String> {
         let namespace = ext_path
             .map(|path| absolute_path(path).unwrap_or_else(|_| path.to_path_buf()))
             .unwrap_or_default();
         let runtime = SynurartRuntime::new(json, storage_path.clone(), namespace)?;
+        runtime.set_fetch_proxy_mode(proxy.clone())?;
         Ok(Self {
             runtime,
             json,
@@ -561,6 +598,7 @@ impl ShellState {
             timeout_ms: DEFAULT_TIMEOUT_MS,
             locale: DEFAULT_LOCALE.to_string(),
             render_load_after_command: true,
+            proxy,
         })
     }
 
@@ -570,6 +608,7 @@ impl ShellState {
         self.runtime = runtime;
         self.runtime.set_timeout(self.timeout_ms)?;
         self.runtime.set_locale(&self.locale)?;
+        self.runtime.set_fetch_proxy_mode(self.proxy.clone())?;
         self.ext_path = Some(ext_path.to_path_buf());
         Ok(())
     }
@@ -799,6 +838,30 @@ impl ShellState {
                     json_out(&result);
                 } else if let Some(value) = result.get("result") {
                     println!("{}", stringify_json_value(value));
+                }
+            }
+            "proxy" => {
+                if args.len() > 2 {
+                    return Err("usage: proxy [url|clear|system]".to_string());
+                }
+                if let Some(value) = args.get(1) {
+                    let proxy = FetchProxy::from_cli(Some(value));
+                    self.runtime.set_fetch_proxy_mode(proxy.clone())?;
+                    self.proxy = proxy;
+                }
+                let (mode, url) = match &self.proxy {
+                    FetchProxy::System => ("system", None),
+                    FetchProxy::Disabled => ("disabled", None),
+                    FetchProxy::Explicit(url) => ("explicit", Some(url.as_str())),
+                };
+                if self.json {
+                    json_out(&json!({"type":"proxy","mode":mode,"proxy":url}));
+                } else {
+                    let label = url.unwrap_or(match self.proxy {
+                        FetchProxy::System => "system (environment)",
+                        _ => mode,
+                    });
+                    println!("{} {}", dim("proxy:"), color(label, &[C_BRIGHT_YELLOW]));
                 }
             }
             other => return Err(format!("unknown command: {other} (type 'help')")),
@@ -1320,13 +1383,26 @@ impl SynurartRuntime {
         self.eval_unit(&format!("__synurart_set_timeout({timeout_ms});"))
     }
 
-    /// Set the host's proxy; this setting is not controlled by extension scripts.
+    /// Set an explicit host proxy, or restore system/environment proxies with `None`.
+    /// This setting is not controlled by extension scripts.
     pub fn set_fetch_proxy(&self, proxy: Option<&str>) -> Result<(), String> {
-        let proxy = proxy.map(str::trim).filter(|value| !value.is_empty());
-        if let Some(proxy) = proxy {
-            wreq::Proxy::all(proxy).map_err(|e| format!("invalid proxy: {e}"))?;
+        let mode = match proxy.map(str::trim).filter(|value| !value.is_empty()) {
+            Some(url) => FetchProxy::Explicit(url.to_string()),
+            None => FetchProxy::System,
+        };
+        self.set_fetch_proxy_mode(mode)
+    }
+
+    /// Disable all proxies, including those configured in the environment.
+    pub fn disable_fetch_proxy(&self) {
+        self.host.borrow_mut().fetch_proxy = FetchProxy::Disabled;
+    }
+
+    fn set_fetch_proxy_mode(&self, proxy: FetchProxy) -> Result<(), String> {
+        if let FetchProxy::Explicit(url) = &proxy {
+            wreq::Proxy::all(url).map_err(|e| format!("invalid proxy: {e}"))?;
         }
-        self.host.borrow_mut().fetch_proxy = proxy.map(str::to_string);
+        self.host.borrow_mut().fetch_proxy = proxy;
         Ok(())
     }
 
@@ -1586,7 +1662,7 @@ struct HostState {
     local_storage: HashMap<String, String>,
     fetch_overrides: HashMap<String, String>,
     fetch_scope: Option<FetchScope>,
-    fetch_proxy: Option<String>,
+    fetch_proxy: FetchProxy,
     fetch_cancellation: FetchCancellation,
     transport: Option<HttpTransport>,
     doms: HashMap<i64, DomDoc>,
@@ -1609,7 +1685,7 @@ impl HostState {
             local_storage,
             fetch_overrides: HashMap::new(),
             fetch_scope: None,
-            fetch_proxy: None,
+            fetch_proxy: FetchProxy::System,
             fetch_cancellation: FetchCancellation::default(),
             transport: None,
             doms: HashMap::new(),
@@ -1877,7 +1953,7 @@ impl HostState {
                     TransportSettings {
                         bypass: scope.bypass.as_deref(),
                         timeout_ms: self.timeout_ms,
-                        proxy: self.fetch_proxy.as_deref(),
+                        proxy: &self.fetch_proxy,
                         cancellation: &self.fetch_cancellation,
                     },
                 )?;
@@ -1912,7 +1988,7 @@ impl HostState {
     }
 
     fn dom_query(&mut self, doc_id: i64, node_id: i64, selector: &str) -> Vec<i64> {
-        if selector.contains(',') {
+        if selector.contains(',') || selector_has_unsupported_attr_operator(selector) {
             return Vec::new();
         }
         let Some(doc) = self.doms.get_mut(&doc_id) else {
@@ -2654,6 +2730,36 @@ const BOOTSTRAP: &str = r#"
 })();
 "#;
 
+fn selector_has_unsupported_attr_operator(selector: &str) -> bool {
+    let bytes = selector.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] != b'[' {
+            i += 1;
+            continue;
+        }
+        let start = i + 1;
+        let Some(end_offset) = selector[start..].find(']') else {
+            return false;
+        };
+        let end = start + end_offset;
+        let attr = selector[start..end].trim();
+        if let Some(eq) = attr.find('=') {
+            let before = attr[..eq].trim_end();
+            if before.ends_with('^')
+                || before.ends_with('$')
+                || before.ends_with('*')
+                || before.ends_with('~')
+                || before.ends_with('|')
+            {
+                return true;
+            }
+        }
+        i = end + 1;
+    }
+    false
+}
+
 fn node_matches(node: &NodeRef, selector: &str) -> bool {
     let Some(parent) = node.parent() else {
         return false;
@@ -3104,6 +3210,11 @@ fn render_list(models: &Map<String, Value>, styles: &Map<String, Value>) {
 }
 
 fn render_post(models: &Map<String, Value>, styles: &Map<String, Value>) {
+    let menus = labels_from_model(models.get("menus"));
+    if !menus.is_empty() {
+        println!("  {} {}", dim("menus:"), menus.join(", "));
+    }
+
     let title = model_message_or(models.get("title"), styles.get("title"));
     let author = model_message(models.get("author")).unwrap_or_default();
     let content = details_from_model(models.get("content"));
@@ -3141,6 +3252,10 @@ fn render_post(models: &Map<String, Value>, styles: &Map<String, Value>) {
         comment_threshold(styles, "commentHotThreshold", "hotThreshold"),
         comment_threshold(styles, "commentColdThreshold", "coldThreshold"),
     );
+    let buttons = labels_from_model(models.get("buttons"));
+    if !buttons.is_empty() {
+        println!("  {} {}", dim("buttons:"), buttons.join(", "));
+    }
 }
 
 fn render_post_content_compact(content: &[Value]) {
@@ -4210,6 +4325,14 @@ fn rendered_post_summary(models: &Map<String, Value>, styles: &Map<String, Value
     out.insert("author".to_string(), json!(author.trim()));
     out.insert("contentBlocks".to_string(), json!(content.len()));
     out.insert("commentsCount".to_string(), json!(comments.len()));
+    out.insert(
+        "menus".to_string(),
+        json!(labels_from_model(models.get("menus"))),
+    );
+    out.insert(
+        "buttons".to_string(),
+        json!(labels_from_model(models.get("buttons"))),
+    );
     append_hot_cold_summaries(
         &mut out,
         int_from_value(models.get("hotCount").and_then(model_scalar)),
@@ -4407,6 +4530,10 @@ const HELP_ENTRIES: &[(&str, &str)] = &[
         "Clear storage and persist localStorage changes",
     ),
     ("eval <javascript>", "Evaluate JS in current runtime"),
+    (
+        "proxy [url|clear|system]",
+        "Show, set, disable, or restore system proxies",
+    ),
     ("quit", "Exit shell"),
 ];
 
@@ -4459,8 +4586,8 @@ fn ensure_view_ok(view: &Value, id: i64) -> Result<(), String> {
 }
 
 fn help_text() -> String {
-    "usage: synurart [-ext extension.js] [-json] [-no-home] [-e command]\n\
-commands: load, views, v, view, render, home, deeplink, resume, tap, click, s, itemmenu, reorder, refresh, r, n, next, menu, query, submit, event, close, c, timeout, locale, mapurl, storage, eval, quit"
+    "usage: synurart [-ext extension.js] [-proxy url|off|system] [-json] [-no-home] [-e command]\n\
+commands: load, views, v, view, render, home, deeplink, resume, tap, click, s, itemmenu, reorder, refresh, r, n, next, menu, query, submit, event, close, c, timeout, locale, mapurl, storage, eval, proxy, quit"
         .to_string()
 }
 
@@ -4624,6 +4751,39 @@ mod tests {
         assert_eq!(out["className"], "match bar");
         assert_eq!(out["originalText"], "9");
         assert_eq!(out["cloneText"], "");
+    }
+
+    #[test]
+    fn dom_attribute_selectors_match_app_operator_support() {
+        let rt = runtime();
+        let out = result(
+            &rt,
+            r##"(() => {
+                const doc = new DOMParser().parseFromString(
+                    '<div id="root" data-name="prefix-end" data-tags="one two" lang="ko-KR" data-literal="^=value"></div>'
+                );
+                const root = doc.querySelector("#root");
+                const unsupported = [
+                    '[data-name^="prefix"]', '[data-name$="end"]',
+                    '[data-name*="fix"]', '[data-tags~="two"]', '[lang|="ko"]'
+                ];
+                return {
+                    rejected: unsupported.map(selector => [
+                        doc.querySelector(selector) === null,
+                        doc.querySelectorAll(selector).length,
+                        root.querySelector(selector) === null,
+                        root.querySelectorAll(selector).length
+                    ]),
+                    exists: doc.querySelectorAll('[data-name]').length,
+                    exact: doc.querySelectorAll('[data-name="prefix-end"]').length,
+                    literal: doc.querySelectorAll('[data-literal="^=value"]').length
+                };
+            })()"##,
+        );
+        assert_eq!(out["rejected"], json!(vec![json!([true, 0, true, 0]); 5]));
+        assert_eq!(out["exists"], 1);
+        assert_eq!(out["exact"], 1);
+        assert_eq!(out["literal"], 1);
     }
 
     #[test]

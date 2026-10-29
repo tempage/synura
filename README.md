@@ -9,6 +9,11 @@ Synura is a versatile application that lets you browse content from various sour
 
 - [Synura Android app](https://play.google.com/store/apps/details?id=io.tempage.synura)
 
+## Extension Repositories
+
+* **Stable**: `https://tempage.github.io/synura/extensions.json`
+* **Test**: `https://tempage.github.io/synura/test.json`
+
 ### Private by Default
 
 Synura does not collect personal data by default. Your browsing traffic is not routed through any middle proxy server; your device connects directly to the extension source servers.

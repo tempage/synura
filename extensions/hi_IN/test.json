@@ -4,7 +4,7 @@
       "name": "indusladies",
       "description": "indusladies.com",
       "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/hi_IN/indusladies.js",
+      "url": "https://tempage.github.io/synura/extensions/hi_IN/indusladies.js",
       "api": 0,
       "domain": "indusladies.com",
       "author": "Synura Team",
@@ -17,26 +17,10 @@
       ]
     },
     {
-      "name": "desidime",
-      "description": "www.desidime.com",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/hi_IN/desidime.js",
-      "api": 0,
-      "domain": "www.desidime.com",
-      "author": "Synura Team",
-      "icon": "https://www.desidime.com/favicon.ico",
-      "locale": "hi_IN",
-      "tags": [
-        "deals",
-        "shopping",
-        "coupons"
-      ]
-    },
-    {
       "name": "india_forums",
       "description": "www.indiaforums.com",
       "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/hi_IN/india_forums.js",
+      "url": "https://tempage.github.io/synura/extensions/hi_IN/india_forums.js",
       "api": 0,
       "domain": "www.indiaforums.com",
       "author": "Synura Team",
@@ -45,6 +29,24 @@
       "tags": [
         "entertainment",
         "television",
+        "forum"
+      ]
+    },
+    {
+      "name": "digit",
+      "description": "geek.digit.in",
+      "version": 0.1,
+      "url": "https://tempage.github.io/synura/extensions/hi_IN/digit.js",
+      "api": 0,
+      "domain": "geek.digit.in",
+      "author": "Synura Team",
+      "icon": "https://static.digit.in/assets/logo/Digit-forum-PWA-192.png",
+      "locale": "hi_IN",
+      "tags": [
+        "india",
+        "technology",
+        "gadgets",
+        "hardware",
         "forum"
       ]
     }

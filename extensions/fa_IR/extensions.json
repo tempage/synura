@@ -1,0 +1,35 @@
+{
+  "extensions": [
+    {
+      "name": "bazicenter",
+      "description": "forum.bazicenter.com",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/fa_IR/bazicenter.js",
+      "api": 0,
+      "domain": "forum.bazicenter.com",
+      "author": "Synura Team",
+      "icon": "https://forum.bazicenter.com/favicon.ico",
+      "locale": "fa_IR",
+      "tags": [
+        "gaming",
+        "forum"
+      ]
+    },
+    {
+      "name": "majidonline",
+      "description": "forum.majidonline.com",
+      "version": 0.4,
+      "url": "https://tempage.github.io/synura/extensions/fa_IR/majidonline.js",
+      "api": 0,
+      "domain": "forum.majidonline.com",
+      "author": "Synura Team",
+      "icon": "https://forum.majidonline.com/styles/majidonline/logos/avatar.png",
+      "locale": "fa_IR",
+      "tags": [
+        "technology",
+        "design",
+        "forum"
+      ]
+    }
+  ]
+}

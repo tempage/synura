@@ -1,0 +1,54 @@
+{
+  "extensions": [
+    {
+      "name": "pantip",
+      "description": "pantip.com",
+      "version": 0.4,
+      "url": "https://tempage.github.io/synura/extensions/th_TH/pantip.js",
+      "api": 0,
+      "domain": "pantip.com",
+      "author": "Synura Team",
+      "icon": "https://pantip.com/fav-icon.ico",
+      "locale": "th_TH",
+      "tags": [
+        "general",
+        "discussion",
+        "forum"
+      ]
+    },
+    {
+      "name": "soccersuck",
+      "description": "www.soccersuck.com",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/th_TH/soccersuck.js",
+      "api": 0,
+      "domain": "www.soccersuck.com",
+      "author": "Synura Team",
+      "icon": "https://www.soccersuck.com/favicon.ico",
+      "locale": "th_TH",
+      "tags": [
+        "football",
+        "sports",
+        "forum"
+      ]
+    },
+    {
+      "name": "headlightmag",
+      "description": "community.headlightmag.com",
+      "version": 0.1,
+      "url": "https://tempage.github.io/synura/extensions/th_TH/headlightmag.js",
+      "api": 0,
+      "domain": "community.headlightmag.com",
+      "author": "Synura Team",
+      "icon": "https://community.headlightmag.com/favicon.ico",
+      "locale": "th_TH",
+      "tags": [
+        "thailand",
+        "cars",
+        "automotive",
+        "community",
+        "forum"
+      ]
+    }
+  ]
+}

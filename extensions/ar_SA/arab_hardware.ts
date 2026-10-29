@@ -208,11 +208,11 @@ var SYNURA = {
   name: "arab_hardware",
   author: "Synura Team",
   description: "arabhardware.net",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "ar_SA",
-  icon: "https://arabhardware.net/favicon.ico",
+  icon: "https://arabhardware.net/favicon.png",
   bypass: "chrome/android",
   deeplink: true,
   tags: [

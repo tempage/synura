@@ -254,14 +254,18 @@ var SITE = {
 
 var SYNURA = {
   "domain": "chiebukuro.yahoo.co.jp",
+  "host_permissions": [
+    "https://chiebukuro.yahoo.co.jp/*",
+    "https://detail.chiebukuro.yahoo.co.jp/*"
+  ],
   "name": "yahoo_chiebukuro",
   "author": "Synura Team",
   "description": "chiebukuro.yahoo.co.jp",
-  "version": 0.3,
+  "version": 0.4,
   "api": 0,
   "license": "Apache-2.0",
   "locale": "ja_JP",
-  "icon": "https://s.yimg.jp/c/icon/s/bsc/2.0/favicon.ico",
+  "icon": "https://chiebukuro.yahoo.co.jp/favicon.ico",
   "bypass": "chrome/android",
   "deeplink": true,
   "tags": [

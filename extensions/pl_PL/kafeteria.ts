@@ -202,11 +202,11 @@ var SYNURA = {
   name: "kafeteria",
   author: "Synura Team",
   description: "f.kafeteria.pl",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "pl_PL",
-  icon: "https://f.kafeteria.pl/favicon.ico",
+  icon: "https://kafeteria.pl/staticfiles/icons/icon.png",
   bypass: "chrome/android",
   deeplink: true,
   tags: [

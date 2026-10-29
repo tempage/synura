@@ -205,11 +205,11 @@ var SYNURA = {
   name: "cadetcollegeblog",
   author: "Synura Team",
   description: "cadetcollegeblog.com",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "bn_BD",
-  icon: "https://cadetcollegeblog.com/favicon.ico",
+  icon: "https://cadetcollegeblog.com/wp-content/uploads/2020/04/cropped-ccb_logo-192x192.png",
   bypass: "chrome/android",
   deeplink: true,
   tags: [

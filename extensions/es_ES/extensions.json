@@ -1,0 +1,36 @@
+{
+  "extensions": [
+    {
+      "name": "foros_acb",
+      "description": "foros.acb.com",
+      "version": 0.4,
+      "url": "https://tempage.github.io/synura/extensions/es_ES/foros_acb.js",
+      "api": 0,
+      "domain": "foros.acb.com",
+      "author": "Synura Team",
+      "icon": "https://foros.acb.com/images/style-2/favicon-48x48.png",
+      "locale": "es_ES",
+      "tags": [
+        "basketball",
+        "sports",
+        "forum"
+      ]
+    },
+    {
+      "name": "rankia",
+      "description": "www.rankia.com",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/es_ES/rankia.js",
+      "api": 0,
+      "domain": "www.rankia.com",
+      "author": "Synura Team",
+      "icon": "https://www.rankia.com/favicon.ico",
+      "locale": "es_ES",
+      "tags": [
+        "finance",
+        "investing",
+        "forum"
+      ]
+    }
+  ]
+}

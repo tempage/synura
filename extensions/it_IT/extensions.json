@@ -1,0 +1,20 @@
+{
+  "extensions": [
+    {
+      "name": "tomshw_italia",
+      "description": "forum.tomshw.it",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/it_IT/tomshw_italia.js",
+      "api": 0,
+      "domain": "forum.tomshw.it",
+      "author": "Synura Team",
+      "icon": "https://forum.tomshw.it/favicon.ico",
+      "locale": "it_IT",
+      "tags": [
+        "hardware",
+        "technology",
+        "forum"
+      ]
+    }
+  ]
+}

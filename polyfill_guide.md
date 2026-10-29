@@ -145,6 +145,7 @@ Displays a detailed post with content and comments.
 *   `title` (string): App bar title.
 *   `authorClickable` (bool): If true, author avatar/name is clickable.
 *   `appbar` (object/string): Customizes the app bar (e.g. 'query').
+*   `fullWidth` (bool, default `false`): Removes the post body's horizontal padding, fits body images to the available width while preserving aspect ratio, and hides hot/cold side borders on the post and comments. See [Full-width image posts](post.md#full-width-image-posts) for details and an example.
 
 **Models:**
 *   `author`, `date`, `avatar`, `memo`: Strings.
@@ -235,6 +236,7 @@ The Synura runtime uses a custom, lightweight HTML parser, not a full browser en
 
 *   **Supported Properties**: `textContent`, `innerText`, `tagName`, `className`, `classList`, `dataset`, `id`, `nodeType`, `childNodes`, `firstChild`, `lastChild`, `nextSibling`.
 *   **Supported Methods**: `getAttribute(name)`, `hasAttribute(name)`, `querySelector(selector)`, `querySelectorAll(selector)`, `remove()`, `cloneNode(deep)`.
+*   **Attribute Selectors**: Presence (`[href]`) and exact matches (`[itemprop='articleBody']`) are supported. Partial matches using `^=`, `$=`, `*=`, `~=`, or `|=` return no matches, in both the app and `synurart`. Use supported selectors and filter attribute values in JavaScript when needed.
 *   **NOT Supported**: `innerHTML`, `outerHTML`, `parentElement`, `previousSibling`, `style`, `addEventListener`, etc.
 
 ### Web APIs Available

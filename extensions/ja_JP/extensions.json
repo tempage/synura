@@ -1,0 +1,132 @@
+{
+  "extensions": [
+    {
+      "name": "five_ch",
+      "description": "asahi.5ch.io",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/ja_JP/five_ch.js",
+      "api": 0,
+      "domain": "asahi.5ch.io",
+      "author": "Synura Team",
+      "icon": "https://5ch.io/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "general",
+        "discussion",
+        "forum"
+      ]
+    },
+    {
+      "name": "girlschannel",
+      "description": "girlschannel.net",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/ja_JP/girlschannel.js",
+      "api": 0,
+      "domain": "girlschannel.net",
+      "author": "Synura Team",
+      "icon": "https://girlschannel.net/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "entertainment",
+        "women",
+        "forum"
+      ]
+    },
+    {
+      "name": "hatena_anonymous_diary",
+      "description": "anond.hatelabo.jp",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/ja_JP/hatena_anonymous_diary.js",
+      "api": 0,
+      "domain": "anond.hatelabo.jp",
+      "author": "Synura Team",
+      "icon": "https://anond.hatelabo.jp/images/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "diary",
+        "discussion",
+        "community"
+      ]
+    },
+    {
+      "name": "hatena_bookmark",
+      "description": "b.hatena.ne.jp",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/ja_JP/hatena_bookmark.js",
+      "api": 0,
+      "domain": "b.hatena.ne.jp",
+      "author": "Synura Team",
+      "icon": "https://b.hatena.ne.jp/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "bookmarks",
+        "social-news",
+        "web"
+      ]
+    },
+    {
+      "name": "komachi",
+      "description": "komachi.yomiuri.co.jp",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/ja_JP/komachi.js",
+      "api": 0,
+      "domain": "komachi.yomiuri.co.jp",
+      "author": "Synura Team",
+      "icon": "https://komachi.yomiuri.co.jp/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "advice",
+        "lifestyle",
+        "forum"
+      ]
+    },
+    {
+      "name": "okwave",
+      "description": "okwave.jp",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/ja_JP/okwave.js",
+      "api": 0,
+      "domain": "okwave.jp",
+      "author": "Synura Team",
+      "icon": "https://okwave.jp/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "q&a",
+        "advice",
+        "general"
+      ]
+    },
+    {
+      "name": "teratail",
+      "description": "teratail.com",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/ja_JP/teratail.js",
+      "api": 0,
+      "domain": "teratail.com",
+      "author": "Synura Team",
+      "icon": "https://teratail.com/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "developers",
+        "programming",
+        "q&a"
+      ]
+    },
+    {
+      "name": "yahoo_chiebukuro",
+      "description": "chiebukuro.yahoo.co.jp",
+      "version": 0.4,
+      "url": "https://tempage.github.io/synura/extensions/ja_JP/yahoo_chiebukuro.js",
+      "api": 0,
+      "domain": "chiebukuro.yahoo.co.jp",
+      "author": "Synura Team",
+      "icon": "https://chiebukuro.yahoo.co.jp/favicon.ico",
+      "locale": "ja_JP",
+      "tags": [
+        "q&a",
+        "advice",
+        "general"
+      ]
+    }
+  ]
+}

@@ -205,11 +205,11 @@ var SYNURA = {
   name: "majidonline",
   author: "Synura Team",
   description: "forum.majidonline.com",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "fa_IR",
-  icon: "https://forum.majidonline.com/favicon.ico",
+  icon: "https://forum.majidonline.com/styles/majidonline/logos/avatar.png",
   bypass: "chrome/android",
   deeplink: true,
   tags: [

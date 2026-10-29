@@ -3,6 +3,11 @@
 ## Synura란 무엇인가요?
 Synura는 "확장 프로그램(Extensions)"이라는 강력한 미니 앱을 사용하여 다양한 소스의 콘텐츠를 탐색할 수 있는 다목적 애플리케이션입니다. 브라우저라고 생각하면 되지만, 웹사이트 대신 확장 프로그램을 사용하여 깔끔한 네이티브 앱 형식으로 콘텐츠를 가져옵니다.
 
+## 확장 프로그램 저장소 (Repositories)
+
+* **안정 버전 (Stable)**: `https://tempage.github.io/synura/extensions.json`
+* **테스트 버전 (Test)**: `https://tempage.github.io/synura/test.json`
+
 ## 사용자를 위한 핵심 개념
 
 *   **확장 프로그램 검색**: 도메인(예: `example.com` 또는 `https://example.com`)을 입력하여 해당 도메인에서 `synura.js` 파일을 자동으로 가져옵니다. 프로토콜이 제공되지 않으면 기본적으로 `https://`가 사용됩니다. 이는 공식 웹사이트에서 확장 프로그램을 설치하는 주된 방법입니다.

@@ -8,9 +8,10 @@ from decimal import Decimal, InvalidOperation
 # Configuration
 # Get the directory where the script is located
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-STABLE_OUTPUT_FILE = os.path.join(SCRIPT_DIR, 'extensions.json')
-TEST_OUTPUT_FILE = os.path.join(SCRIPT_DIR, 'test.json')
-DEFAULT_BASE_URL = 'https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/'
+REPO_ROOT = os.path.dirname(SCRIPT_DIR)
+STABLE_OUTPUT_FILE = os.path.join(REPO_ROOT, 'extensions.json')
+TEST_OUTPUT_FILE = os.path.join(REPO_ROOT, 'test.json')
+DEFAULT_BASE_URL = 'https://tempage.github.io/synura/extensions/'
 DEFAULT_REPOSITORY_VERSION = Decimal('1.0')
 REPOSITORY_VERSION_STEP = Decimal('0.1')
 
@@ -32,8 +33,41 @@ STABLE_EXTENSION_PATHS = (
     'basic/router.js',
     'basic/hello_world.js',
     'basic/post.js',
+    'ar_SA/adslgate.js',
+    'ar_SA/arab_hardware.js',
+    'bn_BD/bigganblog.js',
+    'bn_BD/cadetcollegeblog.js',
+    'bn_BD/somewhereinblog.js',
+    'de_DE/computerbase.js',
+    'de_DE/hardwareluxx.js',
     'en_US/reddit.js',
     'en_US/hackernews.js',
+    'en_US/lobsters.js',
+    'en_US/mumsnet.js',
+    'es_419/ba_k.js',
+    'es_419/forosdelweb.js',
+    'es_419/forosperu.js',
+    'es_ES/foros_acb.js',
+    'es_ES/rankia.js',
+    'fa_IR/bazicenter.js',
+    'fa_IR/majidonline.js',
+    'fr_FR/frandroid.js',
+    'fr_FR/hardware_fr.js',
+    'fr_FR/lesnumeriques.js',
+    'he_IL/carsforum.js',
+    'he_IL/hasolidit.js',
+    'hi_IN/desidime.js',
+    'hi_IN/techenclave.js',
+    'id_ID/expatindo.js',
+    'it_IT/tomshw_italia.js',
+    'ja_JP/five_ch.js',
+    'ja_JP/girlschannel.js',
+    'ja_JP/hatena_anonymous_diary.js',
+    'ja_JP/hatena_bookmark.js',
+    'ja_JP/komachi.js',
+    'ja_JP/okwave.js',
+    'ja_JP/teratail.js',
+    'ja_JP/yahoo_chiebukuro.js',
     'ko_KR/fmkorea.js',
     'ko_KR/ppomppu.js',
     'ko_KR/pann.js',
@@ -46,6 +80,37 @@ STABLE_EXTENSION_PATHS = (
     'ko_KR/mlbpark.js',
     'ko_KR/inven.js',
     'ko_KR/theqoo.js',
+    'ko_KR/instiz.js',
+    'ko_KR/todayhumor.js',
+    'ko_KR/naver_webtoon.js',
+    'ko_KR/naver_news.js',
+    'pl_PL/elektroda.js',
+    'pl_PL/forum_gazeta.js',
+    'pl_PL/kafeteria.js',
+    'pl_PL/wykop.js',
+    'pt_BR/adrenaline.js',
+    'pt_PT/forum_da_casa.js',
+    'pt_PT/zwame.js',
+    'ru_RU/habr.js',
+    'ru_RU/linux_org_ru.js',
+    'ru_RU/vc_ru.js',
+    'th_TH/pantip.js',
+    'th_TH/soccersuck.js',
+    'th_TH/headlightmag.js',
+    'tr_TR/donanimhaber.js',
+    'tr_TR/turkhackteam.js',
+    'tr_TR/turkiyeforum.js',
+    'vi_VN/otofun.js',
+    'vi_VN/tinhte.js',
+    'vi_VN/voz.js',
+    'zh_CN/csdn.js',
+    'zh_CN/douban_groups.js',
+    'zh_CN/hupu.js',
+    'zh_CN/stage1st.js',
+    'zh_CN/v2ex.js',
+    'zh_CN/zhihu.js',
+    'zh_TW/coolaler.js',
+    'zh_TW/mobile01.js',
 )
 
 # Files/folders to ignore when scanning
@@ -217,21 +282,23 @@ def collect_extension_entries(dir_path, base_dir, base_url):
 
     return extensions
 
-def next_repository_version(output_file):
+def next_repository_version(output_file, legacy_file=None):
     """
     Read the current top-level repository version and bump it by 0.1.
     """
     current_version = DEFAULT_REPOSITORY_VERSION
 
-    if os.path.exists(output_file):
-        try:
-            with open(output_file, 'r', encoding='utf-8') as f:
-                existing = json.load(f)
-            raw_version = existing.get('version')
-            if raw_version is not None:
-                current_version = Decimal(str(raw_version))
-        except (OSError, json.JSONDecodeError, InvalidOperation, TypeError, ValueError):
-            current_version = DEFAULT_REPOSITORY_VERSION
+    for candidate in (output_file, legacy_file):
+        if candidate and os.path.exists(candidate):
+            try:
+                with open(candidate, 'r', encoding='utf-8') as f:
+                    existing = json.load(f)
+                raw_version = existing.get('version')
+                if raw_version is not None:
+                    current_version = Decimal(str(raw_version))
+                    break
+            except (OSError, json.JSONDecodeError, InvalidOperation, TypeError, ValueError):
+                continue
 
     next_version = current_version + REPOSITORY_VERSION_STEP
     return float(next_version.quantize(REPOSITORY_VERSION_STEP))
@@ -329,6 +396,7 @@ def main():
                 extensions_by_subdir[subdir].extend(extensions)
 
     stable_entries_by_path = stable_extension_entries_by_path(root_extensions, extensions_by_subdir, base_url)
+    stable_urls = {entry['url'] for entry in stable_entries_by_path.values()}
 
     # Generate per-subdir stable and test JSON files with relative includes.
     stable_includes = []
@@ -337,40 +405,60 @@ def main():
         stable_extensions = stable_entries_for_subdir(subdir, stable_entries_by_path)
         stable_json_path = os.path.join(SCRIPT_DIR, subdir, 'extensions.json')
         test_json_path = os.path.join(SCRIPT_DIR, subdir, 'test.json')
-        stable_include_path = f'{subdir}/extensions.json'
-        test_include_path = f'{subdir}/test.json'
+        stable_include_path = f'extensions/{subdir}/extensions.json'
+        test_include_path = f'extensions/{subdir}/test.json'
         stable_file_existed = os.path.exists(stable_json_path)
+        test_file_existed = os.path.exists(test_json_path)
+
+        # Test extensions exclude any extension that has been officially promoted to stable.
+        test_extensions = [e for e in extensions if e.get('url') not in stable_urls]
 
         stable_data = {
             "extensions": stable_extensions
         }
         test_data = {
-            "extensions": extensions
+            "extensions": test_extensions
         }
 
         if stable_extensions:
             write_json(stable_json_path, stable_data)
         elif os.path.exists(stable_json_path):
             os.remove(stable_json_path)
-        write_json(test_json_path, test_data)
+
+        if test_extensions:
+            write_json(test_json_path, test_data)
+        elif os.path.exists(test_json_path):
+            os.remove(test_json_path)
 
         if stable_extensions:
             stable_includes.append(stable_include_path)
-        test_includes.append(test_include_path)
+        if test_extensions:
+            test_includes.append(test_include_path)
+
         if stable_extensions:
             print(f"Generated: {stable_json_path} with {len(stable_extensions)} stable extensions.")
         elif stable_file_existed:
             print(f"Removed empty stable manifest: {stable_json_path}")
         else:
             print(f"Skipped empty stable manifest: {stable_json_path}")
-        print(f"Generated: {test_json_path} with {len(extensions)} test extensions.")
 
-    # Generate the full test/beta repository.
+        if test_extensions:
+            print(f"Generated: {test_json_path} with {len(test_extensions)} test extensions.")
+        elif test_file_existed:
+            print(f"Removed empty test manifest: {test_json_path}")
+        else:
+            print(f"Skipped empty test manifest: {test_json_path}")
+
+    legacy_test_file = os.path.join(SCRIPT_DIR, 'test.json')
+    legacy_stable_file = os.path.join(SCRIPT_DIR, 'extensions.json')
+
+    # Generate the full test/beta repository (excluding stable root-level extensions).
+    root_test_extensions = [e for e in root_extensions if e.get('url') not in stable_urls]
     test_repo_data = build_repository_data(
         "Synura Test Repository",
         "All Synura extensions, including beta and test extensions.",
-        next_repository_version(TEST_OUTPUT_FILE),
-        extensions=root_extensions,
+        next_repository_version(TEST_OUTPUT_FILE, legacy_test_file),
+        extensions=root_test_extensions,
         includes=test_includes
     )
     write_json(TEST_OUTPUT_FILE, test_repo_data)
@@ -380,11 +468,19 @@ def main():
     stable_repo_data = build_repository_data(
         "Synura Stable Repository",
         "Stable Synura extensions.",
-        next_repository_version(STABLE_OUTPUT_FILE),
+        next_repository_version(STABLE_OUTPUT_FILE, legacy_stable_file),
         extensions=stable_entries,
         includes=stable_includes
     )
     write_json(STABLE_OUTPUT_FILE, stable_repo_data)
+
+    # Remove legacy root manifests under extensions/ if present
+    if os.path.exists(legacy_stable_file):
+        os.remove(legacy_stable_file)
+        print(f"Removed legacy manifest: {legacy_stable_file}")
+    if os.path.exists(legacy_test_file):
+        os.remove(legacy_test_file)
+        print(f"Removed legacy manifest: {legacy_test_file}")
     
     total_extensions = len(root_extensions) + sum(len(exts) for exts in extensions_by_subdir.values())
     print(f"\nSuccessfully generated {STABLE_OUTPUT_FILE}")

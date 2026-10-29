@@ -227,11 +227,11 @@ var SYNURA = {
   name: "bigganblog",
   author: "Synura Team",
   description: "bigganblog.org",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "bn_BD",
-  icon: "https://bigganblog.org/favicon.ico",
+  icon: "https://bigganblog.org/wp-content/uploads/2023/09/cropped-Biggan_logo.jpg.png",
   bypass: "chrome/android",
   deeplink: true,
   tags: [

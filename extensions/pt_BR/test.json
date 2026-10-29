@@ -1,26 +1,10 @@
 {
   "extensions": [
     {
-      "name": "adrenaline",
-      "description": "forum.adrenaline.com.br",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_BR/adrenaline.js",
-      "api": 0,
-      "domain": "forum.adrenaline.com.br",
-      "author": "Synura Team",
-      "icon": "https://forum.adrenaline.com.br/favicon.ico",
-      "locale": "pt_BR",
-      "tags": [
-        "hardware",
-        "gaming",
-        "forum"
-      ]
-    },
-    {
       "name": "clube_do_hardware",
       "description": "www.clubedohardware.com.br",
       "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_BR/clube_do_hardware.js",
+      "url": "https://tempage.github.io/synura/extensions/pt_BR/clube_do_hardware.js",
       "api": 0,
       "domain": "www.clubedohardware.com.br",
       "author": "Synura Team",
@@ -36,7 +20,7 @@
       "name": "outer_space",
       "description": "forum.outerspace.com.br",
       "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/pt_BR/outer_space.js",
+      "url": "https://tempage.github.io/synura/extensions/pt_BR/outer_space.js",
       "api": 0,
       "domain": "forum.outerspace.com.br",
       "author": "Synura Team",

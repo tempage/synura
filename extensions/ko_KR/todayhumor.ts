@@ -2,6 +2,7 @@
 
 var SITE = {
   siteKey: "todayhumor",
+  cp: "list-metadata-v1",
   displayName: "오늘의유머",
   browserHomeUrl: "https://www.todayhumor.co.kr/board/list.php?table=bestofbest",
   browserCookieAuth: false,
@@ -62,12 +63,12 @@ var SITE = {
     listLikeCount: [".vote", ".recommend"],
     listCategory: [".board_title", ".cate"],
     listImage: [],
-    postTitle: [".viewSubject", ".board_view .subject"],
-    postAuthor: [".view_writer", ".writer", ".nick"],
-    postAvatar: [".profile img"],
-    postDate: [".view_date", ".regdate", "time[datetime]"],
-    postViewCount: [".view_hit", ".hit"],
-    postLikeCount: [".vote", ".recommend"],
+    postTitle: [".viewSubjectDiv", ".viewSubject", ".board_view .subject"],
+    postAuthor: ["#viewPageWriterNameSpan a", "#viewPageWriterNameSpan"],
+    postAvatar: [".writerInfoContents .profile img"],
+    postDate: [".writerInfoContents .view_date", ".writerInfoContents .regdate"],
+    postViewCount: [".writerInfoContents .view_hit"],
+    postLikeCount: [".writerInfoContents .view_ok_nok"],
     postCategory: [".board_title", ".cate"],
     postContent: ["#content .viewContent", "#content .view_content", "#content .board_view"],
     commentRows: ["#memo_list .memo", ".memo", ".comment-item", ".comment_row", ".comment-row"],
@@ -92,7 +93,7 @@ var SYNURA = {
   name: "todayhumor",
   author: "Synura Team",
   description: "www.todayhumor.co.kr",
-  version: 0.4,
+  version: 0.1, // Intentionally pinned at 0.1.
   api: 0,
   license: "Apache-2.0",
   bypass: "chrome/android",
@@ -108,6 +109,48 @@ var SYNURA = {
 };
 
 var LIST_LINK_ALLOW_PATTERNS = SITE.linkAllowPatterns;
+
+function todayhumorPostMetadata(doc) {
+  var root = firstNode(doc, [".writerInfoContents"]);
+  if (!root) return null;
+  var writer = firstNode(root, ["#viewPageWriterNameSpan"]);
+  var author = writer ? normalizeWhitespace(attrOf(writer, "name")) : "";
+  if (!author) author = firstAuthorText(root, ["#viewPageWriterNameSpan a", "#viewPageWriterNameSpan"]);
+  var originalDate = "";
+  var registeredDate = "";
+  var viewCount = "";
+  var rows = root.querySelectorAll("div");
+  for (var i = 0; i < rows.length; i++) {
+    var text = normalizeWhitespace(textOf(rows[i]));
+    var date = text.match(/^(원글작성시간|원본글 작성시간|(?:베오베\s*|베스트\s*)?등록시간)\s*:\s*(\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}(?::\d{2})?)/);
+    if (date) {
+      if (/^원/.test(date[1])) originalDate = date[2];
+      else registeredDate = date[2];
+    }
+    var views = text.match(/^조회수\s*:\s*([\d,]+)/);
+    if (views) viewCount = parseCount(views[1]);
+  }
+  return { author: author, date: originalDate || registeredDate, viewCount: viewCount };
+}
+
+SITE.preparePostContext = function (context, match, url, doc) {
+  context.todayhumorMetadata = todayhumorPostMetadata(doc);
+  return context;
+};
+
+// The date and view count are label-only rows, with no selectable value element.
+var todayhumorOriginalPostRoute = routePostWithMatch;
+routePostWithMatch = function (url, urlInfo, match, force) {
+  var route = todayhumorOriginalPostRoute(url, urlInfo, match, force);
+  var metadata = route && route.context && route.context.todayhumorMetadata;
+  if (metadata && route.viewData && route.viewData.models) {
+    var fields = ["author", "date", "viewCount"];
+    for (var i = 0; i < fields.length; i++) {
+      if (metadata[fields[i]]) route.viewData.models[fields[i]] = metadata[fields[i]];
+    }
+  }
+  return route;
+};
 
 function extractListItem(row, baseUrl) {
   var item = localCommunityExtractListItem(row, baseUrl, LIST_LINK_ALLOW_PATTERNS);
@@ -158,7 +201,7 @@ function localCommunityExtractListItem(row, baseUrl, linkPatterns) {
 
   var commentCount = hideZeroCount(parseCount(firstText(row, commentCountSelectors)));
   var viewCount = hideZeroCount(parseCount(firstText(row, viewCountSelectors)));
-  var likeCount = hideZeroCount(parseCount(firstText(row, likeCountSelectors)));
+  var likeCount = hideZeroCount(parseCount(firstText(row, likeCountSelectors).split("/")[0]));
   var author = firstAuthorText(row, authorSelectors);
   var avatarSourceSelectors = avatarSelectors.length > 0 ? avatarSelectors : authorSelectors;
   var avatar = imageUrlFromNode(firstNode(row, avatarSourceSelectors), baseUrl);
@@ -406,14 +449,8 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
   "tr.list_tr_humordata",
   "tr[class*='list_tr_']"
 ];
-  SITE.selectors["listLink"] = [
-  ".subject a[href*='view.php'][href*='no=']",
-  "a[href*='view.php'][href*='no=']"
-];
-  SITE.selectors["listTitle"] = [
-  ".subject a[href*='view.php'][href*='no=']",
-  "a[href*='view.php'][href*='no=']"
-];
+  SITE.selectors["listLink"] = [".subject a", "a"];
+  SITE.selectors["listTitle"] = [".subject a"];
   SITE.selectors["listAuthor"] = [
   ".name",
   "td.name"
@@ -571,181 +608,44 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
     if (!out.length) todayhumorParseVisibleComments(doc, url, out, seen);
     return out;
   };
-function todayhumorOwnText(node) {
-    return String(node && node.textContent || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
-  }
-  function todayhumorOwnNodes(root, selectors) {
-    var out = [];
-    for (var i = 0; root && i < selectors.length; i++) {
-      try {
-        var nodes = root.querySelectorAll(selectors[i]);
-        for (var j = 0; nodes && j < nodes.length; j++) out.push(nodes[j]);
-      } catch (e) {}
-    }
-    return out;
-  }
-  function todayhumorOwnFirst(root, selectors) {
-    for (var i = 0; root && i < selectors.length; i++) {
-      try {
-        if (root.matches && root.matches(selectors[i])) return root;
-        var node = root.querySelector(selectors[i]);
-        if (node) return node;
-      } catch (e) {}
-    }
-    return null;
-  }
-  function todayhumorOwnAttr(node, name) {
-    try { return node && node.getAttribute ? String(node.getAttribute(name) || "") : ""; } catch (e) { return ""; }
-  }
-  function todayhumorOwnAbsolute(href, baseUrl) {
-    href = String(href || "").replace(/&amp;/g, "&").trim();
-    if (!href) return "";
-    try { return ensureAbsoluteUrl(href, baseUrl || SITE.browserHomeUrl) || href; } catch (e) {}
-    try { return new URL(href, baseUrl || SITE.browserHomeUrl).href; } catch (e) {}
-    return href;
-  }
-  function todayhumorOwnAllowed(link) {
-    var pattern = "view\\.php\\?[^#]*no=\\d+";
-    if (!pattern) return true;
-    return new RegExp(pattern, "i").test(String(link || ""));
-  }
-  function todayhumorOwnItem(row, baseUrl, index) {
-    var linkNode = todayhumorOwnFirst(row, [
-  ".subject a[href*='view.php'][href*='no=']",
-  "a[href*='view.php'][href*='no=']"
-]);
-    var titleNode = todayhumorOwnFirst(row, [
-  ".subject a[href*='view.php'][href*='no=']",
-  "a[href*='view.php'][href*='no=']"
-]) || linkNode || row;
-    var link = todayhumorOwnAbsolute(todayhumorOwnAttr(linkNode || row, "href"), baseUrl);
-    if (!link || !todayhumorOwnAllowed(link)) return null;
-    var title = todayhumorOwnText(titleNode || linkNode || row);
-    title = title.replace(/\s*\[[0-9,.]+\]\s*$/, "").replace(/\s+/g, " ").trim();
-    if (!title || title.length < 2) return null;
-    return {
-      id: SITE.siteKey + ":own:" + String(link).replace(/[^A-Za-z0-9]+/g, "_").substring(0, 72),
-      link: link,
-      title: title,
-      author: "",
-      avatar: "",
-      date: "",
-      category: SITE.country || "",
-      commentCount: "",
-      viewCount: "",
-      likeCount: "",
-      mediaUrl: "",
-      mediaType: "",
-      types: ["link"],
-      menus: [],
-      hotCount: 0,
-      coldCount: 0
-    };
-  }
-  function todayhumorOwnParseBoardHtml(html, baseUrl) {
-    var doc = new DOMParser().parseFromString(String(html || ""), "text/html");
-    var rows = todayhumorOwnNodes(doc, [
-  "tr.view",
-  "tr[class*='list_tr_']",
-  ".subject a[href*='view.php'][href*='no=']"
-]);
+  // Parse each complete row so the title and its metadata stay together.
+  // The former title-only regex discarded author/date/count cells.
+  function todayhumorParseBoardDocument(doc, baseUrl) {
+    var rows = allNodes(doc, selectorList("listRows", ["tr.view", "tr[class*='list_tr_']"]));
     var out = [];
     var seen = {};
     for (var i = 0; i < rows.length && out.length < 80; i++) {
-      var item = todayhumorOwnItem(rows[i], baseUrl, i);
-      if (!item || seen[item.link]) continue;
+      var item = extractListItem(rows[i], baseUrl);
+      if (!item || !item.link || seen[item.link]) continue;
       seen[item.link] = true;
+      item.id = SITE.siteKey + ":own:" + String(item.link).replace(/[^A-Za-z0-9]+/g, "_").substring(0, 72);
       out.push(item);
     }
     return out;
   }
   SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
-    return todayhumorOwnParseBoardHtml(html, baseUrl);
+    var doc = boardPage && boardPage.doc;
+    if (!doc) doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+    return todayhumorParseBoardDocument(doc, baseUrl);
   };
   SITE.parseBoardItemsCustom = function (doc, baseUrl, match, boardPage) {
-    return todayhumorOwnParseBoardHtml(boardPage && boardPage.html ? boardPage.html : "", baseUrl);
+    return todayhumorParseBoardDocument(doc, baseUrl);
   };
 
-  var todayhumorRegexBoardSpecs = [
-  {
-    "pattern": "<td[^>]+class=[\\\"']subject[\\\"'][\\s\\S]*?<a\\s+href=[\\\"']([^\\\"']*view\\.php\\?[^\\\"']*no=\\d+[^\\\"']*)[\\\"'][^>]*>([\\s\\S]*?)</a>",
-    "linkGroup": 1,
-    "titleGroup": 2
-  }
-];
-  function todayhumorRegexText(value) {
-    return String(value || "")
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/gi, " ")
-      .replace(/&amp;/gi, "&")
-      .replace(/&quot;/gi, String.fromCharCode(34))
-      .replace(/&#39;/gi, "'")
-      .replace(/&lt;/gi, "<")
-      .replace(/&gt;/gi, ">")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-  function todayhumorRegexAbsolute(href, baseUrl) {
-    href = String(href || "").replace(/&amp;/g, "&").trim();
-    if (!href) return "";
-    try { return ensureAbsoluteUrl(href, baseUrl || SITE.browserHomeUrl) || href; } catch (e) {}
-    try { return new URL(href, baseUrl || SITE.browserHomeUrl).href; } catch (e) {}
-    return href;
-  }
-  function todayhumorRegexBoardId(link) {
-    return SITE.siteKey + ":own:" + String(link || "").replace(/[^A-Za-z0-9]+/g, "_").substring(0, 72);
-  }
-  function todayhumorRegexItems(html, baseUrl) {
-    html = String(html || "");
-    var out = [];
-    var seen = {};
-    for (var s = 0; s < todayhumorRegexBoardSpecs.length && out.length < 80; s++) {
-      var spec = todayhumorRegexBoardSpecs[s] || {};
-      var re = new RegExp(spec.pattern, "gi");
-      var match = null;
-      while ((match = re.exec(html)) && out.length < 80) {
-        var link = todayhumorRegexAbsolute(match[spec.linkGroup || 1] || "", baseUrl);
-        var title = todayhumorRegexText(match[spec.titleGroup || 2] || "");
-        if (!link || !title || title.length < 2 || seen[link]) continue;
-        seen[link] = true;
-        out.push({
-          id: todayhumorRegexBoardId(link),
-          link: link,
-          title: title,
-          author: "",
-          avatar: "",
-          date: "",
-          category: SITE.country || "",
-          commentCount: "",
-          viewCount: "",
-          likeCount: "",
-          mediaUrl: "",
-          mediaType: "",
-          types: ["link"],
-          menus: [],
-          hotCount: 0,
-          coldCount: 0
-        });
-      }
-    }
-    return out;
-  }
-  function todayhumorRegexFetchBoard(url) {
+  function todayhumorFetchBoardItems(url) {
     var response = fetchWithLogging(url, buildFetchOptions());
     if (!response) throw new Error("Failed to fetch " + url + " (0)");
-    var html = responseText(response);
-    return todayhumorRegexItems(html, url);
+    var doc = new DOMParser().parseFromString(responseText(response), "text/html");
+    return todayhumorParseBoardDocument(doc, url);
   }
-  var todayhumorRegexPreviousRouteBoardCustom = SITE.routeBoardCustom;
+  var todayhumorPreviousRouteBoardCustom = SITE.routeBoardCustom;
   SITE.routeBoardCustom = function (url, info, match, force) {
     var items = [];
-    try { items = todayhumorRegexFetchBoard(url); } catch (e) {
-      if (todayhumorRegexPreviousRouteBoardCustom) return todayhumorRegexPreviousRouteBoardCustom(url, info, match, force);
+    try { items = todayhumorFetchBoardItems(url); } catch (e) {
+      if (todayhumorPreviousRouteBoardCustom) return todayhumorPreviousRouteBoardCustom(url, info, match, force);
       throw e;
     }
-    if (!items.length && todayhumorRegexPreviousRouteBoardCustom) return todayhumorRegexPreviousRouteBoardCustom(url, info, match, force);
+    if (!items.length && todayhumorPreviousRouteBoardCustom) return todayhumorPreviousRouteBoardCustom(url, info, match, force);
     var board = match && match.board ? match.board : null;
     var page = match && match.page ? match.page : 1;
     var nextUrl = items.length ? SITE.buildNextPageUrl(match, url, page + 1) : "";

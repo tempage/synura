@@ -199,11 +199,11 @@ var SYNURA = {
   name: "pantip",
   author: "Synura Team",
   description: "pantip.com",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "th_TH",
-  icon: "https://pantip.com/favicon.ico",
+  icon: "https://pantip.com/fav-icon.ico",
   bypass: "chrome/android",
   deeplink: true,
   tags: [

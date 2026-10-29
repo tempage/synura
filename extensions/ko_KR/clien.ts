@@ -713,6 +713,28 @@ SITE.parseComments = function (doc, postUrl) {
             var hidden = String(hiddenRaw || "").trim();
             if (hidden) content = [{ type: "text", value: hidden }];
         }
+
+        var attachImgs = allNodes(row, [
+            ".comment-img img",
+            ".comment_img img",
+            "img[data-role='attach-image']",
+            ".comment_image img"
+        ]);
+        var attachBlocks = [];
+        for (var j = 0; j < attachImgs.length; j++) {
+            var aImg = attachImgs[j];
+            var aSrc = imageUrlFromNode(aImg, postUrl) || attrOf(aImg, "src");
+            if (aSrc) {
+                attachBlocks.push({ type: "image", value: aSrc });
+            }
+        }
+        if (attachBlocks.length > 0) {
+            content = (content || []).filter(function (b) {
+                return !attachBlocks.some(function (ab) { return ab.value === b.value; });
+            });
+            content = attachBlocks.concat(content);
+        }
+
         if (!content || content.length === 0) continue;
 
         var author = firstAuthorText(row, SITE.selectors.commentAuthor);
@@ -789,7 +811,7 @@ var SYNURA = {
     domain: "m.clien.net",
     name: "clien",
     description: "m.clien.net",
-    version: 0.7,
+    version: 0.8,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",
@@ -815,6 +837,13 @@ var LIST_VIEW_COUNT_SELECTORS = [".list_hit",".list_view",".hit","[data-role='li
 var LIST_LIKE_COUNT_SELECTORS = [".list_symph",".symph_count",".list_recommend","[data-role='list-like-count']"];
 var LIST_CATEGORY_SELECTORS = [".list_category",".category","[data-role='list-category']"];
 var LIST_IMAGE_SELECTORS = ["img[src]"];
+
+function clienPostLink(link) {
+    var normalized = normalizeUrl(link) || link;
+    // Listing parameters describe the page, not the post's identity.
+    var post = String(normalized || "").match(/^https?:\/\/m\.clien\.net(\/service\/board\/[^/?#]+\/\d+)\/?(?:[?#]|$)/i);
+    return post ? "https://" + SYNURA.domain + post[1] : normalized;
+}
 
 function extractListItem(row, baseUrl) {
     var linkSelectors = selectorList("listLink", LIST_LINK_SELECTORS);
@@ -851,7 +880,7 @@ function extractListItem(row, baseUrl) {
     if (mediaUrl) types.push("image");
 
     return {
-        link: normalizeUrl(link) || link,
+        link: clienPostLink(link),
         title: title,
         author: author,
         avatar: avatar,
@@ -954,7 +983,7 @@ function clienExtractImageBoardItem(row, baseUrl) {
     if (mediaUrl) types.push("image");
 
     return {
-        link: normalizeUrl(link) || link,
+        link: clienPostLink(link),
         title: title,
         author: author,
         avatar: "",

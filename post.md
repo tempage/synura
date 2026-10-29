@@ -14,10 +14,37 @@ The `styles` object controls the appearance and behavior of the view.
 | `appbar` | `object` or `string` | Customizes the app bar. See [List View](list.md#styles) for details. |
 | `authorClickable` | `boolean` | If `true`, enables the author click event. |
 | `categoryClickable` | `boolean` | If `true`, enables the category click event. |
+| `fullWidth` | `boolean` | If `true`, removes horizontal padding from the post body, fits body images to the available width, and hides the hot/cold side borders on the post and comments. Defaults to `false`. See [Full-width image posts](#full-width-image-posts). |
 | `hotThreshold` | `number` | The threshold for displaying the "hot" (left) border for the post body and comments (if comment specific threshold is not set). |
 | `coldThreshold` | `number` | The threshold for displaying the "cold" (right) border for the post body and comments (if comment specific threshold is not set). |
 | `commentHotThreshold` | `number` | The threshold for displaying the "hot" (left) border for comments. Overrides `hotThreshold` for comments. |
 | `commentColdThreshold` | `number` | The threshold for displaying the "cold" (right) border for comments. Overrides `coldThreshold` for comments. |
+
+### Full-width image posts
+
+Set `styles.fullWidth` to `true` for image galleries, webtoons, or other posts whose images should fill the available content width:
+
+- Removes the post body's left and right padding.
+- Fits body images to the available width while preserving their aspect ratio, including enlarging smaller images.
+- Hides the left/right hot and cold borders on both the post body and comments, even when `hotThreshold`, `coldThreshold`, `commentHotThreshold`, or `commentColdThreshold` is set.
+
+The default is `false`, which uses the normal body padding and threshold-based borders. With `fullWidth: true`, vertical image spacing still applies; headers and comments use their usual padding, and comments retain their nesting indentation and image sizing.
+
+```javascript
+synura.open({
+  view: '/views/post',
+  styles: {
+    title: "Image Gallery",
+    fullWidth: true
+  },
+  models: {
+    content: [
+      { type: "image", value: "https://example.com/page-1.jpg" },
+      { type: "image", value: "https://example.com/page-2.jpg" }
+    ]
+  }
+});
+```
 
 ## Models
 The `models` object contains the data to be displayed.

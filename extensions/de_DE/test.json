@@ -1,26 +1,10 @@
 {
   "extensions": [
     {
-      "name": "hardwareluxx",
-      "description": "www.hardwareluxx.de",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/de_DE/hardwareluxx.js",
-      "api": 0,
-      "domain": "www.hardwareluxx.de",
-      "author": "Synura Team",
-      "icon": "https://www.hardwareluxx.de/favicon.ico",
-      "locale": "de_DE",
-      "tags": [
-        "hardware",
-        "technology",
-        "forum"
-      ]
-    },
-    {
       "name": "gutefrage",
       "description": "www.gutefrage.net",
       "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/de_DE/gutefrage.js",
+      "url": "https://tempage.github.io/synura/extensions/de_DE/gutefrage.js",
       "api": 0,
       "domain": "www.gutefrage.net",
       "author": "Synura Team",
@@ -33,18 +17,20 @@
       ]
     },
     {
-      "name": "computerbase",
-      "description": "www.computerbase.de",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/de_DE/computerbase.js",
+      "name": "chefkoch",
+      "description": "chefkoch.de",
+      "version": 0.1,
+      "url": "https://tempage.github.io/synura/extensions/de_DE/chefkoch.js",
       "api": 0,
-      "domain": "www.computerbase.de",
+      "domain": "www.chefkoch.de",
       "author": "Synura Team",
-      "icon": "https://www.computerbase.de/favicon.ico",
+      "icon": "https://www.chefkoch.de/favicon.ico",
       "locale": "de_DE",
       "tags": [
-        "technology",
-        "hardware",
+        "germany",
+        "cooking",
+        "recipes",
+        "lifestyle",
         "forum"
       ]
     }

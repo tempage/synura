@@ -565,7 +565,8 @@ function localFiveChParseSubjectItems(text, boardUrl, match) {
       author: SITE.displayName,
       avatar: "",
       date: localFiveChDateFromThreadId(threadId),
-      category: match && match.board ? match.board.title : localTitleFromBoardUrl(board.boardUrl),
+      // The board name is already in the list header; keep the title row clear.
+      category: "",
       commentCount: count,
       viewCount: "",
       likeCount: "",
@@ -765,7 +766,7 @@ function extractListItem(row, baseUrl) {
     author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
     date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    category: "",
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),

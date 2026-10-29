@@ -1,0 +1,21 @@
+{
+  "name": "Synura Test Repository",
+  "description": "All Synura extensions, including beta and test extensions.",
+  "version": 5.9,
+  "includes": [
+    "extensions/ar_SA/test.json",
+    "extensions/de_DE/test.json",
+    "extensions/es_ES/test.json",
+    "extensions/fa_IR/test.json",
+    "extensions/fr_FR/test.json",
+    "extensions/he_IL/test.json",
+    "extensions/hi_IN/test.json",
+    "extensions/id_ID/test.json",
+    "extensions/it_IT/test.json",
+    "extensions/pt_BR/test.json",
+    "extensions/pt_PT/test.json",
+    "extensions/th_TH/test.json",
+    "extensions/zh_CN/test.json",
+    "extensions/zh_TW/test.json"
+  ]
+}

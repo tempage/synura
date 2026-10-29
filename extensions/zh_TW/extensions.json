@@ -1,0 +1,36 @@
+{
+  "extensions": [
+    {
+      "name": "coolaler",
+      "description": "www.coolaler.com",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/zh_TW/coolaler.js",
+      "api": 0,
+      "domain": "www.coolaler.com",
+      "author": "Synura Team",
+      "icon": "https://www.coolaler.com/favicon.ico",
+      "locale": "zh_TW",
+      "tags": [
+        "hardware",
+        "overclocking",
+        "forum"
+      ]
+    },
+    {
+      "name": "mobile01",
+      "description": "m.mobile01.com",
+      "version": 0.3,
+      "url": "https://tempage.github.io/synura/extensions/zh_TW/mobile01.js",
+      "api": 0,
+      "domain": "m.mobile01.com",
+      "author": "Synura Team",
+      "icon": "https://m.mobile01.com/favicon.ico",
+      "locale": "zh_TW",
+      "tags": [
+        "technology",
+        "lifestyle",
+        "forum"
+      ]
+    }
+  ]
+}

@@ -1,18 +1,38 @@
 {
   "extensions": [
     {
-      "name": "coolaler",
-      "description": "www.coolaler.com",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_TW/coolaler.js",
+      "name": "disp",
+      "description": "disp.cc",
+      "version": 0.1,
+      "url": "https://tempage.github.io/synura/extensions/zh_TW/disp.js",
       "api": 0,
-      "domain": "www.coolaler.com",
+      "domain": "disp.cc",
       "author": "Synura Team",
-      "icon": "https://www.coolaler.com/favicon.ico",
+      "icon": "https://disp.cc/favicon3.ico",
       "locale": "zh_TW",
       "tags": [
-        "hardware",
-        "overclocking",
+        "taiwan",
+        "ptt",
+        "bbs",
+        "news",
+        "forum"
+      ]
+    },
+    {
+      "name": "bahamut",
+      "description": "forum.gamer.com.tw",
+      "version": 0.2,
+      "url": "https://tempage.github.io/synura/extensions/zh_TW/bahamut.js",
+      "api": 0,
+      "domain": "forum.gamer.com.tw",
+      "author": "Synura Team",
+      "icon": "https://forum.gamer.com.tw/favicon.ico",
+      "locale": "zh_TW",
+      "tags": [
+        "taiwan",
+        "acg",
+        "gaming",
+        "anime",
         "forum"
       ]
     },
@@ -20,7 +40,7 @@
       "name": "backpackers",
       "description": "www.backpackers.com.tw",
       "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_TW/backpackers.js",
+      "url": "https://tempage.github.io/synura/extensions/zh_TW/backpackers.js",
       "api": 0,
       "domain": "www.backpackers.com.tw",
       "author": "Synura Team",
@@ -28,22 +48,6 @@
       "locale": "zh_TW",
       "tags": [
         "travel",
-        "forum"
-      ]
-    },
-    {
-      "name": "mobile01",
-      "description": "m.mobile01.com",
-      "version": 0.3,
-      "url": "https://raw.githubusercontent.com/tempage/synura/refs/heads/main/extensions/zh_TW/mobile01.js",
-      "api": 0,
-      "domain": "m.mobile01.com",
-      "author": "Synura Team",
-      "icon": "https://m.mobile01.com/favicon.ico",
-      "locale": "zh_TW",
-      "tags": [
-        "technology",
-        "lifestyle",
         "forum"
       ]
     }
