@@ -2,8 +2,244 @@ import os
 import json
 import re
 import argparse
+import urllib.parse
+from typing import Optional, List, Dict
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
+
+# Extension validation error codes
+EC_DOMAIN_MISMATCH = 9
+EC_INVALID_SCRIPT = 3
+
+class ExtensionValidationError(Exception):
+    def __init__(self, message: str, code: int = 3):
+        super().__init__(message)
+        self.code = code
+
+def is_ip_address(host: str) -> bool:
+    parts = host.split('.')
+    if len(parts) == 4 and all(p.isdigit() and 0 <= int(p) <= 255 for p in parts):
+        return True
+    return ':' in host
+
+def is_public_suffix(host: str) -> bool:
+    return '.' not in host.strip().rstrip('.')
+
+def get_base_domain(host: str) -> str:
+    labels = host.strip().rstrip('.').lower().split('.')
+    return '.'.join(labels[-2:]) if len(labels) >= 2 else host
+
+def host_belongs_to_domain_family(domain_host: str, permission_host: str) -> bool:
+    domain_host = domain_host.strip().rstrip('.').lower()
+    permission_host = permission_host.strip().rstrip('.').lower()
+    if not domain_host or not permission_host:
+        return False
+    if domain_host == permission_host:
+        return True
+    if is_ip_address(domain_host) or is_ip_address(permission_host):
+        return False
+    if domain_host == 'localhost' or permission_host == 'localhost':
+        return False
+    if domain_host.endswith('.' + permission_host) or permission_host.endswith('.' + domain_host):
+        return True
+    return get_base_domain(domain_host) == get_base_domain(permission_host)
+
+def parse_host_permission(pattern: str) -> dict:
+    pattern = pattern.strip()
+    if not pattern:
+        raise ValueError("host_permissions cannot contain empty patterns")
+    if '?' in pattern or '#' in pattern:
+        raise ValueError(f"invalid host permission '{pattern}': query and fragment are not supported")
+    if '://' not in pattern:
+        raise ValueError(f"invalid host permission '{pattern}': scheme is required")
+
+    scheme, rest = pattern.split('://', 1)
+    if scheme not in ('http', 'https', '*'):
+        raise ValueError(f"invalid host permission '{pattern}': scheme must be http, https, or *")
+
+    host_part, _, path = rest.partition('/')
+    path = '/' + path
+    if not host_part or '@' in host_part:
+        raise ValueError(f"invalid host permission '{pattern}': host is required")
+
+    host = host_part.split(':', 1)[0].lower()
+    wildcard = host.startswith('*.')
+    if '*' in host and not wildcard:
+        raise ValueError(f"invalid host permission '{pattern}': wildcard must be the left-most label")
+
+    if wildcard:
+        if host.count('*') != 1:
+            raise ValueError(f"invalid host permission '{pattern}': only one wildcard is allowed")
+        base = host[2:]
+        if not base or '*' in base:
+            raise ValueError(f"invalid host permission '{pattern}': wildcard base is invalid")
+        if is_ip_address(base):
+            raise ValueError(f"invalid host permission '{pattern}': wildcard IP hosts are not supported")
+        if is_public_suffix(base):
+            raise ValueError(f"invalid host permission '{pattern}': wildcard cannot target a public suffix")
+        host = base
+
+    return {
+        'raw': pattern,
+        'scheme': scheme,
+        'host': host,
+        'wildcard': wildcard,
+        'path': path,
+    }
+
+def validate_host_permissions_for_domain(domain: str, patterns: List[str]):
+    domain = domain.strip().lower()
+    if not domain:
+        raise ExtensionValidationError("host_permissions requires a domain", code=EC_DOMAIN_MISMATCH)
+
+    domain_host = domain.split('/')[0].split(':')[0]
+    for pattern in patterns:
+        try:
+            perm = parse_host_permission(pattern)
+        except ValueError as e:
+            raise ExtensionValidationError(str(e), code=EC_INVALID_SCRIPT)
+        if not host_belongs_to_domain_family(domain_host, perm['host']):
+            raise ExtensionValidationError(
+                f"host permission '{perm['raw']}' must stay within SYNURA.domain '{domain}'",
+                code=EC_DOMAIN_MISMATCH
+            )
+
+def effective_host_permissions(domain: str, explicit: Optional[List[str]]) -> List[str]:
+    if not explicit:
+        domain_host = domain.strip().split('/')[0].split(':')[0]
+        return [f"http://{domain_host}/*", f"https://{domain_host}/*"]
+    return explicit
+
+def host_permissions_broaden(old_patterns: List[str], new_patterns: List[str]) -> bool:
+    try:
+        old_perms = [parse_host_permission(p) for p in old_patterns]
+        new_perms = [parse_host_permission(p) for p in new_patterns]
+    except Exception:
+        return True
+
+    def covers(parent, child):
+        if parent['scheme'] != '*' and parent['scheme'] != child['scheme']:
+            return False
+        if parent['wildcard']:
+            if child['host'] != parent['host'] and not child['host'].endswith('.' + parent['host']):
+                return False
+        else:
+            if child['wildcard'] or child['host'] != parent['host']:
+                return False
+        if parent['path'] == '/*' or child['path'] == parent['path']:
+            return True
+        parent_prefix = parent['path'].rstrip('*')
+        return child['path'].startswith(parent_prefix)
+
+    for new_p in new_perms:
+        if new_p['scheme'] == '*':
+            p_http = dict(new_p, scheme='http')
+            p_https = dict(new_p, scheme='https')
+            if not any(covers(old, p_http) for old in old_perms) or not any(covers(old, p_https) for old in old_perms):
+                return True
+        else:
+            if not any(covers(old, new_p) for old in old_perms):
+                return True
+    return False
+
+def validate_icon(domain: str, icon: str):
+    if not icon:
+        return
+    if icon.startswith("emoji:"):
+        if not icon[len("emoji:"):].strip():
+            raise ExtensionValidationError("empty emoji icon", code=EC_INVALID_SCRIPT)
+        return
+    parsed = urllib.parse.urlparse(icon)
+    icon_host = (parsed.netloc or parsed.hostname or '').split(':')[0].lower()
+    if not icon_host:
+        raise ExtensionValidationError(f"invalid icon url: {icon}", code=EC_INVALID_SCRIPT)
+    domain_host = domain.strip().split('/')[0].split(':')[0].lower()
+    if domain_host == icon_host or get_base_domain(domain_host) == get_base_domain(icon_host):
+        return
+    raise ExtensionValidationError(
+        f"icon url host must match domain or share the same base domain. icon: {icon}, domain: {domain}",
+        code=EC_INVALID_SCRIPT
+    )
+
+def validate_bypass(bypass: str):
+    parts = bypass.split('/')
+    browser = parts[0] if parts else ''
+    if browser not in ("chrome", "firefox", "tor"):
+        raise ExtensionValidationError(f"unsupported browser in bypass field: {browser}", code=EC_INVALID_SCRIPT)
+    if len(parts) > 1:
+        os_name = parts[1]
+        if os_name not in ("windows", "linux", "android", "ios", "macos"):
+            raise ExtensionValidationError(f"unsupported os in bypass field: {os_name}", code=EC_INVALID_SCRIPT)
+
+def validate_extension(
+    meta: dict,
+    rel_path: str,
+    existing_ext: Optional[dict] = None,
+    target_url: Optional[str] = None
+):
+    """
+    Validate extension domain and host_permissions rules.
+    """
+    name = meta.get('name') or ''
+    domain = meta.get('domain') or ''
+    is_basic = rel_path.startswith('basic/') or rel_path.startswith('basic\\')
+
+    # 1. Domain presence rule:
+    # SYNURA.domain must not be empty for site extensions.
+    if not is_basic and not domain.strip():
+        raise ExtensionValidationError(
+            f"EC_DOMAIN_MISMATCH ({EC_DOMAIN_MISMATCH}): extension '{name}' in {rel_path} does not specify a domain",
+            code=EC_DOMAIN_MISMATCH
+        )
+
+    # 2. Host match rule when discovering via URL:
+    # Entered URL host and domain must match exactly (ignoring case). Subdomains or partial matches rejected.
+    if target_url and domain:
+        parsed_target = urllib.parse.urlparse(target_url if '://' in target_url else f"https://{target_url}")
+        target_host = (parsed_target.netloc or parsed_target.hostname or '').split(':')[0].lower()
+        if target_host and domain.strip().lower() != target_host:
+            raise ExtensionValidationError(
+                f"EC_DOMAIN_MISMATCH ({EC_DOMAIN_MISMATCH}): domain mismatch: extension claims '{domain}' but was found on '{target_host}'",
+                code=EC_DOMAIN_MISMATCH
+            )
+
+    # 3. Update rule:
+    # Existing domain cannot change on update.
+    if existing_ext:
+        existing_domain = existing_ext.get('domain') or ''
+        if existing_domain and domain and existing_domain.strip().lower() != domain.strip().lower():
+            raise ExtensionValidationError(
+                f"EC_DOMAIN_MISMATCH ({EC_DOMAIN_MISMATCH}): domain mismatch: cannot change extension domain from '{existing_domain}' to '{domain}'",
+                code=EC_DOMAIN_MISMATCH
+            )
+
+    # 4. host_permissions rules:
+    # Permissions must stay within the domain family; wildcards only allowed on leftmost label; public suffix/IP wildcards rejected.
+    host_permissions = meta.get('host_permissions')
+    if host_permissions:
+        if not isinstance(host_permissions, list):
+            raise ExtensionValidationError("host_permissions must be an array of strings", code=EC_INVALID_SCRIPT)
+        validate_host_permissions_for_domain(domain, host_permissions)
+
+    # 5. Check host_permissions broadening on update:
+    if existing_ext and domain:
+        old_domain = existing_ext.get('domain') or domain
+        old_hp = existing_ext.get('host_permissions')
+        new_hp = host_permissions
+        old_effective = effective_host_permissions(old_domain, old_hp)
+        new_effective = effective_host_permissions(domain, new_hp)
+        if host_permissions_broaden(old_effective, new_effective):
+            print(f"Warning: host_permissions_broaden detected for extension '{name}': permissions broadened from {old_effective} to {new_effective}")
+
+    # 6. Icon validation
+    icon = meta.get('icon')
+    if icon and domain:
+        validate_icon(domain, icon)
+
+    # 7. Bypass validation
+    bypass = meta.get('bypass')
+    if bypass:
+        validate_bypass(bypass)
 
 # Configuration
 # Get the directory where the script is located
@@ -192,6 +428,21 @@ def extract_metadata(file_path):
                         return field_match.group(1)  # String value
                     if field_match.group(2) is not None:
                         return field_match.group(2)  # Number value
+
+                # Also resolve identifier lookups (e.g. domain: DC_HOST / domain: e)
+                ident_match = re.search(
+                    r'\b' + name + r'\s*:\s*([a-zA-Z_$][\w$]*)',
+                    synura_block
+                )
+                if ident_match:
+                    ident = ident_match.group(1)
+                    if ident not in ('null', 'undefined', 'true', 'false'):
+                        var_match = re.search(
+                            r'(?:var|let|const|,)\s*' + re.escape(ident) + r'\s*=\s*["\']([^"\']+)["\']',
+                            content
+                        )
+                        if var_match:
+                            return var_match.group(1)
                 return None
             
             def get_array_field(name):
@@ -217,7 +468,9 @@ def extract_metadata(file_path):
                 'license': get_field('license'),
                 'icon': get_field('icon'),
                 'locale': get_field('locale'),
-                'tags': get_array_field('tags')
+                'bypass': get_field('bypass'),
+                'tags': get_array_field('tags'),
+                'host_permissions': get_array_field('host_permissions'),
             }
             return metadata
         return None
@@ -255,10 +508,43 @@ def build_extension_entry(meta, rel_path, base_url):
         entry['locale'] = meta['locale']
     if meta.get('tags'):
         entry['tags'] = meta['tags']
+    if meta.get('host_permissions'):
+        entry['host_permissions'] = meta['host_permissions']
 
     return entry
 
-def collect_extension_entries(dir_path, base_dir, base_url):
+def load_existing_extension_map():
+    """
+    Load existing extension records from extensions.json, test.json,
+    and any subdirectory extensions.json/test.json to check for updates.
+    """
+    existing_map = {}
+
+    def add_from_file(path):
+        if not os.path.exists(path):
+            return
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            for ext in data.get('extensions', []):
+                name = ext.get('name')
+                if name and name not in existing_map:
+                    existing_map[name] = ext
+        except Exception:
+            pass
+
+    add_from_file(STABLE_OUTPUT_FILE)
+    add_from_file(TEST_OUTPUT_FILE)
+
+    if os.path.exists(SCRIPT_DIR):
+        for entry in os.scandir(SCRIPT_DIR):
+            if entry.is_dir() and entry.name not in IGNORE_DIRS:
+                add_from_file(os.path.join(entry.path, 'extensions.json'))
+                add_from_file(os.path.join(entry.path, 'test.json'))
+
+    return existing_map
+
+def collect_extension_entries(dir_path, base_dir, base_url, existing_map=None, validate=True):
     """
     Scan a directory for JS extensions and return repository entries.
     """
@@ -276,6 +562,10 @@ def collect_extension_entries(dir_path, base_dir, base_url):
         print(f"Processing: {rel_path}")
 
         meta = extract_metadata(file_path)
+        if validate and meta:
+            existing_ext = existing_map.get(meta.get('name')) if existing_map else None
+            validate_extension(meta, rel_path, existing_ext=existing_ext)
+
         entry = build_extension_entry(meta, rel_path, base_url)
         if entry:
             extensions.append(entry)
@@ -370,6 +660,8 @@ def main():
     parser = argparse.ArgumentParser(description='Generate extensions.json for Synura repository.')
     parser.add_argument('--url', dest='base_url', default=DEFAULT_BASE_URL,
                         help=f'Base URL for the repository (default: {DEFAULT_BASE_URL})')
+    parser.add_argument('--no-validate', dest='validate', action='store_false', default=True,
+                        help='Skip validation checks (domain mismatch, host_permissions, icon)')
     args = parser.parse_args()
     
     base_url = args.base_url
@@ -377,10 +669,18 @@ def main():
         base_url += '/'
         
     print(f"Generating repository using base URL: {base_url}")
+    if args.validate:
+        print("Extension validation: ENABLED (domain mismatch, host_permissions, icon)")
+    else:
+        print("Extension validation: DISABLED")
+
+    existing_map = load_existing_extension_map() if args.validate else {}
 
     # Root-level extensions live directly under SCRIPT_DIR and should be listed
     # in the top-level repository index.
-    root_extensions = collect_extension_entries(SCRIPT_DIR, SCRIPT_DIR, base_url)
+    root_extensions = collect_extension_entries(
+        SCRIPT_DIR, SCRIPT_DIR, base_url, existing_map=existing_map, validate=args.validate
+    )
 
     # Group extensions by subdirectory
     extensions_by_subdir = defaultdict(list)
@@ -391,7 +691,9 @@ def main():
             subdir = entry.name
             subdir_path = entry.path
 
-            extensions = collect_extension_entries(subdir_path, SCRIPT_DIR, base_url)
+            extensions = collect_extension_entries(
+                subdir_path, SCRIPT_DIR, base_url, existing_map=existing_map, validate=args.validate
+            )
             if extensions:
                 extensions_by_subdir[subdir].extend(extensions)
 
