@@ -9,7 +9,7 @@
 #   make android     - Setup ADB and start server (for Android testing)
 #   make clean       - Clean build artifacts
 
-.PHONY: server fetch synurart test reverse android clean help generate_extensions build build_ko_community_extensions build_local_community_extensions build_all_country_community_extensions
+.PHONY: server fetch synurart test test-common test-worldwide reverse android clean help generate_extensions build build_ko_community_extensions build_local_community_extensions build_all_country_community_extensions build_worldwide_community_extensions
 
 COMMUNITY_EXTENSION_LOCALES = ar_SA bn_BD de_DE en_US es_419 es_ES fa_IR fr_FR he_IL hi_IN id_ID it_IT ja_JP ko_KR pl_PL pt_BR pt_PT ru_RU th_TH tr_TR vi_VN zh_CN zh_TW
 COMMUNITY_EXTENSION_LANGUAGE_ALIASES = ar bn de en es fa fr he hi id it ja ko pl pt ru th tr vi zh
@@ -29,6 +29,8 @@ help:
 	@echo "  make fetch ARGS=\"...\"   - Run fetch client (curl-like)"
 	@echo "  make synurart EXT=...    - Run Synura CLI runtime shell"
 	@echo "  make test                - Run Go helper tests and Rust runtime tests"
+	@echo "  make test-common         - Test shared parser and runtime APIs with synthetic data"
+	@echo "  make test-worldwide      - Test shared APIs and every extension's packaging and scope"
 	@echo "  make reverse             - Setup ADB reverse for Android testing"
 	@echo "  make android             - Setup ADB and start server"
 	@echo "  make generate_extensions - Generate extensions.json from extensions directory"
@@ -81,6 +83,19 @@ test:
 	@echo "Running tests..."
 	go test -v ./cmd/... ./internal/...
 	$(CARGO) test --workspace
+
+build_worldwide_community_extensions:
+	$(MAKE) -C extensions build_worldwide_community_extensions
+
+test-common:
+	$(CARGO) build -p synurart --bin synurart
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s testdata/community_common -p 'test_*.py'
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s testdata/synurart -p 'test_*.py'
+
+test-worldwide: test-common
+	PYTHONDONTWRITEBYTECODE=1 python3 testdata/extensions/check_extension_inventory.py --compile
+	PYTHONDONTWRITEBYTECODE=1 python3 testdata/extensions/check_all_community_content.py
+	PYTHONDONTWRITEBYTECODE=1 python3 testdata/extensions/check_community_scopes.py
 
 # Setup ADB reverse for Android testing
 reverse:

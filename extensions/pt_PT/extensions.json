@@ -3,7 +3,7 @@
     {
       "name": "forum_da_casa",
       "description": "forumdacasa.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/pt_PT/forum_da_casa.js",
       "api": 0,
       "domain": "forumdacasa.com",
@@ -19,7 +19,7 @@
     {
       "name": "zwame",
       "description": "forum.zwame.pt",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/pt_PT/zwame.js",
       "api": 0,
       "domain": "forum.zwame.pt",

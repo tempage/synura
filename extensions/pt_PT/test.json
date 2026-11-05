@@ -3,7 +3,7 @@
     {
       "name": "motorguia",
       "description": "forum.motorguia.net",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/pt_PT/motorguia.js",
       "api": 0,
       "domain": "forum.motorguia.net",
@@ -19,7 +19,7 @@
     {
       "name": "portal_classicos",
       "description": "portalclassicos.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/pt_PT/portal_classicos.js",
       "api": 0,
       "domain": "portalclassicos.com",

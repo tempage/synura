@@ -57,14 +57,8 @@ var SITE = {
       ".ipsType_pageTitle",
       ".forum-title"
     ],
-    "listRows": [
-      "a[href*='/threads/']",
-      "a[href*='/thread/']"
-    ],
-    "listLink": [
-      "a[href*='/threads/']",
-      "a[href*='/thread/']"
-    ],
+    "listRows": [".structItem--thread", ".discussionListItem", ".node-extra", ".nodeLastPost"],
+    "listLink": [".structItem-title a[data-tp-primary]", ".structItem-title a[href]", ".title a.PreviewTooltip", ".title a[href]", "a.node-extra-title", ".lastThreadTitle a[href]"],
     "listTitle": [
       "a[href*='/threads/']",
       "a[href*='/thread/']"
@@ -75,39 +69,17 @@ var SITE = {
       ".stats",
       ".meta"
     ],
-    "listAuthor": [
-      ".username",
-      ".userLink",
-      ".author"
-    ],
-    "listAvatar": [
-      ".avatar img",
-      ".userAvatarImage"
-    ],
-    "listDate": [
-      "time",
-      "time[datetime]"
-    ],
-    "listCommentCount": [
-      ".replies",
-      ".comments",
-      ".reply-count",
-      ".comment-count"
-    ],
-    "listViewCount": [
-      ".views",
-      ".view-count"
-    ],
+    "listAuthor": [".structItem-cell--main .username", ".posterDate .username", ".node-extra-user .username", ".lastThreadUser .username"],
+    "listAvatar": [".structItem-cell--icon .avatar img", ".avatar img"],
+    "listDate": [".structItem-startDate time", ".structItem-startDate .u-dt", ".startDate", "time[datetime]"],
+    "listCommentCount": [".structItem-cell--meta .pairs:first-child dd", ".stats .major dd"],
+    "listViewCount": [".structItem-cell--meta .pairs:last-child dd", ".stats .minor dd"],
     "listLikeCount": [
       ".likes",
       ".vote-count",
       ".recommend"
     ],
-    "listCategory": [
-      ".category",
-      ".forum-title",
-      ".board-title"
-    ],
+    "listCategory": [".label"],
     "listImage": [
 
     ],
@@ -195,9 +167,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -205,7 +175,7 @@ var SYNURA = {
   name: "bazicenter",
   author: "Synura Team",
   description: "forum.bazicenter.com",
-  version: 0.3,
+  version: 0.5,
   api: 0,
   license: "Apache-2.0",
   locale: "fa_IR",
@@ -240,13 +210,11 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
     }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
-    }
+
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
     }
@@ -255,33 +223,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -411,17 +352,26 @@ function localExtractCommentCount(title) {
 }
 
 
+function localListTitleLink(row, baseUrl) {
+  var selectors = selectorList("listLink", []);
+  for (var i = 0; i < selectors.length; i++) {
+    var links = localQuerySelectorAll(row, [selectors[i]]);
+    for (var j = 0; j < links.length; j++) {
+      var url = ensureAbsoluteUrl(attrOf(links[j], "href"), baseUrl);
+      if (localLooksLikePostUrl(url) && localTitleFromNode(links[j])) return links[j];
+    }
+  }
+  return attrOf(row, "href") && localLooksLikePostUrl(ensureAbsoluteUrl(attrOf(row, "href"), baseUrl)) ? row : null;
+}
+
 function extractListItem(row, baseUrl) {
   if (!row) return null;
-  var linkNode = firstNode(row, selectorList("listLink", [])) || (attrOf(row, "href") ? row : null);
+  var linkNode = localListTitleLink(row, baseUrl);
   var link = linkNode ? (normalizeUrl(attrOf(linkNode, "href")) || ensureAbsoluteUrl(attrOf(linkNode, "href"), baseUrl)) : "";
   if (!link || localLooksLikeAssetUrl(link) || !localLooksLikePostUrl(link)) return null;
-  var title = firstNonEmpty([
-    firstText(row, selectorList("listTitle", [])),
-    localTitleFromNode(linkNode)
-  ]);
+  var title = localTitleFromNode(linkNode);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -431,10 +381,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])) || "",
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -462,16 +413,15 @@ function localParseComments(doc, postUrl) {
   var seen = {};
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
-  var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
-    seen[key] = true;
     var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
+    if (!content || content.length === 0) content = text ? [{ type: "text", value: text }] : [];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
+    seen[key] = true;
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -670,3 +620,60 @@ SITE.matchBoard = function (info) {
   SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
 })();
 // END synurart-home-board-seed
+
+// BEGIN verified-reader-boundaries
+(function () {
+  // Match the original by its source marker. Later pages and identical replies
+  // remain replies; neither row position nor message text is a reply identity.
+  var rowSelectors = ["article.message", "li.message"];
+  var bodySelectors = [".message-body .bbWrapper", ".messageText"];
+  var authorSelectors = [".message-name .username", ".message-userDetails .username", ".username"];
+  var dateSelectors = [".message-attribution-main time", "time[datetime]", ".DateTime"];
+
+  function original(row, doc, url) { var links = allNodes(row, [".message-attribution-opposite a", ".postNumber"]);
+    for (var i = 0; i < links.length; i++) if (/^#\s*1$/.test(textOf(links[i]))) return true;
+    return attrOf(row, "data-position") === "0"; }
+  function originalRow(doc, url) {
+    var rows = allNodes(doc, rowSelectors);
+    for (var i = 0; i < rows.length; i++) if (original(rows[i], doc, url)) return rows[i];
+    return null;
+  }
+  function author(row) { return firstAuthorText(row, authorSelectors); }
+  function date(row) { return firstDateText(row, dateSelectors); }
+  // Missing originals must not borrow metadata from a later-page reply.
+  SITE.selectors.postAuthor = [];
+  SITE.selectors.postDate = [];
+  SITE.selectPostContentRoot = function (doc, url) {
+    return firstNode(originalRow(doc, url), bodySelectors);
+  };
+  SITE.parsePostAuthor = function (doc, url) { return author(originalRow(doc, url)); };
+  SITE.parsePostDate = function (doc, url) { return date(originalRow(doc, url)); };
+  SITE.parseComments = function (doc, url) {
+    var rows = allNodes(doc, rowSelectors), out = [], seen = {};
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      if (original(row, doc, url)) continue;
+      var body = firstNode(row, bodySelectors);
+      // Ad rows, buttons and composer forms have no message body.
+      if (!body) continue;
+      var content = parseDetails(body, url);
+      if (!content || !content.length) continue;
+      var id = attrOf(row, "id") || attrOf(body, "id");
+      if (id && seen[id]) continue;
+      if (id) seen[id] = true;
+      var likeText = firstText(row, selectorList("commentLikeCount", []));
+      out.push({id: SITE.siteKey + ":comment:" + (id || i),
+        link: url.split("#")[0] + (id ? "#" + id : "#comment-" + i),
+        author: author(row), date: date(row), content: content,
+        avatar: imageUrlFromNode(firstNode(row, selectorList("commentAvatar", [])), url),
+        likeCount: hideZeroCount(parseCount(likeText)), dislikeCount: "",
+        level: detectCommentLevel(row), menus: [MENU_BROWSER], hotCount: toInt(likeText, 0), coldCount: 0});
+    }
+    return out;
+  };
+  // The DOM parser is authoritative: do not revive rejected rows in a fallback.
+  SITE.fetchPostComments = function (match, url, doc, page, comments) {
+    return Array.isArray(comments) ? comments : SITE.parseComments(doc, url);
+  };
+})();
+// END verified-reader-boundaries

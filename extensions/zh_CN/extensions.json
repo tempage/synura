@@ -3,7 +3,7 @@
     {
       "name": "csdn",
       "description": "blog.csdn.net",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/zh_CN/csdn.js",
       "api": 0,
       "domain": "blog.csdn.net",
@@ -19,7 +19,7 @@
     {
       "name": "douban_groups",
       "description": "www.douban.com",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/zh_CN/douban_groups.js",
       "api": 0,
       "domain": "www.douban.com",
@@ -35,7 +35,7 @@
     {
       "name": "hupu",
       "description": "bbs.hupu.com",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/zh_CN/hupu.js",
       "api": 0,
       "domain": "bbs.hupu.com",
@@ -51,7 +51,7 @@
     {
       "name": "stage1st",
       "description": "stage1st.com",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/zh_CN/stage1st.js",
       "api": 0,
       "domain": "stage1st.com",
@@ -67,7 +67,7 @@
     {
       "name": "v2ex",
       "description": "www.v2ex.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/zh_CN/v2ex.js",
       "api": 0,
       "domain": "www.v2ex.com",
@@ -83,7 +83,7 @@
     {
       "name": "zhihu",
       "description": "www.zhihu.com",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/zh_CN/zhihu.js",
       "api": 0,
       "domain": "www.zhihu.com",
@@ -94,6 +94,13 @@
         "q&a",
         "knowledge",
         "community"
+      ],
+      "host_permissions": [
+        "https://www.zhihu.com/*",
+        "https://zhihu.com/*",
+        "https://zhuanlan.zhihu.com/*",
+        "https://daily.zhihu.com/*",
+        "https://api.zhihu.com/*"
       ]
     }
   ]

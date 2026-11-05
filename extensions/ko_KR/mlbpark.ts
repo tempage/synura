@@ -246,8 +246,9 @@ var SITE = {
       ".recom"
     ],
     "postCategory": [
-      ".cate",
-      ".category"
+      ".titles .word",
+      ".view_head .cate",
+      ".view_head .category"
     ],
     "postContent": [
       "#contentDetail",
@@ -815,9 +816,7 @@ function mlbparkSanitizePostContent(contentRoot) {
     var removable = cloned.querySelectorAll(".tool_cont");
     for (var i = 0; i < removable.length; i++) {
         var node = removable[i];
-        if (node && node.parentNode) {
-            node.parentNode.removeChild(node);
-        }
+        if (node && typeof node.remove === "function") node.remove();
     }
     return cloned;
 }
@@ -987,7 +986,7 @@ var SYNURA = {
     domain: "mlbpark.donga.com",
     name: "mlbpark",
     description: "mlbpark.donga.com",
-    version: 0.2,
+    version: 0.3,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/windows",

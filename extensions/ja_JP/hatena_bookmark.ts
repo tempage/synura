@@ -54,15 +54,9 @@ var SITE = {
       ".ipsType_pageTitle",
       ".forum-title"
     ],
-    "listRows": [
-      "a[href*='/entry/']"
-    ],
-    "listLink": [
-      "a[href*='/entry/']"
-    ],
-    "listTitle": [
-      "a[href*='/entry/']"
-    ],
+    "listRows": [".entrylist-contents"],
+    "listLink": [".entrylist-contents-users a", ".entrylist-contents-body a"],
+    "listTitle": [".entrylist-contents-title a", ".entrylist-contents-title"],
     "listTitleExclude": [
       ".badge",
       ".counter",
@@ -78,16 +72,8 @@ var SITE = {
       ".avatar img",
       ".userAvatarImage"
     ],
-    "listDate": [
-      "time",
-      "time[datetime]"
-    ],
-    "listCommentCount": [
-      ".replies",
-      ".comments",
-      ".reply-count",
-      ".comment-count"
-    ],
+    "listDate": [".entrylist-contents-date"],
+    "listCommentCount": [".entrylist-contents-users a"],
     "listViewCount": [
       ".views",
       ".view-count"
@@ -97,36 +83,16 @@ var SITE = {
       ".vote-count",
       ".recommend"
     ],
-    "listCategory": [
-      ".category",
-      ".forum-title",
-      ".board-title"
-    ],
-    "listImage": [
-
-    ],
-    "postTitle": [
-      ".contentTitle",
-      ".p-title-value",
-      ".ipsType_pageTitle",
-      "h1[itemprop='headline']"
-    ],
-    "postAuthor": [
-      ".message-name .username",
-      ".messageSidebar .username",
-      ".postprofile .username",
-      ".author .username"
-    ],
+    "listCategory": [".entrylist-contents-category"],
+    "listImage": [".entrylist-contents-thumb span", ".entrylist-contents-thumb img"],
+    "postTitle": [".entry-info-title"],
+    "postAuthor": [],
     "postAvatar": [
       ".message-avatar img",
       ".messageSidebar img",
       ".avatar img"
     ],
-    "postDate": [
-      "time[datetime]",
-      ".message-attribution time",
-      ".postdate time"
-    ],
+    "postDate": [],
     "postViewCount": [
       ".view-count"
     ],
@@ -135,17 +101,8 @@ var SITE = {
       ".likes",
       ".vote-count"
     ],
-    "postCategory": [
-      ".breadcrumbs a",
-      ".p-breadcrumbs a"
-    ],
-    "postContent": [
-      ".messageText[itemprop='text']",
-      ".message-body .bbWrapper",
-      ".postbody .content",
-      ".ipsType_richText",
-      ".cooked"
-    ],
+    "postCategory": [".entry-info-category-name"],
+    "postContent": [".js-entry-description-all", ".js-entry-description-short"],
     "commentRows": [
       "article.message",
       ".postbody",
@@ -189,9 +146,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -199,7 +154,7 @@ var SYNURA = {
   name: "hatena_bookmark",
   author: "Synura Team",
   description: "b.hatena.ne.jp",
-  version: 0.3,
+  version: 0.5,
   api: 0,
   license: "Apache-2.0",
   locale: "ja_JP",
@@ -235,12 +190,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -250,33 +202,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -355,11 +280,8 @@ function localBoardIdFromUrl(url) {
 }
 
 function localPostIdFromUrl(url) {
-  var match = String(url || "").match(/[?&](?:id|no|t|tid|thread|topic)=([0-9A-Za-z_-]+)/);
-  if (match) return match[1];
-  match = String(url || "").match(/\/([0-9]{3,})(?:[\/?#]|$)/);
-  if (match) return match[1];
-  return localBoardIdHash(url);
+  // A year or an ID inside the linked article is not a unique local post ID.
+  return localBoardIdHash(String(url || "").split("#")[0]);
 }
 
 function localFindConfiguredBoard(url) {
@@ -416,7 +338,7 @@ function extractListItem(row, baseUrl) {
     localTitleFromNode(linkNode)
   ]);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -426,10 +348,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])),
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -458,15 +381,15 @@ function localParseComments(doc, postUrl) {
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
   var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -491,16 +414,16 @@ function localParseHatenaBookmarkComments(doc, postUrl) {
   var rows = allNodes(doc, [".entry-comment-contents.js-user-bookmark-comment"]);
   var out = [];
   var seen = {};
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], [".entry-comment-text"]);
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
     if (text.indexOf("{{") >= 0) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key]) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     out.push({
       id: SITE.siteKey + ":comment:" + out.length,
       link: postUrl + "#comment-" + out.length,
@@ -624,28 +547,12 @@ SITE.matchBoard = function (info) {
 // BEGIN synurart-own-extension-validation-fix
 (function () {
   SITE.selectors = SITE.selectors || {};
-  SITE.selectors["postTitle"] = [
-  "h1",
-  ".entry-title",
-  ".entry-title-link"
-];
-  SITE.selectors["postAuthor"] = [
-  ".entry-info",
-  ".username",
-  ".author"
-];
-  SITE.selectors["postDate"] = [
-  "time[datetime]",
-  ".date"
-];
-  SITE.selectors["postContent"] = [
-  ".entry-contents",
-  ".bookmark-detail",
-  ".js-entry-detail",
-  ".entry-title",
-  "main",
-  "body"
-];
+  SITE.selectors["postTitle"] = [".entry-info-title"];
+  // Entry pages do not expose the external article's author. Generic author
+  // and date nodes belong to bookmarks/comments, not the entry itself.
+  SITE.selectors["postAuthor"] = [];
+  SITE.selectors["postDate"] = [];
+  SITE.selectors["postContent"] = [".js-entry-description-all", ".js-entry-description-short"];
   SITE.selectors["commentRows"] = [
   ".bookmark-item",
   ".comment",
@@ -656,153 +563,6 @@ SITE.matchBoard = function (info) {
   ".comment-text",
   ".bookmark-comment"
 ];
-  var hatena_bookmarkPostContentSelectors = [
-  ".entry-contents",
-  ".bookmark-detail",
-  ".js-entry-detail",
-  ".entry-title",
-  "main",
-  "body"
-];
-  var hatena_bookmarkPreviousFilterPostContent = SITE.filterPostContent;
-  function hatena_bookmarkText(node) {
-    return String(node && node.textContent || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
-  }
-  function hatena_bookmarkNodes(root, selectors) {
-    var out = [];
-    for (var i = 0; root && selectors && i < selectors.length; i++) {
-      try {
-        var nodes = root.querySelectorAll(selectors[i]);
-        for (var j = 0; nodes && j < nodes.length; j++) out.push(nodes[j]);
-      } catch (e) {}
-    }
-    return out;
-  }
-  function hatena_bookmarkDetailsFromRoot(root, url) {
-    if (!root) return [];
-    var text = hatena_bookmarkText(root);
-    if (text.length < 2) return [];
-    var details = [];
-    try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-    if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-    return details;
-  }
-  SITE.filterPostContent = function (content, url, doc, page, match) {
-    var previous = [];
-    try {
-      if (hatena_bookmarkPreviousFilterPostContent) previous = hatena_bookmarkPreviousFilterPostContent(content, url, doc, page, match) || [];
-    } catch (e) {}
-    var nodes = hatena_bookmarkNodes(doc, hatena_bookmarkPostContentSelectors);
-    var seen = {};
-    var out = [];
-    for (var i = 0; i < nodes.length && out.length < 80; i++) {
-      var text = hatena_bookmarkText(nodes[i]);
-      var key = text.substring(0, 220).toLowerCase();
-      if (!key || seen[key]) continue;
-      seen[key] = true;
-      var details = hatena_bookmarkDetailsFromRoot(nodes[i], url);
-      for (var j = 0; j < details.length && out.length < 80; j++) out.push(details[j]);
-      if (out.length && hatena_bookmarkPostContentSelectors[i] !== "body") break;
-    }
-    if (!out.length) out = previous;
-    if (!out.length) {
-      var title = "";
-      try { title = firstNonEmpty([firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["meta[property='og:description']", "meta[name='description']", "title"])]); } catch (e) {}
-      if (title) out = [{ type: "text", value: title }];
-    }
-    return out;
-  };
-  var hatena_bookmarkCommentRowSelectors = [
-  ".bookmark-item",
-  ".comment",
-  ".entry-comment"
-];
-  var hatena_bookmarkCommentContentSelectors = [
-  ".comment",
-  ".comment-text",
-  ".bookmark-comment"
-];
-  var hatena_bookmarkCommentSummarySelectors = [
-  ".bookmark-item",
-  ".comment",
-  ".entry-comment",
-  "h1",
-  ".entry-title",
-  ".entry-title-link"
-];
-  var hatena_bookmarkPreviousFetchPostComments = SITE.fetchPostComments;
-  function hatena_bookmarkMergeComment(target, seen, item) {
-    if (!item || !item.content) return;
-    var text = "";
-    for (var i = 0; i < item.content.length; i++) text += " " + (item.content[i] && item.content[i].value || "");
-    text = text.replace(/\s+/g, " ").trim();
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key]) return;
-    seen[key] = true;
-    target.push(item);
-  }
-  function hatena_bookmarkParseVisibleComments(doc, url, target, seen) {
-    var rows = hatena_bookmarkNodes(doc, hatena_bookmarkCommentRowSelectors);
-    for (var i = 0; i < rows.length && target.length < 80; i++) {
-      var root = null;
-      try { root = firstNode(rows[i], hatena_bookmarkCommentContentSelectors); } catch (e) {}
-      root = root || rows[i];
-      var text = hatena_bookmarkText(root);
-      if (text.length < 2 || text.length > 5000) continue;
-      var details = [];
-      try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-      if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-      var domId = "";
-      try { domId = attrOf(rows[i], "id"); } catch (e) {}
-      hatena_bookmarkMergeComment(target, seen, {
-        id: SITE.siteKey + ":comment:" + target.length,
-        link: url + (domId ? ("#" + domId) : ("#comment-" + target.length)),
-        author: "",
-        avatar: "",
-        date: "",
-        content: details,
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
-  }
-  SITE.fetchPostComments = function (match, url, doc, page, comments) {
-    var out = [];
-    var seen = {};
-    var existing = Array.isArray(comments) ? comments : [];
-    for (var i = 0; i < existing.length; i++) hatena_bookmarkMergeComment(out, seen, existing[i]);
-    try {
-      if (hatena_bookmarkPreviousFetchPostComments) {
-        var fetched = hatena_bookmarkPreviousFetchPostComments(match, url, doc, page, existing) || [];
-        for (var j = 0; j < fetched.length; j++) hatena_bookmarkMergeComment(out, seen, fetched[j]);
-      }
-    } catch (e) {}
-    if (!out.length) hatena_bookmarkParseVisibleComments(doc, url, out, seen);
-    if (!out.length) {
-      var summary = "";
-      try { summary = firstNonEmpty([firstText(doc, hatena_bookmarkCommentSummarySelectors), firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["title"])]); } catch (e) {}
-      summary = String(summary || SITE.displayName || "Comments").replace(/\s+/g, " ").trim();
-      if (summary) hatena_bookmarkMergeComment(out, seen, {
-        id: SITE.siteKey + ":comment:summary",
-        link: url + "#comments",
-        author: SITE.displayName,
-        avatar: "",
-        date: "",
-        content: [{ type: "text", value: summary }],
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
-    return out;
-  };
 })();
 // END synurart-own-extension-validation-fix
 // BEGIN synurart-home-board-seed
@@ -884,3 +644,20 @@ SITE.matchBoard = function (info) {
   SITE.defaultVisibleBoardIds = seededHomeBoards.slice(0, 10).map(function (board) { return board.id; });
 })();
 // END synurart-home-board-seed
+
+SITE.parsePostDate = function (doc) {
+  // Bookmark comments also have datePublished attributes. Read entry metadata
+  // explicitly so a comment's timestamp cannot become the post date.
+  return firstNonEmpty([
+    attrOf(firstNode(doc, ["[data-entry-created]"]), "data-entry-created"),
+    attrOf(firstNode(doc, ["meta[itemprop='datePublished']"]), "content")
+  ]);
+};
+
+// Bookmark pages contain a source link and an excerpt, not the source article.
+SITE.filterPostContent = function (content, url, doc) {
+  var source = firstNode(doc, [".entry-info-title a"]);
+  var link = ensureAbsoluteUrl(attrOf(source, "href"), url);
+  var out = link ? [{ type: "link", value: textOf(source) || link, link: link }] : [];
+  return out.concat(content || []);
+};

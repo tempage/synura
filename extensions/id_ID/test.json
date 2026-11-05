@@ -3,7 +3,7 @@
     {
       "name": "kaskus",
       "description": "kaskus.co.id",
-      "version": 0.1,
+      "version": 0.3,
       "url": "https://tempage.github.io/synura/extensions/id_ID/kaskus.js",
       "api": 0,
       "domain": "kaskus.co.id",
@@ -15,12 +15,17 @@
         "community",
         "lifestyle",
         "forum"
+      ],
+      "host_permissions": [
+        "https://kaskus.co.id/*",
+        "https://www.kaskus.co.id/*",
+        "https://m.kaskus.co.id/*"
       ]
     },
     {
       "name": "ads_id",
       "description": "ads.id",
-      "version": 0.1,
+      "version": 0.3,
       "url": "https://tempage.github.io/synura/extensions/id_ID/ads_id.js",
       "api": 0,
       "domain": "www.ads.id",
@@ -37,7 +42,7 @@
     {
       "name": "bersosial",
       "description": "forum.bersosial.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/id_ID/bersosial.js",
       "api": 0,
       "domain": "forum.bersosial.com",

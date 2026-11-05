@@ -1725,7 +1725,7 @@ var SYNURA = {
     domain: "m.ppomppu.co.kr",
     name: "ppomppu",
     description: "m.ppomppu.co.kr",
-    version: 0.3,
+    version: 0.4,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",

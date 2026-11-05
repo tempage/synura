@@ -143,7 +143,9 @@ var SITE = {
       ".cate"
     ],
     "listImage": [
-      "img"
+      ".thumb img",
+      "img.thumb",
+      "a.subject-link img"
     ],
     "postTitle": [
       ".articleTitle h1",
@@ -893,7 +895,7 @@ var SYNURA = {
     domain: "www.inven.co.kr",
     name: "inven",
     description: "www.inven.co.kr",
-    version: 0.2,
+    version: 0.3,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/windows",
@@ -917,7 +919,7 @@ var LIST_COMMENT_COUNT_SELECTORS = [".cmt",".comment"];
 var LIST_VIEW_COUNT_SELECTORS = [".view"];
 var LIST_LIKE_COUNT_SELECTORS = [".reco"];
 var LIST_CATEGORY_SELECTORS = [".cate"];
-var LIST_IMAGE_SELECTORS = ["img"];
+var LIST_IMAGE_SELECTORS = [".thumb img", "img.thumb", "a.subject-link img"];
 
 function invenExpandedGalleryTitle(row, title, imageSelectors) {
     var visibleTitle = normalizeWhitespace(title || "");

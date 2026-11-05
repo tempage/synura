@@ -3,7 +3,7 @@
     {
       "name": "donanimhaber",
       "description": "forum.donanimhaber.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/tr_TR/donanimhaber.js",
       "api": 0,
       "domain": "forum.donanimhaber.com",
@@ -19,7 +19,7 @@
     {
       "name": "turkhackteam",
       "description": "www.turkhackteam.org",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/tr_TR/turkhackteam.js",
       "api": 0,
       "domain": "www.turkhackteam.org",
@@ -35,7 +35,7 @@
     {
       "name": "turkiyeforum",
       "description": "www.turkiyeforum.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/tr_TR/turkiyeforum.js",
       "api": 0,
       "domain": "www.turkiyeforum.com",

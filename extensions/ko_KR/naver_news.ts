@@ -754,7 +754,7 @@ var SYNURA = {
   name: "naver_news",
   author: "Synura Team",
   description: "news.naver.com",
-  version: 0.1, // Intentionally pinned at 0.1.
+  version: 0.2,
   api: 0,
   license: "Apache-2.0",
   locale: "ko_KR",

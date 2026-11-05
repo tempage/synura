@@ -169,14 +169,7 @@ var SITE = {
       "meta[property='og:title']",
       "title"
     ],
-    "postAuthor": [
-      "[itemprop='author']",
-      ".username",
-      ".user-name",
-      ".name",
-      ".author",
-      "[class*='display_name']"
-    ],
+    "postAuthor": [],
     "postAvatar": [
       ".avatar img",
       ".messageSidebar img",
@@ -210,13 +203,7 @@ var SITE = {
       ".tag",
       "a[href*='/tags/']"
     ],
-    "postContent": [
-      "#hatena-anond .section",
-      ".section",
-      ".body",
-      "article",
-      "main"
-    ],
+    "postContent": ["#hatena-anond .section", ".section", ".body", "article"],
     "commentRows": [
       "#trackback .section",
       ".trackback",
@@ -263,9 +250,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -273,7 +258,7 @@ var SYNURA = {
   "name": "hatena_anonymous_diary",
   "author": "Synura Team",
   "description": "anond.hatelabo.jp",
-  "version": 0.3,
+  "version": 0.5,
   "api": 0,
   "license": "Apache-2.0",
   "locale": "ja_JP",
@@ -310,12 +295,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -325,33 +307,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -491,7 +446,7 @@ function extractListItem(row, baseUrl) {
     localTitleFromNode(linkNode)
   ]);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -501,10 +456,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])),
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -538,39 +494,42 @@ function localHatenaReactionLabelFromUrl(url) {
   return id ? ("anond:" + id) : "";
 }
 
-function localHatenaReactionLevel(row) {
-  var level = 0;
-  var node = row ? row.parentNode : null;
-  while (node) {
-    var tagName = String(node.tagName || "").toLowerCase();
-    if (tagName === "li") level++;
-    var className = String(node.className || "");
-    if (className.indexOf("refererlist") >= 0) break;
-    node = node.parentNode;
+function localHatenaReactionRows(root) {
+  var rows = [];
+  function visit(node, level) {
+    if (!node) return;
+    if (String(node.tagName || "").toLowerCase() === "li") {
+      rows.push({ node: node, level: Math.min(level, 8) });
+      level++;
+    }
+    var children = node.childNodes || [];
+    for (var i = 0; i < children.length; i++) visit(children[i], level);
   }
-  return Math.min(level, 8);
+  visit(root, 0);
+  return rows;
 }
+
 
 function localParseHatenaAnonymousDiaryReactions(doc, postUrl) {
   var root = firstNode(doc, [".refererlist"]);
   if (!root) return [];
-  var rows = allNodes(root, ["li"]);
+  var rows = localHatenaReactionRows(root);
   var currentUrl = (normalizeUrl(postUrl) || postUrl || "").split("#")[0];
   var seen = {};
   var out = [];
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
-    var header = firstNode(rows[i], [".trackback-header"]);
+  for (var i = 0; i < rows.length; i++) {
+    var header = firstNode(rows[i].node, [".trackback-header"]);
     if (!header) continue;
     var linkNode = firstNode(header, ["a[href*='anond.hatelabo.jp/20']", "a[href^='/20']", "a[href]"]);
     var link = normalizeUrl(attrOf(linkNode, "href")) || ensureAbsoluteUrl(attrOf(linkNode, "href"), postUrl);
     link = link ? link.split("#")[0] : "";
     if (!link || !localLooksLikePostUrl(link) || link === currentUrl || seen[link]) continue;
-    var contentRoot = firstNode(rows[i], [".box-curve", "[id^='excerpt-']"]);
+    var contentRoot = firstNode(rows[i].node, [".box-curve", "[id^='excerpt-']"]);
     var text = textOf(contentRoot);
-    if (text.length < 2) continue;
+    var content = parseDetails(contentRoot, link) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
     seen[link] = true;
-    var content = parseDetails(contentRoot, link);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var label = localHatenaReactionLabelFromUrl(link) || localTitleFromNode(linkNode) || SITE.displayName;
     out.push({
       id: SITE.siteKey + ":reaction:" + localPostIdFromUrl(link),
@@ -581,7 +540,7 @@ function localParseHatenaAnonymousDiaryReactions(doc, postUrl) {
       content: content,
       likeCount: "",
       dislikeCount: "",
-      level: localHatenaReactionLevel(rows[i]),
+      level: rows[i].level,
       menus: [LOCAL_OPEN_REACTION_POST_MENU, MENU_BROWSER],
       hotCount: 0,
       coldCount: 0
@@ -600,15 +559,15 @@ function localParseComments(doc, postUrl) {
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
   var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -755,3 +714,5 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+
+SITE.contentExcludeSelectors = ["h3", ".sectionfooter", ".share-button", ".ad-banner"];

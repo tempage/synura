@@ -221,6 +221,31 @@ Extensions must be hosted on approved domains:
 - `bitbucket.org`
 - `gitee.com`
 
+## Parser regression tests
+
+After changing TypeScript, run `make -j4 build_worldwide_community_extensions`
+from the repository root to regenerate the distributed JavaScript.
+
+Run `make test-common` for shared TS library and synurart API regressions.
+`testdata/community_common/` compiles a handwritten test extension with
+`community_common.ts`; `testdata/synurart/` exercises view lifecycle APIs through
+the repository's examples. Data, users, content, and URLs are invented. These
+tests cover URL resolution, media, metadata, selectors, content boundaries,
+comment preservation, and view events without loading a production site parser.
+
+Run `make test-worldwide` to add the generic checks in `testdata/extensions/`:
+load every distributed extension, compile TypeScript in temporary storage,
+compare packaged metadata, and check configured fetch scopes and empty-response
+contracts. External transport is blocked or stubbed. The distributed JavaScript
+files are preserved during tests. These checks do not establish live parsing or
+mobile rendering correctness.
+
+Keep public tests focused on shared library/runtime behavior and generated data.
+Do not add captured posts, real author identifiers, article or image URLs,
+scraped HTML/API responses, or diagnostic dumps containing them to test code or
+fixtures. Generated local audit reports stay in the Git-ignored `reports/`
+directory and are not test inputs.
+
 ## License
 
 Apache-2.0

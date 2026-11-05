@@ -811,7 +811,7 @@ var SYNURA = {
     domain: "m.clien.net",
     name: "clien",
     description: "m.clien.net",
-    version: 0.8,
+    version: 0.9,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",

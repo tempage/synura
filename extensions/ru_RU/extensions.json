@@ -3,7 +3,7 @@
     {
       "name": "habr",
       "description": "habr.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/ru_RU/habr.js",
       "api": 0,
       "domain": "habr.com",
@@ -19,7 +19,7 @@
     {
       "name": "linux_org_ru",
       "description": "www.linux.org.ru",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/ru_RU/linux_org_ru.js",
       "api": 0,
       "domain": "www.linux.org.ru",
@@ -35,7 +35,7 @@
     {
       "name": "vc_ru",
       "description": "vc.ru",
-      "version": 0.4,
+      "version": 0.6,
       "url": "https://tempage.github.io/synura/extensions/ru_RU/vc_ru.js",
       "api": 0,
       "domain": "vc.ru",

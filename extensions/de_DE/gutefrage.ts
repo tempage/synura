@@ -54,12 +54,8 @@ var SITE = {
       ".ipsType_pageTitle",
       ".forum-title"
     ],
-    "listRows": [
-      "a[href*='/frage/']"
-    ],
-    "listLink": [
-      "a[href*='/frage/']"
-    ],
+    "listRows": ["article.ListingElement", "[data-testid=\"question-list-item\"]", ".QuestionListItem"],
+    "listLink": ["a.ListingElement-questionLink", "a[href*=\"/frage/\"]"],
     "listTitle": [
       "a[href*='/frage/']"
     ],
@@ -69,25 +65,13 @@ var SITE = {
       ".stats",
       ".meta"
     ],
-    "listAuthor": [
-      ".username",
-      ".userLink",
-      ".author"
-    ],
+    "listAuthor": [".ContentMeta-author a", ".ContentMeta-author"],
     "listAvatar": [
       ".avatar img",
       ".userAvatarImage"
     ],
-    "listDate": [
-      "time",
-      "time[datetime]"
-    ],
-    "listCommentCount": [
-      ".replies",
-      ".comments",
-      ".reply-count",
-      ".comment-count"
-    ],
+    "listDate": ["gf-relative-time[datetime]", "time[datetime]"],
+    "listCommentCount": [".ListingElement-padding .Link"],
     "listViewCount": [
       ".views",
       ".view-count"
@@ -102,9 +86,7 @@ var SITE = {
       ".forum-title",
       ".board-title"
     ],
-    "listImage": [
-
-    ],
+    "listImage": [".ListingElement-image img"],
     "postTitle": [
       "h1[itemprop='name']",
       "h1",
@@ -210,9 +192,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -220,7 +200,7 @@ var SYNURA = {
   name: "gutefrage",
   author: "Synura Team",
   description: "www.gutefrage.net",
-  version: 0.3,
+  version: 0.5,
   api: 0,
   license: "Apache-2.0",
   locale: "de_DE",
@@ -256,13 +236,11 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
     }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
-    }
+
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
     }
@@ -271,33 +249,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -427,17 +378,26 @@ function localExtractCommentCount(title) {
 }
 
 
+function localListTitleLink(row, baseUrl) {
+  var selectors = selectorList("listLink", []);
+  for (var i = 0; i < selectors.length; i++) {
+    var links = localQuerySelectorAll(row, [selectors[i]]);
+    for (var j = 0; j < links.length; j++) {
+      var url = ensureAbsoluteUrl(attrOf(links[j], "href"), baseUrl);
+      if (localLooksLikePostUrl(url) && localTitleFromNode(links[j])) return links[j];
+    }
+  }
+  return attrOf(row, "href") && localLooksLikePostUrl(ensureAbsoluteUrl(attrOf(row, "href"), baseUrl)) ? row : null;
+}
+
 function extractListItem(row, baseUrl) {
   if (!row) return null;
-  var linkNode = firstNode(row, selectorList("listLink", [])) || (attrOf(row, "href") ? row : null);
+  var linkNode = localListTitleLink(row, baseUrl);
   var link = linkNode ? (normalizeUrl(attrOf(linkNode, "href")) || ensureAbsoluteUrl(attrOf(linkNode, "href"), baseUrl)) : "";
   if (!link || localLooksLikeAssetUrl(link) || !localLooksLikePostUrl(link)) return null;
-  var title = firstNonEmpty([
-    firstText(row, selectorList("listTitle", [])),
-    localTitleFromNode(linkNode)
-  ]);
+  var title = firstText(linkNode, [".Question-title"]) || localTitleFromNode(linkNode);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -447,10 +407,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])) || "",
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -478,16 +439,15 @@ function localParseComments(doc, postUrl) {
   var seen = {};
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
-  var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
-    seen[key] = true;
     var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
+    if (!content || content.length === 0) content = text ? [{ type: "text", value: text }] : [];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
+    seen[key] = true;
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -526,16 +486,16 @@ function localParseGutefrageComments(doc, postUrl) {
   var rows = allNodes(doc, ["article.Plate--answer", "article.Comment[id^='comment-']"]);
   var out = [];
   var seen = {};
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
-    var contentRoot = firstNode(rows[i], [".RichText", "[data-ref='content']", ".Answer-content", ".Content"]) || rows[i];
+  for (var i = 0; i < rows.length; i++) {
+    var contentRoot = firstNode(rows[i], [".ContentBody", ".RichText", "[data-ref='content']", ".Answer-content", ".Content"]) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
     if (/^Kommentar schreiben/.test(text)) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key]) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
     var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
+    if (!content || content.length === 0) content = text ? [{ type: "text", value: text }] : [];
+    if (!content.length) continue;
     var domId = attrOf(rows[i], "id");
     out.push({
       id: SITE.siteKey + ":comment:" + out.length,
@@ -686,3 +646,23 @@ SITE.matchBoard = function (info) {
   SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
 })();
 // END synurart-home-board-seed
+
+// BEGIN verified-reader-boundaries
+(function () {
+  function question(doc) {
+    var scripts = allNodes(doc, ["script[type='application/ld+json']"]);
+    for (var i = 0; i < scripts.length; i++) try {
+      var data = JSON.parse(scripts[i].textContent || "");
+      if (data["@type"] === "QAPage" && data.mainEntity) return data.mainEntity;
+    } catch (e) {}
+    return {};
+  }
+  // Missing originals must not borrow metadata from a later-page reply.
+  SITE.selectors.postAuthor = [];
+  SITE.selectors.postDate = [];
+  SITE.selectPostContentRoot = function (doc) { return firstNode(doc, ["#questiontext"]); };
+  SITE.parsePostAuthor = function (doc) { var q = question(doc); return q.author && q.author.name || ""; };
+  SITE.parsePostDate = function (doc) { return question(doc).dateCreated || ""; };
+  SITE.selectors.commentContent = [".ContentBody"];
+})();
+// END verified-reader-boundaries

@@ -66,9 +66,9 @@ var SITE = {
     postTitle: [".viewSubjectDiv", ".viewSubject", ".board_view .subject"],
     postAuthor: ["#viewPageWriterNameSpan a", "#viewPageWriterNameSpan"],
     postAvatar: [".writerInfoContents .profile img"],
-    postDate: [".writerInfoContents .view_date", ".writerInfoContents .regdate"],
-    postViewCount: [".writerInfoContents .view_hit"],
-    postLikeCount: [".writerInfoContents .view_ok_nok"],
+    postDate: [".view_wdate", ".view_bestRegDate", ".writerInfoContents .view_date", ".writerInfoContents .regdate"],
+    postViewCount: [".view_viewCount", ".writerInfoContents .view_hit"],
+    postLikeCount: [".view_okNok", ".writerInfoContents .view_ok_nok"],
     postCategory: [".board_title", ".cate"],
     postContent: ["#content .viewContent", "#content .view_content", "#content .board_view"],
     commentRows: ["#memo_list .memo", ".memo", ".comment-item", ".comment_row", ".comment-row"],
@@ -93,7 +93,7 @@ var SYNURA = {
   name: "todayhumor",
   author: "Synura Team",
   description: "www.todayhumor.co.kr",
-  version: 0.1, // Intentionally pinned at 0.1.
+  version: 0.2,
   api: 0,
   license: "Apache-2.0",
   bypass: "chrome/android",
@@ -242,7 +242,7 @@ function localCommunityParseComments(doc, postUrl) {
   var comments = [];
   var seen = {};
 
-  for (var i = 0; i < rows.length && comments.length < 80; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     var contentRoot = firstNode(row, contentSelectors) || row;
     var content = parseDetails(contentRoot, postUrl);
@@ -277,7 +277,7 @@ function localCommunityParseComments(doc, postUrl) {
 SITE.fetchPostComments = function (match, url, doc, page, comments) {
   var existing = Array.isArray(comments) ? comments.slice() : [];
   var fetched = todayhumorFetchMemoComments(doc, url, existing);
-  for (var i = 0; i < fetched.length && existing.length < 80; i++) {
+  for (var i = 0; i < fetched.length; i++) {
     existing.push(fetched[i]);
   }
   return existing;
@@ -405,7 +405,7 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
     if (!response || !response.ok) return [];
     var data = response.json ? response.json() : JSON.parse(response.text());
     var memos = data && Array.isArray(data.memos) ? data.memos : [];
-    for (var i = 0; i < memos.length && out.length < 80; i++) {
+    for (var i = 0; i < memos.length; i++) {
       var memo = memos[i] || {};
       if (memo.is_system || memo.is_del || memo.is_nok) continue;
       var key = todayhumorCommentKey(memo.memo || "");
@@ -567,7 +567,7 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
   }
   function todayhumorParseVisibleComments(doc, url, target, seen) {
     var rows = todayhumorNodes(doc, todayhumorCommentRowSelectors);
-    for (var i = 0; i < rows.length && target.length < 80; i++) {
+    for (var i = 0; i < rows.length; i++) {
       var root = null;
       try { root = firstNode(rows[i], todayhumorCommentContentSelectors); } catch (e) {}
       root = root || rows[i];

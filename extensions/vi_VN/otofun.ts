@@ -6,7 +6,7 @@ var SITE = {
   "displayName": "Otofun",
   "country": "Vietnam",
   "category": "automotive forum",
-  "browserHomeUrl": "https://www.otofun.net/",
+  "browserHomeUrl": "https://www.otofun.net.vn/",
   "browserCookieAuth": false,
   "minimumHomeBoards": 10,
   "defaultCacheTtlMs": 300000,
@@ -25,7 +25,7 @@ var SITE = {
   "defaultVisibleBoardIds": [
     "home"
   ],
-  "hostAliases": [],
+  "hostAliases": ["www.otofun.net"],
   "acceptLanguage": "vi-VN,vi;q=0.9,en-US;q=0.6,en;q=0.5",
   "fetchHeaders": {
     "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36 Synura/1.0",
@@ -42,7 +42,7 @@ var SITE = {
     {
       "id": "home",
       "title": "Home",
-      "url": "https://www.otofun.net/",
+      "url": "https://www.otofun.net.vn/",
       "description": "automotive forum",
       "group": "Vietnam"
     }
@@ -139,13 +139,7 @@ var SITE = {
       ".breadcrumbs a",
       ".p-breadcrumbs a"
     ],
-    "postContent": [
-      ".messageText[itemprop='text']",
-      ".message-body .bbWrapper",
-      ".postbody .content",
-      ".ipsType_richText",
-      ".cooked"
-    ],
+    "postContent": [".messageText[itemprop='text']", ".message-body .bbWrapper", ".postbody .content", ".ipsType_richText", ".cooked"],
     "commentRows": [
       "article.message",
       ".postbody",
@@ -189,21 +183,20 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
-  domain: "www.otofun.net",
-  name: "otofun",
+  domain: "www.otofun.net.vn",
+  host_permissions: ["https://www.otofun.net.vn/*"],
+  name: "otofun_net_vn",
   author: "Synura Team",
-  description: "www.otofun.net",
-  version: 0.3,
+  description: "www.otofun.net.vn",
+  version: 0.5,
   api: 0,
   license: "Apache-2.0",
   locale: "vi_VN",
-  icon: "https://www.otofun.net/favicon.ico",
+  icon: "https://www.otofun.net.vn/favicon.ico",
   bypass: "chrome/android",
   deeplink: true,
   tags: [
@@ -235,12 +228,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -250,33 +240,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -424,7 +387,7 @@ function extractListItem(row, baseUrl) {
     localTitleFromNode(linkNode)
   ]);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -434,10 +397,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])),
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -466,15 +430,16 @@ function localParseComments(doc, postUrl) {
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
   var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  // The first message is already rendered as the original post.
+  for (var i = 1; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -657,14 +622,7 @@ SITE.matchBoard = function (info) {
   "article.message time.u-dt",
   "time[datetime]"
 ];
-  SITE.selectors["postContent"] = [
-  "article.message .message-body .bbWrapper",
-  ".message-content .bbWrapper",
-  ".message-body .bbWrapper",
-  ".bbWrapper",
-  "article.message",
-  "body"
-];
+  SITE.selectors["postContent"] = ["article.message .message-body .bbWrapper", ".message-content .bbWrapper", ".message-body .bbWrapper", ".bbWrapper", "article.message"];
   SITE.selectors["commentRows"] = [
   "article.message",
   ".message--post",
@@ -684,243 +642,7 @@ SITE.matchBoard = function (info) {
   "time.u-dt",
   "time[datetime]"
 ];
-  var otofunPostContentSelectors = [
-  "article.message .message-body .bbWrapper",
-  ".message-content .bbWrapper",
-  ".message-body .bbWrapper",
-  ".bbWrapper",
-  "article.message",
-  "body"
-];
-  var otofunPreviousFilterPostContent = SITE.filterPostContent;
-  function otofunText(node) {
-    return String(node && node.textContent || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
-  }
-  function otofunNodes(root, selectors) {
-    var out = [];
-    for (var i = 0; root && selectors && i < selectors.length; i++) {
-      try {
-        var nodes = root.querySelectorAll(selectors[i]);
-        for (var j = 0; nodes && j < nodes.length; j++) out.push(nodes[j]);
-      } catch (e) {}
-    }
-    return out;
-  }
-  function otofunDetailsFromRoot(root, url) {
-    if (!root) return [];
-    var text = otofunText(root);
-    if (text.length < 2) return [];
-    var details = [];
-    try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-    if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-    return details;
-  }
-  SITE.filterPostContent = function (content, url, doc, page, match) {
-    var previous = [];
-    try {
-      if (otofunPreviousFilterPostContent) previous = otofunPreviousFilterPostContent(content, url, doc, page, match) || [];
-    } catch (e) {}
-    var nodes = otofunNodes(doc, otofunPostContentSelectors);
-    var seen = {};
-    var out = [];
-    for (var i = 0; i < nodes.length && out.length < 80; i++) {
-      var text = otofunText(nodes[i]);
-      var key = text.substring(0, 220).toLowerCase();
-      if (!key || seen[key]) continue;
-      seen[key] = true;
-      var details = otofunDetailsFromRoot(nodes[i], url);
-      for (var j = 0; j < details.length && out.length < 80; j++) out.push(details[j]);
-      if (out.length && otofunPostContentSelectors[i] !== "body") break;
-    }
-    if (!out.length) out = previous;
-    if (!out.length) {
-      var title = "";
-      try { title = firstNonEmpty([firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["meta[property='og:description']", "meta[name='description']", "title"])]); } catch (e) {}
-      if (title) out = [{ type: "text", value: title }];
-    }
-    return out;
-  };
-  var otofunCommentRowSelectors = [
-  "article.message",
-  ".message--post",
-  ".message"
-];
-  var otofunCommentContentSelectors = [
-  ".message-body .bbWrapper",
-  ".message-content .bbWrapper",
-  ".bbWrapper",
-  ".message-body"
-];
-  var otofunCommentSummarySelectors = [
-  ".pairs--justified dd",
-  ".structItem-cell--meta dd",
-  ".replies",
-  "article.message",
-  ".message--post",
-  ".message",
-  ".p-title-value",
-  "h1"
-];
-  var otofunPreviousFetchPostComments = SITE.fetchPostComments;
-  function otofunMergeComment(target, seen, item) {
-    if (!item || !item.content) return;
-    var text = "";
-    for (var i = 0; i < item.content.length; i++) text += " " + (item.content[i] && item.content[i].value || "");
-    text = text.replace(/\s+/g, " ").trim();
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key]) return;
-    seen[key] = true;
-    target.push(item);
-  }
-  function otofunParseVisibleComments(doc, url, target, seen) {
-    var rows = otofunNodes(doc, otofunCommentRowSelectors);
-    for (var i = 0; i < rows.length && target.length < 80; i++) {
-      var root = null;
-      try { root = firstNode(rows[i], otofunCommentContentSelectors); } catch (e) {}
-      root = root || rows[i];
-      var text = otofunText(root);
-      if (text.length < 2 || text.length > 5000) continue;
-      var details = [];
-      try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-      if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-      var domId = "";
-      try { domId = attrOf(rows[i], "id"); } catch (e) {}
-      otofunMergeComment(target, seen, {
-        id: SITE.siteKey + ":comment:" + target.length,
-        link: url + (domId ? ("#" + domId) : ("#comment-" + target.length)),
-        author: "",
-        avatar: "",
-        date: "",
-        content: details,
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
-  }
-  SITE.fetchPostComments = function (match, url, doc, page, comments) {
-    var out = [];
-    var seen = {};
-    var existing = Array.isArray(comments) ? comments : [];
-    for (var i = 0; i < existing.length; i++) otofunMergeComment(out, seen, existing[i]);
-    try {
-      if (otofunPreviousFetchPostComments) {
-        var fetched = otofunPreviousFetchPostComments(match, url, doc, page, existing) || [];
-        for (var j = 0; j < fetched.length; j++) otofunMergeComment(out, seen, fetched[j]);
-      }
-    } catch (e) {}
-    if (!out.length) otofunParseVisibleComments(doc, url, out, seen);
-    if (!out.length) {
-      var summary = "";
-      try { summary = firstNonEmpty([firstText(doc, otofunCommentSummarySelectors), firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["title"])]); } catch (e) {}
-      summary = String(summary || SITE.displayName || "Comments").replace(/\s+/g, " ").trim();
-      if (summary) otofunMergeComment(out, seen, {
-        id: SITE.siteKey + ":comment:summary",
-        link: url + "#comments",
-        author: SITE.displayName,
-        avatar: "",
-        date: "",
-        content: [{ type: "text", value: summary }],
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
-    return out;
-  };
-var otofunStatusPreviousRouteBoardCustom = SITE.routeBoardCustom;
-  var otofunStatusPreviousRouteCustom = SITE.routeCustom;
-  function otofunStatusItem(url) {
-    var link = String(url || SITE.browserHomeUrl || "");
-    link += (link.indexOf("?") >= 0 ? "&" : "?") + "synura_status=site";
-    return {
-      id: SITE.siteKey + ":status",
-      link: link,
-      title: "Otofun site status",
-      author: SITE.displayName,
-      avatar: "",
-      date: "",
-      category: SITE.country || "",
-      commentCount: "1",
-      viewCount: "",
-      likeCount: "",
-      mediaUrl: "",
-      mediaType: "",
-      types: ["link"],
-      menus: [],
-      hotCount: 1,
-      coldCount: 0
-    };
-  }
-  function otofunStatusBoard(url, match) {
-    var item = otofunStatusItem(url);
-    var board = match && match.board ? match.board : null;
-    return {
-      kind: "board",
-      url: url,
-      viewData: {
-        view: "/views/list",
-        styles: { title: board && board.title ? board.title : SITE.displayName, menu: true, pagination: false, history: true },
-        models: { contents: [item], menus: [] }
-      },
-      context: { kind: "board", link: url, boardId: board && board.id ? board.id : "", boardTitle: board && board.title ? board.title : SITE.displayName, boardUrl: board && board.url ? board.url : url, title: board && board.title ? board.title : SITE.displayName, page: 1, nextUrl: "", seenLinks: [item.link] }
-    };
-  }
-  SITE.routeCustom = function (url, info, force) {
-    if (String(url || "").indexOf("synura_status=site") >= 0) {
-      return {
-        kind: "post",
-        url: url,
-        viewData: {
-          view: "/views/post",
-          styles: { title: "Otofun site status", menu: true, history: true },
-          models: {
-            author: SITE.displayName,
-            avatar: "",
-            date: "",
-            category: SITE.country || "",
-            viewCount: "",
-            likeCount: "",
-            content: [{ type: "text", value: "Otofun did not return a public forum list during this request. Open in browser to continue reading the site." }],
-            comments: [{ id: SITE.siteKey + ":comment:status", link: url + "#status", author: SITE.displayName, avatar: "", date: "", content: [{ type: "text", value: "Otofun did not return a public forum list during this request. Open in browser to continue reading the site." }], likeCount: "", dislikeCount: "", level: 0, menus: [], hotCount: 0, coldCount: 0 }],
-            link: url,
-            menus: [],
-            buttons: []
-          }
-        },
-        context: { kind: "post", link: url, boardId: "", boardTitle: SITE.displayName, boardUrl: SITE.browserHomeUrl }
-      };
-    }
-    return otofunStatusPreviousRouteCustom ? otofunStatusPreviousRouteCustom(url, info, force) : null;
-  };
-  SITE.routeBoardCustom = function (url, info, match, force) {
-    try {
-      if (otofunStatusPreviousRouteBoardCustom) {
-        var previous = otofunStatusPreviousRouteBoardCustom(url, info, match, force);
-        if (previous) return previous;
-      }
-      var response = fetchWithLogging(url, buildFetchOptions());
-      if (!response || !response.ok) throw new Error("Failed to fetch " + url);
-      var html = responseText(response);
-      var items = SITE.parseBoardItemsFromHtml ? SITE.parseBoardItemsFromHtml(html, url, match, { html: html, doc: null }) : [];
-      if (Array.isArray(items) && items.length) {
-        var board = match && match.board ? match.board : null;
-        return {
-          kind: "board",
-          url: url,
-          viewData: { view: "/views/list", styles: { title: board && board.title ? board.title : SITE.displayName, menu: true, pagination: true, history: true, layout: "card" }, models: { contents: items, menus: [] } },
-          context: { kind: "board", link: url, boardId: board && board.id ? board.id : "", boardTitle: board && board.title ? board.title : SITE.displayName, boardUrl: board && board.url ? board.url : url, title: board && board.title ? board.title : SITE.displayName, page: match && match.page ? match.page : 1, nextUrl: "", seenLinks: items.map(function (item) { return item.link; }) }
-        };
-      }
-    } catch (e) {}
-    return otofunStatusBoard(url, match);
-  };
+
 })();
 // END synurart-own-extension-validation-fix
 // BEGIN synurart-home-board-seed
@@ -929,43 +651,43 @@ var otofunStatusPreviousRouteBoardCustom = SITE.routeBoardCustom;
   {
     "id": "sua_chua_9_f9w8d",
     "title": "Sửa chữa",
-    "url": "https://www.otofun.net/forums/sua-chua.9/",
-    "description": "https://www.otofun.net/forums/sua-chua.9/",
+    "url": "https://www.otofun.net.vn/forums/sua-chua.9/",
+    "description": "https://www.otofun.net.vn/forums/sua-chua.9/",
     "group": "Vietnam"
   },
   {
     "id": "moto_va_xe_may_125_b6jmca",
     "title": "Xe hai bánh",
-    "url": "https://www.otofun.net/forums/moto-va-xe-may.125/",
-    "description": "https://www.otofun.net/forums/moto-va-xe-may.125/",
+    "url": "https://www.otofun.net.vn/forums/moto-va-xe-may.125/",
+    "description": "https://www.otofun.net.vn/forums/moto-va-xe-may.125/",
     "group": "Vietnam"
   },
   {
     "id": "of_vi_cong_dong_120_62a8qm",
     "title": "OF vì Cộng đồng",
-    "url": "https://www.otofun.net/forums/of-vi-cong-dong.120/",
-    "description": "https://www.otofun.net/forums/of-vi-cong-dong.120/",
+    "url": "https://www.otofun.net.vn/forums/of-vi-cong-dong.120/",
+    "description": "https://www.otofun.net.vn/forums/of-vi-cong-dong.120/",
     "group": "Vietnam"
   },
   {
     "id": "chi_hoi_cau_lac_bo_91_rap155",
     "title": "Chi hội",
-    "url": "https://www.otofun.net/forums/chi-hoi-cau-lac-bo.91/",
-    "description": "https://www.otofun.net/forums/chi-hoi-cau-lac-bo.91/",
+    "url": "https://www.otofun.net.vn/forums/chi-hoi-cau-lac-bo.91/",
+    "description": "https://www.otofun.net.vn/forums/chi-hoi-cau-lac-bo.91/",
     "group": "Vietnam"
   },
   {
     "id": "quan_cafe_otofun_77_yi1ni",
     "title": "Funland",
-    "url": "https://www.otofun.net/forums/quan-cafe-otofun.77/",
-    "description": "https://www.otofun.net/forums/quan-cafe-otofun.77/",
+    "url": "https://www.otofun.net.vn/forums/quan-cafe-otofun.77/",
+    "description": "https://www.otofun.net.vn/forums/quan-cafe-otofun.77/",
     "group": "Vietnam"
   },
   {
     "id": "cho_gioi_89_kwedw7",
     "title": "Chợ giời",
-    "url": "https://www.otofun.net/forums/cho-gioi.89/",
-    "description": "https://www.otofun.net/forums/cho-gioi.89/",
+    "url": "https://www.otofun.net.vn/forums/cho-gioi.89/",
+    "description": "https://www.otofun.net.vn/forums/cho-gioi.89/",
     "group": "Vietnam"
   }
  ];

@@ -57,12 +57,8 @@ var SITE = {
       ".ipsType_pageTitle",
       ".forum-title"
     ],
-    "listRows": [
-      "a[href*='/community/topic/']"
-    ],
-    "listLink": [
-      "a[href*='/community/topic/']"
-    ],
+    "listRows": [".ipsDataItem", ".ipsData__item"],
+    "listLink": [".ipsDataItem_title a[data-ipshover]", ".ipsDataItem_title a[href]", "a.ipsDataItem_title", ".ipsData__title a[href]", ".ipsData__last-primary a[href]"],
     "listTitle": [
       "a[href*='/community/topic/']"
     ],
@@ -72,29 +68,11 @@ var SITE = {
       ".stats",
       ".meta"
     ],
-    "listAuthor": [
-      ".username",
-      ".userLink",
-      ".author"
-    ],
-    "listAvatar": [
-      ".avatar img",
-      ".userAvatarImage"
-    ],
-    "listDate": [
-      "time",
-      "time[datetime]"
-    ],
-    "listCommentCount": [
-      ".replies",
-      ".comments",
-      ".reply-count",
-      ".comment-count"
-    ],
-    "listViewCount": [
-      ".views",
-      ".view-count"
-    ],
+    "listAuthor": [".ipsDataItem_meta a[data-ipshover]", ".ipsTopicSnippet__title a[data-ipshover]", ".ipsData__meta a[data-ipshover]", ".ipsData__last-secondary a[data-ipshover]", ".ipsDataItem_lastPoster a[data-ipshover]", ".cWidgetComments a[data-ipshover]"],
+    "listAvatar": [".ipsUserPhoto img"],
+    "listDate": [".ipsDataItem_meta time", ".ipsTopicSnippet__title time", ".ipsData__meta time", ".ipsData__last-text time", "time[datetime]"],
+    "listCommentCount": [".ipsDataItem_stats li:first-child .ipsDataItem_stats_number", ".ipsTopicSnippet__replies", ".ipsData__stats dd"],
+    "listViewCount": [".ipsDataItem_stats li:last-child .ipsDataItem_stats_number", ".ipsTopicSnippet__views"],
     "listLikeCount": [
       ".likes",
       ".vote-count",
@@ -192,9 +170,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -202,7 +178,7 @@ var SYNURA = {
   name: "hwzone",
   author: "Synura Team",
   description: "hwzone.co.il",
-  version: 0.3,
+  version: 0.5,
   api: 0,
   license: "Apache-2.0",
   locale: "he_IL",
@@ -238,13 +214,11 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
     }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
-    }
+
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
     }
@@ -253,33 +227,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -409,17 +356,26 @@ function localExtractCommentCount(title) {
 }
 
 
+function localListTitleLink(row, baseUrl) {
+  var selectors = selectorList("listLink", []);
+  for (var i = 0; i < selectors.length; i++) {
+    var links = localQuerySelectorAll(row, [selectors[i]]);
+    for (var j = 0; j < links.length; j++) {
+      var url = ensureAbsoluteUrl(attrOf(links[j], "href"), baseUrl);
+      if (localLooksLikePostUrl(url) && localTitleFromNode(links[j])) return links[j];
+    }
+  }
+  return attrOf(row, "href") && localLooksLikePostUrl(ensureAbsoluteUrl(attrOf(row, "href"), baseUrl)) ? row : null;
+}
+
 function extractListItem(row, baseUrl) {
   if (!row) return null;
-  var linkNode = firstNode(row, selectorList("listLink", [])) || (attrOf(row, "href") ? row : null);
+  var linkNode = localListTitleLink(row, baseUrl);
   var link = linkNode ? (normalizeUrl(attrOf(linkNode, "href")) || ensureAbsoluteUrl(attrOf(linkNode, "href"), baseUrl)) : "";
   if (!link || localLooksLikeAssetUrl(link) || !localLooksLikePostUrl(link)) return null;
-  var title = firstNonEmpty([
-    firstText(row, selectorList("listTitle", [])),
-    localTitleFromNode(linkNode)
-  ]);
+  var title = localTitleFromNode(linkNode);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -429,10 +385,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])) || "",
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -460,16 +417,15 @@ function localParseComments(doc, postUrl) {
   var seen = {};
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
-  var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
-    seen[key] = true;
     var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
+    if (!content || content.length === 0) content = text ? [{ type: "text", value: text }] : [];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
+    seen[key] = true;
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -602,37 +558,17 @@ SITE.matchBoard = function (info) {
   try {
     if (typeof LOCAL_POST_PATTERNS !== "undefined") LOCAL_POST_PATTERNS = [new RegExp("/topic/", "i")];
   } catch (e) {}
-  SITE.selectors["listRows"] = [
-  "li.ipsDataItem",
-  ".ipsDataItem",
-  "a[href*='/topic/']",
-  "a[href*='sujet_']"
-];
-  SITE.selectors["listLink"] = [
-  "a.ipsDataItem_title[href*='/topic/']",
-  ".ipsDataItem_title a[href*='/topic/']",
-  "a[href*='/topic/']",
-  "a[href*='sujet_']"
-];
+  SITE.selectors["listRows"] = [".ipsDataItem", ".ipsData__item"];
+  SITE.selectors["listLink"] = [".ipsDataItem_title a[data-ipshover]", ".ipsDataItem_title a[href]", "a.ipsDataItem_title", ".ipsData__title a[href]", ".ipsData__last-primary a[href]"];
   SITE.selectors["listTitle"] = [
   "a.ipsDataItem_title[href*='/topic/']",
   ".ipsDataItem_title a[href*='/topic/']",
   "a[href*='/topic/']",
   "a[href*='sujet_']"
 ];
-  SITE.selectors["listAuthor"] = [
-  ".ipsDataItem_meta a",
-  ".ipsType_break",
-  ".username"
-];
-  SITE.selectors["listDate"] = [
-  "time[datetime]",
-  ".ipsType_light"
-];
-  SITE.selectors["listCommentCount"] = [
-  ".ipsDataItem_stats_number",
-  ".ipsDataItem_stats"
-];
+  SITE.selectors["listAuthor"] = [".ipsDataItem_meta a[data-ipshover]", ".ipsTopicSnippet__title a[data-ipshover]", ".ipsData__meta a[data-ipshover]", ".ipsData__last-secondary a[data-ipshover]", ".ipsDataItem_lastPoster a[data-ipshover]", ".cWidgetComments a[data-ipshover]"];
+  SITE.selectors["listDate"] = [".ipsDataItem_meta time", ".ipsTopicSnippet__title time", ".ipsData__meta time", ".ipsData__last-text time", "time[datetime]"];
+  SITE.selectors["listCommentCount"] = [".ipsDataItem_stats li:first-child .ipsDataItem_stats_number", ".ipsTopicSnippet__replies", ".ipsData__stats dd"];
   SITE.selectors["postTitle"] = [
   "h1.ipsType_pageTitle",
   ".ipsType_pageTitle",
@@ -652,7 +588,6 @@ SITE.matchBoard = function (info) {
   ".ipsComment_content .ipsType_richText",
   ".ipsType_richText",
   "article",
-  "body"
 ];
   SITE.selectors["commentRows"] = [
   ".ipsComment",
@@ -672,13 +607,6 @@ SITE.matchBoard = function (info) {
   SITE.selectors["commentDate"] = [
   "time[datetime]"
 ];
-  var hwzonePostContentSelectors = [
-  ".cPost_contentWrap .ipsType_richText",
-  ".ipsComment_content .ipsType_richText",
-  ".ipsType_richText",
-  "article",
-  "body"
-];
   var hwzonePreviousFilterPostContent = SITE.filterPostContent;
   function hwzoneText(node) {
     return String(node && node.textContent || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
@@ -693,39 +621,9 @@ SITE.matchBoard = function (info) {
     }
     return out;
   }
-  function hwzoneDetailsFromRoot(root, url) {
-    if (!root) return [];
-    var text = hwzoneText(root);
-    if (text.length < 2) return [];
-    var details = [];
-    try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-    if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-    return details;
-  }
+
   SITE.filterPostContent = function (content, url, doc, page, match) {
-    var previous = [];
-    try {
-      if (hwzonePreviousFilterPostContent) previous = hwzonePreviousFilterPostContent(content, url, doc, page, match) || [];
-    } catch (e) {}
-    var nodes = hwzoneNodes(doc, hwzonePostContentSelectors);
-    var seen = {};
-    var out = [];
-    for (var i = 0; i < nodes.length && out.length < 80; i++) {
-      var text = hwzoneText(nodes[i]);
-      var key = text.substring(0, 220).toLowerCase();
-      if (!key || seen[key]) continue;
-      seen[key] = true;
-      var details = hwzoneDetailsFromRoot(nodes[i], url);
-      for (var j = 0; j < details.length && out.length < 80; j++) out.push(details[j]);
-      if (out.length && hwzonePostContentSelectors[i] !== "body") break;
-    }
-    if (!out.length) out = previous;
-    if (!out.length) {
-      var title = "";
-      try { title = firstNonEmpty([firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["meta[property='og:description']", "meta[name='description']", "title"])]); } catch (e) {}
-      if (title) out = [{ type: "text", value: title }];
-    }
-    return out;
+    return Array.isArray(content) ? content : [];
   };
   var hwzoneCommentRowSelectors = [
   ".ipsComment",
@@ -738,51 +636,39 @@ SITE.matchBoard = function (info) {
   ".cPost_contentWrap .ipsType_richText",
   ".ipsType_richText"
 ];
-  var hwzoneCommentSummarySelectors = [
-  ".ipsDataItem_stats_number",
-  ".ipsDataItem_stats",
-  ".ipsComment",
-  "article.cPost",
-  "article[id*='comment']",
-  ".cPost",
-  "h1.ipsType_pageTitle",
-  ".ipsType_pageTitle",
-  "h1"
-];
   var hwzonePreviousFetchPostComments = SITE.fetchPostComments;
   function hwzoneMergeComment(target, seen, item) {
     if (!item || !item.content) return;
     var text = "";
     for (var i = 0; i < item.content.length; i++) text += " " + (item.content[i] && item.content[i].value || "");
     text = text.replace(/\s+/g, " ").trim();
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key]) return;
+    var key = item.id && item.id.indexOf(":comment:") < 0 ? item.id : JSON.stringify([item.link, item.author, item.date, item.content]);
+    if (!item.content.length || seen[key]) return;
     seen[key] = true;
     target.push(item);
   }
   function hwzoneParseVisibleComments(doc, url, target, seen) {
-    var rows = hwzoneNodes(doc, hwzoneCommentRowSelectors);
-    for (var i = 0; i < rows.length && target.length < 80; i++) {
+    var rows = localQuerySelectorAll(doc, hwzoneCommentRowSelectors);
+    for (var i = 0; i < rows.length; i++) {
       var root = null;
       try { root = firstNode(rows[i], hwzoneCommentContentSelectors); } catch (e) {}
       root = root || rows[i];
-      var text = hwzoneText(root);
-      if (text.length < 2 || text.length > 5000) continue;
+      var text = textOf(root);
       var details = [];
       try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-      if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
+      if (!details.length) details = text ? [{ type: "text", value: text }] : [];
       var domId = "";
       try { domId = attrOf(rows[i], "id"); } catch (e) {}
       hwzoneMergeComment(target, seen, {
         id: SITE.siteKey + ":comment:" + target.length,
         link: url + (domId ? ("#" + domId) : ("#comment-" + target.length)),
-        author: "",
-        avatar: "",
-        date: "",
+        author: firstAuthorText(rows[i], selectorList("commentAuthor", [])),
+        avatar: imageUrlFromNode(firstNode(rows[i], selectorList("commentAvatar", [])), url),
+        date: firstDateText(rows[i], selectorList("commentDate", [])),
         content: details,
         likeCount: "",
         dislikeCount: "",
-        level: 0,
+        level: detectCommentLevel(rows[i]),
         menus: [MENU_BROWSER],
         hotCount: 0,
         coldCount: 0
@@ -801,25 +687,7 @@ SITE.matchBoard = function (info) {
       }
     } catch (e) {}
     if (!out.length) hwzoneParseVisibleComments(doc, url, out, seen);
-    if (!out.length) {
-      var summary = "";
-      try { summary = firstNonEmpty([firstText(doc, hwzoneCommentSummarySelectors), firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["title"])]); } catch (e) {}
-      summary = String(summary || SITE.displayName || "Comments").replace(/\s+/g, " ").trim();
-      if (summary) hwzoneMergeComment(out, seen, {
-        id: SITE.siteKey + ":comment:summary",
-        link: url + "#comments",
-        author: SITE.displayName,
-        avatar: "",
-        date: "",
-        content: [{ type: "text", value: summary }],
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
+
     return out;
   };
 })();

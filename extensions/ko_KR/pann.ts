@@ -631,7 +631,7 @@ var SYNURA = {
     domain: "m.pann.nate.com",
     name: "pann",
     description: "m.pann.nate.com",
-    version: 0.2,
+    version: 0.3,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",

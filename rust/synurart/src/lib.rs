@@ -23,12 +23,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use url::Url;
 
+mod browser_host;
 mod fetch_scope;
 mod fetch_session;
 #[cfg(test)]
 mod fetch_tests;
 mod fetch_transport;
 
+use browser_host::ActiveBrowser;
 use fetch_scope::{FetchScope, NetworkPackage};
 use fetch_session::RedirectCookies;
 pub use fetch_transport::FetchCancellation;
@@ -321,6 +323,14 @@ impl SynurartCompleter {
             "storage" if ctx.arg_index == 1 => {
                 filter_completion_suggestions(&["local", "session", "clear"], &ctx.current, false)
             }
+            "browser" if ctx.arg_index == 1 => filter_completion_suggestions(
+                &["open", "submit", "close", "status"],
+                &ctx.current,
+                false,
+            ),
+            "browser" if ctx.arg_index == 2 => {
+                completion_pairs(snapshot.view_ids(), &ctx.current, false)
+            }
             "storage"
                 if ctx.arg_index == 2
                     && ctx
@@ -329,6 +339,14 @@ impl SynurartCompleter {
                         .is_some_and(|arg| arg.eq_ignore_ascii_case("clear")) =>
             {
                 filter_completion_suggestions(&["local", "session", "all"], &ctx.current, false)
+            }
+            "browser" if ctx.arg_index == 1 => filter_completion_suggestions(
+                &["open", "submit", "close", "status"],
+                &ctx.current,
+                false,
+            ),
+            "browser" if ctx.arg_index == 2 => {
+                completion_pairs(snapshot.view_ids(), &ctx.current, false)
             }
             "timeout" if ctx.arg_index == 1 => {
                 filter_completion_suggestions(&["10s", "5s", "30s", "1m"], &ctx.current, false)
@@ -484,7 +502,7 @@ const REPL_COMMAND_SUGGESTIONS: &[&str] = &[
     "help", "h", "?", "load", "quit", "q", "exit", "views", "ls", "v", "view", "render", "home",
     "deeplink", "resume", "event", "refresh", "r", "n", "next", "menu", "query", "submit", "tap",
     "click", "s", "itemmenu", "reorder", "c", "close", "timeout", "locale", "mapurl", "storage",
-    "eval", "proxy",
+    "eval", "proxy", "browser",
 ];
 
 const REPL_EVENT_SUGGESTIONS: &[&str] = &[
@@ -576,6 +594,15 @@ struct ShellState {
     locale: String,
     render_load_after_command: bool,
     proxy: FetchProxy,
+    active_browser: Option<ActiveBrowser>,
+}
+
+impl Drop for ShellState {
+    fn drop(&mut self) {
+        if let Some(mut b) = self.active_browser.take() {
+            browser_host::close_browser(&mut b);
+        }
+    }
 }
 
 impl ShellState {
@@ -599,10 +626,14 @@ impl ShellState {
             locale: DEFAULT_LOCALE.to_string(),
             render_load_after_command: true,
             proxy,
+            active_browser: None,
         })
     }
 
     fn reset_runtime(&mut self, ext_path: &Path) -> Result<(), String> {
+        if let Some(mut b) = self.active_browser.take() {
+            browser_host::close_browser(&mut b);
+        }
         let namespace = absolute_path(ext_path).unwrap_or_else(|_| ext_path.to_path_buf());
         let runtime = SynurartRuntime::new(self.json, self.storage_path.clone(), namespace)?;
         self.runtime = runtime;
@@ -753,11 +784,7 @@ impl ShellState {
                 self.emit_ok();
             }
             "submit" => {
-                if args.len() < 3 {
-                    return Err("usage: submit <viewId> <jsonData>".to_string());
-                }
-                self.runtime
-                    .emit(parse_i64(&args[1])?, "SUBMIT", parse_json_object(&args[2])?)?;
+                self.handle_submit(&args[1..])?;
                 self.emit_ok();
             }
             "s" => {
@@ -829,6 +856,7 @@ impl ShellState {
             }
             "mapurl" => self.handle_mapurl(&args[1..])?,
             "storage" => self.handle_storage(&args[1..])?,
+            "browser" => self.handle_browser(&args[1..])?,
             "eval" => {
                 if args.len() < 2 {
                     return Err("usage: eval <javascript>".to_string());
@@ -867,6 +895,68 @@ impl ShellState {
             other => return Err(format!("unknown command: {other} (type 'help')")),
         }
         Ok(())
+    }
+
+    fn handle_submit(&mut self, args: &[String]) -> Result<(), String> {
+        let (view_id, payload) = match args {
+            [] => {
+                let id = self.resolve_view_id(None)?;
+                (id, self.submit_button_payload(id, None)?)
+            }
+            [arg] => {
+                if let Ok(id) = parse_i64(arg) {
+                    (id, self.submit_button_payload(id, None)?)
+                } else if arg.trim_start().starts_with('{') {
+                    let id = self.resolve_view_id(None)?;
+                    (id, parse_json_object(arg)?)
+                } else {
+                    let id = self.resolve_view_id(None)?;
+                    (id, self.submit_button_payload(id, Some(arg))?)
+                }
+            }
+            [id_raw, data_raw] => {
+                let id = parse_i64(id_raw)?;
+                let payload = if data_raw.trim_start().starts_with('{') {
+                    parse_json_object(data_raw)?
+                } else {
+                    self.submit_button_payload(id, Some(data_raw))?
+                };
+                (id, payload)
+            }
+            _ => return Err("usage: submit [viewId] [buttonLabel | jsonObject]".to_string()),
+        };
+
+        self.runtime.emit(view_id, "SUBMIT", payload)?;
+        Ok(())
+    }
+
+    fn submit_button_payload(&self, view_id: i64, button: Option<&str>) -> Result<Value, String> {
+        let view = self.runtime.view(view_id)?;
+        let mut payload = Map::new();
+        // A button-only submission retains the displayed form values, as tapping
+        // the button in the app does. In particular, missing boolean fields must
+        // not turn every enabled board off when submitting settings.
+        if matches!(
+            view.get("path").and_then(Value::as_str),
+            Some("/views/settings" | "/dialogs/input")
+        ) {
+            for field in model_details(view.pointer("/models/body")) {
+                if let (Some(name), Some(value)) = (
+                    field.get("name").and_then(Value::as_str),
+                    field.get("value"),
+                ) {
+                    payload.insert(name.to_string(), value.clone());
+                }
+            }
+        }
+        let button = button.map(str::to_string).unwrap_or_else(|| {
+            model_details(view.pointer("/models/buttons"))
+                .first()
+                .map(value_text)
+                .unwrap_or_else(|| "OK".to_string())
+        });
+        payload.insert("button".into(), Value::String(button));
+        Ok(Value::Object(payload))
     }
 
     fn handle_tap(&mut self, args: &[String]) -> Result<(), String> {
@@ -1146,6 +1236,249 @@ impl ShellState {
             json_out(&json!({"type":"storage_cleared","local":local,"session":session}));
         } else {
             println!("{}", color("cleared storage", &[C_GREEN]));
+        }
+        Ok(())
+    }
+
+    fn handle_browser(&mut self, args: &[String]) -> Result<(), String> {
+        let (sub, target_arg) = match args {
+            [] => ("open", None),
+            [arg] => {
+                if arg.parse::<i64>().is_ok() {
+                    ("open", Some(arg.as_str()))
+                } else {
+                    (arg.as_str(), None)
+                }
+            }
+            [sub, target, ..] => (sub.as_str(), Some(target.as_str())),
+        };
+
+        match sub {
+            "open" | "launch" => {
+                let view_id = if let Some(target) = target_arg {
+                    parse_i64(target)?
+                } else {
+                    let snapshot = self.runtime.snapshot()?;
+                    let views = snapshot.get("views").and_then(Value::as_array);
+                    let found_browser_id = views.and_then(|arr| {
+                        arr.iter()
+                            .rev()
+                            .find(|v| {
+                                v.get("path").and_then(Value::as_str) == Some("/views/browser")
+                            })
+                            .and_then(|v| v.get("id").and_then(Value::as_i64))
+                    });
+                    if let Some(id) = found_browser_id {
+                        id
+                    } else {
+                        self.resolve_view_id(None)?
+                    }
+                };
+
+                let view_info = self.runtime.view(view_id)?;
+                let view_path = view_info
+                    .get("path")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                if view_path != "/views/browser" {
+                    return Err(format!(
+                        "view #{view_id} is '{view_path}', not '/views/browser'"
+                    ));
+                }
+
+                let models = view_info.get("models").and_then(Value::as_object);
+                let url = models
+                    .and_then(|m| model_message(m.get("url")))
+                    .filter(|u| !u.is_empty())
+                    .unwrap_or_else(|| "about:blank".to_string());
+
+                let profile_dir = browser_host::profile_directory(
+                    self.storage_path.parent().unwrap_or_else(|| Path::new(".")),
+                    &self.runtime.host.borrow().storage_namespace,
+                    &url,
+                )?;
+
+                if let Some(mut existing) = self.active_browser.take() {
+                    browser_host::close_browser(&mut existing);
+                }
+
+                let browser = browser_host::launch_browser(view_id, &url, &profile_dir)?;
+                let pid = browser.child.id();
+                let port = browser.port;
+                self.active_browser = Some(browser);
+
+                if self.json {
+                    json_out(&json!({
+                        "type": "browser_launched",
+                        "viewId": view_id,
+                        "pid": pid,
+                        "port": port,
+                        "url": url,
+                    }));
+                } else {
+                    println!(
+                        "{} launched browser for view #{} (pid: {}, port: {}): {}",
+                        color("✓", &[C_GREEN, C_BOLD]),
+                        color(view_id.to_string(), &[C_BRIGHT_CYAN, C_BOLD]),
+                        pid,
+                        port,
+                        color(url, &[C_CYAN, C_UNDERLINE])
+                    );
+                    println!(
+                        "  {} Log in or browse, then run '{}' to capture cookies, or '{}' to cancel.",
+                        dim("hint:"),
+                        color("browser submit", &[C_BRIGHT_YELLOW]),
+                        color("browser close", &[C_BRIGHT_YELLOW])
+                    );
+                }
+            }
+            "submit" | "confirm" => {
+                let target_id = target_arg.map(parse_i64).transpose()?;
+                if let Some(id) = target_id {
+                    let view = self.runtime.view(id)?;
+                    if view.get("path").and_then(Value::as_str) != Some("/views/browser") {
+                        return Err(format!("view #{id} is not '/views/browser'"));
+                    }
+                }
+                let mut browser = self.active_browser.take().ok_or_else(|| {
+                    "no active browser running. Launch one first with 'browser open [viewId]'."
+                        .to_string()
+                })?;
+
+                let view_id = target_id.unwrap_or(browser.view_id);
+
+                if !self.json {
+                    println!(
+                        "{} capturing cookies from browser via CDP...",
+                        color("•", &[C_CYAN])
+                    );
+                }
+
+                let capture = {
+                    let host = self.runtime.host.borrow();
+                    host.fetch_scope
+                        .as_ref()
+                        .ok_or_else(|| "extension network scope is not initialized".to_string())
+                        .and_then(|scope| {
+                            browser_host::capture_cookies_and_url(&mut browser, scope)
+                        })
+                };
+                let (cookies, current_url) = match capture {
+                    Ok(res) => res,
+                    Err(e) => {
+                        self.active_browser = Some(browser);
+                        return Err(format!("failed to capture cookies: {e}"));
+                    }
+                };
+
+                browser_host::close_browser(&mut browser);
+
+                let cookie_len = cookies.len();
+                let payload = json!({
+                    "cookies": cookies,
+                    "url": current_url,
+                });
+
+                if self.json {
+                    json_out(&json!({
+                        "type": "browser_submitted",
+                        "viewId": view_id,
+                        "url": current_url,
+                        "cookieLength": cookie_len,
+                    }));
+                } else {
+                    println!(
+                        "{} captured cookies ({} bytes) from {} and submitting to view #{}...",
+                        color("✓", &[C_GREEN, C_BOLD]),
+                        color(cookie_len.to_string(), &[C_BRIGHT_YELLOW]),
+                        dim(&current_url),
+                        color(view_id.to_string(), &[C_BRIGHT_CYAN, C_BOLD])
+                    );
+                }
+
+                self.runtime.emit(view_id, "SUBMIT", payload)?;
+                self.emit_ok();
+            }
+            "close" | "cancel" => {
+                let view_id = if let Some(mut browser) = self.active_browser.take() {
+                    let vid = browser.view_id;
+                    browser_host::close_browser(&mut browser);
+                    if let Some(target) = target_arg {
+                        parse_i64(target)?
+                    } else {
+                        vid
+                    }
+                } else if let Some(target) = target_arg {
+                    parse_i64(target)?
+                } else {
+                    let snapshot = self.runtime.snapshot()?;
+                    let views = snapshot.get("views").and_then(Value::as_array);
+                    let found_browser_id = views.and_then(|arr| {
+                        arr.iter()
+                            .rev()
+                            .find(|v| {
+                                v.get("path").and_then(Value::as_str) == Some("/views/browser")
+                            })
+                            .and_then(|v| v.get("id").and_then(Value::as_i64))
+                    });
+                    if let Some(id) = found_browser_id {
+                        id
+                    } else {
+                        self.resolve_view_id(None)?
+                    }
+                };
+
+                if self.json {
+                    json_out(&json!({
+                        "type": "browser_closed",
+                        "viewId": view_id,
+                    }));
+                } else {
+                    println!(
+                        "{} closed browser for view #{}",
+                        color("✓", &[C_GREEN]),
+                        color(view_id.to_string(), &[C_BRIGHT_CYAN])
+                    );
+                }
+
+                self.runtime.close(view_id)?;
+                self.emit_ok();
+            }
+            "status" => {
+                if let Some(ref b) = self.active_browser {
+                    if self.json {
+                        json_out(&json!({
+                            "type": "browser_status",
+                            "running": true,
+                            "viewId": b.view_id,
+                            "pid": b.child.id(),
+                            "port": b.port,
+                            "wsPath": b.ws_path,
+                            "url": b.initial_url,
+                            "profileDir": b.profile_dir.to_string_lossy(),
+                        }));
+                    } else {
+                        println!(
+                            "  {} view #{} (pid: {}, port: {}): {}",
+                            color("Active Browser:", &[C_GREEN, C_BOLD]),
+                            color(b.view_id.to_string(), &[C_BRIGHT_CYAN]),
+                            b.child.id(),
+                            b.port,
+                            color(&b.initial_url, &[C_CYAN, C_UNDERLINE])
+                        );
+                        println!("  {} {}", dim("profile:"), b.profile_dir.display());
+                    }
+                } else if self.json {
+                    json_out(&json!({"type": "browser_status", "running": false}));
+                } else {
+                    println!("  {}", dim("no active browser running"));
+                }
+            }
+            other => {
+                return Err(format!(
+                    "unknown browser subcommand '{other}'. Usage: browser [open|submit|close|status] [viewId]"
+                ));
+            }
         }
         Ok(())
     }
@@ -2328,7 +2661,14 @@ const BOOTSTRAP: &str = r#"
   globalThis.__synurart_emit = function(id, eventId, data) {
     const view = state.views.find((view) => view.id === Number(id));
     if (!view) return JSON.stringify({ ok: false, error: "view not found: " + id });
-    logRuntime("event", { viewId: view.id, eventId, data: data || {} });
+    const loggedData = clone(data || {});
+    // Browser SUBMIT carries session credentials. Redact only the log copy;
+    // the callback must receive the original cookies to complete sign-in.
+    if (view.path === "/views/browser" && eventId === "SUBMIT" &&
+        Object.prototype.hasOwnProperty.call(loggedData, "cookies")) {
+      loggedData.cookies = "[REDACTED]";
+    }
+    logRuntime("event", { viewId: view.id, eventId, data: loggedData });
     dispatch(view, { viewId: view.id, eventId, context: clone(view.data.context || {}), data: clone(data || {}) });
     return JSON.stringify({ ok: true });
   };
@@ -3362,6 +3702,11 @@ fn render_chat(models: &Map<String, Value>) {
 fn render_browser(models: &Map<String, Value>) {
     let url = model_message(models.get("url")).unwrap_or_default();
     println!("  {} {}", dim("url:"), color(url, &[C_CYAN, C_UNDERLINE]));
+    println!(
+        "  {} {}",
+        dim("hint:"),
+        dim("run 'browser open' to launch browser, 'browser submit' to capture cookies, or 'browser close' to cancel")
+    );
 }
 
 fn render_markdown(models: &Map<String, Value>, styles: &Map<String, Value>) {
@@ -3760,6 +4105,34 @@ fn summarize_content_block(raw: &Value) -> String {
         .filter(|v| !v.trim().is_empty())
         .unwrap_or_else(|| "item".to_string())
         .to_ascii_lowercase();
+    if kind == "link" {
+        let first_text = |keys: &[&str]| {
+            keys.iter().find_map(|key| {
+                item.get(*key)
+                    .map(value_text)
+                    .map(|text| text.trim().to_string())
+                    .filter(|text| !text.is_empty())
+            })
+        };
+        let label = first_text(&["value", "label"]);
+        let destination = first_text(&["link", "href"]);
+        if let Some(destination) = destination {
+            return match label.filter(|label| label != &destination) {
+                Some(label) => format!("link: {} -> {destination}", compact_text(label, 96)),
+                None => format!("link: {destination}"),
+            };
+        }
+        if let Some(label) = label {
+            // Value-only links use their value as the destination. Keep URLs
+            // visible in full, just like an explicit link/href destination.
+            return if Url::parse(&label).is_ok() || label.starts_with('/') || label.starts_with('#')
+            {
+                format!("link: {label}")
+            } else {
+                compact_text(format!("link: {label}"), 96)
+            };
+        }
+    }
     let text = item
         .get("value")
         .or_else(|| item.get("label"))
@@ -4529,6 +4902,10 @@ const HELP_ENTRIES: &[(&str, &str)] = &[
         "storage clear [local|session|all]",
         "Clear storage and persist localStorage changes",
     ),
+    (
+        "browser [open|submit|close|status] [id]",
+        "Launch native browser for /views/browser, capture cookies, or cancel",
+    ),
     ("eval <javascript>", "Evaluate JS in current runtime"),
     (
         "proxy [url|clear|system]",
@@ -4625,6 +5002,55 @@ mod tests {
 
     pub(super) fn result(rt: &SynurartRuntime, code: &str) -> Value {
         rt.eval_js(code).unwrap().get("result").cloned().unwrap()
+    }
+
+    #[test]
+    fn shell_submit_uses_normalized_buttons_and_preserves_form_values() {
+        let dir = temp_dir();
+        let mut shell =
+            ShellState::new(true, dir.join("storage.json"), None, FetchProxy::Disabled).unwrap();
+        shell
+            .runtime
+            .eval_js(
+                r#"
+            globalThis.submissions = [];
+            synura.open({view:'/views/settings', models:{
+                buttons:['Save','Cancel'], body:[
+                    {type:'boolean',name:'front',value:true},
+                    {type:'boolean',name:'hidden',value:false},
+                    {type:'number',name:'count',value:3},
+                    {type:'string',name:'label',value:'hello'}
+                ]
+            }}, {}, function(e) { if(e.eventId === 'SUBMIT') submissions.push(e.data); });
+        "#,
+            )
+            .unwrap();
+        shell.handle_submit(&[]).unwrap();
+        shell.handle_submit(&["1".into()]).unwrap();
+        shell.handle_submit(&["Cancel".into()]).unwrap();
+        shell.handle_submit(&["1".into(), "Save".into()]).unwrap();
+        shell
+            .handle_submit(&["1".into(), r#"{"button":"Save","front":false}"#.into()])
+            .unwrap();
+        let submissions = result(&shell.runtime, "submissions");
+        for index in [0, 1, 3] {
+            assert_eq!(
+                submissions[index],
+                json!({"button":"Save","front":true,"hidden":false,"count":3,"label":"hello"})
+            );
+        }
+        assert_eq!(submissions[2]["button"], "Cancel");
+        assert_eq!(submissions[4], json!({"button":"Save","front":false}));
+
+        shell.runtime.eval_js(r#"
+            synura.open({view:'/dialogs/input', models:{buttons:['Apply'],body:[{type:'string',name:'url',value:'https://example.com/'}]}}, {},
+                function(e) { if(e.eventId === 'SUBMIT') submissions.push(e.data); });
+        "#).unwrap();
+        shell.handle_submit(&[]).unwrap();
+        assert_eq!(
+            result(&shell.runtime, "submissions[5]"),
+            json!({"button":"Apply","url":"https://example.com/"})
+        );
     }
 
     #[test]

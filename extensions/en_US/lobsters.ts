@@ -130,16 +130,15 @@ var SITE = {
       ".forum-title"
     ],
     "listRows": [
-      "a[href^='/s/']",
-      "a[href*='lobste.rs/s/']"
+      "li.story"
     ],
     "listLink": [
-      "a[href^='/s/']",
-      "a[href*='lobste.rs/s/']"
+      ".comments_label a",
+      "a.mobile_comments"
     ],
     "listTitle": [
-      "a[href^='/s/']",
-      "a[href*='lobste.rs/s/']"
+      ".link a.u-url",
+      ".link a"
     ],
     "listTitleExclude": [
       ".badge",
@@ -148,138 +147,80 @@ var SITE = {
       ".meta"
     ],
     "listAuthor": [
-      ".username",
-      ".userLink",
-      ".author"
+      ".u-author"
     ],
     "listAvatar": [
-      ".avatar img",
-      ".userAvatarImage"
+      "img.avatar"
     ],
     "listDate": [
-      "time",
-      "time[datetime]"
+      "time"
     ],
     "listCommentCount": [
-      ".replies",
-      ".comments",
-      ".reply-count",
-      ".comment-count"
+      ".comments_label a"
     ],
     "listViewCount": [
       ".views",
       ".view-count"
     ],
     "listLikeCount": [
-      ".likes",
-      ".vote-count",
-      ".recommend"
+      ".upvoter"
     ],
     "listCategory": [
-      ".category",
-      ".forum-title",
-      ".board-title"
+      ".domain",
+      ".tags"
     ],
-    "listImage": [
-
-    ],
+    "listImage": [],
     "postTitle": [
       ".story .link a.u-url",
-      ".story .link a",
-      ".contentTitle",
-      ".p-title-value",
-      ".ipsType_pageTitle",
-      "h1[itemprop='headline']"
+      ".story .link a"
     ],
     "postAuthor": [
-      ".story .u-author",
-      ".message-name .username",
-      ".messageSidebar .username",
-      ".postprofile .username",
-      ".author .username"
+      ".story .u-author"
     ],
     "postAvatar": [
-      ".message-avatar img",
-      ".messageSidebar img",
-      ".avatar img"
+      ".story img.avatar"
     ],
     "postDate": [
-      "time[datetime]",
-      ".message-attribution time",
-      ".postdate time"
+      ".story time"
     ],
     "postViewCount": [
       ".view-count"
     ],
     "postLikeCount": [
-      ".reactionSummary",
-      ".likes",
-      ".vote-count"
+      ".story .upvoter"
     ],
     "postCategory": [
       ".story .domain",
-      ".story .tags",
-      ".breadcrumbs a",
-      ".p-breadcrumbs a"
+      ".story .tags"
     ],
     "postContent": [
-      ".story .details",
-      ".story_content",
-      ".messageText[itemprop='text']",
-      ".message-body .bbWrapper",
-      ".postbody .content",
-      ".ipsType_richText",
-      ".cooked"
+      ".story_content"
     ],
     "commentRows": [
-      ".comment",
-      "article.message",
-      ".postbody",
-      ".ipsComment",
-      ".topic-post",
-      ".comment-item"
+      ".comment"
     ],
     "commentAuthor": [
-      ".byline a[href^='/~']",
-      ".message-name .username",
-      ".postprofile .username",
-      ".ipsComment_author .username",
-      ".author .username"
+      ".byline a[href]"
     ],
     "commentAvatar": [
-      ".message-avatar img",
-      ".postprofile img",
-      ".ipsUserPhoto img"
+      "img.avatar"
     ],
     "commentContent": [
-      ".comment_text",
-      ".message-body .bbWrapper",
-      ".postbody .content",
-      ".ipsType_richText",
-      ".cooked",
-      ".comment-content"
+      ".comment_text"
     ],
     "commentDate": [
-      "time[datetime]",
-      ".message-attribution time",
-      ".postdate time"
+      "time"
     ],
     "commentLikeCount": [
-      ".reactionSummary",
-      ".likes",
-      ".vote-count"
+      ".upvoter"
     ],
-    "commentLevel": [
-
-    ]
+    "commentLevel": []
   },
   "commentLevelAttrs": [
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -287,7 +228,7 @@ var SYNURA = {
   name: "lobsters",
   author: "Synura Team",
   description: "lobste.rs",
-  version: 0.3,
+  version: 0.5,
   api: 0,
   license: "Apache-2.0",
   locale: "en_US",
@@ -319,12 +260,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -333,34 +271,6 @@ function localQuerySelectorAll(root, selectors) {
   return out;
 }
 
-
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -510,10 +420,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])),
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -527,34 +438,49 @@ function extractListItem(row, baseUrl) {
 }
 
 function localCommentAuthor(node) {
-  return firstAuthorText(node, selectorList("commentAuthor", []));
+  var links = node.querySelectorAll(".byline a[href]");
+  for (var i = 0; i < links.length; i++) {
+    if (/^\/~/.test(attrOf(links[i], "href")) && textOf(links[i])) return textOf(links[i]);
+  }
+  return "";
 }
 
 function localCommentDate(node) {
-  var time = firstNode(node, selectorList("commentDate", ["time", ".date", ".time"]));
-  return attrOf(time, "datetime") || textOf(time);
+  return firstDateText(node, selectorList("commentDate", ["time", ".date", ".time"]));
 }
 
 
+
+function lobstersCommentLevels(doc) {
+  var levels = {};
+  function visit(node, depth) {
+    if (!node || !node.tagName) return;
+    var classes = " " + attrOf(node, "class") + " ";
+    if (String(node.tagName).toLowerCase() === "ol" && /\scomments\s/.test(classes)) depth += 1;
+    if (/\scomment\s/.test(classes)) levels[attrOf(node, "id")] = Math.max(0, depth);
+    var children = node.childNodes || [];
+    for (var i = 0; i < children.length; i++) visit(children[i], depth);
+  }
+  visit(doc.querySelector("#story_comments") || doc.querySelector("body"), -1);
+  return levels;
+}
 
 function localParseComments(doc, postUrl) {
   var seen = {};
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
-  var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
-    var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
-    var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
-    seen[key] = true;
+  var levels = lobstersCommentLevels(doc);
+  for (var i = 0; i < rows.length; i++) {
+    var contentRoot = firstNode(rows[i], selectorList("commentContent", []));
     var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
+    if (!content || !content.length) continue;
+    var key = attrOf(rows[i], "id") || String(i);
+    if (seen[key]) continue;
+    seen[key] = true;
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
-      id: SITE.siteKey + ":comment:" + out.length,
+      id: SITE.siteKey + ":comment:" + key,
       link: postUrl + (domId ? ("#" + domId) : ("#comment-" + out.length)),
       author: localCommentAuthor(rows[i]),
       avatar: imageUrlFromNode(firstNode(rows[i], selectorList("commentAvatar", [])), postUrl),
@@ -562,8 +488,8 @@ function localParseComments(doc, postUrl) {
       content: content,
       likeCount: hideZeroCount(parseCount(likeText)),
       dislikeCount: "",
-      level: detectCommentLevel(rows[i]),
-      menus: [MENU_BROWSER],
+      level: levels[domId] || 0,
+      menus: [],
       hotCount: toInt(likeText, 0),
       coldCount: 0
     });
@@ -628,10 +554,11 @@ function lobstersParseBoardItems(doc, baseUrl) {
       id: SITE.siteKey + ":" + (shortId || items.length),
       title: title,
       description: domain || SITE.category || SITE.displayName,
-      category: domain || SITE.country || SITE.displayName,
+      category: "",
+      memo: domain || firstText(row, [".tags"]),
       author: firstText(row, [".u-author", ".hnuser"]),
       avatar: imageUrlFromNode(firstNode(row, ["img.avatar", ".avatar"]), baseUrl),
-      date: firstText(row, ["time", ".date", ".time"]),
+      date: firstDateText(row, ["time", ".date", ".time"]),
       commentCount: commentCount,
       viewCount: "",
       likeCount: score,
@@ -688,4 +615,18 @@ SITE.matchBoard = function (info) {
     board: board,
     page: pageMatch ? parseInt(pageMatch[1], 10) : 1
   };
+};
+
+SITE.postCategoryInMemo = true;
+SITE.parsePostMemo = function (doc) {
+  return firstText(doc, [".story .domain", ".story .tags"]);
+};
+SITE.filterPostContent = function (content, url, doc) {
+  var titleLink = firstNode(doc, [".story .link a.u-url", ".story .link a"]);
+  var target = resolveContentUrl(attrOf(titleLink, "href"), url);
+  var details = (content || []).slice();
+  if (target && normalizeUrl(target) !== normalizeUrl(url)) {
+    details.unshift({ type: "link", value: textOf(titleLink) || target, link: target });
+  }
+  return details;
 };

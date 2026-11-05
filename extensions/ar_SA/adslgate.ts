@@ -57,14 +57,8 @@ var SITE = {
       ".ipsType_pageTitle",
       ".forum-title"
     ],
-    "listRows": [
-      "a[href*='showthread.php']",
-      "a[href*='/threads/']"
-    ],
-    "listLink": [
-      "a[href*='showthread.php']",
-      "a[href*='/threads/']"
-    ],
+    "listRows": ["div[data-thread-id]", "tr", ".threadbit"],
+    "listLink": ["a.thread-title-font", ".threadtitle a[href]"],
     "listTitle": [
       "a[href*='showthread.php']",
       "a[href*='/threads/']"
@@ -75,29 +69,14 @@ var SITE = {
       ".stats",
       ".meta"
     ],
-    "listAuthor": [
-      ".username",
-      ".userLink",
-      ".author"
-    ],
+    "listAuthor": ["button span[title]", ".author", ".username", ".smallfont .username"],
     "listAvatar": [
       ".avatar img",
       ".userAvatarImage"
     ],
-    "listDate": [
-      "time",
-      "time[datetime]"
-    ],
-    "listCommentCount": [
-      ".replies",
-      ".comments",
-      ".reply-count",
-      ".comment-count"
-    ],
-    "listViewCount": [
-      ".views",
-      ".view-count"
-    ],
+    "listDate": ["span.text-xs[title]", "time[datetime]", ".threadlastpost .date", ".time"],
+    "listCommentCount": [".replies", ".threadstats li:first-child"],
+    "listViewCount": [".views", ".threadstats li:last-child"],
     "listLikeCount": [
       ".likes",
       ".vote-count",
@@ -111,82 +90,29 @@ var SITE = {
     "listImage": [
 
     ],
-    "postTitle": [
-      ".contentTitle",
-      ".p-title-value",
-      ".ipsType_pageTitle",
-      "h1[itemprop='headline']"
-    ],
-    "postAuthor": [
-      ".message-name .username",
-      ".messageSidebar .username",
-      ".postprofile .username",
-      ".author .username"
-    ],
-    "postAvatar": [
-      ".message-avatar img",
-      ".messageSidebar img",
-      ".avatar img"
-    ],
-    "postDate": [
-      "time[datetime]",
-      ".message-attribution time",
-      ".postdate time"
-    ],
+    "postTitle": ["h1.thread-title-font", "h1", ".threadtitle", ".post-title"],
+    "postAuthor": ["article[data-post-number='1'] a[href^='/profile/']", "article[data-post-id] a[href^='/profile/']", ".username", ".bigusername", ".author"],
+    "postAvatar": ["article[data-post-number='1'] button img", "article[data-post-id] button img", ".avatar img"],
+    "postDate": ["article[data-post-number='1'] time[datetime]", "article[data-post-id] time[datetime]", ".postdate", ".date"],
     "postViewCount": [
       ".view-count"
     ],
-    "postLikeCount": [
-      ".reactionSummary",
-      ".likes",
-      ".vote-count"
-    ],
+    "postLikeCount": ["article[data-post-number='1'] .like-count"],
     "postCategory": [
       ".breadcrumbs a",
       ".p-breadcrumbs a"
     ],
-    "postContent": [
-      ".messageText[itemprop='text']",
-      ".message-body .bbWrapper",
-      ".postbody .content",
-      ".ipsType_richText",
-      ".cooked"
-    ],
-    "commentRows": [
-      "article.message",
-      ".postbody",
-      ".ipsComment",
-      ".topic-post",
-      ".comment-item"
-    ],
-    "commentAuthor": [
-      ".message-name .username",
-      ".postprofile .username",
-      ".ipsComment_author .username",
-      ".author .username"
-    ],
-    "commentAvatar": [
-      ".message-avatar img",
-      ".postprofile img",
-      ".ipsUserPhoto img"
-    ],
-    "commentContent": [
-      ".message-body .bbWrapper",
-      ".postbody .content",
-      ".ipsType_richText",
-      ".cooked",
-      ".comment-content"
-    ],
+    "postContent": ["article[data-post-number='1'] .prose", "article[data-post-id] .prose", "div[id^='post_message_']", "td[id^='postmessage_']", ".post_message", ".postbody"],
+    "commentRows": ["article[data-post-id]", "table[id^='post']", "li[id^='post']", "div[id^='post_']", ".postbit"],
+    "commentAuthor": ["a[href^='/profile/']", ".bigusername", ".username", ".author"],
+    "commentAvatar": ["button img", ".avatar img"],
+    "commentContent": [".prose", "div[id^='post_message_']", "td[id^='postmessage_']", ".post_message", ".postbody"],
     "commentDate": [
       "time[datetime]",
       ".message-attribution time",
       ".postdate time"
     ],
-    "commentLikeCount": [
-      ".reactionSummary",
-      ".likes",
-      ".vote-count"
-    ],
+    "commentLikeCount": [".like-count"],
     "commentLevel": [
 
     ]
@@ -195,9 +121,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -205,7 +129,7 @@ var SYNURA = {
   name: "adslgate",
   author: "Synura Team",
   description: "www.adslgate.com",
-  version: 0.3,
+  version: 0.5,
   api: 0,
   license: "Apache-2.0",
   locale: "ar_SA",
@@ -222,7 +146,8 @@ var SYNURA = {
 
 var LOCAL_POST_PATTERNS = [
   /showthread\.php\?[^#]*(?:threadid|t)=\d+/i,
-  /\/threads\/[^\/?#]+/i
+  /\/threads\/[^\/?#]+/i,
+  /\/thread\/\d+(?:[/?#]|$)/i
 ];
 
 
@@ -242,13 +167,11 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
     }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
-    }
+
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
     }
@@ -257,33 +180,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -427,33 +323,45 @@ function localExtractCommentCount(title) {
 }
 
 
+function localListTitleLink(row, baseUrl) {
+  var selectors = selectorList("listLink", []);
+  for (var i = 0; i < selectors.length; i++) {
+    var links = localQuerySelectorAll(row, [selectors[i]]);
+    for (var j = 0; j < links.length; j++) {
+      var url = ensureAbsoluteUrl(attrOf(links[j], "href"), baseUrl);
+      if (localLooksLikePostUrl(url) && localTitleFromNode(links[j])) return links[j];
+    }
+  }
+  return attrOf(row, "href") && localLooksLikePostUrl(ensureAbsoluteUrl(attrOf(row, "href"), baseUrl)) ? row : null;
+}
+
 function extractListItem(row, baseUrl) {
   if (!row) return null;
-  var linkNode = firstNode(row, selectorList("listLink", [])) || (attrOf(row, "href") ? row : null);
+  var linkNode = localListTitleLink(row, baseUrl);
   var link = linkNode ? (normalizeUrl(attrOf(linkNode, "href")) || ensureAbsoluteUrl(attrOf(linkNode, "href"), baseUrl)) : "";
   link = localCanonicalizeUrl(link);
   if (!link || localLooksLikeAssetUrl(link) || !localLooksLikePostUrl(link)) return null;
-  var title = firstNonEmpty([
-    firstText(row, selectorList("listTitle", [])),
-    localTitleFromNode(linkNode)
-  ]);
+  var title = localTitleFromNode(linkNode);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
   ]);
   var image = imageUrlFromNode(firstNode(row, selectorList("listImage", ["img"])), baseUrl);
+  var counts = attrOf(row, "data-thread-id") ? localQuerySelectorAll(row, [".w-20 .font-medium"]) : [];
+  if (counts.length) commentCount = parseCount(textOf(counts[0]));
   return {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
-    avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
+    avatar: imageUrlFromNode(attrOf(row, "data-thread-id") ? firstNode(firstNode(row, ["button"]), ["img"]) : firstNode(row, selectorList("listAvatar", [])), baseUrl),
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])) || "",
     commentCount: commentCount,
-    viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
+    viewCount: counts.length > 1 ? parseCount(textOf(counts[1])) : parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
     mediaUrl: image,
     mediaType: image ? "image" : "",
@@ -479,16 +387,16 @@ function localParseComments(doc, postUrl) {
   var seen = {};
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
-  var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
+    if (attrOf(rows[i], "data-post-number") === "1") continue;
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
-    seen[key] = true;
     var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
+    if (!content || content.length === 0) content = text ? [{ type: "text", value: text }] : [];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
+    seen[key] = true;
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -619,110 +527,37 @@ SITE.matchBoard = function (info) {
   SITE.selectors = SITE.selectors || {};
   SITE.linkAllowPatterns = [
   "showthread\\.php",
-  "/threads/"
+  "/threads/",
+  "/thread/"
 ];
   try {
     if (typeof LIST_LINK_ALLOW_PATTERNS !== "undefined") LIST_LINK_ALLOW_PATTERNS = SITE.linkAllowPatterns;
   } catch (e) {}
   try {
-    if (typeof LOCAL_POST_PATTERNS !== "undefined") LOCAL_POST_PATTERNS = [new RegExp("showthread\\.php", "i"), new RegExp("/threads/", "i")];
+    if (typeof LOCAL_POST_PATTERNS !== "undefined") LOCAL_POST_PATTERNS = [new RegExp("showthread\\.php", "i"), new RegExp("/threads/", "i"), new RegExp("/thread/[0-9]+(?:[/?#]|$)", "i")];
   } catch (e) {}
-  SITE.selectors["listRows"] = [
-  "tr[id^='thread']",
-  "tbody[id^='threadbits_forum'] tr",
-  ".threadbit",
-  "a[id^='thread_title_']",
-  "a[href*='showthread.php']",
-  "a[href*='/threads/']"
-];
-  SITE.selectors["listLink"] = [
-  "a[id^='thread_title_']",
-  "a[href*='showthread.php']",
-  "a[href*='/threads/']"
-];
+  SITE.selectors["listRows"] = ["div[data-thread-id]", "tr", ".threadbit"];
+  SITE.selectors["listLink"] = ["a.thread-title-font", ".threadtitle a[href]"];
   SITE.selectors["listTitle"] = [
   "a[id^='thread_title_']",
   "a[href*='showthread.php']",
   "a[href*='/threads/']"
 ];
-  SITE.selectors["listAuthor"] = [
-  ".author",
-  ".username",
-  ".member"
-];
-  SITE.selectors["listDate"] = [
-  "time[datetime]",
-  ".date",
-  ".time"
-];
-  SITE.selectors["listCommentCount"] = [
-  ".replies",
-  ".replycount",
-  ".stats"
-];
-  SITE.selectors["listViewCount"] = [
-  ".views",
-  ".viewcount",
-  ".stats"
-];
-  SITE.selectors["postTitle"] = [
-  "h1",
-  ".threadtitle",
-  ".post-title"
-];
-  SITE.selectors["postAuthor"] = [
-  ".username",
-  ".bigusername",
-  ".author"
-];
-  SITE.selectors["postDate"] = [
-  "time[datetime]",
-  ".postdate",
-  ".date"
-];
-  SITE.selectors["postContent"] = [
-  "td[id^='td_post_']",
-  "div[id^='post_message_']",
-  "td[id^='postmessage_']",
-  ".post_message",
-  ".postbody",
-  "#postlist",
-  "article",
-  "body"
-];
-  SITE.selectors["commentRows"] = [
-  "table[id^='post']",
-  "li[id^='post']",
-  "div[id^='post_']",
-  "td[id^='td_post_']",
-  ".postbit"
-];
-  SITE.selectors["commentContent"] = [
-  "div[id^='post_message_']",
-  "td[id^='postmessage_']",
-  ".post_message",
-  ".postbody",
-  "td[id^='td_post_']"
-];
-  SITE.selectors["commentAuthor"] = [
-  ".bigusername",
-  ".username",
-  ".author"
-];
+  SITE.selectors["listAuthor"] = ["button span[title]", ".author", ".username", ".smallfont .username"];
+  SITE.selectors["listDate"] = ["span.text-xs[title]", "time[datetime]", ".threadlastpost .date", ".time"];
+  SITE.selectors["listCommentCount"] = [".replies", ".threadstats li:first-child"];
+  SITE.selectors["listViewCount"] = [".views", ".threadstats li:last-child"];
+  SITE.selectors["postTitle"] = ["h1.thread-title-font", "h1", ".threadtitle", ".post-title"];
+  SITE.selectors["postAuthor"] = ["article[data-post-number='1'] a[href^='/profile/']", "article[data-post-id] a[href^='/profile/']", ".username", ".bigusername", ".author"];
+  SITE.selectors["postDate"] = ["article[data-post-number='1'] time[datetime]", "article[data-post-id] time[datetime]", ".postdate", ".date"];
+  SITE.selectors["postContent"] = ["article[data-post-number='1'] .prose", "article[data-post-id] .prose", "div[id^='post_message_']", "td[id^='postmessage_']", ".post_message", ".postbody"];
+  SITE.selectors["commentRows"] = ["article[data-post-id]", "table[id^='post']", "li[id^='post']", "div[id^='post_']", ".postbit"];
+  SITE.selectors["commentContent"] = [".prose", "div[id^='post_message_']", "td[id^='postmessage_']", ".post_message", ".postbody"];
+  SITE.selectors["commentAuthor"] = ["a[href^='/profile/']", ".bigusername", ".username", ".author"];
   SITE.selectors["commentDate"] = [
   "time[datetime]",
   ".postdate",
   ".date"
-];
-  var adslgatePostContentSelectors = [
-  "td[id^='td_post_']",
-  "div[id^='post_message_']",
-  "td[id^='postmessage_']",
-  ".post_message",
-  ".postbody",
-  "#postlist",
-  "article",
-  "body"
 ];
   var adslgatePreviousFilterPostContent = SITE.filterPostContent;
   function adslgateText(node) {
@@ -738,39 +573,9 @@ SITE.matchBoard = function (info) {
     }
     return out;
   }
-  function adslgateDetailsFromRoot(root, url) {
-    if (!root) return [];
-    var text = adslgateText(root);
-    if (text.length < 2) return [];
-    var details = [];
-    try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-    if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-    return details;
-  }
+
   SITE.filterPostContent = function (content, url, doc, page, match) {
-    var previous = [];
-    try {
-      if (adslgatePreviousFilterPostContent) previous = adslgatePreviousFilterPostContent(content, url, doc, page, match) || [];
-    } catch (e) {}
-    var nodes = adslgateNodes(doc, adslgatePostContentSelectors);
-    var seen = {};
-    var out = [];
-    for (var i = 0; i < nodes.length && out.length < 80; i++) {
-      var text = adslgateText(nodes[i]);
-      var key = text.substring(0, 220).toLowerCase();
-      if (!key || seen[key]) continue;
-      seen[key] = true;
-      var details = adslgateDetailsFromRoot(nodes[i], url);
-      for (var j = 0; j < details.length && out.length < 80; j++) out.push(details[j]);
-      if (out.length && adslgatePostContentSelectors[i] !== "body") break;
-    }
-    if (!out.length) out = previous;
-    if (!out.length) {
-      var title = "";
-      try { title = firstNonEmpty([firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["meta[property='og:description']", "meta[name='description']", "title"])]); } catch (e) {}
-      if (title) out = [{ type: "text", value: title }];
-    }
-    return out;
+    return Array.isArray(content) ? content : [];
   };
   var adslgateCommentRowSelectors = [
   "table[id^='post']",
@@ -786,53 +591,39 @@ SITE.matchBoard = function (info) {
   ".postbody",
   "td[id^='td_post_']"
 ];
-  var adslgateCommentSummarySelectors = [
-  ".replies",
-  ".replycount",
-  ".stats",
-  "table[id^='post']",
-  "li[id^='post']",
-  "div[id^='post_']",
-  "td[id^='td_post_']",
-  ".postbit",
-  "h1",
-  ".threadtitle",
-  ".post-title"
-];
   var adslgatePreviousFetchPostComments = SITE.fetchPostComments;
   function adslgateMergeComment(target, seen, item) {
     if (!item || !item.content) return;
     var text = "";
     for (var i = 0; i < item.content.length; i++) text += " " + (item.content[i] && item.content[i].value || "");
     text = text.replace(/\s+/g, " ").trim();
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key]) return;
+    var key = item.id && item.id.indexOf(":comment:") < 0 ? item.id : JSON.stringify([item.link, item.author, item.date, item.content]);
+    if (!item.content.length || seen[key]) return;
     seen[key] = true;
     target.push(item);
   }
   function adslgateParseVisibleComments(doc, url, target, seen) {
-    var rows = adslgateNodes(doc, adslgateCommentRowSelectors);
-    for (var i = 0; i < rows.length && target.length < 80; i++) {
+    var rows = localQuerySelectorAll(doc, adslgateCommentRowSelectors);
+    for (var i = 0; i < rows.length; i++) {
       var root = null;
       try { root = firstNode(rows[i], adslgateCommentContentSelectors); } catch (e) {}
       root = root || rows[i];
-      var text = adslgateText(root);
-      if (text.length < 2 || text.length > 5000) continue;
+      var text = textOf(root);
       var details = [];
       try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-      if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
+      if (!details.length) details = text ? [{ type: "text", value: text }] : [];
       var domId = "";
       try { domId = attrOf(rows[i], "id"); } catch (e) {}
       adslgateMergeComment(target, seen, {
         id: SITE.siteKey + ":comment:" + target.length,
         link: url + (domId ? ("#" + domId) : ("#comment-" + target.length)),
-        author: "",
-        avatar: "",
-        date: "",
+        author: firstAuthorText(rows[i], selectorList("commentAuthor", [])),
+        avatar: imageUrlFromNode(firstNode(rows[i], selectorList("commentAvatar", [])), url),
+        date: firstDateText(rows[i], selectorList("commentDate", [])),
         content: details,
         likeCount: "",
         dislikeCount: "",
-        level: 0,
+        level: detectCommentLevel(rows[i]),
         menus: [MENU_BROWSER],
         hotCount: 0,
         coldCount: 0
@@ -851,97 +642,8 @@ SITE.matchBoard = function (info) {
       }
     } catch (e) {}
     if (!out.length) adslgateParseVisibleComments(doc, url, out, seen);
-    if (!out.length) {
-      var summary = "";
-      try { summary = firstNonEmpty([firstText(doc, adslgateCommentSummarySelectors), firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["title"])]); } catch (e) {}
-      summary = String(summary || SITE.displayName || "Comments").replace(/\s+/g, " ").trim();
-      if (summary) adslgateMergeComment(out, seen, {
-        id: SITE.siteKey + ":comment:summary",
-        link: url + "#comments",
-        author: SITE.displayName,
-        avatar: "",
-        date: "",
-        content: [{ type: "text", value: summary }],
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
+
     return out;
-  };
-  var adslgatePreviousParseBoardItemsCustom = SITE.parseBoardItemsCustom;
-  var adslgatePreviousParseBoardItemsFromHtml = SITE.parseBoardItemsFromHtml;
-  var adslgatePreviousRouteCustom = SITE.routeCustom;
-  var adslgatePreviousRouteBoardCustom = SITE.routeBoardCustom;
-  function adslgateStatusItem(baseUrl, text) {
-    var link = String(baseUrl || SITE.browserHomeUrl || "");
-    link += (link.indexOf("?") >= 0 ? "&" : "?") + "synura_status=site";
-    return {
-      id: SITE.siteKey + ":site-status",
-      link: link,
-      title: "ADSLGate site status",
-      author: SITE.displayName,
-      avatar: "",
-      date: "",
-      category: SITE.country || "",
-      commentCount: "1",
-      viewCount: "",
-      likeCount: "",
-      mediaUrl: "",
-      mediaType: "",
-      types: ["link"],
-      menus: [],
-      hotCount: 1,
-      coldCount: 0
-    };
-  }
-  function adslgateStatusItems(doc, baseUrl) {
-    var text = adslgateText(doc && doc.body ? doc.body : doc);
-    if (!text || !(new RegExp("صيانة|maintenance|temporarily|restricted|unavailable|error", "i")).test(text)) return [];
-    return [adslgateStatusItem(baseUrl, text)];
-  }
-  SITE.parseBoardItemsCustom = function (doc, baseUrl, match, boardPage) {
-    var out = [];
-    try { if (adslgatePreviousParseBoardItemsCustom) out = adslgatePreviousParseBoardItemsCustom(doc, baseUrl, match, boardPage) || []; } catch (e) {}
-    if (out.length) return out;
-    return adslgateStatusItems(doc, baseUrl);
-  };
-  SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
-    var out = [];
-    try { if (adslgatePreviousParseBoardItemsFromHtml) out = adslgatePreviousParseBoardItemsFromHtml(html, baseUrl, match, boardPage) || []; } catch (e) {}
-    if (out.length) return out;
-    var doc = new DOMParser().parseFromString(String(html || ""), "text/html");
-    return adslgateStatusItems(doc, baseUrl);
-  };
-  SITE.routeCustom = function (url, info, force) {
-    if (String(url || "").indexOf("synura_status=site") >= 0) {
-      return {
-        kind: "post",
-        url: url,
-        viewData: {
-          view: "/views/post",
-          styles: { title: "ADSLGate site status", menu: true, history: true },
-          models: {
-            author: SITE.displayName,
-            avatar: "",
-            date: "",
-            category: SITE.country || "",
-            viewCount: "",
-            likeCount: "",
-            content: [{ type: "text", value: "ADSLGate returned a maintenance or restricted-access page instead of a public thread list." }],
-            comments: [{ id: SITE.siteKey + ":comment:status", link: url + "#status", author: SITE.displayName, avatar: "", date: "", content: [{ type: "text", value: "ADSLGate returned a maintenance or restricted-access page instead of a public thread list." }], likeCount: "", dislikeCount: "", level: 0, menus: [], hotCount: 0, coldCount: 0 }],
-            link: url,
-            menus: [],
-            buttons: []
-          }
-        },
-        context: { kind: "post", link: url, boardId: "", boardTitle: SITE.displayName, boardUrl: SITE.browserHomeUrl }
-      };
-    }
-    return adslgatePreviousRouteCustom ? adslgatePreviousRouteCustom(url, info, force) : null;
   };
 })();
 // END synurart-own-extension-validation-fix

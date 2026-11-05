@@ -268,7 +268,8 @@ var testCookieCheck = (viewId) => {
 };
 
 var home = () => {
-    synura.open('/views/list', {
+    synura.open({
+        view: '/views/list',
         styles: { title: "Mock Server Test" },
         models: {
             contents: [

@@ -240,14 +240,7 @@ var SITE = {
       ".tag",
       "a[href*='/tags/']"
     ],
-    "postContent": [
-      "#threadtitle",
-      ".thread",
-      ".post",
-      ".res",
-      "article",
-      "main"
-    ],
+    "postContent": ["#threadtitle", ".thread", ".post", ".res", "article"],
     "commentRows": [
       ".post",
       ".res",
@@ -296,17 +289,16 @@ var SITE = {
     "depth",
     "data-level"
   ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true,
   "preserveAliasHostUrls": true
 };
 
 var SYNURA = {
   "domain": "asahi.5ch.io",
+  "host_permissions": ["https://*.5ch.io/*"],
   "name": "five_ch",
   "author": "Synura Team",
   "description": "asahi.5ch.io",
-  "version": 0.3,
+  "version": 0.5,
   "api": 0,
   "license": "Apache-2.0",
   "locale": "ja_JP",
@@ -341,12 +333,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -356,33 +345,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -554,7 +516,7 @@ function localFiveChParseSubjectItems(text, boardUrl, match) {
       titlePart = titlePart.substring(0, countMatch.index);
     }
     var title = localFiveChDecodeHtmlText(titlePart);
-    if (!title || title.length < 2) continue;
+    if (!title) continue;
     var link = localFiveChReadUrl(board.boardUrl, threadId);
     if (!link) continue;
     seen[threadId] = true;
@@ -562,7 +524,7 @@ function localFiveChParseSubjectItems(text, boardUrl, match) {
       id: SITE.siteKey + ":" + board.boardId + ":" + threadId,
       link: link,
       title: title,
-      author: SITE.displayName,
+      author: "",
       avatar: "",
       date: localFiveChDateFromThreadId(threadId),
       // The board name is already in the list header; keep the title row clear.
@@ -585,7 +547,7 @@ function localFiveChParseDatThread(text, postUrl) {
   var lines = String(text || "").replace(/\r/g, "").split("\n");
   var posts = [];
   var title = "";
-  for (var i = 0; i < lines.length && posts.length < 150; i++) {
+  for (var i = 0; i < lines.length; i++) {
     var line = String(lines[i] || "");
     if (!line) continue;
     var parts = line.split("<>");
@@ -753,7 +715,7 @@ function extractListItem(row, baseUrl) {
     localTitleFromNode(linkNode)
   ]);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -763,9 +725,9 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
+    date: firstDateText(row, selectorList("listDate", [])),
     category: "",
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
@@ -795,15 +757,15 @@ function localParseComments(doc, postUrl) {
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
   var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -931,7 +893,7 @@ SITE.routePostCustom = function (url, urlInfo, match, force) {
   var first = thread.posts[0];
   var title = thread.title || (first.text ? first.text.substring(0, 80) : "") || localPostIdFromUrl(postUrl);
   var comments = [];
-  for (var i = 1; i < thread.posts.length && comments.length < 100; i++) {
+  for (var i = 1; i < thread.posts.length; i++) {
     var post = thread.posts[i];
     comments.push({
       id: SITE.siteKey + ":res:" + (post.number || (i + 1)),
@@ -966,7 +928,8 @@ SITE.routePostCustom = function (url, urlInfo, match, force) {
         author: first.author,
         avatar: "",
         date: first.date,
-        category: context.boardTitle,
+        category: "",
+        memo: context.boardTitle,
         viewCount: "",
         likeCount: "",
         content: first.content,

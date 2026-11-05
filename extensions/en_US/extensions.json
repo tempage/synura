@@ -3,7 +3,7 @@
     {
       "name": "reddit",
       "description": "www.reddit.com",
-      "version": 0.2,
+      "version": 0.3,
       "url": "https://tempage.github.io/synura/extensions/en_US/reddit.js",
       "api": 0,
       "domain": "www.reddit.com",
@@ -19,7 +19,7 @@
     {
       "name": "hackernews",
       "description": "news.ycombinator.com",
-      "version": 0.3,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/en_US/hackernews.js",
       "api": 0,
       "domain": "news.ycombinator.com",
@@ -34,7 +34,7 @@
     {
       "name": "lobsters",
       "description": "lobste.rs",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/en_US/lobsters.js",
       "api": 0,
       "domain": "lobste.rs",
@@ -50,7 +50,7 @@
     {
       "name": "mumsnet",
       "description": "www.mumsnet.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/en_US/mumsnet.js",
       "api": 0,
       "domain": "www.mumsnet.com",

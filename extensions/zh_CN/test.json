@@ -3,7 +3,7 @@
     {
       "name": "chiphell",
       "description": "www.chiphell.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/zh_CN/chiphell.js",
       "api": 0,
       "domain": "www.chiphell.com",
@@ -19,7 +19,7 @@
     {
       "name": "xiaohongshu",
       "description": "www.xiaohongshu.com",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/zh_CN/xiaohongshu.js",
       "api": 0,
       "domain": "www.xiaohongshu.com",
@@ -35,7 +35,7 @@
     {
       "name": "nga",
       "description": "bbs.nga.cn",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/zh_CN/nga.js",
       "api": 0,
       "domain": "bbs.nga.cn",
@@ -51,7 +51,7 @@
     {
       "name": "tieba",
       "description": "tieba.baidu.com",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/zh_CN/tieba.js",
       "api": 0,
       "domain": "tieba.baidu.com",
@@ -67,7 +67,7 @@
     {
       "name": "linux_do",
       "description": "linux.do",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/zh_CN/linux_do.js",
       "api": 0,
       "domain": "linux.do",

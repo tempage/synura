@@ -1,25 +1,28 @@
 {
   "extensions": [
     {
-      "name": "otofun",
-      "description": "www.otofun.net",
-      "version": 0.3,
+      "name": "otofun_net_vn",
+      "description": "www.otofun.net.vn",
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/vi_VN/otofun.js",
       "api": 0,
-      "domain": "www.otofun.net",
+      "domain": "www.otofun.net.vn",
       "author": "Synura Team",
-      "icon": "https://www.otofun.net/favicon.ico",
+      "icon": "https://www.otofun.net.vn/favicon.ico",
       "locale": "vi_VN",
       "tags": [
         "automotive",
         "cars",
         "forum"
+      ],
+      "host_permissions": [
+        "https://www.otofun.net.vn/*"
       ]
     },
     {
       "name": "tinhte",
       "description": "tinhte.vn",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/vi_VN/tinhte.js",
       "api": 0,
       "domain": "tinhte.vn",
@@ -35,7 +38,7 @@
     {
       "name": "voz",
       "description": "voz.vn",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/vi_VN/voz.js",
       "api": 0,
       "domain": "voz.vn",

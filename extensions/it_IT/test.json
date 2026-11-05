@@ -3,7 +3,7 @@
     {
       "name": "everyeye",
       "description": "forum.everyeye.it",
-      "version": 0.1,
+      "version": 0.3,
       "url": "https://tempage.github.io/synura/extensions/it_IT/everyeye.js",
       "api": 0,
       "domain": "forum.everyeye.it",
@@ -20,7 +20,7 @@
     {
       "name": "spaziogames",
       "description": "forum.spaziogames.it",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/it_IT/spaziogames.js",
       "api": 0,
       "domain": "forum.spaziogames.it",
@@ -39,7 +39,7 @@
     {
       "name": "finanzaonline",
       "description": "forum.finanzaonline.com",
-      "version": 0.4,
+      "version": 0.6,
       "url": "https://tempage.github.io/synura/extensions/it_IT/finanzaonline.js",
       "api": 0,
       "domain": "forum.finanzaonline.com",

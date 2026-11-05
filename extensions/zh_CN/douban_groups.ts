@@ -164,11 +164,7 @@ var SITE = {
       ".time",
       "time"
     ],
-    "listAuthor": [
-      ".from",
-      ".author",
-      ".group-name"
-    ],
+    "listAuthor": [".author a"],
     "listAvatar": [
       ".avatar img",
       ".user-avatar img",
@@ -213,23 +209,13 @@ var SITE = {
       ".topic-content h1",
       "title"
     ],
-    "postAuthor": [
-      ".topic-doc .from",
-      ".author",
-      ".user-face"
-    ],
+    "postAuthor": [".topic-doc .from a"],
     "postAvatar": [
       ".avatar img",
       ".user-avatar img",
       "img.avatar"
     ],
-    "postDate": [
-      "time[datetime]",
-      "time",
-      ".date",
-      ".time",
-      ".created-at"
-    ],
+    "postDate": [".topic-meta .create-time"],
     "postViewCount": [
       ".views",
       ".view-count",
@@ -252,39 +238,16 @@ var SITE = {
       ".node",
       ".tag"
     ],
-    "postContent": [
-      ".topic-content",
-      ".topic-doc",
-      ".rich-content",
-      ".content",
-      "main",
-      "body"
-    ],
-    "commentRows": [
-      ".comment-item",
-      ".reply-item",
-      ".comment"
-    ],
-    "commentAuthor": [
-      ".author",
-      ".user-face",
-      ".name"
-    ],
+    "postContent": [".topic-doc .rich-content", "#link-report .topic-richtext"],
+    "commentRows": [".comment-item"],
+    "commentAuthor": [".reply-doc h4 a"],
     "commentAvatar": [
       ".avatar img",
       ".user-avatar img",
       "img.avatar"
     ],
-    "commentContent": [
-      ".reply-doc",
-      ".content",
-      ".comment-content"
-    ],
-    "commentDate": [
-      ".pubtime",
-      "time",
-      ".time"
-    ],
+    "commentContent": [".reply-content"],
+    "commentDate": [".pubtime"],
     "commentLikeCount": [
       ".likes",
       ".like",
@@ -297,9 +260,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -307,7 +268,7 @@ var SYNURA = {
   "name": "douban_groups",
   "author": "Synura Team",
   "description": "www.douban.com",
-  "version": 0.2,
+  "version": 0.4,
   "api": 0,
   "license": "Apache-2.0",
   "locale": "zh_CN",
@@ -339,12 +300,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -354,33 +312,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -520,7 +451,7 @@ function extractListItem(row, baseUrl) {
     localTitleFromNode(linkNode)
   ]);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -530,10 +461,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])),
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -562,15 +494,15 @@ function localParseComments(doc, postUrl) {
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
   var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({

@@ -58,13 +58,13 @@ var SITE = {
       ".forum-title"
     ],
     "listRows": [
-      "a[href*='/talk/']"
+      "div.flex.items-center.justify-between"
     ],
     "listLink": [
-      "a[href*='/talk/']"
+      "a[data-click-id^='topic_compact_thread_link:']"
     ],
     "listTitle": [
-      "a[href*='/talk/']"
+      "a[data-click-id^='topic_compact_thread_link:']"
     ],
     "listTitleExclude": [
       ".badge",
@@ -72,24 +72,14 @@ var SITE = {
       ".stats",
       ".meta"
     ],
-    "listAuthor": [
-      ".username",
-      ".userLink",
-      ".author"
-    ],
-    "listAvatar": [
-      ".avatar img",
-      ".userAvatarImage"
-    ],
+    "listAuthor": [],
+    "listAvatar": [],
     "listDate": [
-      "time",
-      "time[datetime]"
+      ".w-24 p",
+      "time"
     ],
     "listCommentCount": [
-      ".replies",
-      ".comments",
-      ".reply-count",
-      ".comment-count"
+      "p.w-14"
     ],
     "listViewCount": [
       ".views",
@@ -100,37 +90,14 @@ var SITE = {
       ".vote-count",
       ".recommend"
     ],
-    "listCategory": [
-      ".category",
-      ".forum-title",
-      ".board-title"
-    ],
-    "listImage": [
-
-    ],
+    "listCategory": [],
+    "listImage": [],
     "postTitle": [
-      "h1",
-      ".contentTitle",
-      ".p-title-value",
-      ".ipsType_pageTitle",
-      "h1[itemprop='headline']"
+      "h1"
     ],
-    "postAuthor": [
-      ".message-name .username",
-      ".messageSidebar .username",
-      ".postprofile .username",
-      ".author .username"
-    ],
-    "postAvatar": [
-      ".message-avatar img",
-      ".messageSidebar img",
-      ".avatar img"
-    ],
-    "postDate": [
-      "time[datetime]",
-      ".message-attribution time",
-      ".postdate time"
-    ],
+    "postAuthor": [],
+    "postAvatar": [],
+    "postDate": [],
     "postViewCount": [
       ".view-count"
     ],
@@ -139,70 +106,31 @@ var SITE = {
       ".likes",
       ".vote-count"
     ],
-    "postCategory": [
-      ".breadcrumbs a",
-      ".p-breadcrumbs a"
-    ],
+    "postCategory": [],
     "postContent": [
-      "#thread-body",
-      ".post-body",
-      ".messageText[itemprop='text']",
-      ".message-body .bbWrapper",
-      ".postbody .content",
-      ".ipsType_richText",
-      ".cooked"
+      "#thread-body"
     ],
     "commentRows": [
-      "[data-reply-id]",
-      "#original-post",
-      "article.message",
-      ".postbody",
-      ".ipsComment",
-      ".topic-post",
-      ".comment-item"
+      "[data-reply-id]"
     ],
     "commentAuthor": [
-      ".message-name .username",
-      ".postprofile .username",
-      ".ipsComment_author .username",
-      ".author .username"
+      ".font-bold.break-all"
     ],
-    "commentAvatar": [
-      ".message-avatar img",
-      ".postprofile img",
-      ".ipsUserPhoto img"
-    ],
+    "commentAvatar": [],
     "commentContent": [
-      "[id^='reply-body-']",
-      "#thread-body",
-      ".post-body",
-      ".message-body .bbWrapper",
-      ".postbody .content",
-      ".ipsType_richText",
-      ".cooked",
-      ".comment-content"
+      ".post-body"
     ],
     "commentDate": [
-      "time[datetime]",
-      ".message-attribution time",
-      ".postdate time"
+      ".font-bold.break-all span"
     ],
-    "commentLikeCount": [
-      ".reactionSummary",
-      ".likes",
-      ".vote-count"
-    ],
-    "commentLevel": [
-
-    ]
+    "commentLikeCount": [],
+    "commentLevel": []
   },
   "commentLevelAttrs": [
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -210,7 +138,7 @@ var SYNURA = {
   name: "mumsnet",
   author: "Synura Team",
   description: "www.mumsnet.com",
-  version: 0.3,
+  version: 0.5,
   api: 0,
   license: "Apache-2.0",
   locale: "en_US",
@@ -246,12 +174,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -260,34 +185,6 @@ function localQuerySelectorAll(root, selectors) {
   return out;
 }
 
-
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -437,10 +334,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])),
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -453,65 +351,88 @@ function extractListItem(row, baseUrl) {
   };
 }
 
+function mumsnetHeader(node) {
+  return firstNode(node, [".font-bold.break-all"]);
+}
+
 function localCommentAuthor(node) {
-  return firstAuthorText(node, selectorList("commentAuthor", []));
+  var header = mumsnetHeader(node);
+  return textOfNodeWithoutSelectors(header, ["span"]).replace(/\s*[·•]\s*$/, "");
 }
 
 function localCommentDate(node) {
-  var time = firstNode(node, selectorList("commentDate", ["time", ".date", ".time"]));
-  return attrOf(time, "datetime") || textOf(time);
+  return firstDateText(mumsnetHeader(node), ["time", "span"]);
 }
 
-
-
 function localParseComments(doc, postUrl) {
+  var rows = doc.querySelectorAll("[data-reply-id]");
+  var comments = [];
   var seen = {};
-  var out = [];
-  var rows = allNodes(doc, selectorList("commentRows", []));
-  var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
-    var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
-    var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
-    seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
-    var domId = attrOf(rows[i], "id");
-    var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
-    out.push({
-      id: SITE.siteKey + ":comment:" + out.length,
-      link: postUrl + (domId ? ("#" + domId) : ("#comment-" + out.length)),
+  for (var i = 0; i < rows.length; i++) {
+    var id = attrOf(rows[i], "data-reply-id");
+    if (!/^[0-9]+$/.test(id) || seen[id]) continue;
+    // A quoted post can precede the answer; only read this reply's exact body.
+    var root = rows[i].querySelector("#reply-body-" + id);
+    var content = parseDetails(root, postUrl);
+    if (!content.length) continue;
+    seen[id] = true;
+    comments.push({
+      id: SITE.siteKey + ":comment:" + id,
+      link: postUrl.split("#")[0] + "#" + id,
       author: localCommentAuthor(rows[i]),
-      avatar: imageUrlFromNode(firstNode(rows[i], selectorList("commentAvatar", [])), postUrl),
+      avatar: "",
       date: localCommentDate(rows[i]),
       content: content,
-      likeCount: hideZeroCount(parseCount(likeText)),
+      likeCount: "",
       dislikeCount: "",
-      level: detectCommentLevel(rows[i]),
+      level: 0,
       menus: [MENU_BROWSER],
-      hotCount: toInt(likeText, 0),
+      hotCount: 0,
       coldCount: 0
     });
   }
-  return out;
+  return comments;
 }
-
 
 function localParseBoardItemsFromHtml(html, baseUrl) {
   var doc = new DOMParser().parseFromString(String(html || ""), "text/html");
-  var rows = localQuerySelectorAll(doc, SITE.selectors.listRows || []);
+  var rows = doc.querySelectorAll("div.flex.items-center.justify-between");
   var items = [];
   var seen = {};
   for (var i = 0; i < rows.length; i++) {
-    var item = extractListItem(rows[i], baseUrl);
-    if (!item || !item.link || seen[item.link]) continue;
-    seen[item.link] = true;
-    items.push(item);
+    var anchors = rows[i].querySelectorAll("a[data-click-id]");
+    var titleNode = null;
+    for (var j = 0; j < anchors.length; j++) {
+      if (attrOf(anchors[j], "data-click-id").indexOf("topic_compact_thread_link:") === 0) {
+        titleNode = anchors[j];
+        break;
+      }
+    }
+    if (!titleNode) continue;
+    var link = resolveContentUrl(attrOf(titleNode, "href"), baseUrl);
+    if (!localLooksLikePostUrl(link) || seen[link]) continue;
+    seen[link] = true;
+    items.push({
+      id: SITE.siteKey + ":" + localPostIdFromUrl(link),
+      link: link,
+      title: textOf(titleNode),
+      author: "",
+      avatar: "",
+      date: firstDateText(rows[i], [".w-24 p", "time"]),
+      category: "",
+      memo: firstText(doc, ["h1"]),
+      commentCount: parseCount(firstText(rows[i], ["p.w-14"])),
+      viewCount: "",
+      likeCount: "",
+      types: ["link"],
+      menus: [],
+      hotCount: 0,
+      coldCount: 0
+    });
   }
   return items;
 }
+
 
 function localDiscoverBoardRecords(doc, baseUrl) {
   var anchors = localQuerySelectorAll(doc, LOCAL_BOARD_LINK_SELECTORS);
@@ -627,3 +548,13 @@ SITE.matchBoard = function (info) {
   SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
 })();
 // END synurart-home-board-seed
+
+SITE.postCategoryInMemo = true;
+SITE.parsePostAuthor = function (doc) {
+  var schema = detectSchemaPost(doc);
+  return schema && schema.author || localCommentAuthor(doc.querySelector("#original-post"));
+};
+SITE.parsePostDate = function (doc) {
+  var schema = detectSchemaPost(doc);
+  return schema && schema.datePublished || localCommentDate(doc.querySelector("#original-post"));
+};

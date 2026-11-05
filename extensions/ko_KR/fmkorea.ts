@@ -183,9 +183,9 @@ var SITE = {
       ".nick_name"
     ],
     "postDate": [
-      ".btm_area .regdate",
-      ".regdate",
-      ".date"
+      ".rd_hd .date",
+      ".rd_hd .regdate",
+      ".rd .btm_area .regdate"
     ],
     "postViewCount": [
       ".btm_area .readed_count",
@@ -423,7 +423,7 @@ var SYNURA = {
     domain: "www.fmkorea.com",
     name: "fmkorea",
     description: "www.fmkorea.com",
-    version: 0.2,
+    version: 0.3,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/windows",

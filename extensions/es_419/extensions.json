@@ -3,7 +3,7 @@
     {
       "name": "ba_k",
       "description": "ba-k.com",
-      "version": 0.4,
+      "version": 0.6,
       "url": "https://tempage.github.io/synura/extensions/es_419/ba_k.js",
       "api": 0,
       "domain": "ba-k.com",
@@ -19,7 +19,7 @@
     {
       "name": "forosdelweb",
       "description": "www.forosdelweb.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/es_419/forosdelweb.js",
       "api": 0,
       "domain": "www.forosdelweb.com",
@@ -35,7 +35,7 @@
     {
       "name": "forosperu",
       "description": "www.forosperu.net",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/es_419/forosperu.js",
       "api": 0,
       "domain": "www.forosperu.net",

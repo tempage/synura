@@ -54,12 +54,8 @@ var SITE = {
       ".ipsType_pageTitle",
       ".forum-title"
     ],
-    "listRows": [
-      "a[href*='/threads/']"
-    ],
-    "listLink": [
-      "a[href*='/threads/']"
-    ],
+    "listRows": [".b3p-post", ".topiclist.topics li.row", "tr"],
+    "listLink": ["h4.first > a:last-child", "a.topictitle"],
     "listTitle": [
       "a[href*='/threads/']"
     ],
@@ -69,42 +65,21 @@ var SITE = {
       ".stats",
       ".meta"
     ],
-    "listAuthor": [
-      ".username",
-      ".userLink",
-      ".author"
-    ],
+    "listAuthor": [".linklist .username-coloured", ".topic-poster a.username", "a.username"],
     "listAvatar": [
       ".avatar img",
       ".userAvatarImage"
     ],
-    "listDate": [
-      "time",
-      "time[datetime]"
-    ],
-    "listCommentCount": [
-      ".replies",
-      ".comments",
-      ".reply-count",
-      ".comment-count"
-    ],
-    "listViewCount": [
-      ".views",
-      ".view-count"
-    ],
+    "listDate": ["time[datetime]", ".linklist a[title=\"Son mesaja git\"]"],
+    "listCommentCount": [".portal-title-span a[title=\"Yorumları görüntüle\"]", "dd.posts"],
+    "listViewCount": ["dd.views"],
     "listLikeCount": [
       ".likes",
       ".vote-count",
       ".recommend"
     ],
-    "listCategory": [
-      ".category",
-      ".forum-title",
-      ".board-title"
-    ],
-    "listImage": [
-
-    ],
+    "listCategory": [".linklist .rightside a"],
+    "listImage": [".content img.postimage"],
     "postTitle": [
       ".contentTitle",
       ".p-title-value",
@@ -189,9 +164,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -199,7 +172,7 @@ var SYNURA = {
   name: "turkiyeforum",
   author: "Synura Team",
   description: "www.turkiyeforum.com",
-  version: 0.3,
+  version: 0.5,
   api: 0,
   license: "Apache-2.0",
   locale: "tr_TR",
@@ -235,13 +208,11 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
     }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
-    }
+
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
     }
@@ -250,33 +221,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -406,17 +350,26 @@ function localExtractCommentCount(title) {
 }
 
 
+function localListTitleLink(row, baseUrl) {
+  var selectors = selectorList("listLink", []);
+  for (var i = 0; i < selectors.length; i++) {
+    var links = localQuerySelectorAll(row, [selectors[i]]);
+    for (var j = 0; j < links.length; j++) {
+      var url = ensureAbsoluteUrl(attrOf(links[j], "href"), baseUrl);
+      if (localLooksLikePostUrl(url) && localTitleFromNode(links[j])) return links[j];
+    }
+  }
+  return attrOf(row, "href") && localLooksLikePostUrl(ensureAbsoluteUrl(attrOf(row, "href"), baseUrl)) ? row : null;
+}
+
 function extractListItem(row, baseUrl) {
   if (!row) return null;
-  var linkNode = firstNode(row, selectorList("listLink", [])) || (attrOf(row, "href") ? row : null);
+  var linkNode = localListTitleLink(row, baseUrl);
   var link = linkNode ? (normalizeUrl(attrOf(linkNode, "href")) || ensureAbsoluteUrl(attrOf(linkNode, "href"), baseUrl)) : "";
   if (!link || localLooksLikeAssetUrl(link) || !localLooksLikePostUrl(link)) return null;
-  var title = firstNonEmpty([
-    firstText(row, selectorList("listTitle", [])),
-    localTitleFromNode(linkNode)
-  ]);
+  var title = localTitleFromNode(linkNode);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -426,10 +379,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])) || "",
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -457,16 +411,15 @@ function localParseComments(doc, postUrl) {
   var seen = {};
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
-  var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
-    seen[key] = true;
     var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
+    if (!content || content.length === 0) content = text ? [{ type: "text", value: text }] : [];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
+    seen[key] = true;
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -504,12 +457,12 @@ function localTurkiyeForumDate(row) {
 function localParseTurkiyeForumComments(doc, postUrl) {
   var rows = allNodes(doc, [".post"]);
   var out = [];
-  for (var i = 1; i < rows.length && out.length < 50; i++) {
+  for (var i = 1; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], [".content"]) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
     var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
+    if (!content || content.length === 0) content = text ? [{ type: "text", value: text }] : [];
+    if (!content.length) continue;
     var domId = attrOf(rows[i], "id");
     out.push({
       id: SITE.siteKey + ":comment:" + out.length,
@@ -643,38 +596,16 @@ SITE.matchBoard = function (info) {
   try {
     if (typeof LOCAL_POST_PATTERNS !== "undefined") LOCAL_POST_PATTERNS = [new RegExp("viewtopic\\.php\\?[^#]*t=\\d+", "i")];
   } catch (e) {}
-  SITE.selectors["listRows"] = [
-  ".forumbg .row",
-  ".topiclist.topics li.row",
-  "li.row",
-  "tr",
-  "a.topictitle[href*='viewtopic.php']"
-];
-  SITE.selectors["listLink"] = [
-  "a.topictitle[href*='viewtopic.php']",
-  "a[href*='viewtopic.php']"
-];
+  SITE.selectors["listRows"] = [".b3p-post", ".topiclist.topics li.row", "tr"];
+  SITE.selectors["listLink"] = ["h4.first > a:last-child", "a.topictitle"];
   SITE.selectors["listTitle"] = [
   "a.topictitle[href*='viewtopic.php']",
   "a[href*='viewtopic.php']"
 ];
-  SITE.selectors["listAuthor"] = [
-  ".username",
-  ".author",
-  ".lastpost"
-];
-  SITE.selectors["listDate"] = [
-  "time[datetime]",
-  ".lastpost",
-  ".date"
-];
-  SITE.selectors["listCommentCount"] = [
-  ".posts",
-  ".replies"
-];
-  SITE.selectors["listViewCount"] = [
-  ".views"
-];
+  SITE.selectors["listAuthor"] = [".linklist .username-coloured", ".topic-poster a.username", "a.username"];
+  SITE.selectors["listDate"] = ["time[datetime]", ".linklist a[title=\"Son mesaja git\"]"];
+  SITE.selectors["listCommentCount"] = [".portal-title-span a[title=\"Yorumları görüntüle\"]", "dd.posts"];
+  SITE.selectors["listViewCount"] = ["dd.views"];
   SITE.selectors["postTitle"] = [
   "h1",
   ".topic-title",
@@ -695,7 +626,6 @@ SITE.matchBoard = function (info) {
   ".postbody",
   ".content",
   ".post",
-  "body"
 ];
   SITE.selectors["commentRows"] = [
   ".post",
@@ -706,13 +636,6 @@ SITE.matchBoard = function (info) {
   ".postbody .content",
   ".content",
   ".postbody"
-];
-  var turkiyeforumPostContentSelectors = [
-  ".postbody .content",
-  ".postbody",
-  ".content",
-  ".post",
-  "body"
 ];
   var turkiyeforumPreviousFilterPostContent = SITE.filterPostContent;
   function turkiyeforumText(node) {
@@ -728,39 +651,9 @@ SITE.matchBoard = function (info) {
     }
     return out;
   }
-  function turkiyeforumDetailsFromRoot(root, url) {
-    if (!root) return [];
-    var text = turkiyeforumText(root);
-    if (text.length < 2) return [];
-    var details = [];
-    try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-    if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-    return details;
-  }
+
   SITE.filterPostContent = function (content, url, doc, page, match) {
-    var previous = [];
-    try {
-      if (turkiyeforumPreviousFilterPostContent) previous = turkiyeforumPreviousFilterPostContent(content, url, doc, page, match) || [];
-    } catch (e) {}
-    var nodes = turkiyeforumNodes(doc, turkiyeforumPostContentSelectors);
-    var seen = {};
-    var out = [];
-    for (var i = 0; i < nodes.length && out.length < 80; i++) {
-      var text = turkiyeforumText(nodes[i]);
-      var key = text.substring(0, 220).toLowerCase();
-      if (!key || seen[key]) continue;
-      seen[key] = true;
-      var details = turkiyeforumDetailsFromRoot(nodes[i], url);
-      for (var j = 0; j < details.length && out.length < 80; j++) out.push(details[j]);
-      if (out.length && turkiyeforumPostContentSelectors[i] !== "body") break;
-    }
-    if (!out.length) out = previous;
-    if (!out.length) {
-      var title = "";
-      try { title = firstNonEmpty([firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["meta[property='og:description']", "meta[name='description']", "title"])]); } catch (e) {}
-      if (title) out = [{ type: "text", value: title }];
-    }
-    return out;
+    return Array.isArray(content) ? content : [];
   };
   var turkiyeforumCommentRowSelectors = [
   ".post",
@@ -772,50 +665,39 @@ SITE.matchBoard = function (info) {
   ".content",
   ".postbody"
 ];
-  var turkiyeforumCommentSummarySelectors = [
-  ".posts",
-  ".replies",
-  ".post",
-  ".postbody",
-  "div[id^='p']",
-  "h1",
-  ".topic-title",
-  ".titles"
-];
   var turkiyeforumPreviousFetchPostComments = SITE.fetchPostComments;
   function turkiyeforumMergeComment(target, seen, item) {
     if (!item || !item.content) return;
     var text = "";
     for (var i = 0; i < item.content.length; i++) text += " " + (item.content[i] && item.content[i].value || "");
     text = text.replace(/\s+/g, " ").trim();
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key]) return;
+    var key = item.id && item.id.indexOf(":comment:") < 0 ? item.id : JSON.stringify([item.link, item.author, item.date, item.content]);
+    if (!item.content.length || seen[key]) return;
     seen[key] = true;
     target.push(item);
   }
   function turkiyeforumParseVisibleComments(doc, url, target, seen) {
-    var rows = turkiyeforumNodes(doc, turkiyeforumCommentRowSelectors);
-    for (var i = 0; i < rows.length && target.length < 80; i++) {
+    var rows = localQuerySelectorAll(doc, turkiyeforumCommentRowSelectors);
+    for (var i = 0; i < rows.length; i++) {
       var root = null;
       try { root = firstNode(rows[i], turkiyeforumCommentContentSelectors); } catch (e) {}
       root = root || rows[i];
-      var text = turkiyeforumText(root);
-      if (text.length < 2 || text.length > 5000) continue;
+      var text = textOf(root);
       var details = [];
       try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-      if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
+      if (!details.length) details = text ? [{ type: "text", value: text }] : [];
       var domId = "";
       try { domId = attrOf(rows[i], "id"); } catch (e) {}
       turkiyeforumMergeComment(target, seen, {
         id: SITE.siteKey + ":comment:" + target.length,
         link: url + (domId ? ("#" + domId) : ("#comment-" + target.length)),
-        author: "",
-        avatar: "",
-        date: "",
+        author: firstAuthorText(rows[i], selectorList("commentAuthor", [])),
+        avatar: imageUrlFromNode(firstNode(rows[i], selectorList("commentAvatar", [])), url),
+        date: firstDateText(rows[i], selectorList("commentDate", [])),
         content: details,
         likeCount: "",
         dislikeCount: "",
-        level: 0,
+        level: detectCommentLevel(rows[i]),
         menus: [MENU_BROWSER],
         hotCount: 0,
         coldCount: 0
@@ -834,25 +716,7 @@ SITE.matchBoard = function (info) {
       }
     } catch (e) {}
     if (!out.length) turkiyeforumParseVisibleComments(doc, url, out, seen);
-    if (!out.length) {
-      var summary = "";
-      try { summary = firstNonEmpty([firstText(doc, turkiyeforumCommentSummarySelectors), firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["title"])]); } catch (e) {}
-      summary = String(summary || SITE.displayName || "Comments").replace(/\s+/g, " ").trim();
-      if (summary) turkiyeforumMergeComment(out, seen, {
-        id: SITE.siteKey + ":comment:summary",
-        link: url + "#comments",
-        author: SITE.displayName,
-        avatar: "",
-        date: "",
-        content: [{ type: "text", value: summary }],
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
+
     return out;
   };
 })();
@@ -873,3 +737,7 @@ SITE.matchBoard = function (info) {
   SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
 })();
 // END synurart-home-board-seed
+
+// BEGIN verified-reader-boundaries
+SITE.parsePostAuthor = function (doc) { return firstAuthorText(firstNode(doc, [".post"]), [".postprofile .username-coloured", ".postprofile .username"]); };
+// END verified-reader-boundaries

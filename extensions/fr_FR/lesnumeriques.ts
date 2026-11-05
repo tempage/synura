@@ -90,13 +90,8 @@ var SITE = {
       ".badge-category",
       "title"
     ],
-    "listRows": [
-      "a.raw-topic-link",
-      "a[href*='/t/']"
-    ],
-    "listLink": [
-      "a[href*='/t/']"
-    ],
+    "listRows": ["tr.topic-list-item"],
+    "listLink": ["a.raw-topic-link", "a.title"],
     "listTitle": [
       "a[href*='/t/']"
     ],
@@ -104,28 +99,13 @@ var SITE = {
       ".badge",
       ".badge-category"
     ],
-    "listAuthor": [
-      ".creator",
-      ".username",
-      ".author"
-    ],
-    "listAvatar": [],
-    "listDate": [
-      "td.age",
-      "time"
-    ],
-    "listCommentCount": [
-      "span.posts",
-      "td.posts"
-    ],
-    "listViewCount": [
-      "td.views",
-      "span.views"
-    ],
+    "listAuthor": [".posters a[data-user-card]"],
+    "listAvatar": [".posters img"],
+    "listDate": ["td:last-child"],
+    "listCommentCount": ["td.replies"],
+    "listViewCount": ["td.views .number", "td.views"],
     "listLikeCount": [],
-    "listCategory": [
-      ".badge-category"
-    ],
+    "listCategory": [".category-name"],
     "listImage": [],
     "postTitle": [
       "h1",
@@ -180,9 +160,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -190,7 +168,7 @@ var SYNURA = {
   name: "lesnumeriques",
   author: "Synura Team",
   description: "forum.lesnumeriques.com",
-  version: 0.2,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "fr_FR",
@@ -224,13 +202,11 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
     }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
-    }
+
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
     }
@@ -238,33 +214,6 @@ function localQuerySelectorAll(root, selectors) {
   return out;
 }
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -373,27 +322,36 @@ function localBoardForUrl(url) {
   return ensureBoard(localBoardIdFromUrl(boardUrl), boardUrl, localTitleFromBoardUrl(boardUrl));
 }
 
+function localListTitleLink(row, baseUrl) {
+  var selectors = selectorList("listLink", []);
+  for (var i = 0; i < selectors.length; i++) {
+    var links = localQuerySelectorAll(row, [selectors[i]]);
+    for (var j = 0; j < links.length; j++) {
+      var url = ensureAbsoluteUrl(attrOf(links[j], "href"), baseUrl);
+      if (localLooksLikePostUrl(url) && localTitleFromNode(links[j])) return links[j];
+    }
+  }
+  return attrOf(row, "href") && localLooksLikePostUrl(ensureAbsoluteUrl(attrOf(row, "href"), baseUrl)) ? row : null;
+}
+
 function extractListItem(row, baseUrl) {
   if (!row) return null;
-  var linkNode = firstNode(row, selectorList("listLink", [])) || (attrOf(row, "href") ? row : null);
+  var linkNode = localListTitleLink(row, baseUrl);
   var link = linkNode ? (normalizeUrl(attrOf(linkNode, "href")) || ensureAbsoluteUrl(attrOf(linkNode, "href"), baseUrl)) : "";
   link = localCanonicalizeUrl(link);
   if (!link || localLooksLikeAssetUrl(link) || !localLooksLikePostUrl(link)) return null;
-  var title = firstNonEmpty([
-    firstText(row, selectorList("listTitle", [])),
-    localTitleFromNode(linkNode)
-  ]);
+  var title = localTitleFromNode(linkNode);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = parseCount(firstText(row, selectorList("listCommentCount", [])));
   var image = imageUrlFromNode(firstNode(row, selectorList("listImage", ["img"])), baseUrl);
   return {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: (attrOf(firstNode(row, [".posters a"]), "href").match(/\/u\/([^/?#]+)/) || [""])[1] || "",
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
+    date: firstDateText(row, selectorList("listDate", [])),
     category: "",
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
@@ -420,16 +378,15 @@ function localParseComments(doc, postUrl) {
   var seen = {};
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
-  var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
-    seen[key] = true;
     var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
+    if (!content || content.length === 0) content = text ? [{ type: "text", value: text }] : [];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
+    seen[key] = true;
     var domId = attrOf(rows[i], "id");
     out.push({
       id: SITE.siteKey + ":comment:" + out.length,
@@ -505,9 +462,7 @@ SITE.routePostCustom = function (url, urlInfo, match, force) {
   }
 
   var content = cookedToDetails(p0.cooked, url);
-  if (!content || content.length === 0) {
-    content = [{ type: "text", value: cleanPageTitle(title) }];
-  }
+  if (!content || content.length === 0) return null;
 
   var comments = [];
   for (var i = 1; i < posts.length; i++) {

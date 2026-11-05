@@ -3,7 +3,7 @@
     {
       "name": "elektroda",
       "description": "www.elektroda.pl",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/pl_PL/elektroda.js",
       "api": 0,
       "domain": "www.elektroda.pl",
@@ -19,7 +19,7 @@
     {
       "name": "forum_gazeta",
       "description": "forum.gazeta.pl",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/pl_PL/forum_gazeta.js",
       "api": 0,
       "domain": "forum.gazeta.pl",
@@ -35,7 +35,7 @@
     {
       "name": "kafeteria",
       "description": "f.kafeteria.pl",
-      "version": 0.4,
+      "version": 0.6,
       "url": "https://tempage.github.io/synura/extensions/pl_PL/kafeteria.js",
       "api": 0,
       "domain": "f.kafeteria.pl",
@@ -51,7 +51,7 @@
     {
       "name": "wykop",
       "description": "wykop.pl",
-      "version": 0.4,
+      "version": 0.6,
       "url": "https://tempage.github.io/synura/extensions/pl_PL/wykop.js",
       "api": 0,
       "domain": "wykop.pl",

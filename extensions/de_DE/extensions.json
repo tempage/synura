@@ -3,7 +3,7 @@
     {
       "name": "computerbase",
       "description": "www.computerbase.de",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/de_DE/computerbase.js",
       "api": 0,
       "domain": "www.computerbase.de",
@@ -19,7 +19,7 @@
     {
       "name": "hardwareluxx",
       "description": "www.hardwareluxx.de",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/de_DE/hardwareluxx.js",
       "api": 0,
       "domain": "www.hardwareluxx.de",

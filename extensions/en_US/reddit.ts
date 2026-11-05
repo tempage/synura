@@ -24,7 +24,7 @@ var SYNURA = {
     name: "reddit",
     author: "Synura Team",
     description: "www.reddit.com",
-    version: 0.2,
+    version: 0.3,
     api: 0,
     license: "Apache-2.0",
     locale: "en_US",
@@ -690,31 +690,44 @@ var cleanRedditImageUrl = (url) => {
 };
 
 var redditMedia = (post) => {
-    const container = post.querySelector('[slot="post-media-container"]') || post;
+    const mediaContainer = post.querySelector('[slot="post-media-container"]') ||
+        post.querySelector('[slot="thumbnail"]') || post.querySelector('shreddit-post-text-body') ||
+        post.querySelector('[slot="text-body"]');
+    const container = mediaContainer || post;
     const images = [];
     if (container) {
-        const gallery = container.querySelector('gallery-carousel');
+        const gallery = container.querySelector('gallery-carousel') || container.querySelector('shreddit-gallery-carousel');
         let candidates = [];
         if (gallery) {
-            const lightboxed = Array.from(gallery.querySelectorAll('.lightboxed-content img, img[src*="i.redd.it"]'));
+            const galleryImages = Array.from(gallery.querySelectorAll('img'));
+            const lightboxed = Array.from(gallery.querySelectorAll('.lightboxed-content img'));
+            for (const image of galleryImages) {
+                if (/^https?:\/\/i\.redd\.it\//i.test(image.getAttribute('src') || '')) lightboxed.push(image);
+            }
             if (lightboxed.length > 0) {
                 candidates = lightboxed;
             } else {
                 const pages = Array.from(gallery.querySelectorAll('li'));
                 if (pages.length > 0) {
-                    candidates = pages.map(page => page.querySelector('img:not([role="presentation"])')).filter(Boolean);
+                    candidates = pages.map(page => Array.from(page.querySelectorAll('img'))
+                        .find(image => image.getAttribute('role') !== 'presentation')).filter(Boolean);
                 } else {
-                    candidates = Array.from(gallery.querySelectorAll('img:not([role="presentation"])'));
+                    candidates = galleryImages;
                 }
             }
         } else {
             const primary = Array.from(container.querySelectorAll('img[data-post-media-primary]'));
-            candidates = primary.length ? primary : Array.from(container.querySelectorAll('img:not([role="presentation"])'));
+            // A whole post also contains its author avatar and community icons.
+            // Only dedicated media/body containers may use unmarked images.
+            candidates = primary.length ? primary : mediaContainer ? Array.from(container.querySelectorAll('img')) : [];
         }
 
         for (const image of candidates) {
             if (image.getAttribute('role') === 'presentation') continue;
             let src = image.getAttribute('src') || image.getAttribute('data-lazy-src') || image.getAttribute('data-src') || '';
+            if (/\b(?:flair-image|emoji)\b/.test(image.getAttribute('class') || '') ||
+                /\bavatar$/i.test(image.getAttribute('alt') || '') ||
+                /\/avatars\/|\/profileIcon[^/]*\//i.test(src)) continue;
             src = cleanRedditImageUrl(src);
             if (src && !images.includes(src)) images.push(src);
         }

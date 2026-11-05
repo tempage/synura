@@ -3,7 +3,7 @@
     {
       "name": "desidime",
       "description": "www.desidime.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/hi_IN/desidime.js",
       "api": 0,
       "domain": "www.desidime.com",
@@ -19,7 +19,7 @@
     {
       "name": "techenclave",
       "description": "techenclave.com",
-      "version": 0.1,
+      "version": 0.3,
       "url": "https://tempage.github.io/synura/extensions/hi_IN/techenclave.js",
       "api": 0,
       "domain": "techenclave.com",

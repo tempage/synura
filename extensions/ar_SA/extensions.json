@@ -3,7 +3,7 @@
     {
       "name": "adslgate",
       "description": "www.adslgate.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/ar_SA/adslgate.js",
       "api": 0,
       "domain": "www.adslgate.com",
@@ -19,7 +19,7 @@
     {
       "name": "arab_hardware",
       "description": "arabhardware.net",
-      "version": 0.4,
+      "version": 0.6,
       "url": "https://tempage.github.io/synura/extensions/ar_SA/arab_hardware.js",
       "api": 0,
       "domain": "arabhardware.net",

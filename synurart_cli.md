@@ -78,7 +78,7 @@ printf 'views\ntap index 1\nviews\nquit\n' | ./synurart -json -ext extensions/ba
 | `close [id]` / `c [id]` | Close a view; defaults to the top view. |
 | `menu <id> <label>` | Emit `MENU_CLICK`. |
 | `query <id> <text>` | Emit `QUERY`. |
-| `submit <id> <jsonObject>` | Emit `SUBMIT`. |
+| `submit [id] [buttonLabel\|jsonObject]` | Emit `SUBMIT`. Without a label, use the first configured button. Button-only submissions include current input/settings values; explicit JSON is sent as provided. |
 | `event <id> <EVENT_ID> [jsonObject]` | Emit a custom event. |
 | `timeout [duration]` | Show or set fetch timeout, for example `10s` or `500ms`. |
 | `locale [tag]` | Show or set `navigator.language`, for example `ko-KR`. |
@@ -87,6 +87,7 @@ printf 'views\ntap index 1\nviews\nquit\n' | ./synurart -json -ext extensions/ba
 | `mapurl clear` | Clear fetch URL overrides. |
 | `storage [local|session]` | Show storage snapshots. |
 | `storage clear [local|session|all]` | Clear storage. |
+| `browser [open\|submit\|close\|status] [id]` | Launch OS native browser (Chrome/Edge) with DevTools for `/views/browser`, capture cookies via CDP on submit, or close/cancel. |
 | `eval <javascript>` | Evaluate JavaScript in the current runtime. |
 | `proxy [url\|clear\|system]` | Show proxy mode, set an explicit URL, disable all proxies with `clear`, or restore system/environment routing with `system`. |
 
@@ -97,13 +98,17 @@ printf 'views\ntap index 1\nviews\nquit\n' | ./synurart -json -ext extensions/ba
 3. Pick an action by path:
    - `/views/list`: `tap index`, `query`, `menu`, `n`
    - `/views/post`: `refresh`, `menu`, `event`
+   - `/views/browser`: `browser` (or `browser open`), `browser submit` (capture cookies via CDP), `browser close` (cancel)
 4. Re-run `views` or `view <id>` to confirm state changes.
 
 ## Notes
 
 - `fetch` uses browser TLS/HTTP profiles when `SYNURA.bypass` is set, with the extension's request headers preserved. It does not execute page JavaScript or provide a WebView.
+- Post content rendering shows link labels and their full destinations (`link: label -> URL`), including when the label is shortened for the terminal.
 - Response headers support property access plus case-insensitive `get(name)` and `getAll(name)`. `entries()` returns an array of all header pairs. Multiple `Set-Cookie` values remain separate in `getAll()` and are joined with newlines for property access or `get()`.
 - `fetch` follows redirects within host permissions, with a limit of 10 requests. It preserves the method/body, checks each destination, and carries matching cookies within that redirect chain. An explicit `Cookie` header takes precedence; cookies are not automatically retained between separate `fetch` calls.
+- Native browser profiles are isolated by extension path and starting origin under `.synurart/browser_profiles/`. The old shared `browser_profile` is not reused, so an existing login may need to be repeated.
+- `browser submit` requires the current page URL to match the extension's load-time `SYNURA.domain` / `host_permissions`. Only unexpired, unpartitioned cookies matching that URL's host, path, and HTTPS status are submitted, including matching HttpOnly cookies. External pages can still be opened; return to an authorized page before capturing cookies. Failed capture leaves the browser open.
 - Fetch errors throw JavaScript exceptions. `text()` uses UTF-8; extensions select other encodings explicitly with `TextDecoder(label).decode(response.arrayBuffer())`. Decoder labels use the common encoding registry, with no site or language-specific runtime branches.
 - Network metadata is validated and bound when the extension is loaded. In a fresh shell without a loaded extension, the first fetch binds the declared metadata. Reload the extension to change its network scope.
 - `onProgress` callbacks receive recorded byte counts before fetch returns. A missing response header returns `undefined`; empty `json()` throws `SyntaxError`.

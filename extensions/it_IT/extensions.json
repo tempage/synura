@@ -3,7 +3,7 @@
     {
       "name": "tomshw_italia",
       "description": "forum.tomshw.it",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/it_IT/tomshw_italia.js",
       "api": 0,
       "domain": "forum.tomshw.it",

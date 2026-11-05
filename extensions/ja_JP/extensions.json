@@ -3,7 +3,7 @@
     {
       "name": "five_ch",
       "description": "asahi.5ch.io",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/ja_JP/five_ch.js",
       "api": 0,
       "domain": "asahi.5ch.io",
@@ -14,12 +14,15 @@
         "general",
         "discussion",
         "forum"
+      ],
+      "host_permissions": [
+        "https://*.5ch.io/*"
       ]
     },
     {
       "name": "girlschannel",
       "description": "girlschannel.net",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/ja_JP/girlschannel.js",
       "api": 0,
       "domain": "girlschannel.net",
@@ -35,7 +38,7 @@
     {
       "name": "hatena_anonymous_diary",
       "description": "anond.hatelabo.jp",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/ja_JP/hatena_anonymous_diary.js",
       "api": 0,
       "domain": "anond.hatelabo.jp",
@@ -51,7 +54,7 @@
     {
       "name": "hatena_bookmark",
       "description": "b.hatena.ne.jp",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/ja_JP/hatena_bookmark.js",
       "api": 0,
       "domain": "b.hatena.ne.jp",
@@ -67,7 +70,7 @@
     {
       "name": "komachi",
       "description": "komachi.yomiuri.co.jp",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/ja_JP/komachi.js",
       "api": 0,
       "domain": "komachi.yomiuri.co.jp",
@@ -83,7 +86,7 @@
     {
       "name": "okwave",
       "description": "okwave.jp",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/ja_JP/okwave.js",
       "api": 0,
       "domain": "okwave.jp",
@@ -99,7 +102,7 @@
     {
       "name": "teratail",
       "description": "teratail.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/ja_JP/teratail.js",
       "api": 0,
       "domain": "teratail.com",
@@ -115,7 +118,7 @@
     {
       "name": "yahoo_chiebukuro",
       "description": "chiebukuro.yahoo.co.jp",
-      "version": 0.4,
+      "version": 0.6,
       "url": "https://tempage.github.io/synura/extensions/ja_JP/yahoo_chiebukuro.js",
       "api": 0,
       "domain": "chiebukuro.yahoo.co.jp",
@@ -126,6 +129,10 @@
         "q&a",
         "advice",
         "general"
+      ],
+      "host_permissions": [
+        "https://chiebukuro.yahoo.co.jp/*",
+        "https://detail.chiebukuro.yahoo.co.jp/*"
       ]
     }
   ]

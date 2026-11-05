@@ -3,7 +3,7 @@
     {
       "name": "indusladies",
       "description": "indusladies.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/hi_IN/indusladies.js",
       "api": 0,
       "domain": "indusladies.com",
@@ -14,12 +14,17 @@
         "lifestyle",
         "women",
         "forum"
+      ],
+      "host_permissions": [
+        "https://indusladies.com/*",
+        "https://www.indusladies.com/*",
+        "https://m.indusladies.com/*"
       ]
     },
     {
       "name": "india_forums",
       "description": "www.indiaforums.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/hi_IN/india_forums.js",
       "api": 0,
       "domain": "www.indiaforums.com",
@@ -35,7 +40,7 @@
     {
       "name": "digit",
       "description": "geek.digit.in",
-      "version": 0.1,
+      "version": 0.3,
       "url": "https://tempage.github.io/synura/extensions/hi_IN/digit.js",
       "api": 0,
       "domain": "geek.digit.in",

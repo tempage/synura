@@ -9,3 +9,4 @@ scripts/
 extensions/temp/
 temp/
 .extension-tests/
+/reports/

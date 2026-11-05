@@ -3,7 +3,7 @@
     {
       "name": "foros_acb",
       "description": "foros.acb.com",
-      "version": 0.4,
+      "version": 0.6,
       "url": "https://tempage.github.io/synura/extensions/es_ES/foros_acb.js",
       "api": 0,
       "domain": "foros.acb.com",
@@ -19,7 +19,7 @@
     {
       "name": "rankia",
       "description": "www.rankia.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/es_ES/rankia.js",
       "api": 0,
       "domain": "www.rankia.com",

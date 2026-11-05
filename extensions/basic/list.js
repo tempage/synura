@@ -1,6 +1,6 @@
 const SYNURA = {
   name: "List View Example",
-  version: 0.1,
+  version: 0.2,
   api: 0,
   description: "Demonstrates how to use the List View with pagination.",
   license: "Apache-2.0",
@@ -89,7 +89,7 @@ const handler = {
     } else if (event.eventId === "MENU_CLICK") {
       console.log("Menu clicked:", event.data.menu);
       if (event.data.menu === "Search") {
-        appbar = {
+        const appbar = {
           type: "query",
           label: "query label",
           hint: "type something here"

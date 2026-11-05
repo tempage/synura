@@ -3,7 +3,7 @@
     {
       "name": "gutefrage",
       "description": "www.gutefrage.net",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/de_DE/gutefrage.js",
       "api": 0,
       "domain": "www.gutefrage.net",
@@ -19,7 +19,7 @@
     {
       "name": "chefkoch",
       "description": "chefkoch.de",
-      "version": 0.1,
+      "version": 0.3,
       "url": "https://tempage.github.io/synura/extensions/de_DE/chefkoch.js",
       "api": 0,
       "domain": "www.chefkoch.de",

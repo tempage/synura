@@ -455,7 +455,7 @@ var SYNURA = {
     domain: "theqoo.net",
     name: "theqoo",
     description: "theqoo.net",
-    version: 0.3,
+    version: 0.4,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",

@@ -3,7 +3,7 @@
     {
       "name": "List View Example",
       "description": "Demonstrates how to use the List View with pagination.",
-      "version": 0.1,
+      "version": 0.2,
       "url": "https://tempage.github.io/synura/extensions/basic/list.js",
       "api": 0
     },
@@ -96,7 +96,7 @@
     {
       "name": "Post View Example",
       "description": "An example extension showing how to create a post view.",
-      "version": 0.1,
+      "version": 0.2,
       "url": "https://tempage.github.io/synura/extensions/basic/post.js",
       "api": 0,
       "domain": "example.com"

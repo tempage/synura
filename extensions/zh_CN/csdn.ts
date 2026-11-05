@@ -144,12 +144,7 @@ var SITE = {
       ".forum-title",
       ".page-title"
     ],
-    "listRows": [
-      "a[href*='blog.csdn.net/'][href*='/article/details/']",
-      "a[href*='ask.csdn.net/questions/']",
-      "a[href*='bbs.csdn.net/topics/']",
-      "article"
-    ],
+    "listRows": [".blog-list-box", ".Community", "article", "a[href*='blog.csdn.net/'][href*='/article/details/']"],
     "listLink": [
       "a[href*='blog.csdn.net/'][href*='/article/details/']",
       "a[href*='ask.csdn.net/questions/']",
@@ -260,17 +255,7 @@ var SITE = {
       ".node",
       ".tag"
     ],
-    "postContent": [
-      "#content_views",
-      ".blog-content-box",
-      ".article_content",
-      ".markdown_views",
-      ".answer-content",
-      ".topic-content",
-      "article",
-      "main",
-      "body"
-    ],
+    "postContent": ["#content_views", ".blog-content-box", ".article_content", ".markdown_views", ".answer-content", ".topic-content", "article"],
     "commentRows": [
       ".comment-list-box .comment-item",
       ".comment-item",
@@ -308,9 +293,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -318,7 +301,7 @@ var SYNURA = {
   "name": "csdn",
   "author": "Synura Team",
   "description": "blog.csdn.net",
-  "version": 0.2,
+  "version": 0.4,
   "api": 0,
   "license": "Apache-2.0",
   "locale": "zh_CN",
@@ -353,12 +336,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -368,33 +348,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -534,7 +487,7 @@ function extractListItem(row, baseUrl) {
     localTitleFromNode(linkNode)
   ]);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -544,10 +497,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])),
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -576,15 +530,15 @@ function localParseComments(doc, postUrl) {
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
   var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -720,10 +674,11 @@ function localCsdnPushItem(source, fallback, out, seen) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: link,
     title: title,
-    author: source.nickname || source.user_name || (fallback && (fallback.nickname || fallback.user_name)) || SITE.displayName,
+    author: source.nickname || source.nick_name || source.user_name || (fallback && (fallback.nickname || fallback.nick_name || fallback.user_name)) || "",
     avatar: source.avatar || source.avatarurl || (fallback && (fallback.avatar || fallback.avatarurl)) || "",
     date: source.created_at || (fallback && fallback.created_at) || "",
-    category: SITE.displayName,
+    category: "",
+    memo: SITE.displayName,
     commentCount: comments ? String(comments) : "",
     viewCount: source.views ? String(source.views) : "",
     likeCount: source.digg || source.favor_count || "",
@@ -754,12 +709,12 @@ function localCsdnWalk(value, out, seen) {
 }
 
 function localCsdnItemsFromHtml(html) {
-  var marker = "window.__INITIAL_STATE__=";
-  var start = String(html || "").indexOf(marker);
-  if (start < 0) return [];
+  var marker = /window\.__INITIAL_STATE__\s*=\s*/.exec(String(html || ""));
+  if (!marker) return [];
+  var start = marker.index;
   var end = String(html || "").indexOf("</script>", start);
   if (end < 0) return [];
-  var raw = String(html || "").substring(start + marker.length, end).trim().replace(/;$/, "");
+  var raw = String(html || "").substring(start + marker[0].length, end).trim().replace(/;$/, "");
   var state = null;
   try { state = JSON.parse(raw); } catch (e) { return []; }
   var out = [];
@@ -779,7 +734,8 @@ SITE.routeBoardCustom = function (url, urlInfo, match, force) {
     viewData: {
       view: "/views/list",
       styles: { title: match && match.board ? match.board.title : SITE.displayName, layout: "card", menu: true, media: true, pagination: false },
-      models: { contents: { details: items }, context: { kind: "board", link: url, title: match && match.board ? match.board.title : SITE.displayName, page: 1 } }
-    }
+      models: { contents: items }
+    },
+    context: { kind: "board", link: url, boardId: match && match.board ? match.board.id : "", boardUrl: match && match.board ? match.board.url : url, title: match && match.board ? match.board.title : SITE.displayName, page: 1, nextUrl: "", seenLinks: items.map(function (item) { return item.link; }) }
   };
 };

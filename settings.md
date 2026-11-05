@@ -27,6 +27,8 @@ The `body` model contains a list of form fields in its `details` property. Each 
 | `label` | `string` | The display label for the field. |
 | `value` | `any` | The initial value. |
 | `format` | `string` | Optional format, e.g., `'password'` for obscured text. |
+| `lines` | `number` | Optional. Number of visible lines for multi-line text input. Only applies to `string`/`text` types. |
+| `selectOnFocus` | `boolean` | Optional. If `true`, automatically selects all text in the field upon receiving focus/tap. Defaults to `false`. |
 | `options` | `string[]` | Required for `'select'` type. Array of option strings. |
 
 ### Buttons

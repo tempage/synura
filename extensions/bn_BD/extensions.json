@@ -3,7 +3,7 @@
     {
       "name": "bigganblog",
       "description": "bigganblog.org",
-      "version": 0.4,
+      "version": 0.6,
       "url": "https://tempage.github.io/synura/extensions/bn_BD/bigganblog.js",
       "api": 0,
       "domain": "bigganblog.org",
@@ -18,7 +18,7 @@
     {
       "name": "cadetcollegeblog",
       "description": "cadetcollegeblog.com",
-      "version": 0.4,
+      "version": 0.6,
       "url": "https://tempage.github.io/synura/extensions/bn_BD/cadetcollegeblog.js",
       "api": 0,
       "domain": "cadetcollegeblog.com",
@@ -34,7 +34,7 @@
     {
       "name": "somewhereinblog",
       "description": "m.somewhereinblog.net",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/bn_BD/somewhereinblog.js",
       "api": 0,
       "domain": "m.somewhereinblog.net",

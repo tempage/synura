@@ -3,7 +3,7 @@
     {
       "name": "disp",
       "description": "disp.cc",
-      "version": 0.1,
+      "version": 0.3,
       "url": "https://tempage.github.io/synura/extensions/zh_TW/disp.js",
       "api": 0,
       "domain": "disp.cc",
@@ -21,7 +21,7 @@
     {
       "name": "bahamut",
       "description": "forum.gamer.com.tw",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/zh_TW/bahamut.js",
       "api": 0,
       "domain": "forum.gamer.com.tw",
@@ -39,7 +39,7 @@
     {
       "name": "backpackers",
       "description": "www.backpackers.com.tw",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/zh_TW/backpackers.js",
       "api": 0,
       "domain": "www.backpackers.com.tw",

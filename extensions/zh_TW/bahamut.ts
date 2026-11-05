@@ -125,10 +125,7 @@ var SITE = {
       "h1",
       "title"
     ],
-    "postAuthor": [
-      ".c-post__header__author a",
-      ".c-post__header__author"
-    ],
+    "postAuthor": [".c-post__header__author .username"],
     "postAvatar": [
       ".c-post__header__avatar img"
     ],
@@ -138,24 +135,13 @@ var SITE = {
     "postViewCount": [],
     "postLikeCount": [],
     "postCategory": [],
-    "postContent": [
-      ".c-article__content",
-      "article.c-article"
-    ],
-    "commentRows": [
-      "article.c-article",
-      ".c-section"
-    ],
-    "commentAuthor": [
-      ".c-post__header__author a",
-      ".c-post__header__author"
-    ],
+    "postContent": [".c-article__content", "article.c-article"],
+    "commentRows": ["section.c-section"],
+    "commentAuthor": [".c-post__header__author .username"],
     "commentAvatar": [
       ".c-post__header__avatar img"
     ],
-    "commentContent": [
-      ".c-article__content"
-    ],
+    "commentContent": [".c-article__content"],
     "commentDate": [
       ".edittime"
     ],
@@ -166,9 +152,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -176,7 +160,7 @@ var SYNURA = {
   name: "bahamut",
   author: "Synura Team",
   description: "forum.gamer.com.tw",
-  version: 0.2,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "zh_TW",
@@ -209,12 +193,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -223,33 +204,6 @@ function localQuerySelectorAll(root, selectors) {
   return out;
 }
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -351,10 +305,10 @@ function extractListItem(row, baseUrl) {
     localTitleFromNode(linkNode)
   ]);
   title = cleanPageTitle(title);
-  if (!title || title.length < 2) return null;
+  if (!title) return null;
   var commentCount = parseCount(firstText(row, selectorList("listCommentCount", [])));
-  var author = firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName;
-  var date = firstText(row, selectorList("listDate", []));
+  var author = firstAuthorText(row, selectorList("listAuthor", []));
+  var date = firstDateText(row, selectorList("listDate", []));
   return {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
@@ -376,34 +330,30 @@ function extractListItem(row, baseUrl) {
 }
 
 function localParseComments(doc, postUrl) {
-  var seen = {};
   var out = [];
-  var rows = allNodes(doc, selectorList("commentRows", []));
-  var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
-    var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
-    var text = textOf(contentRoot);
-    if (text.length < 1 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
-    seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
-    var author = firstAuthorText(rows[i], selectorList("commentAuthor", []));
-    out.push({
-      id: SITE.siteKey + ":comment:" + out.length,
-      link: postUrl + "#comment-" + out.length,
-      author: author,
-      avatar: imageUrlFromNode(firstNode(rows[i], selectorList("commentAvatar", [])), postUrl),
-      date: firstText(rows[i], selectorList("commentDate", [])),
-      content: content,
-      likeCount: "",
-      dislikeCount: "",
-      level: 0,
-      menus: [MENU_BROWSER],
-      hotCount: 0,
-      coldCount: 0
-    });
+  function append(row, body, author, date, id, level) {
+    if (!body) return;
+    var content = parseDetails(body, postUrl) || [];
+    if (!content.length) return;
+    out.push({ id: SITE.siteKey + ":" + id, link: postUrl + "#" + id,
+      author: author, avatar: "", date: date, content: content, likeCount: "", dislikeCount: "",
+      level: level, menus: [MENU_BROWSER], hotCount: 0, coldCount: 0 });
+  }
+  var rows = allNodes(doc, ["section.c-section"]).filter(function (row) {
+    return !!firstNode(row, [".c-article__content"]);
+  });
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    if (i > 0) append(row, firstNode(row, [".c-article__content"]),
+      firstText(row, [".c-post__header__author .username"]),
+      firstText(row, [".c-post__header__info .edittime"]), attrOf(row, "id") || "post-" + i, 0);
+    var replies = allNodes(row, [".reply-content"]);
+    for (var j = 0; j < replies.length; j++) {
+      var reply = replies[j];
+      var stamp = firstNode(reply, [".edittime[data-tippy-content]"]);
+      append(reply, firstNode(reply, [".comment_content"]), firstText(reply, [".reply-content__user"]),
+        textOf(stamp), "reply-" + i + "-" + j, 1);
+    }
   }
   return out;
 }

@@ -34,6 +34,7 @@ COMMUNITY_LOCALE_COMMON_TS = $(addprefix community_common_,$(addsuffix .ts,$(COM
 community_locale_outputs = $(addsuffix .js,$(basename $(wildcard $(1)/*.ts)))
 
 .PHONY: all build check clean build_ko_community_extensions build_local_community_extensions build_all_country_community_extensions \
+    build_worldwide_community_extensions \
 	$(COMMUNITY_LOCALE_BUILD_TARGETS) \
 	$(COMMUNITY_LANGUAGE_ALIAS_TARGETS) \
 	$(ROOT_EXTENSION_TARGETS) \
@@ -101,6 +102,9 @@ build_local_community_extensions build_all_country_community_extensions: $(KO_KR
 			echo "   Warning: $$file exceeds $(SIZE_WARNING_BYTES) bytes"; \
 		fi; \
 	done
+
+build_worldwide_community_extensions: $(OUTPUTS)
+
 
 $(ROOT_EXTENSION_TARGETS): %: %.js
 

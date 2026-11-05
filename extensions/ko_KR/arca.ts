@@ -525,7 +525,7 @@ var SYNURA = {
     domain: "arca.live",
     name: "arca",
     description: "arca.live",
-    version: 0.2,
+    version: 0.3,
     api: 0,
     license: "Apache-2.0",
     bypass: "chrome/android",

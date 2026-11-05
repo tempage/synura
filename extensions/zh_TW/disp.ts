@@ -95,21 +95,13 @@ var SITE = {
       ".text-board",
       "title"
     ],
-    "listRows": [
-      ".listTitle",
-      "span.listTitle"
-    ],
-    "listLink": [
-      "a[href*='/b/']"
-    ],
-    "listTitle": [
-      ".titleColor",
-      "a"
-    ],
+    "listRows": ["#list .row"],
+    "listLink": [".listTitle a"],
+    "listTitle": [".listTitle .titleColor", ".listTitle a"],
     "listTitleExclude": [],
-    "listAuthor": [],
+    "listAuthor": [".L18 a"],
     "listAvatar": [],
-    "listDate": [],
+    "listDate": [".L12[title]"],
     "listCommentCount": [],
     "listViewCount": [],
     "listLikeCount": [],
@@ -133,24 +125,12 @@ var SITE = {
     "postCategory": [
       ".text-board"
     ],
-    "postContent": [
-      "#text .text_css",
-      "#text"
-    ],
-    "commentRows": [
-      ".ptt-push-group",
-      ".push_row"
-    ],
-    "commentAuthor": [
-      ".pushAuthor",
-      ".ptt-push-author"
-    ],
+    "postContent": ["#text .text_css", "#text"],
+    "commentRows": [".push_row"],
+    "commentAuthor": [".ptt-push-author a"],
     "commentAvatar": [],
-    "commentContent": [
-      ".pushContent",
-      ".ptt-push-content"
-    ],
-    "commentDate": [],
+    "commentContent": [".ptt-push-content"],
+    "commentDate": [".push-right-ip"],
     "commentLikeCount": [],
     "commentLevel": []
   },
@@ -158,9 +138,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -168,7 +146,7 @@ var SYNURA = {
   name: "disp",
   author: "Synura Team",
   description: "disp.cc",
-  version: 0.1,
+  version: 0.3,
   api: 0,
   license: "Apache-2.0",
   locale: "zh_TW",
@@ -201,12 +179,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -215,33 +190,6 @@ function localQuerySelectorAll(root, selectors) {
   return out;
 }
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -356,17 +304,17 @@ function extractListItem(row, baseUrl) {
     localTitleFromNode(linkNode)
   ]);
   title = cleanPageTitle(title).replace(/^[■\s]+/, "");
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   return {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: "",
-    date: "",
+    date: firstDateText(row, selectorList("listDate", [])),
     category: "",
     commentCount: "",
-    viewCount: 0,
+    viewCount: parseCount(attrOf(firstNode(row, [".R0 span[title]"]), "title")),
     likeCount: "",
     mediaUrl: "",
     mediaType: "",
@@ -382,22 +330,22 @@ function localParseComments(doc, postUrl) {
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
   var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 1 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var author = firstAuthorText(rows[i], selectorList("commentAuthor", []));
     out.push({
       id: SITE.siteKey + ":comment:" + out.length,
       link: postUrl + "#comment-" + out.length,
       author: author,
       avatar: "",
-      date: "",
+      date: (firstText(rows[i], [".push-right-ip"]).match(/\d{2}\/\d{2}\s+\d{2}:\d{2}/) || [""])[0],
       content: content,
       likeCount: "",
       dislikeCount: "",
@@ -466,3 +414,5 @@ SITE.matchBoard = function (info) {
     page: queryInt(info.query, "page", 1)
   };
 };
+
+SITE.contentExcludeSelectors = [".ptt-push-group", ".TH_div", ".record", ".adsReadMid970x250"];

@@ -1,6 +1,6 @@
 const SYNURA = {
   name: "Post View Example",
-  version: 0.1,
+  version: 0.2,
   domain: "example.com",
   api: 0,
   description: "An example extension showing how to create a post view.",
@@ -87,7 +87,7 @@ const handler = {
 
     // connect to the restored view. now, PULL-TO-REFRESH will work.
     const connectResult = synura.connect(viewId, context, (event) => {
-      handler.onViewEvent(viewId, event)
+      handler.onViewEvent(event);
     });
     if (connectResult.success) {
       console.log("✅ Successfully connected to the restored synura.");

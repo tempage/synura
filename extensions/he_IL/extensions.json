@@ -3,7 +3,7 @@
     {
       "name": "carsforum",
       "description": "carsforum.co.il",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/he_IL/carsforum.js",
       "api": 0,
       "domain": "carsforum.co.il",
@@ -19,7 +19,7 @@
     {
       "name": "hasolidit",
       "description": "www.hasolidit.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/he_IL/hasolidit.js",
       "api": 0,
       "domain": "www.hasolidit.com",

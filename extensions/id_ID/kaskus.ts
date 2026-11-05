@@ -127,12 +127,7 @@ var SITE = {
     "postViewCount": [],
     "postLikeCount": [],
     "postCategory": [],
-    "postContent": [
-      ".entry",
-      ".post-content",
-      "[data-cy='thread-content']",
-      "article"
-    ],
+    "postContent": [".entry", ".post-content", "[data-cy='thread-content']", "article"],
     "commentRows": [
       ".post",
       ".comment",
@@ -160,17 +155,16 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
   domain: "kaskus.co.id",
+  host_permissions: ["https://kaskus.co.id/*", "https://www.kaskus.co.id/*", "https://m.kaskus.co.id/*"],
   name: "kaskus",
   author: "Synura Team",
   description: "kaskus.co.id",
-  version: 0.1,
+  version: 0.3,
   api: 0,
   license: "Apache-2.0",
   locale: "id_ID",
@@ -202,12 +196,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -216,33 +207,6 @@ function localQuerySelectorAll(root, selectors) {
   return out;
 }
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -268,7 +232,7 @@ function localLooksLikeBadNav(url, title) {
 
 function localLooksLikeCollectionUrl(url) {
   var path = localPathAndQuery(url).toLowerCase();
-  if (/(?:\/forum\/\d+)/i.test(path)) return true;
+  if (/(?:\/(?:forum|komunitas)\/\d+)/i.test(path)) return true;
   return false;
 }
 
@@ -360,15 +324,15 @@ function extractListItem(row, baseUrl) {
     localTitleFromNode(linkNode)
   ]);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var image = imageUrlFromNode(firstNode(row, selectorList("listImage", ["img"])), baseUrl);
   return {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
+    date: firstDateText(row, selectorList("listDate", [])),
     category: "",
     commentCount: "",
     viewCount: 0,
@@ -387,15 +351,15 @@ function localParseComments(doc, postUrl) {
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
   var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var domId = attrOf(rows[i], "id");
     out.push({
       id: SITE.siteKey + ":comment:" + out.length,
@@ -469,5 +433,96 @@ SITE.matchBoard = function (info) {
   return {
     board: board,
     page: queryInt(info.query, "page", 1)
+  };
+};
+
+// Current community pages render their threads client-side. These read-only,
+// same-origin JSON endpoints are also used by the public Kaskus web client.
+function localKaskusJson(path) {
+  var options = buildFetchOptions();
+  options.headers["Accept"] = "application/json";
+  var response = fetchWithLogging("https://www.kaskus.co.id/api" + path, options);
+  if (!response || !response.ok) return null;
+  try { return JSON.parse(responseText(response)); } catch (e) { return null; }
+}
+
+function localKaskusDate(value) {
+  var timestamp = Number(value);
+  return timestamp > 0 ? new Date(timestamp * 1000).toISOString() : "";
+}
+
+function localKaskusItem(thread) {
+  if (!thread || !thread.id || !thread.title) return null;
+  var author = thread.thread_starter || {};
+  var meta = thread.meta || {};
+  var image = thread.thumbnail && thread.thumbnail.url || "";
+  return {
+    id: "kaskus:" + thread.id,
+    link: "https://www.kaskus.co.id/thread/" + thread.id + (thread.slug ? "/" + thread.slug : ""),
+    title: thread.title, author: author.display_name || author.username || "",
+    avatar: author.avatar || "", date: localKaskusDate(thread.dateline),
+    category: "", memo: thread.community && thread.community.name || "",
+    commentCount: hideZeroCount(meta.total_replies), viewCount: meta.total_views || 0,
+    likeCount: "", mediaUrl: image, mediaType: image ? "image" : "",
+    types: image ? ["image", "link"] : ["link"], menus: [], hotCount: 0, coldCount: 0
+  };
+}
+
+SITE.routeBoardCustom = function (url, info, match) {
+  var community = String(info && info.path || "").match(/\/(?:forum|komunitas)\/(\d+)/);
+  if (!community) return null;
+  var page = Math.max(1, queryInt(info.query, "page", 1));
+  var payload = localKaskusJson("/communities/" + community[1] + "/threads?page=" + page + "&limit=20");
+  if (!payload || !Array.isArray(payload.data)) return null;
+  var items = payload.data.map(localKaskusItem).filter(function (item) { return !!item; });
+  var meta = payload.meta || {};
+  var hasNext = meta.total != null ? page * (Number(meta.limit) || 20) < Number(meta.total) : items.length >= 20;
+  var nextUrl = hasNext ? setQueryParam(url, "page", page + 1) : "";
+  var board = match && match.board;
+  var title = board && board.title || SITE.displayName;
+  return {
+    kind: "board", url: url,
+    viewData: { view: "/views/list", styles: { title: title, menu: true, pagination: !!nextUrl, history: true }, models: { contents: items, menus: [MENU_BROWSER] } },
+    context: { kind: "board", link: url, boardId: board && board.id || "", boardTitle: title, boardUrl: board && board.url || url, title: title, page: page, nextUrl: nextUrl, seenLinks: items.map(function (item) { return item.link; }) }
+  };
+};
+
+function localKaskusContent(post, url) {
+  var content = post && post.content || {};
+  if (content.html) {
+    var doc = new DOMParser().parseFromString(content.html, "text/html");
+    return parseDetails(doc.querySelector("body") || doc, url);
+  }
+  return content.text ? [{ type: "text", value: content.text }] : [];
+}
+
+SITE.routePostCustom = function (url, info, match) {
+  var id = localPostIdFromUrl(url);
+  if (!/^[0-9a-f]{24}$/i.test(id)) return null;
+  var payload = localKaskusJson("/threads/" + id + "/cache");
+  var thread = payload && payload.data;
+  if (!thread || !thread.first_post) return null;
+  var first = thread.first_post;
+  var content = localKaskusContent(first, url);
+  if (!content.length) return null;
+  var comments = [];
+  var replies = localKaskusJson("/threads/" + id + "/posts?page=1&limit=50");
+  var rows = replies && Array.isArray(replies.data) ? replies.data : [];
+  var seen = {};
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    if (!row.id || row.id === first.id || seen[row.id]) continue;
+    seen[row.id] = true;
+    var body = localKaskusContent(row, url);
+    if (!body.length) continue;
+    var user = row.user || {};
+    var vote = row.meta && row.meta.vote_info || {};
+    comments.push({ id: "kaskus:comment:" + row.id, link: url + "#post" + row.id, author: user.display_name || user.username || "", avatar: user.avatar || "", date: localKaskusDate(row.dateline), content: body, likeCount: hideZeroCount(vote.total_reputations), level: 0, menus: [MENU_BROWSER] });
+  }
+  var author = first.user || thread.thread_starter || {};
+  var board = match && match.board;
+  return {
+    viewData: { styles: { title: thread.title || "", menu: true }, models: { author: author.display_name || author.username || "", avatar: author.avatar || "", date: localKaskusDate(first.dateline || thread.dateline), category: "", memo: thread.community && thread.community.name || "", viewCount: thread.meta && thread.meta.total_views || 0, content: content, comments: comments, link: url, menus: [MENU_BROWSER], buttons: ["Refresh"] } },
+    context: { kind: "post", link: url, boardId: board && board.id || "", boardTitle: board && board.title || "", boardUrl: board && board.url || "" }
   };
 };

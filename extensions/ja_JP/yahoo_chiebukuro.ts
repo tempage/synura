@@ -74,10 +74,7 @@ var SITE = {
       ".forum-title",
       "title"
     ],
-    "listRows": [
-      "article",
-      "a[href*='/qa/question_detail/']"
-    ],
+    "listRows": ["article", "a[href*='/qa/question_detail/']"],
     "listLink": [
       "a[href*='/qa/question_detail/']"
     ],
@@ -153,28 +150,14 @@ var SITE = {
       "meta[property='og:title']",
       "title"
     ],
-    "postAuthor": [
-      "[itemprop='author']",
-      ".username",
-      ".user-name",
-      ".name",
-      ".author",
-      "[class*='display_name']"
-    ],
+    "postAuthor": [],
     "postAvatar": [
       ".avatar img",
       ".messageSidebar img",
       ".userAvatarImage",
       "img[alt*='avatar']"
     ],
-    "postDate": [
-      "time[datetime]",
-      "meta[itemprop='dateCreated']",
-      ".date",
-      ".time",
-      "[class*='created']",
-      "[class*='date']"
-    ],
+    "postDate": [],
     "postViewCount": [
       ".view-count",
       ".views",
@@ -194,46 +177,17 @@ var SITE = {
       ".tag",
       "a[href*='/tags/']"
     ],
-    "postContent": [
-      "[class*='Question']",
-      "[itemprop='text']",
-      "article",
-      "main"
-    ],
-    "commentRows": [
-      "[class*='Answer']",
-      "[itemprop='suggestedAnswer']",
-      "[itemprop='acceptedAnswer']",
-      "article"
-    ],
-    "commentAuthor": [
-      "[itemprop='author']",
-      ".username",
-      ".user-name",
-      ".name",
-      ".author",
-      "[class*='display_name']"
-    ],
+    "postContent": ["[class*='ClapLv2QuestionItem_Chie-QuestionItem__Text__']"],
+    "commentRows": ["[class*='ClapLv2AnswerItem_Chie-AnswerItem__Item__']"],
+    "commentAuthor": ["[class*='ClapLv1UserInfo_Chie-UserInfo__UserName__']"],
     "commentAvatar": [
       ".avatar img",
       ".postprofile img",
       ".ipsUserPhoto img",
       "img[alt*='avatar']"
     ],
-    "commentContent": [
-      "[class*='Answer'] [itemprop='text']",
-      "[itemprop='text']",
-      "[class*='Answer']",
-      ".body"
-    ],
-    "commentDate": [
-      "time[datetime]",
-      "meta[itemprop='dateCreated']",
-      ".date",
-      ".time",
-      "[class*='created']",
-      "[class*='date']"
-    ],
+    "commentContent": ["[class*='ClapLv2AnswerItem_Chie-AnswerItem__ItemText__']"],
+    "commentDate": ["[class*='ClapLv1UserInfo_Chie-UserInfo__Date__']"],
     "commentLikeCount": [
       ".reactionSummary",
       ".likes",
@@ -247,8 +201,6 @@ var SITE = {
     "depth",
     "data-level"
   ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true,
   "preserveAliasHostUrls": true
 };
 
@@ -261,7 +213,7 @@ var SYNURA = {
   "name": "yahoo_chiebukuro",
   "author": "Synura Team",
   "description": "chiebukuro.yahoo.co.jp",
-  "version": 0.4,
+  "version": 0.6,
   "api": 0,
   "license": "Apache-2.0",
   "locale": "ja_JP",
@@ -294,12 +246,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -309,33 +258,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -475,7 +397,7 @@ function extractListItem(row, baseUrl) {
     localTitleFromNode(linkNode)
   ]);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -485,10 +407,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])),
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -502,7 +425,7 @@ function extractListItem(row, baseUrl) {
 }
 
 function localCommentAuthor(node) {
-  return firstAuthorText(node, selectorList("commentAuthor", []));
+  return localYahooAuthor(node);
 }
 
 function localCommentDate(node) {
@@ -517,15 +440,15 @@ function localParseComments(doc, postUrl) {
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
   var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -646,3 +569,14 @@ SITE.matchBoard = function (info) {
   };
 };
 
+
+function localYahooAuthor(root) {
+  var name = firstNode(root, ["[class*='ClapLv1UserInfo_Chie-UserInfo__UserName__']"]);
+  return name ? textOfNodeWithoutSelectors(name, ["span"]) : "";
+}
+SITE.parsePostAuthor = function (doc) {
+  return localYahooAuthor(firstNode(doc, ["[class*='ClapLv2QuestionItem_Chie-QuestionItem__Head__']"]));
+};
+SITE.parsePostDate = function (doc) {
+  return firstText(firstNode(doc, ["[class*='ClapLv2QuestionItem_Chie-QuestionItem__Head__']"]), selectorList("commentDate", []));
+};

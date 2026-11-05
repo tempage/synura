@@ -13,7 +13,7 @@ var SYNURA = {
     name: "naver_webtoon",
     author: "Synura Team",
     description: "comic.naver.com",
-    version: 0.1, // Intentionally pinned at 0.1.
+    version: 0.3,
     api: 0,
     license: "Apache-2.0",
     icon: "https://www.naver.com/favicon.ico",
@@ -58,7 +58,10 @@ var WEEKDAY_MENUS = [
 // In-memory view state registry for pagination and context persistence
 var viewStates = {};
 var episodeDates = {};
+var webtoonSeriesTitles = {};
+var webtoonEpisodeTitles = {};
 var firstEpisodeUrls = {};
+var previewItemsMap = {};
 var webtoonAuthRetrying = false;
 
 function normalizeWebtoonDate(value) {
@@ -92,6 +95,69 @@ function webtoonDateFromDoc(doc) {
         }
     }
     return "";
+}
+
+function cleanWebtoonTitle(value) {
+    var title = String(value || "").replace(/\s+/g, " ").trim()
+        .replace(/\s*(?:::|[|:])\s*네이버\s*웹툰\s*$/i, "").trim();
+    return /^(?:네이버\s*웹툰|웹툰|웹툰 보기|회차 목록|다음 화|이전 화|첫화)$/.test(title) ? "" : title;
+}
+
+function webtoonSeriesTitleFromScript(doc, titleId) {
+    var scripts = doc.querySelectorAll("script");
+    for (var i = 0; i < scripts.length; i++) {
+        var source = scripts[i].textContent || "";
+        var blocks = /\b(?:title|article)\s*:\s*\{([^}]*)\}/g;
+        var block;
+        while ((block = blocks.exec(source))) {
+            var id = /\btitleId\s*:\s*["']?(\d+)/.exec(block[1]);
+            if (!id || id[1] !== titleId) continue;
+            var name = /\btitleName\s*:\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)')/.exec(block[1]);
+            if (!name) continue;
+            var value = (name[1] !== undefined ? name[1] : name[2])
+                .replace(/\\u([0-9a-f]{4})/gi, function (_, hex) { return String.fromCharCode(parseInt(hex, 16)); })
+                .replace(/\\([\\'"])/g, "$1").replace(/\\[nrt]/g, " ");
+            var title = cleanWebtoonTitle(value);
+            if (title) return title;
+        }
+    }
+    return "";
+}
+
+function webtoonEpisodeMetadata(doc, url, titleHint, context) {
+    var titleId = extractTitleId(url);
+    var no = extractEpisodeNo(url);
+    var seriesKey = webtoonSection(url) + ":" + titleId;
+    var episodeKey = seriesKey + ":" + no;
+    var inheritedTitle = "";
+    if (context && context.titleId === titleId && webtoonSection(context.link) === webtoonSection(url)) {
+        inheritedTitle = context.seriesTitle || (context.kind === "episodes" ? context.title : "");
+    }
+    var titleNode = doc.querySelector(".viewer_fixed .tit") || doc.querySelector(".title_area h2");
+    var pageNode = doc.querySelector("title");
+    var ogNode = doc.querySelector("meta[property='og:title']");
+    var descriptionNode = doc.querySelector("meta[property='og:description']");
+    var ogTitle = cleanWebtoonTitle(ogNode && ogNode.getAttribute("content"));
+    var description = cleanWebtoonTitle(descriptionNode && descriptionNode.getAttribute("content"));
+    var pageTitle = cleanWebtoonTitle(pageNode && pageNode.textContent);
+    var seriesTitle = webtoonSeriesTitleFromScript(doc, titleId) ||
+        cleanWebtoonTitle(inheritedTitle) || webtoonSeriesTitles[seriesKey] || "";
+    var episodeTitle = cleanWebtoonTitle(titleNode && titleNode.textContent);
+    if (!episodeTitle && description && ogTitle.endsWith(" - " + description)) episodeTitle = description;
+    if (!episodeTitle && pageTitle !== ogTitle) episodeTitle = pageTitle;
+    if (episodeTitle && ogTitle.endsWith(" - " + episodeTitle)) {
+        seriesTitle = ogTitle.substring(0, ogTitle.length - episodeTitle.length - 3).trim();
+    }
+    if (seriesTitle && ogTitle.indexOf(seriesTitle + " - ") === 0) {
+        episodeTitle = ogTitle.substring(seriesTitle.length + 3).trim();
+    }
+    episodeTitle = episodeTitle || webtoonEpisodeTitles[episodeKey] || cleanWebtoonTitle(titleHint);
+    var title = seriesTitle && episodeTitle
+        ? (episodeTitle.indexOf(seriesTitle + " - ") === 0 ? episodeTitle : seriesTitle + " - " + episodeTitle)
+        : ogTitle || pageTitle || episodeTitle || seriesTitle;
+    if (seriesTitle) webtoonSeriesTitles[seriesKey] = seriesTitle;
+    if (episodeTitle) webtoonEpisodeTitles[episodeKey] = episodeTitle;
+    return { title: title, seriesTitle: seriesTitle, episodeTitle: episodeTitle };
 }
 
 function getSubscriptions() {
@@ -191,16 +257,25 @@ function webtoonCookieHost(url) {
     return /^https:\/\/(?:m\.)?comic\.naver\.com(?::\d+)?(?:[/?#]|$)/i.test(String(url || ""));
 }
 
-function webtoonFetch(url, headers) {
+function webtoonFetch(url, headers, method, body) {
     var requestHeaders = {};
     var source = headers || FETCH_HEADERS;
     var keys = Object.keys(source);
     for (var i = 0; i < keys.length; i++) requestHeaders[keys[i]] = source[keys[i]];
     var cookie = localStorage.getItem(WEBTOON_COOKIE_KEY);
     if (webtoonCookieHost(url) && typeof cookie === "string" && cookie && !/[\r\n\0]/.test(cookie)) {
+        var csrf = requestHeaders["X-XSRF-TOKEN"] || "";
+        if (csrf && cookie.indexOf("XSRF-TOKEN=") < 0) {
+            cookie = cookie + "; XSRF-TOKEN=" + csrf;
+        } else if (csrf && cookie.indexOf("XSRF-TOKEN=") >= 0) {
+            cookie = cookie.replace(/XSRF-TOKEN=[^;]*/, "XSRF-TOKEN=" + csrf);
+        }
         requestHeaders.Cookie = cookie;
     }
-    return fetch(url, { headers: requestHeaders });
+    var options = { headers: requestHeaders };
+    if (method) options.method = method;
+    if (body != null) options.body = body;
+    return fetch(url, options);
 }
 
 function webtoonNeedsLogin(response, html) {
@@ -291,6 +366,8 @@ function openFirstEpisode(viewId, item, context) {
     var titleId = item.titleId || extractTitleId(item.link);
     var section = webtoonSection(item.link);
     var key = section + ":" + titleId;
+    var seriesTitle = item.seriesTitle || (webtoonContentUrl(item.link, "list") ? item.title : "");
+    if (cleanWebtoonTitle(seriesTitle)) webtoonSeriesTitles[key] = cleanWebtoonTitle(seriesTitle);
     var url = item.firstEpisodeUrl || firstEpisodeUrls[key] || "";
     if (!titleId) {
         synura.update(viewId, { models: { snackbar: "작품 정보를 확인하지 못했습니다." } });
@@ -299,7 +376,12 @@ function openFirstEpisode(viewId, item, context) {
     if (!url) {
         var listUrl = BASE_URL + "/" + section + "/list?titleId=" + titleId + "&page=1";
         var html = fetchHtml(listUrl);
-        if (html) url = webtoonFirstEpisodeUrlFromDoc(parseDoc(html), listUrl);
+        if (html) {
+            var listDoc = parseDoc(html);
+            url = webtoonFirstEpisodeUrlFromDoc(listDoc, listUrl);
+            var listTitle = listDoc.querySelector(".area_info .title");
+            if (listTitle && cleanWebtoonTitle(listTitle.textContent)) webtoonSeriesTitles[key] = cleanWebtoonTitle(listTitle.textContent);
+        }
     }
     if (!url) {
         try {
@@ -311,6 +393,7 @@ function openFirstEpisode(viewId, item, context) {
             var first = data && Array.isArray(data.articleList) && data.articleList[0];
             if (first && /^\d+$/.test(String(first.no))) {
                 url = BASE_URL + "/" + section + "/detail?titleId=" + titleId + "&no=" + first.no;
+                if (cleanWebtoonTitle(first.subtitle)) webtoonEpisodeTitles[key + ":" + first.no] = cleanWebtoonTitle(first.subtitle);
             }
         } catch (e) {
             if ((e && e.webtoonLoginRequired) || webtoonAuthRetrying) throw e;
@@ -322,7 +405,7 @@ function openFirstEpisode(viewId, item, context) {
         return;
     }
     firstEpisodeUrls[key] = url;
-    openEpisodePostView(url, (item.title || "웹툰") + " 첫화", context.kind === "viewer" ? viewId : undefined, viewId);
+    openEpisodePostView(url, "", context.kind === "viewer" ? viewId : undefined, viewId);
 }
 
 function fetchEpisodeComments(titleId, no, episodeUrl, cursor) {
@@ -438,8 +521,182 @@ function loadMoreEpisodeComments(viewId, context) {
     });
 }
 
-function parseEpisodesFromDoc(doc, baseUrl, seenMap) {
+function formatFreeConvertDate(dateStr) {
+    if (!dateStr) return "";
+    var match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) return "";
+    var targetYear = parseInt(match[1], 10);
+    var targetMonth = parseInt(match[2], 10);
+    var targetDay = parseInt(match[3], 10);
+
+    // KST current date (UTC + 9 hours)
+    var now = new Date();
+    var nowUtc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    var nowKst = new Date(nowUtc + (9 * 3600000));
+    var curYear = nowKst.getFullYear();
+    var curMonth = nowKst.getMonth() + 1;
+    var curDay = nowKst.getDate();
+
+    var targetEpochDays = Math.floor(Date.UTC(targetYear, targetMonth - 1, targetDay) / 86400000);
+    var curEpochDays = Math.floor(Date.UTC(curYear, curMonth - 1, curDay) / 86400000);
+    var diffDays = targetEpochDays - curEpochDays;
+
+    if (diffDays <= 0) return "오늘밤";
+    return diffDays + "일 후";
+}
+
+function fetchPreviewVolumesInfo(doc, titleId, contentsNo, volumeNos) {
+    var info = {};
+    if (!contentsNo || !volumeNos || volumeNos.length === 0) return info;
+
+    var csrfMeta = doc.querySelector("meta[name='csrf-token']");
+    var csrfToken = csrfMeta ? (csrfMeta.getAttribute("content") || "") : "";
+
+    try {
+        var bodyParts = [
+            "containUserRight=true",
+            "contentsNo=" + encodeURIComponent(contentsNo)
+        ];
+        for (var i = 0; i < volumeNos.length; i++) {
+            bodyParts.push("volumeNos=" + encodeURIComponent(volumeNos[i]));
+        }
+
+        var headers = {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": BASE_URL + "/webtoon/list?titleId=" + titleId
+        };
+        if (csrfToken) headers["X-XSRF-TOKEN"] = csrfToken;
+
+        var resp = webtoonFetch(BASE_URL + "/api/store/linkedCostVolumesInfo", headers, "POST", bodyParts.join("&"));
+        if (resp && resp.status === 200) {
+            var data = JSON.parse(resp.text());
+            if (data && data.result && Array.isArray(data.result.volumeList)) {
+                var list = data.result.volumeList;
+                for (var j = 0; j < list.length; j++) {
+                    var item = list[j];
+                    if (item && item.volumeNo != null) {
+                        var vKey = String(item.volumeNo);
+                        var isOwned = !!(item.userVolume && (item.userVolume.buyType === "LEND" || item.userVolume.buyType === "BUY"));
+                        info[vKey] = {
+                            cookieCount: typeof item.lendPassCount === "number" ? item.lendPassCount : 3,
+                            isOwned: isOwned,
+                            buyType: item.userVolume ? item.userVolume.buyType : "",
+                            rightEndString: item.userVolume ? (item.userVolume.rightEndString || "") : ""
+                        };
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        // Fallback to default
+    }
+    return info;
+}
+
+function parsePreviewEpisodesFromDoc(doc, baseUrl, seenMap) {
+    var previewItems = doc.querySelectorAll(".toon_preview li.item");
+    if (!previewItems || previewItems.length === 0) return [];
+
+    var titleId = extractTitleId(baseUrl);
+    var contentsNo = "";
+    var volumeNos = [];
+    var itemsData = [];
+
+    for (var i = 0; i < previewItems.length; i++) {
+        var li = previewItems[i];
+        var itemTitleId = li.getAttribute("data-title-id") || titleId;
+        var no = li.getAttribute("data-no") || li.getAttribute("data-volume-no") || "";
+        var itemContentsNo = li.getAttribute("data-contents-no") || "";
+        var volumeNo = li.getAttribute("data-volume-no") || no;
+        var freeConvertDate = li.getAttribute("data-free-convert-date") || "";
+
+        if (itemContentsNo && !contentsNo) contentsNo = itemContentsNo;
+        if (volumeNo && volumeNos.indexOf(volumeNo) < 0) volumeNos.push(volumeNo);
+
+        var titleEl = li.querySelector(".title .name strong") || li.querySelector(".title .name") || li.querySelector(".title") || li.querySelector("strong");
+        var epTitle = titleEl && titleEl.textContent ? titleEl.textContent.trim() : ("미리보기 " + no + "화");
+        if (titleEl && cleanWebtoonTitle(titleEl.textContent)) webtoonEpisodeTitles["webtoon:" + itemTitleId + ":" + no] = cleanWebtoonTitle(titleEl.textContent);
+
+        var imgEl = li.querySelector(".thumbnail img") || li.querySelector("img");
+        var imgSrc = webtoonThumbnailUrl(imgEl ? (imgEl.getAttribute("data-src") || imgEl.getAttribute("src") || "") : "");
+        var scoreEl = li.querySelector(".score");
+        var scoreText = scoreEl && scoreEl.textContent ? ("★ " + scoreEl.textContent.trim()) : "";
+
+        var fullLink = BASE_URL + "/webtoon/detail?titleId=" + itemTitleId + "&no=" + no;
+        if (seenMap && seenMap[fullLink]) continue;
+        if (seenMap) seenMap[fullLink] = true;
+
+        itemsData.push({
+            titleId: itemTitleId,
+            no: no,
+            contentsNo: itemContentsNo,
+            volumeNo: volumeNo,
+            freeConvertDate: freeConvertDate,
+            epTitle: epTitle,
+            imgSrc: imgSrc,
+            scoreText: scoreText,
+            fullLink: fullLink
+        });
+    }
+
+    var volumesInfo = fetchPreviewVolumesInfo(doc, titleId, contentsNo, volumeNos);
+
     var episodes = [];
+    for (var k = 0; k < itemsData.length; k++) {
+        var d = itemsData[k];
+        var vInfo = volumesInfo[d.volumeNo] || {};
+        var count = vInfo.cookieCount || 3;
+        var isOwned = !!vInfo.isOwned;
+
+        var dateStr = normalizeWebtoonDate(d.freeConvertDate) || "";
+        var freeDays = formatFreeConvertDate(d.freeConvertDate);
+        var dateDisplay = dateStr ? (dateStr + (freeDays ? " " + freeDays : "")) : freeDays;
+
+        var memoText = isOwned
+            ? (vInfo.buyType === "BUY" ? "소장" : (vInfo.rightEndString ? ("대여중 (" + vInfo.rightEndString + ")") : "대여중"))
+            : ("쿠키 " + count + "개");
+
+        var previewItem = {
+            id: "ep_preview_" + d.fullLink,
+            title: d.epTitle,
+            author: d.scoreText,
+            avatar: d.imgSrc,
+            mediaUrl: d.imgSrc,
+            thumbnail: d.imgSrc,
+            mediaType: d.imgSrc ? "image" : "",
+            types: [],
+            category: "",
+            memo: memoText,
+            date: dateDisplay,
+            link: d.fullLink,
+            preview: true,
+            isOwned: isOwned,
+            titleId: d.titleId,
+            no: d.no,
+            contentsNo: d.contentsNo,
+            volumeNo: d.volumeNo,
+            cookieCount: count,
+            freeConvertDate: d.freeConvertDate,
+            menus: ["첫화보기", "브라우저로 열기"]
+        };
+        previewItemsMap[d.fullLink] = previewItem;
+        episodes.push(previewItem);
+    }
+
+    return episodes;
+}
+
+function parseEpisodesFromDoc(doc, baseUrl, seenMap, isFirstPage) {
+    var episodes = [];
+
+    if (isFirstPage) {
+        var previewEps = parsePreviewEpisodesFromDoc(doc, baseUrl, seenMap);
+        for (var p = 0; p < previewEps.length; p++) {
+            episodes.push(previewEps[p]);
+        }
+    }
+
     var links = doc.querySelectorAll("a[href]");
 
     for (var i = 0; i < links.length; i++) {
@@ -454,6 +711,9 @@ function parseEpisodesFromDoc(doc, baseUrl, seenMap) {
 
         var epTitleEl = a.querySelector(".title .name") || a.querySelector(".title") || a.querySelector("strong");
         var epTitle = epTitleEl && epTitleEl.textContent ? epTitleEl.textContent.trim() : ("회차 " + (i + 1));
+        if (epTitleEl && cleanWebtoonTitle(epTitleEl.textContent)) {
+            webtoonEpisodeTitles[webtoonSection(fullLink) + ":" + extractTitleId(fullLink) + ":" + extractEpisodeNo(fullLink)] = cleanWebtoonTitle(epTitleEl.textContent);
+        }
         var imgEl = a.querySelector("img");
         var dateEl = a.querySelector(".date");
         var scoreEl = a.querySelector(".score");
@@ -545,6 +805,7 @@ function openEpisodeListView(url, titleHint) {
 
     var titleEl = doc.querySelector(".area_info .title") || doc.querySelector(".title");
     var toonTitle = (titleEl && titleEl.textContent) ? titleEl.textContent.trim() : (titleHint || "회차 목록");
+    if (cleanWebtoonTitle(toonTitle)) webtoonSeriesTitles[section + ":" + titleId] = cleanWebtoonTitle(toonTitle);
 
     var authorEl = doc.querySelector(".area_info .author") || doc.querySelector(".author");
     var toonAuthor = (authorEl && authorEl.textContent) ? authorEl.textContent.trim() : "네이버 웹툰";
@@ -553,7 +814,7 @@ function openEpisodeListView(url, titleHint) {
     var toonAvatar = webtoonThumbnailUrl(thumbEl ? (thumbEl.getAttribute("data-src") || thumbEl.getAttribute("src") || "") : "");
 
     var seenMap = {};
-    var episodes = parseEpisodesFromDoc(doc, BASE_URL, seenMap);
+    var episodes = parseEpisodesFromDoc(doc, BASE_URL, seenMap, true);
     var firstEpisodeUrl = webtoonFirstEpisodeUrlFromDoc(doc, fetchUrl);
     var sub = isSubscribed(titleId);
 
@@ -561,6 +822,7 @@ function openEpisodeListView(url, titleHint) {
         kind: "episodes",
         link: fetchUrl,
         title: toonTitle,
+        seriesTitle: toonTitle,
         titleId: titleId,
         section: section,
         firstEpisodeUrl: firstEpisodeUrl,
@@ -575,7 +837,7 @@ function openEpisodeListView(url, titleHint) {
         styles: webtoonListStyles(toonTitle, episodes.length >= 20, { history: true }),
         models: {
             contents: episodes,
-            menus: ["첫화보기", sub ? "구독 취소" : "구독", "브라우저로 열기"]
+            menus: ["첫화보기", sub ? "구독 취소" : "구독", "브라우저로 열기", "쿠키"]
         }
     }, contextData, function (e) {
         SYNURA.main.onViewEvent(e.viewId, e);
@@ -605,8 +867,9 @@ function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
     }
     var episodeDate = webtoonDateFromDoc(doc) || episodeDates[titleId + ":" + no] || "";
 
-    var titleEl = doc.querySelector(".viewer_fixed .tit") || doc.querySelector(".title_area h2") || doc.querySelector(".title") || doc.querySelector("title");
-    var epTitle = (titleEl && titleEl.textContent) ? titleEl.textContent.trim() : (titleHint || "웹툰 보기");
+    var inheritedContext = viewStates[parentViewId] || viewStates[replaceViewId];
+    var metadata = webtoonEpisodeMetadata(doc, url, titleHint, inheritedContext);
+    var epTitle = metadata.title || "웹툰 보기";
 
     // Extract comic cuts without using comma-separated selectors in querySelectorAll
     var imgEls = doc.querySelectorAll("img.toon_image");
@@ -721,6 +984,8 @@ function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
         kind: "viewer",
         link: url,
         title: epTitle,
+        seriesTitle: metadata.seriesTitle,
+        episodeTitle: metadata.episodeTitle,
         titleId: titleId,
         section: section,
         firstEpisodeUrl: firstEpisodeUrls[section + ":" + titleId] || "",
@@ -745,7 +1010,7 @@ function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
         },
         models: {
             title: epTitle,
-            author: "네이버 웹툰",
+            author: metadata.title,
             date: episodeDate,
             category: "",
             content: blocks,
@@ -898,7 +1163,12 @@ function refreshWebtoonHomeView(viewId, context) {
     var signature = JSON.stringify(items);
     var changed = context.homeSignature !== signature;
     var update = { styles: { layout: "list", media: true } };
-    if (changed) update.models = { contents: items };
+    if (changed) {
+        update.models = {
+            contents: items,
+            menus: ["검색", "새로고침", "브라우저로 열기", "쿠키", "로그인", "로그아웃"]
+        };
+    }
     var result = synura.update(viewId, update);
     if (result && result.success === false) {
         delete viewStates[viewId];
@@ -934,7 +1204,7 @@ var handler = {
             styles: webtoonListStyles("네이버 웹툰", false, { layout: "list" }),
             models: {
                 contents: items,
-                menus: ["검색", "새로고침", "브라우저로 열기"]
+                menus: ["검색", "새로고침", "브라우저로 열기", "쿠키", "로그인", "로그아웃"]
             }
         }, contextData, function (e) {
             SYNURA.main.onViewEvent(e.viewId, e);
@@ -975,14 +1245,328 @@ var handler = {
             return;
         }
 
+function isWebtoonLoggedIn() {
+    var cookie = localStorage.getItem(WEBTOON_COOKIE_KEY);
+    if (!cookie) return false;
+    try {
+        var resp = webtoonFetch(BASE_URL + "/api/loginStatus", {
+            "Accept": "application/json",
+            "Referer": BASE_URL
+        }, "POST");
+        if (!resp || resp.status !== 200) return false;
+        var data = JSON.parse(resp.text());
+        return !!(data && data.result && data.result.login);
+    } catch (e) {
+        return false;
+    }
+}
+
+function handlePreviewEpisodeClick(viewId, item, ctx) {
+    if (!item) return;
+
+    if (item.isOwned) {
+        openEpisodePostView(item.link, item.title, undefined, viewId);
+        return;
+    }
+
+    var loggedIn = isWebtoonLoggedIn();
+    if (!loggedIn) {
+        var targetUrl = item.link || (BASE_URL + "/webtoon/detail?titleId=" + item.titleId + "&no=" + item.no);
+        var loginUrl = "https://nid.naver.com/nidlogin.login?url=" + encodeURIComponent(targetUrl);
+        webtoonOpenLoginBrowser(loginUrl, {
+            kind: "event",
+            viewId: viewId,
+            eventId: "CLICK",
+            data: item,
+            context: ctx
+        });
+        return;
+    }
+
+    var titleId = item.titleId || extractTitleId(item.link);
+    var no = item.no || extractEpisodeNo(item.link);
+    var contentsNo = item.contentsNo || "";
+    var volumeNo = item.volumeNo || no;
+    var cookieCount = item.cookieCount || 3;
+
+    var userAlreadyOwns = false;
+    var csrfToken = "";
+    try {
+        var listUrl = BASE_URL + "/webtoon/list?titleId=" + titleId;
+        var html = fetchHtml(listUrl);
+        if (html) {
+            var doc = parseDoc(html);
+            var csrfMeta = doc.querySelector("meta[name='csrf-token']");
+            if (csrfMeta) csrfToken = csrfMeta.getAttribute("content") || "";
+        }
+        if (contentsNo && volumeNo) {
+            var bodyParts = [
+                "containUserRight=true",
+                "contentsNo=" + encodeURIComponent(contentsNo),
+                "volumeNos=" + encodeURIComponent(volumeNo)
+            ];
+            var headers = {
+                "Accept": "application/json, text/plain, */*",
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "Referer": listUrl
+            };
+            if (csrfToken) headers["X-XSRF-TOKEN"] = csrfToken;
+            var resp = webtoonFetch(BASE_URL + "/api/store/linkedCostVolumesInfo", headers, "POST", bodyParts.join("&"));
+            if (resp && resp.status === 200) {
+                var data = JSON.parse(resp.text());
+                if (data && data.result && Array.isArray(data.result.volumeList) && data.result.volumeList[0]) {
+                    var vInfo = data.result.volumeList[0];
+                    if (vInfo.userVolume) userAlreadyOwns = true;
+                    if (typeof vInfo.lendPassCount === "number") cookieCount = vInfo.lendPassCount;
+                }
+            }
+        }
+    } catch (e) {}
+
+    if (userAlreadyOwns) {
+        openEpisodePostView(item.link, item.title, undefined, viewId);
+        return;
+    }
+
+    var usableCookieCount = 0;
+    var licenseDay = 3;
+    try {
+        var valHeaders = {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": BASE_URL + "/webtoon/list?titleId=" + titleId
+        };
+        if (csrfToken) valHeaders["X-XSRF-TOKEN"] = csrfToken;
+        var valBody = "contentsNo=" + encodeURIComponent(contentsNo) +
+            "&volumeNo=" + encodeURIComponent(volumeNo) +
+            "&reqUsePassCount=" + encodeURIComponent(String(cookieCount));
+        var valResp = webtoonFetch(BASE_URL + "/api/store/contentsPassUseValidation", valHeaders, "POST", valBody);
+        if (valResp && valResp.status === 200) {
+            var valData = JSON.parse(valResp.text());
+            if (valData && valData.result) {
+                usableCookieCount = valData.result.usablePassCount || 0;
+                if (valData.result.licenseDay) licenseDay = valData.result.licenseDay;
+            }
+        }
+    } catch (e) {}
+
+    var confirmMessage = "사용 가능 쿠키 : " + usableCookieCount + "개\n" +
+        "쿠키 " + cookieCount + "개로 " + licenseDay + "일간 대여하시겠습니까?\n\n" +
+        (item.title ? ("작품: " + item.title) : "");
+
+    var dialogContext = {
+        kind: "cookie_confirm",
+        parentViewId: viewId,
+        item: item,
+        titleId: titleId,
+        no: no,
+        contentsNo: contentsNo,
+        volumeNo: volumeNo,
+        cookieCount: cookieCount,
+        usableCookieCount: usableCookieCount,
+        csrfToken: csrfToken,
+        licenseDay: licenseDay
+    };
+
+    synura.open({
+        view: "/dialogs/confirmation",
+        styles: {
+            title: "쿠키 대여 확인",
+            message: confirmMessage,
+            close: true
+        },
+        models: {
+            buttons: ["대여하기", "취소"]
+        }
+    }, dialogContext, function (e) {
+        SYNURA.main.onViewEvent(e.viewId, e);
+    });
+}
+
+function handleCookieConfirmSubmit(viewId, event, context) {
+    var button = event.data ? event.data.button : "";
+    synura.close(viewId);
+    if (button !== "대여하기") return;
+
+    if (context.usableCookieCount < context.cookieCount) {
+        var chargeContext = {
+            kind: "cookie_charge",
+            parentViewId: context.parentViewId,
+            item: context.item,
+            titleId: context.titleId,
+            no: context.no,
+            contentsNo: context.contentsNo,
+            volumeNo: context.volumeNo,
+            cookieCount: context.cookieCount
+        };
+        synura.open({
+            view: "/views/browser",
+            styles: { title: "쿠키 충전" },
+            models: { url: "https://m.series.naver.com/my/cookie/sellingList.series" }
+        }, chargeContext, function (e) {
+            SYNURA.main.onViewEvent(e.viewId, e);
+        });
+        if (context.parentViewId) {
+            synura.update(context.parentViewId, {
+                models: { snackbar: "쿠키가 부족합니다 (" + context.usableCookieCount + "/" + context.cookieCount + "개). 쿠키 충전 페이지로 이동합니다." }
+            });
+        }
+        return;
+    }
+
+    try {
+        var headers = {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": BASE_URL + "/webtoon/list?titleId=" + context.titleId
+        };
+        if (context.csrfToken) headers["X-XSRF-TOKEN"] = context.csrfToken;
+        var body = "contentsNo=" + encodeURIComponent(context.contentsNo) +
+            "&volumeNo=" + encodeURIComponent(context.volumeNo) +
+            "&reqUsePassCount=" + encodeURIComponent(String(context.cookieCount)) +
+            "&paymentType=COST_PASS";
+        var resp = webtoonFetch(BASE_URL + "/api/store/contentsPassUse", headers, "POST", body);
+        var resData = resp && resp.status === 200 ? JSON.parse(resp.text()) : null;
+
+        if (resData && resData.code === 0) {
+            if (context.parentViewId) {
+                synura.update(context.parentViewId, {
+                    models: { snackbar: "쿠키 " + context.cookieCount + "개가 차감되었습니다." }
+                });
+            }
+            openEpisodePostView(context.item.link, context.item.title, undefined, context.parentViewId);
+        } else {
+            var msg = (resData && resData.message) ? resData.message : "쿠키 대여 처리에 실패했습니다.";
+            if (context.parentViewId) {
+                synura.update(context.parentViewId, { models: { snackbar: msg } });
+            }
+        }
+    } catch (e) {
+        if (context.parentViewId) {
+            synura.update(context.parentViewId, { models: { snackbar: "쿠키 대여 중 오류가 발생했습니다: " + e } });
+        }
+    }
+}
+
+function fetchUserCookieCount() {
+    if (!localStorage.getItem(WEBTOON_COOKIE_KEY)) return { success: false, loginRequired: true };
+    var accountUrl = BASE_URL + "/mypage/favorite";
+    try {
+        // The MY page supplies the CSRF token for the account-wide balance API.
+        var page = webtoonFetch(accountUrl);
+        var html = page ? page.text() : "";
+        if (webtoonNeedsLogin(page, html) || page && page.status === 401) {
+            return { success: false, loginRequired: true };
+        }
+        if (!page || page.status !== 200) return { success: false };
+        var csrfMeta = parseDoc(html).querySelector("meta[name='csrf-token']");
+        var csrfToken = csrfMeta ? csrfMeta.getAttribute("content") || "" : "";
+        if (!csrfToken) return { success: false };
+        var headers = {
+            "Accept": "application/json, text/plain, */*",
+            "Referer": accountUrl,
+            "X-XSRF-TOKEN": csrfToken
+        };
+        var resp = webtoonFetch(BASE_URL + "/api/store/usablePassCount", headers);
+        if (resp && resp.status === 401) return { success: false, loginRequired: true };
+        if (resp && resp.status === 200) {
+            var body = resp.text();
+            if (webtoonNeedsLogin(resp, body)) return { success: false, loginRequired: true };
+            var data = JSON.parse(body);
+            var count = data && data.result && data.result.totalPassCount;
+            if (data && data.code === 0 && Number.isInteger(count) && count >= 0) {
+                return { success: true, count: count };
+            }
+            if (data && (data.code === 1004 || (data.message && data.message.indexOf("로그인") >= 0))) {
+                return { success: false, loginRequired: true };
+            }
+        }
+    } catch (e) {}
+    return { success: false };
+}
+
+function showCookieInfoDialog(viewId, ctx) {
+    if (!isWebtoonLoggedIn()) {
+        synura.open({
+            view: "/dialogs/confirmation",
+            styles: {
+                title: "쿠키 확인",
+                message: "로그인이 필요합니다.\n네이버 로그인 후 확인해 주세요.",
+                close: true
+            },
+            models: {
+                buttons: ["로그인", "닫기"]
+            }
+        }, { kind: "cookie_info_login", parentViewId: viewId }, function (e) {
+            SYNURA.main.onViewEvent(e.viewId, e);
+        });
+        return;
+    }
+
+    var cookieRes = fetchUserCookieCount();
+    if (!cookieRes.success) {
+        if (cookieRes.loginRequired) {
+            synura.open({
+                view: "/dialogs/confirmation",
+                styles: {
+                    title: "쿠키 확인",
+                    message: "로그인 세션이 만료되었습니다.\n다시 로그인해 주세요.",
+                    close: true
+                },
+                models: {
+                    buttons: ["로그인", "닫기"]
+                }
+            }, { kind: "cookie_info_login", parentViewId: viewId }, function (e) {
+                SYNURA.main.onViewEvent(e.viewId, e);
+            });
+            return;
+        }
+        synura.open({
+            view: "/dialogs/confirmation",
+            styles: {
+                title: "쿠키 확인",
+                message: "쿠키 정보를 가져올 수 없습니다.\n네트워크 상태를 확인해 주세요.",
+                close: true
+            },
+            models: {
+                buttons: ["확인"]
+            }
+        }, { kind: "cookie_info", parentViewId: viewId }, function (e) {
+            SYNURA.main.onViewEvent(e.viewId, e);
+        });
+        return;
+    }
+
+    synura.open({
+        view: "/dialogs/confirmation",
+        styles: {
+            title: "보유 쿠키",
+            message: "현재 보유 쿠키 : " + cookieRes.count + "개",
+            close: true
+        },
+        models: {
+            buttons: ["충전하기", "확인"]
+        }
+    }, { kind: "cookie_info", parentViewId: viewId }, function (e) {
+        SYNURA.main.onViewEvent(e.viewId, e);
+    });
+}
+
         // 1. CLICK EVENT
         if (event.eventId === "CLICK") {
-            var link = event.data ? event.data.link : "";
-            var title = event.data ? event.data.title : "";
+            var itemData = event.data || {};
+            var link = itemData.link || "";
+            var title = itemData.title || "";
             if (!link) return;
 
+            if (itemData.preview || (previewItemsMap && previewItemsMap[link])) {
+                var previewItem = itemData.preview ? itemData : previewItemsMap[link];
+                handlePreviewEpisodeClick(viewId, previewItem, ctx);
+                return;
+            }
+
             if (webtoonContentUrl(link, "detail")) {
-                openEpisodePostView(link, title, ctx.kind === "viewer" ? viewId : undefined);
+                openEpisodePostView(link, title, ctx.kind === "viewer" ? viewId : undefined, viewId);
             } else if (webtoonContentUrl(link, "list")) {
                 openEpisodeListView(link, title);
             } else if (link.indexOf("/webtoon/weekday") >= 0 || link.indexOf("/webtoon/finish") >= 0) {
@@ -1029,7 +1613,7 @@ var handler = {
             if (menu === "회차 목록") {
                 var tid = ctx.titleId || extractTitleId(ctx.link);
                 if (tid) {
-                    openEpisodeListView(BASE_URL + "/" + webtoonSection(ctx.link) + "/list?titleId=" + tid, ctx.title || "회차 목록");
+                    openEpisodeListView(BASE_URL + "/" + webtoonSection(ctx.link) + "/list?titleId=" + tid, ctx.seriesTitle || ctx.title || "회차 목록");
                 }
                 return;
             }
@@ -1045,7 +1629,7 @@ var handler = {
                     });
                     synura.update(viewId, {
                         models: {
-                            menus: ["첫화보기", nowSub ? "구독 취소" : "구독", "브라우저로 열기"],
+                            menus: ["첫화보기", nowSub ? "구독 취소" : "구독", "브라우저로 열기", "쿠키"],
                             snackbar: nowSub ? "구독 목록에 추가되었습니다." : "구독이 취소되었습니다."
                         }
                     });
@@ -1057,6 +1641,27 @@ var handler = {
                     view: "/views/browser",
                     styles: { title: ctx.title || "브라우저" },
                     models: { url: ctx.link }
+                });
+                return;
+            }
+            if (menu === "쿠키") {
+                showCookieInfoDialog(viewId, ctx);
+                return;
+            }
+            if (menu === "로그인") {
+                webtoonOpenLoginBrowser("https://nid.naver.com/nidlogin.login?url=" + encodeURIComponent(BASE_URL + "/webtoon/weekday"), {
+                    kind: "home_login",
+                    parentViewId: viewId
+                });
+                return;
+            }
+            if (menu === "로그아웃") {
+                localStorage.removeItem(WEBTOON_COOKIE_KEY);
+                synura.update(viewId, { models: { snackbar: "로그아웃되었습니다." } });
+                synura.open({
+                    view: "/views/browser",
+                    styles: { title: "네이버 로그아웃" },
+                    models: { url: "https://nid.naver.com/nidlogin.logout" }
                 });
                 return;
             }
@@ -1111,7 +1716,7 @@ var handler = {
                 var html = fetchHtml(pageUrl);
                 var doc = parseDoc(html);
                 ctx.seenMap = ctx.seenMap || {};
-                var newEpisodes = parseEpisodesFromDoc(doc, BASE_URL, ctx.seenMap);
+                var newEpisodes = parseEpisodesFromDoc(doc, BASE_URL, ctx.seenMap, false);
 
                 if (newEpisodes.length > 0) {
                     ctx.page = nextPage;
@@ -1132,6 +1737,52 @@ var handler = {
 
         // 5. POST BUTTON / DIALOG SUBMIT
         if (event.eventId === "SUBMIT") {
+            if (ctx.kind === "cookie_charge") {
+                var cData = event.data || {};
+                var cCookie = typeof cData.cookies === "string" ? cData.cookies.trim() : "";
+                if (cCookie && !/[\r\n\0]/.test(cCookie)) {
+                    localStorage.setItem(WEBTOON_COOKIE_KEY, cCookie);
+                }
+                synura.close(viewId);
+                if (ctx.item && ctx.parentViewId) {
+                    handlePreviewEpisodeClick(ctx.parentViewId, ctx.item, { kind: "episodes", titleId: ctx.titleId });
+                } else if (ctx.parentViewId) {
+                    synura.update(ctx.parentViewId, { models: { snackbar: "쿠키 정보가 반영되었습니다." } });
+                }
+                return;
+            }
+            if (ctx.kind === "cookie_confirm") {
+                handleCookieConfirmSubmit(viewId, event, ctx);
+                return;
+            }
+            if (ctx.kind === "cookie_info") {
+                var infoBtn = event.data ? event.data.button : "";
+                synura.close(viewId);
+                if (infoBtn === "충전하기") {
+                    synura.open({
+                        view: "/views/browser",
+                        styles: { title: "쿠키 충전" },
+                        models: { url: "https://m.series.naver.com/my/cookie/sellingList.series" }
+                    }, {
+                        kind: "cookie_charge",
+                        parentViewId: ctx.parentViewId
+                    }, function (e) {
+                        SYNURA.main.onViewEvent(e.viewId, e);
+                    });
+                }
+                return;
+            }
+            if (ctx.kind === "cookie_info_login") {
+                var loginBtn = event.data ? event.data.button : "";
+                synura.close(viewId);
+                if (loginBtn === "로그인") {
+                    webtoonOpenLoginBrowser("https://nid.naver.com/nidlogin.login?url=" + encodeURIComponent(BASE_URL + "/webtoon/weekday"), {
+                        kind: "home_login",
+                        parentViewId: ctx.parentViewId
+                    });
+                }
+                return;
+            }
             if (ctx.kind === "viewer" && event.data && event.data.button === BUTTON_BROWSER && ctx.link) {
                 synura.open({
                     view: "/views/browser",
@@ -1152,6 +1803,14 @@ var handler = {
                 if (btn !== "취소" && keyword.trim()) {
                     openSearchView(keyword.trim());
                 }
+                return;
+            }
+        }
+
+        // 6. CLOSE EVENT
+        if (event.eventId === "CLOSE") {
+            if (ctx.kind === "cookie_confirm" || ctx.kind === "cookie_info" || ctx.kind === "cookie_info_login") {
+                delete viewStates[viewId];
                 return;
             }
         }
@@ -1199,9 +1858,16 @@ function webtoonOpenLoginBrowser(targetUrl, action) {
 }
 
 function webtoonRetryLoginAction(action) {
+    if (!action) return;
     var previous = webtoonAuthRetrying;
     webtoonAuthRetrying = true;
     try {
+        if (action.kind === "home_login") {
+            if (action.parentViewId) {
+                synura.update(action.parentViewId, { models: { snackbar: "로그인되었습니다." } });
+            }
+            return;
+        }
         if (action.kind === "deeplink") return webtoonOriginalDeeplink(action.url);
         if (action.kind === "search") return openSearchView(action.keyword);
         return webtoonOriginalViewEvent(action.viewId, {
@@ -1224,7 +1890,7 @@ function webtoonHandleLoginEvent(viewId, event, context) {
     var data = event.data || {};
     var cookie = typeof data.cookies === "string" ? data.cookies.trim() : "";
     var cookieUrlAllowed = !data.url || webtoonCookieHost(data.url) ||
-        /^https?:\/\/nid\.naver\.com(?:[/:?#]|$)/i.test(String(data.url));
+        /^https?:\/\/(?:nid|(?:m\.)?series)\.naver\.com(?:[/:?#]|$)/i.test(String(data.url));
     if (!cookie || /[\r\n\0]/.test(cookie) || !cookieUrlAllowed) {
         synura.update(viewId, { models: { snackbar: "쿠키를 가져오지 못했습니다. 로그인과 연령 확인을 마친 뒤 상단 확인을 다시 눌러 주세요." } });
         return;

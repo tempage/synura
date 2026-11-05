@@ -64,7 +64,7 @@ var SYNURA = {
   name: "hackernews",
   author: "Synura Team",
   description: "news.ycombinator.com",
-  version: 0.3,
+  version: 0.4,
   api: 0,
   license: "Apache-2.0",
   locale: "en_US",
@@ -193,7 +193,7 @@ function hnParseComments(doc, postUrl) {
   var rows = allNodes(doc, ["tr.athing.comtr"]);
   var comments = [];
   var seen = {};
-  for (var i = 0; i < rows.length && comments.length < 120; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var id = attrOf(rows[i], "id") || ("comment-" + comments.length);
     var contentRoot = firstNode(rows[i], [".commtext"]);
     var text = textOf(contentRoot);

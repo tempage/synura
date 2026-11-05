@@ -3,7 +3,7 @@
     {
       "name": "frandroid",
       "description": "forum.frandroid.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/fr_FR/frandroid.js",
       "api": 0,
       "domain": "forum.frandroid.com",
@@ -19,7 +19,7 @@
     {
       "name": "hardware_fr",
       "description": "forum.hardware.fr",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/fr_FR/hardware_fr.js",
       "api": 0,
       "domain": "forum.hardware.fr",
@@ -35,7 +35,7 @@
     {
       "name": "lesnumeriques",
       "description": "forum.lesnumeriques.com",
-      "version": 0.2,
+      "version": 0.4,
       "url": "https://tempage.github.io/synura/extensions/fr_FR/lesnumeriques.js",
       "api": 0,
       "domain": "forum.lesnumeriques.com",

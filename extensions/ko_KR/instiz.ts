@@ -70,8 +70,8 @@ var SITE = {
     postTitle: ["#nowsubject"],
     postAuthor: [".cmt_name", ".name", ".nick", ".nickname"],
     postAvatar: [".cmt_td img", ".profile img"],
-    postDate: [".cmt_date", ".date", "time[datetime]"],
-    postViewCount: [".hit"],
+    postDate: [".tb_left [itemprop='datePublished']", ".cmt_date", ".date", "time[datetime]"],
+    postViewCount: ["#hit", ".hit"],
     postLikeCount: [".recommend"],
     postCategory: [".board_name", ".cate"],
     postContent: ["#content_td .memo_content", "#memo_content", "#memo_content_1", "article[itemprop='articleBody']", "#content .memo_content", ".view-content"],
@@ -93,7 +93,7 @@ var SYNURA = {
   name: "instiz",
   author: "Synura Team",
   description: "www.instiz.net",
-  version: 0.1, // Intentionally pinned at 0.1.
+  version: 0.2,
   api: 0,
   license: "Apache-2.0",
   bypass: "chrome/android",
@@ -303,14 +303,25 @@ function instizParseComments(doc, postUrl) {
   var rows = allNodes(doc, ["#ajax_comment tr.cmt_view", "tr.cmt_view"]);
   var comments = [];
 
-  for (var i = 0; i < rows.length && comments.length < 80; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     var contentRoot = firstNode(row, [".comment_line span[id^='n']", ".comment_line"]);
+    if (contentRoot && typeof contentRoot.cloneNode === "function") {
+      contentRoot = contentRoot.cloneNode(true);
+      var styled = contentRoot.querySelectorAll("[style]");
+      for (var j = 0; j < styled.length; j++) {
+        // Recent replies contain blurred dummy text, not the unavailable reply.
+        if (/^임시글자/.test(textOf(styled[j])) && /(?:^|;)\s*(?:-webkit-)?filter\s*:[^;]*\bblur\s*\(/i.test(attrOf(styled[j], "style"))) {
+          styled[j].remove();
+        }
+      }
+    }
     var plain = textOf(contentRoot);
-    if (!plain || plain.length < 2) continue;
-
     var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: plain }];
+    if (!content || content.length === 0) {
+      if (!plain) continue;
+      content = [{ type: "text", value: plain }];
+    }
 
     var domId = attrOf(row, "id");
     comments.push({
@@ -407,7 +418,7 @@ function localCommunityParseComments(doc, postUrl) {
   var comments = [];
   var seen = {};
 
-  for (var i = 0; i < rows.length && comments.length < 80; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     var contentRoot = firstNode(row, contentSelectors) || row;
     var content = parseDetails(contentRoot, postUrl);

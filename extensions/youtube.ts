@@ -71,7 +71,7 @@ var SYNURA = {
   name: "youtube",
   author: "Synura Team",
   description: "m.youtube.com",
-  version: .2,
+  version: .3,
   api: 0,
   license: "Apache-2.0",
   locale: "",
@@ -945,7 +945,7 @@ var SYNURA = {
     view: "/dialogs/input",
     styles: { title: t(YT_KEY_BUTTON_IMPORT_SUBSCRIPTIONS), message: t("dialog_subscriptions_json"), close: true },
     models: {
-      body: [{ type: "text", name: "subscriptions", label: "JSON", lines: 12, value: JSON.stringify(loadStarredChannels(), null, 2) }],
+      body: [{ type: "text", name: "subscriptions", label: "JSON", lines: 12, selectOnFocus: true, value: JSON.stringify(loadStarredChannels(), null, 2) }],
       buttons: [t("button_replace_subscriptions"), t(BUTTON_CANCEL)]
     }
   }, function(event) {

@@ -57,47 +57,23 @@ var SITE = {
       ".ipsType_pageTitle",
       ".forum-title"
     ],
-    "listRows": [
-      "a[href*='/boards/topic/']",
-      "a[href*='topic']"
-    ],
-    "listLink": [
-      "a[href*='/boards/topic/']",
-      "a[href*='topic']"
-    ],
-    "listTitle": [
-      "a[href*='/boards/topic/']",
-      "a[href*='topic']"
-    ],
+    "listRows": [".board_topic_row"],
+    "listLink": [".board_topic_col_topic a"],
+    "listTitle": [".board_topic_col_topic a"],
     "listTitleExclude": [
       ".badge",
       ".counter",
       ".stats",
       ".meta"
     ],
-    "listAuthor": [
-      ".username",
-      ".userLink",
-      ".author"
-    ],
+    "listAuthor": [".board_topic_col:nth-child(4) a"],
     "listAvatar": [
       ".avatar img",
       ".userAvatarImage"
     ],
-    "listDate": [
-      "time",
-      "time[datetime]"
-    ],
-    "listCommentCount": [
-      ".replies",
-      ".comments",
-      ".reply-count",
-      ".comment-count"
-    ],
-    "listViewCount": [
-      ".views",
-      ".view-count"
-    ],
+    "listDate": [".board_topic_col:nth-child(5) p"],
+    "listCommentCount": [".board_topic_col:nth-child(2) p"],
+    "listViewCount": [".board_topic_col:nth-child(3) p"],
     "listLikeCount": [
       ".likes",
       ".vote-count",
@@ -117,22 +93,13 @@ var SITE = {
       ".ipsType_pageTitle",
       "h1[itemprop='headline']"
     ],
-    "postAuthor": [
-      ".message-name .username",
-      ".messageSidebar .username",
-      ".postprofile .username",
-      ".author .username"
-    ],
+    "postAuthor": [],
     "postAvatar": [
       ".message-avatar img",
       ".messageSidebar img",
       ".avatar img"
     ],
-    "postDate": [
-      "time[datetime]",
-      ".message-attribution time",
-      ".postdate time"
-    ],
+    "postDate": [],
     "postViewCount": [
       ".view-count"
     ],
@@ -145,38 +112,15 @@ var SITE = {
       ".breadcrumbs a",
       ".p-breadcrumbs a"
     ],
-    "postContent": [
-      ".messageText[itemprop='text']",
-      ".message-body .bbWrapper",
-      ".postbody .content",
-      ".ipsType_richText",
-      ".cooked"
-    ],
-    "commentRows": [
-      "article.message",
-      ".postbody",
-      ".ipsComment",
-      ".topic-post",
-      ".comment-item"
-    ],
-    "commentAuthor": [
-      ".message-name .username",
-      ".postprofile .username",
-      ".ipsComment_author .username",
-      ".author .username"
-    ],
+    "postContent": [".post_desc", ".postbody"],
+    "commentRows": [".post_panel"],
+    "commentAuthor": [".user_name"],
     "commentAvatar": [
       ".message-avatar img",
       ".postprofile img",
       ".ipsUserPhoto img"
     ],
-    "commentContent": [
-      ".message-body .bbWrapper",
-      ".postbody .content",
-      ".ipsType_richText",
-      ".cooked",
-      ".comment-content"
-    ],
+    "commentContent": [".post_desc"],
     "commentDate": [
       "time[datetime]",
       ".message-attribution time",
@@ -195,9 +139,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -205,7 +147,7 @@ var SYNURA = {
   name: "soccersuck",
   author: "Synura Team",
   description: "www.soccersuck.com",
-  version: 0.3,
+  version: 0.5,
   api: 0,
   license: "Apache-2.0",
   locale: "th_TH",
@@ -242,12 +184,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -257,33 +196,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -418,12 +330,13 @@ function extractListItem(row, baseUrl) {
   var linkNode = firstNode(row, selectorList("listLink", [])) || (attrOf(row, "href") ? row : null);
   var link = linkNode ? (normalizeUrl(attrOf(linkNode, "href")) || ensureAbsoluteUrl(attrOf(linkNode, "href"), baseUrl)) : "";
   if (!link || localLooksLikeAssetUrl(link) || !localLooksLikePostUrl(link)) return null;
+  link = link.replace(/^http:\/\/www\.soccersuck\.com\//, "https://www.soccersuck.com/");
   var title = firstNonEmpty([
     firstText(row, selectorList("listTitle", [])),
     localTitleFromNode(linkNode)
   ]);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -433,10 +346,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: localSoccersuckListDate(row, baseUrl),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])),
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -454,8 +368,12 @@ function localCommentAuthor(node) {
 }
 
 function localCommentDate(node) {
-  var time = firstNode(node, selectorList("commentDate", ["time", ".date", ".time"]));
-  return attrOf(time, "datetime") || textOf(time);
+  var rows = allNodes(node, [".userinfo_time"]);
+  for (var i = 0; i < rows.length; i++) {
+    var text = textOf(rows[i]);
+    if (text.indexOf("โพสเมื่อ:") === 0) return normalizeWhitespace(text.slice(text.indexOf(":") + 1));
+  }
+  return "";
 }
 
 
@@ -465,15 +383,15 @@ function localParseComments(doc, postUrl) {
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
   var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 1; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -602,185 +520,11 @@ SITE.matchBoard = function (info) {
   ".topic-title",
   ".title"
 ];
-  SITE.selectors["postAuthor"] = [
-  ".username",
-  ".author",
-  ".name"
-];
-  SITE.selectors["postDate"] = [
-  "time[datetime]",
-  ".date"
-];
-  SITE.selectors["postContent"] = [
-  ".postbody",
-  ".content",
-  ".webboard-post",
-  ".td-post",
-  ".message",
-  "body"
-];
-  SITE.selectors["commentRows"] = [
-  ".postbody",
-  ".comment",
-  ".reply",
-  "tr[id*='post']"
-];
-  SITE.selectors["commentContent"] = [
-  ".postbody",
-  ".content",
-  ".comment-content",
-  ".message"
-];
-  var soccersuckPostContentSelectors = [
-  ".postbody",
-  ".content",
-  ".webboard-post",
-  ".td-post",
-  ".message",
-  "body"
-];
-  var soccersuckPreviousFilterPostContent = SITE.filterPostContent;
-  function soccersuckText(node) {
-    return String(node && node.textContent || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
-  }
-  function soccersuckNodes(root, selectors) {
-    var out = [];
-    for (var i = 0; root && selectors && i < selectors.length; i++) {
-      try {
-        var nodes = root.querySelectorAll(selectors[i]);
-        for (var j = 0; nodes && j < nodes.length; j++) out.push(nodes[j]);
-      } catch (e) {}
-    }
-    return out;
-  }
-  function soccersuckDetailsFromRoot(root, url) {
-    if (!root) return [];
-    var text = soccersuckText(root);
-    if (text.length < 2) return [];
-    var details = [];
-    try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-    if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-    return details;
-  }
-  SITE.filterPostContent = function (content, url, doc, page, match) {
-    var previous = [];
-    try {
-      if (soccersuckPreviousFilterPostContent) previous = soccersuckPreviousFilterPostContent(content, url, doc, page, match) || [];
-    } catch (e) {}
-    var nodes = soccersuckNodes(doc, soccersuckPostContentSelectors);
-    var seen = {};
-    var out = [];
-    for (var i = 0; i < nodes.length && out.length < 80; i++) {
-      var text = soccersuckText(nodes[i]);
-      var key = text.substring(0, 220).toLowerCase();
-      if (!key || seen[key]) continue;
-      seen[key] = true;
-      var details = soccersuckDetailsFromRoot(nodes[i], url);
-      for (var j = 0; j < details.length && out.length < 80; j++) out.push(details[j]);
-      if (out.length && soccersuckPostContentSelectors[i] !== "body") break;
-    }
-    if (!out.length) out = previous;
-    if (!out.length) {
-      var title = "";
-      try { title = firstNonEmpty([firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["meta[property='og:description']", "meta[name='description']", "title"])]); } catch (e) {}
-      if (title) out = [{ type: "text", value: title }];
-    }
-    return out;
-  };
-  var soccersuckCommentRowSelectors = [
-  ".postbody",
-  ".comment",
-  ".reply",
-  "tr[id*='post']"
-];
-  var soccersuckCommentContentSelectors = [
-  ".postbody",
-  ".content",
-  ".comment-content",
-  ".message"
-];
-  var soccersuckCommentSummarySelectors = [
-  ".postbody",
-  ".comment",
-  ".reply",
-  "tr[id*='post']",
-  "h1",
-  ".topic-title",
-  ".title"
-];
-  var soccersuckPreviousFetchPostComments = SITE.fetchPostComments;
-  function soccersuckMergeComment(target, seen, item) {
-    if (!item || !item.content) return;
-    var text = "";
-    for (var i = 0; i < item.content.length; i++) text += " " + (item.content[i] && item.content[i].value || "");
-    text = text.replace(/\s+/g, " ").trim();
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key]) return;
-    seen[key] = true;
-    target.push(item);
-  }
-  function soccersuckParseVisibleComments(doc, url, target, seen) {
-    var rows = soccersuckNodes(doc, soccersuckCommentRowSelectors);
-    for (var i = 0; i < rows.length && target.length < 80; i++) {
-      var root = null;
-      try { root = firstNode(rows[i], soccersuckCommentContentSelectors); } catch (e) {}
-      root = root || rows[i];
-      var text = soccersuckText(root);
-      if (text.length < 2 || text.length > 5000) continue;
-      var details = [];
-      try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-      if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-      var domId = "";
-      try { domId = attrOf(rows[i], "id"); } catch (e) {}
-      soccersuckMergeComment(target, seen, {
-        id: SITE.siteKey + ":comment:" + target.length,
-        link: url + (domId ? ("#" + domId) : ("#comment-" + target.length)),
-        author: "",
-        avatar: "",
-        date: "",
-        content: details,
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
-  }
-  SITE.fetchPostComments = function (match, url, doc, page, comments) {
-    var out = [];
-    var seen = {};
-    var existing = Array.isArray(comments) ? comments : [];
-    for (var i = 0; i < existing.length; i++) soccersuckMergeComment(out, seen, existing[i]);
-    try {
-      if (soccersuckPreviousFetchPostComments) {
-        var fetched = soccersuckPreviousFetchPostComments(match, url, doc, page, existing) || [];
-        for (var j = 0; j < fetched.length; j++) soccersuckMergeComment(out, seen, fetched[j]);
-      }
-    } catch (e) {}
-    if (!out.length) soccersuckParseVisibleComments(doc, url, out, seen);
-    if (!out.length) {
-      var summary = "";
-      try { summary = firstNonEmpty([firstText(doc, soccersuckCommentSummarySelectors), firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["title"])]); } catch (e) {}
-      summary = String(summary || SITE.displayName || "Comments").replace(/\s+/g, " ").trim();
-      if (summary) soccersuckMergeComment(out, seen, {
-        id: SITE.siteKey + ":comment:summary",
-        link: url + "#comments",
-        author: SITE.displayName,
-        avatar: "",
-        date: "",
-        content: [{ type: "text", value: summary }],
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
-    return out;
-  };
+  SITE.selectors["postAuthor"] = [];
+  SITE.selectors["postDate"] = [];
+  SITE.selectors["postContent"] = [".post_desc", ".postbody"];
+  SITE.selectors["commentRows"] = [".post_panel"];
+  SITE.selectors["commentContent"] = [".post_desc"];
 })();
 // END synurart-own-extension-validation-fix
 // BEGIN synurart-home-board-seed
@@ -799,3 +543,54 @@ SITE.matchBoard = function (info) {
   SITE.defaultVisibleBoardIds = seededHomeBoards.map(function (board) { return board.id; });
 })();
 // END synurart-home-board-seed
+
+// The public board page contains only navigation; its topic rows are served
+// by these same-origin form endpoints used by the site's board.js.
+SITE.routeBoardCustom = function (url, info, match) {
+  if (!info || !/^\/boards\/?$/.test(info.path || "")) return null;
+  var boardId = queryInt(info.query, "forum", 3);
+  if (boardId < 1) return null;
+  var page = Math.max(1, queryInt(info.query, "page", 1));
+  var endpoint = "https://www.soccersuck.com/boards/" + (page === 1 ? "loadTopic/" : "loadTopicPage/");
+  var options = buildFetchOptions();
+  options.method = "POST";
+  options.headers["Content-Type"] = "application/x-www-form-urlencoded";
+  options.headers["X-Requested-With"] = "XMLHttpRequest";
+  options.headers["Referer"] = "https://www.soccersuck.com/boards/";
+  options.body = "id=" + boardId + "&limit=30&page=" + page;
+  var response = fetchWithLogging(endpoint, options);
+  if (!response || !response.ok) return null;
+  var html = responseText(response);
+  var items = localParseBoardItemsFromHtml(html, "https://www.soccersuck.com/boards/");
+  var nextUrl = items.length >= 30 ? setQueryParam(setQueryParam(url, "forum", boardId), "page", page + 1) : "";
+  var title = match && match.board ? match.board.title : SITE.displayName;
+  return {
+    kind: "board", url: url,
+    viewData: {
+      view: "/views/list",
+      styles: { title: title, menu: true, pagination: !!nextUrl, history: true },
+      models: { contents: items, menus: [MENU_BROWSER] }
+    },
+    context: { kind: "board", link: url, boardId: match && match.board ? match.board.id : "home", boardTitle: title, boardUrl: url, title: title, page: page, nextUrl: nextUrl, seenLinks: items.map(function (item) { return item.link; }) }
+  };
+};
+
+function localSoccersuckListDate(row, baseUrl) {
+  var node = firstNode(row, SITE.selectors.listDate);
+  if (!node) return "";
+  var copy = node.cloneNode(true);
+  var links = copy.querySelectorAll("a");
+  for (var i = 0; i < links.length; i++) links[i].remove();
+  return normalizeWhitespace(parseDetails(copy, baseUrl).map(function (part) {
+    return part.type === "text" ? part.value : "";
+  }).join(" "));
+}
+
+SITE.parsePostAuthor = function (doc) {
+  var header = firstText(doc, [".topic_thead_td"]);
+  var match = header.match(/\bby\s+(.+)$/);
+  return match ? normalizeWhitespace(match[1]) : "";
+};
+SITE.parsePostDate = function (doc) {
+  return normalizeWhitespace(firstText(doc, [".topic_thead_td"]).split(/\s+by\s+/)[0]);
+};

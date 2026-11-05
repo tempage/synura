@@ -3,7 +3,7 @@
     {
       "name": "forum_auto",
       "description": "forum-auto.caradisiac.com",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/fr_FR/forum_auto.js",
       "api": 0,
       "domain": "forum-auto.caradisiac.com",

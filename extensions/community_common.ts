@@ -471,6 +471,8 @@
             url: url || "",
             kind: kind || "",
             doc: doc || null,
+            documentUrl: url || "",
+            contentBaseUrl: doc ? documentContentBaseUrl(doc, url) : "",
             profileIndex: 0
         });
         refreshSelectorContext();
@@ -1136,12 +1138,84 @@
         return normalizeWhitespace(node.getAttribute(name) || "");
     }
 
+    // Strict-DOM compatibility for partial attribute selectors on the terminal
+    // compound only. Native selectors retain responsibility for tags/classes/IDs
+    // and all preceding descendant or child combinators. No DOM mutation occurs.
+    // Fallback excludes selector lists, pseudo-classes, escaped CSS syntax,
+    // namespace attributes, case flags, and partial predicates on ancestors.
+    function communityQueryAll(root, selector) {
+        if (!root || !selector) return [];
+        var nativeQuery = function (css) {
+            try { return Array.prototype.slice.call(root.querySelectorAll(css) || []); }
+            catch (e) { return []; }
+        };
+        selector = String(selector);
+        var nativeNodes = nativeQuery(selector);
+        if (nativeNodes.length) return nativeNodes;
+        var tests = [];
+        var broad = "";
+        var compound = 0;
+        var lastCompound = -1;
+        for (var i = 0; i < selector.length;) {
+            var ch = selector.charAt(i);
+            if (/\s/.test(ch) || ch === ">" || ch === "+" || ch === "~") {
+                broad += ch;
+                compound = i + 1;
+                i++;
+                continue;
+            }
+            // Do not reinterpret attributes inside :not(), :is(), etc.
+            if (ch === "," || ch === ":" || ch === "\\" || ch === "(" || ch === ")") return [];
+            lastCompound = compound;
+            if (ch !== "[") { broad += ch; i++; continue; }
+            var end = i + 1;
+            var quote = "";
+            for (; end < selector.length; end++) {
+                var c = selector.charAt(end);
+                if (c === "\\") return []; // CSS escape decoding is intentionally unsupported.
+                if (quote) { if (c === quote) quote = ""; }
+                else if (c === "'" || c === '"') quote = c;
+                else if (c === "]") break;
+            }
+            if (end === selector.length || quote) return [];
+            var attr = selector.substring(i, end + 1);
+            var parsed = /^\[\s*([A-Za-z_][A-Za-z0-9_:-]*)\s*(\^=|\$=|\*=|~=|\|=)\s*(?:"([^"\\]*)"|'([^'\\]*)'|([A-Za-z_-][A-Za-z0-9_-]*))\s*\]$/.exec(attr);
+            if (parsed) {
+                tests.push({name:parsed[1], op:parsed[2], value:parsed[3] !== undefined ? parsed[3] : parsed[4] !== undefined ? parsed[4] : parsed[5], compound:compound});
+                broad += "[" + parsed[1] + "]";
+            } else {
+                // Preserve ordinary presence/exact selectors. Malformed partial
+                // selectors or unsupported flags must not broaden the query.
+                if (/^\[\s*[^\s\]=]+\s*[*^$~|]=/.test(attr)) return [];
+                broad += attr;
+            }
+            i = end + 1;
+        }
+        if (!tests.length) return [];
+        for (var t = 0; t < tests.length; t++) if (tests[t].compound !== lastCompound) return [];
+        return nativeQuery(broad).filter(function (node) {
+            for (var j = 0; j < tests.length; j++) {
+                var test = tests[j];
+                var value = node.getAttribute(test.name);
+                if (value === null || value === undefined) return false;
+                value = String(value);
+                var expected = test.value;
+                if (test.op === "^=" && (!expected || value.indexOf(expected) !== 0)) return false;
+                if (test.op === "$=" && (!expected || value.substring(value.length - expected.length) !== expected)) return false;
+                if (test.op === "*=" && (!expected || value.indexOf(expected) < 0)) return false;
+                if (test.op === "~=" && (!expected || /\s/.test(expected) || value.split(/\s+/).indexOf(expected) < 0)) return false;
+                if (test.op === "|=" && value !== expected && value.indexOf(expected + "-") !== 0) return false;
+            }
+            return true;
+        });
+    }
+
     function firstNode(root, selectors) {
         if (!root || !selectors) return null;
         for (var i = 0; i < selectors.length; i++) {
             var selector = selectors[i];
             if (!selector) continue;
-            var found = root.querySelector(selector);
+            var found = communityQueryAll(root, selector)[0];
             if (found) return found;
         }
         return null;
@@ -1152,7 +1226,7 @@
         for (var i = 0; i < selectors.length; i++) {
             var selector = selectors[i];
             if (!selector) continue;
-            var found = root.querySelectorAll(selector);
+            var found = communityQueryAll(root, selector);
             if (found && found.length > 0) return found;
         }
         return [];
@@ -1258,16 +1332,52 @@
     }
 
     function firstAuthorText(root, selectors) {
+        if (!root || !selectors) return "";
+        for (var i = 0; i < selectors.length; i++) {
+            var nodes = communityQueryAll(root, selectors[i]);
+            for (var j = 0; j < nodes.length; j++) {
+                var value = firstNonEmpty([textOf(nodes[j]), imageLabelOf(nodes[j])]);
+                if (value) return value;
+            }
+        }
+        return "";
+    }
+
+    function firstDateText(root, selectors) {
         var node = firstNode(root, selectors);
-        return firstNonEmpty([
-            textOf(node),
-            imageLabelOf(node)
-        ]);
+        if (!node) return "";
+        var datetime = attrOf(node, "datetime");
+        if (datetime) return datetime;
+        var timestamp = attrOf(node, "data-time") || attrOf(node, "data-timestamp");
+        if (/^\d{10,13}$/.test(timestamp)) {
+            var date = new Date(Number(timestamp) * (timestamp.length <= 10 ? 1000 : 1));
+            if (!isNaN(date.getTime())) return date.toISOString();
+        }
+        var title = attrOf(node, "title");
+        return /\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/.test(title) ? title : textOf(node);
     }
 
     function parseCount(value) {
-        var digits = String(value == null ? "" : value).replace(/[^0-9]/g, "");
-        return digits.length > 9 ? "" : digits;
+        var text = String(value == null ? "" : value).replace(/[\u0660-\u0669\u06f0-\u06f9\u0966-\u096f\u09e6-\u09ef\u0e50-\u0e59\uff10-\uff19]/g, function (digit) {
+            var code = digit.charCodeAt(0);
+            var starts = [0x660, 0x6f0, 0x966, 0x9e6, 0xe50, 0xff10];
+            for (var i = 0; i < starts.length; i++) if (code >= starts[i] && code < starts[i] + 10) return String(code - starts[i]);
+            return digit;
+        }).replace(/\u066b/g, ".").replace(/\u066c/g, ",");
+        var match = text.match(/(-?\d+(?:[.,'\u00a0\u202f ]\d+)*)(?:\s*(k|m|b|mil|mio|тыс\.?|млн\.?|千|万|萬|亿|億)(?=$|[^A-Za-zА-Яа-я]))?/i);
+        if (!match) return "";
+        var suffix = String(match[2] || "").toLowerCase();
+        var number = match[1].replace(/['\u00a0\u202f ]/g, "");
+        var multiplier = /^(?:k|mil|тыс\.?|千)$/.test(suffix) ? 1000
+            : /^(?:m|mio|млн\.?)$/.test(suffix) ? 1000000
+            : suffix === "b" ? 1000000000 : /^(?:万|萬)$/.test(suffix) ? 10000
+            : /^(?:亿|億)$/.test(suffix) ? 100000000 : 1;
+        if (suffix) {
+            var decimal = Math.max(number.lastIndexOf("."), number.lastIndexOf(","));
+            number = decimal < 0 ? number : number.substring(0, decimal).replace(/[.,]/g, "") + "." + number.substring(decimal + 1);
+        } else number = number.replace(/[.,]/g, "");
+        var count = Math.round(Number(number) * multiplier);
+        return isFinite(count) && Math.abs(count) <= Number.MAX_SAFE_INTEGER ? String(count) : "";
     }
 
     function hideZeroCount(value) {
@@ -1489,6 +1599,7 @@
             avatar: normalizeWhitespace(item.avatar || ""),
             date: normalizeWhitespace(item.date || ""),
             category: normalizeWhitespace(item.category || ""),
+            memo: normalizeWhitespace(item.memo || ""),
             viewCount: normalizeWhitespace(item.viewCount || ""),
             likeCount: normalizeWhitespace(item.likeCount || ""),
             commentCount: normalizeWhitespace(item.commentCount || "")
@@ -1644,24 +1755,66 @@
         return [];
     }
 
+    // Content URLs belong to the fetched page, including CDN/mobile hosts. Do not
+    // canonicalize them to the extension's primary host as navigation URLs are.
+    function resolveContentUrl(raw, baseUrl) {
+        var context = selectorContextStack && selectorContextStack.length ? selectorContextStack[selectorContextStack.length - 1] : null;
+        if (context && context.contentBaseUrl &&
+            (!baseUrl || baseUrl === context.url || baseUrl === context.documentUrl)) {
+            baseUrl = context.contentBaseUrl;
+        }
+        return resolveContentUrlAgainstBase(raw, baseUrl);
+    }
+
+    function documentContentBaseUrl(doc, documentUrl) {
+        var href = attrOf(firstNode(doc, ["base[href]"]), "href");
+        if (!href) return documentUrl;
+        var resolved = resolveContentUrlAgainstBase(href, documentUrl);
+        return /^https?:\/\//i.test(resolved) ? resolved : documentUrl;
+    }
+
+    function resolveContentUrlAgainstBase(raw, baseUrl) {
+        var value = String(raw || "").trim();
+        if (!value) return "";
+        if (/^[a-z][a-z0-9+.-]*:/i.test(value)) {
+            return /^(?:https?|rtsp|data|blob|mailto|tel):/i.test(value) ? value : "";
+        }
+        var base = parseAbsoluteUrl(baseUrl || SITE.browserHomeUrl);
+        if (!base) return "";
+        if (value.indexOf("//") === 0) return base.scheme + ":" + value;
+        var origin = base.scheme + "://" + base.host;
+        if (value.charAt(0) === "#") return origin + base.path + (base.query ? "?" + base.query : "") + value;
+        if (value.charAt(0) === "?") return origin + base.path + value;
+        var path = value.charAt(0) === "/" ? value : dirname(base.path) + value;
+        var suffixAt = path.search(/[?#]/);
+        var suffix = suffixAt >= 0 ? path.substring(suffixAt) : "";
+        if (suffixAt >= 0) path = path.substring(0, suffixAt);
+        var parts = path.split("/");
+        var resolved = [];
+        for (var i = 0; i < parts.length; i++) {
+            if (parts[i] === "..") { if (resolved.length > 1) resolved.pop(); }
+            else if (parts[i] !== ".") resolved.push(parts[i]);
+        }
+        if (/\/(?:\.|\.\.)$/.test(path)) resolved.push("");
+        return origin + (resolved.join("/") || "/") + suffix;
+    }
+
     function absolutizeDetails(details, baseUrl) {
         var out = [];
         for (var i = 0; i < (details || []).length; i++) {
             var item = details[i];
             if (!item) continue;
-            if (item.type === "image" || item.type === "video") {
-                item.value = ensureAbsoluteUrl(item.value, baseUrl) || item.value;
-                if (item.link) item.link = ensureAbsoluteUrl(item.link, baseUrl) || item.link;
-            } else if (item.type === "link") {
-                item.link = ensureAbsoluteUrl(item.link || item.value, baseUrl) || item.link || item.value;
+            if (typeof item !== "object") { out.push(item); continue; }
+            item = Object.assign({}, item);
+            if (/^(?:image|video|audio|thumbnail)$/.test(item.type)) {
+                item.value = resolveContentUrl(item.value, baseUrl);
             }
+            if (item.link || item.type === "link") item.link = resolveContentUrl(item.link || item.value, baseUrl);
+            if (item.poster) item.poster = resolveContentUrl(item.poster, baseUrl);
+            if (item.thumbnail) item.thumbnail = resolveContentUrl(item.thumbnail, baseUrl);
             out.push(item);
         }
         return out;
-    }
-
-    function isPlaceholderMediaUrl(value) {
-        return /loading|placeholder|spacer|blank|transparent|noimg|thumb_default/i.test(String(value || ""));
     }
 
     function collectResolvedImageUrls(element, baseUrl) {
@@ -1670,19 +1823,7 @@
         var out = [];
         var seen = {};
         for (var i = 0; i < nodes.length; i++) {
-            var resolved = ensureAbsoluteUrl(firstNonEmpty([
-                attrOf(nodes[i], "data-thumbnail"),
-                attrOf(nodes[i], "data-thumb"),
-                attrOf(nodes[i], "data-original"),
-                attrOf(nodes[i], "data-src"),
-                attrOf(nodes[i], "data-lazy-src"),
-                attrOf(nodes[i], "data-srcset"),
-                attrOf(nodes[i], "data-file"),
-                attrOf(nodes[i], "data-url"),
-                attrOf(nodes[i], "poster"),
-                firstUrlFromSrcset(attrOf(nodes[i], "srcset")),
-                attrOf(nodes[i], "src")
-            ]), baseUrl);
+            var resolved = imageUrlFromNode(nodes[i], baseUrl);
             if (!resolved || seen[resolved]) continue;
             seen[resolved] = true;
             out.push(resolved);
@@ -1690,29 +1831,38 @@
         return out;
     }
 
-    function fixParsedMediaDetails(details, element, baseUrl) {
+    function fixParsedMediaDetails(details, element, baseUrl, fallbackImages) {
         var out = details || [];
-        var images = collectResolvedImageUrls(element, baseUrl);
-        var imageCursor = 0;
-        var hasImage = false;
+        var images = collectResolvedImageUrls(element, baseUrl).concat(fallbackImages || []);
+        var nodes = element.querySelectorAll("img");
+        var replacements = {};
+        var present = {};
+        for (var n = 0; n < nodes.length; n++) {
+            var original = resolveContentUrl(attrOf(nodes[n], "src"), baseUrl);
+            var candidate = imageUrlFromNode(nodes[n], baseUrl);
+            if (original && candidate) {
+                if (!replacements[original]) replacements[original] = [];
+                replacements[original].push(candidate);
+            }
+        }
         for (var i = 0; i < out.length; i++) {
             if (!out[i] || out[i].type !== "image") continue;
-            hasImage = true;
-            var candidate = images[imageCursor] || "";
-            if (candidate && (!out[i].value || isPlaceholderMediaUrl(out[i].value))) {
-                out[i].value = candidate;
-                if (!out[i].link) out[i].link = candidate;
+            var candidates = replacements[out[i].value];
+            var replacement = candidates && candidates.shift();
+            if (replacement) {
+                if (out[i].link === out[i].value) out[i].link = replacement;
+                out[i].value = replacement;
             }
-            imageCursor += 1;
+            present[out[i].value] = true;
         }
-
-        if (!hasImage && images.length > 0) {
-            for (var j = 0; j < images.length; j++) {
+        for (var j = 0; j < images.length; j++) {
+            if (!present[images[j]]) {
                 out.push({
                     type: "image",
                     value: images[j],
                     link: images[j]
                 });
+                present[images[j]] = true;
             }
         }
         return out;
@@ -1804,48 +1954,65 @@
         return second.length > first.length + 4 ? second : first;
     }
 
-    function isEmulatorRuntime() {
-        return !!(typeof synura !== "undefined" && synura && synura.isPolyfill === true);
-    }
-
-    function shouldUseRawPostParse() {
-        if (!SITE.useRawPostParse) return false;
-        if (!isEmulatorRuntime()) return true;
-        return SITE.useRawPostParseInEmulator !== false;
+    function noscriptImageUrls(element, baseUrl) {
+        // DOM implementations expose noscript as either markup text or nodes.
+        if (!element.querySelector("img")) {
+            var markup = String(element.textContent || "");
+            if (/<img[\s>]/i.test(markup)) {
+                element = new DOMParser().parseFromString(markup, "text/html");
+            }
+        }
+        return collectResolvedImageUrls(element, baseUrl);
     }
 
     function parseDetails(element, baseUrl) {
         if (!element) return [];
+        var rootTag = String(element.tagName || "").toLowerCase();
+        if (rootTag === "script" || rootTag === "style") return [];
+        if (/\s(?:bbCodeBlock-expandLink|quoteExpand)\s/.test(" " + attrOf(element, "class") + " ")) return [];
+        if (rootTag === "noscript") {
+            return noscriptImageUrls(element, baseUrl).map(function (url) {
+                return { type: "image", value: url, link: url };
+            });
+        }
+        var fallbackImages = [];
+        // Keep its fallback images without rendering duplicate markup or notices.
+        var hiddenSelectors = ["script", "style", "noscript"];
+        var excludedSelectors = [".bbCodeBlock-expandLink", ".quoteExpand"].concat(SITE.contentExcludeSelectors || []);
+        if (firstNode(element, excludedSelectors.concat(hiddenSelectors))) {
+            element = element.cloneNode(true);
+            for (var e = 0; e < excludedSelectors.length; e++) {
+                var excluded = communityQueryAll(element, excludedSelectors[e]);
+                for (var x = 0; x < excluded.length; x++) excluded[x].remove();
+            }
+            var hidden = [];
+            for (var s = 0; s < hiddenSelectors.length; s++) {
+                var matches = communityQueryAll(element, hiddenSelectors[s]);
+                for (var m = 0; m < matches.length; m++) hidden.push(matches[m]);
+            }
+            for (var n = 0; n < hidden.length; n++) {
+                if (String(hidden[n].tagName).toLowerCase() === "noscript") {
+                    fallbackImages = fallbackImages.concat(noscriptImageUrls(hidden[n], baseUrl));
+                }
+                hidden[n].remove();
+            }
+        }
         try {
             var parsed = synura.parse("post", element);
             if (parsed && parsed.length > 0) {
-                if (shouldUseRawPostParse()) return parsed;
-                return fixParsedMediaDetails(absolutizeDetails(parsed, baseUrl), element, baseUrl);
+                return fixParsedMediaDetails(absolutizeDetails(parsed, baseUrl), element, baseUrl, fallbackImages);
             }
         } catch (e) {
         }
-        var images = collectResolvedImageUrls(element, baseUrl);
-        if (images.length > 0) {
-            var media = [];
-            for (var i = 0; i < images.length; i++) {
-                media.push({ type: "image", value: images[i], link: images[i] });
-            }
-            return media;
-        }
         var text = textOf(element);
-        return text ? [{ type: "text", value: text }] : [];
+        return fixParsedMediaDetails(text ? [{ type: "text", value: text }] : [], element, baseUrl, fallbackImages);
     }
 
     function parseMarkupDetails(markup, baseUrl) {
         var parser = new DOMParser();
         var doc = parser.parseFromString("<div id='synura-markup-details'>" + String(markup || "") + "</div>", "text/html");
         var root = doc.querySelector("#synura-markup-details") || doc.body;
-        var details = parseDetails(root, baseUrl);
-        if ((!details || details.length === 0) && root) {
-            var text = normalizeWhitespace(root.textContent || "");
-            if (text) details = [{ type: "text", value: text }];
-        }
-        return details || [];
+        return parseDetails(root, baseUrl);
     }
 
     function cleanPageTitle(title) {
@@ -2058,31 +2225,27 @@
     }
 
     function firstUrlFromSrcset(value) {
-        var raw = normalizeWhitespace(value);
-        if (!raw) return "";
-        var parts = raw.split(",");
-        for (var i = 0; i < parts.length; i++) {
-            var item = normalizeWhitespace(parts[i]);
-            if (!item) continue;
-            var candidate = item.split(/\s+/)[0];
-            if (candidate) return candidate;
-        }
-        return "";
+        // A URL token ends at ASCII whitespace, not an internal comma (CDNs
+        // use commas in image paths; data URLs contain them too). Only trailing
+        // commas delimit candidates: HTML's "parsing a srcset attribute" rules.
+        var match = String(value || "").match(/^[\t\n\f\r ,]*([^\t\n\f\r ]+)/);
+        return match ? match[1].replace(/,+$/, "") : "";
     }
 
     function imageUrlFromNode(node, baseUrl) {
         if (!node) return "";
         var style = attrOf(node, "style");
-        var styleMatch = style ? style.match(/url\((['"]?)([^'")]+)\)/i) : null;
-        var resolved = ensureAbsoluteUrl(firstNonEmpty([
+        var styleMatch = style ? style.match(/url\((['"]?)([^'")]+)\1\)/i) : null;
+        var resolved = resolveContentUrl(firstNonEmpty([
             attrOf(node, "data-bg_url"),
             attrOf(node, "data-bg-url"),
+            attrOf(node, "data-bg"),
             attrOf(node, "data-thumbnail"),
             attrOf(node, "data-thumb"),
             attrOf(node, "data-original"),
             attrOf(node, "data-src"),
             attrOf(node, "data-lazy-src"),
-            attrOf(node, "data-srcset"),
+            firstUrlFromSrcset(attrOf(node, "data-srcset")),
             attrOf(node, "data-file"),
             attrOf(node, "data-url"),
             attrOf(node, "poster"),
@@ -2095,13 +2258,13 @@
 
         var images = node.querySelectorAll("img");
         for (var i = 0; i < images.length; i++) {
-            resolved = ensureAbsoluteUrl(firstNonEmpty([
+            resolved = resolveContentUrl(firstNonEmpty([
                 attrOf(images[i], "data-thumbnail"),
                 attrOf(images[i], "data-thumb"),
                 attrOf(images[i], "data-original"),
                 attrOf(images[i], "data-src"),
                 attrOf(images[i], "data-lazy-src"),
-                attrOf(images[i], "data-srcset"),
+                firstUrlFromSrcset(attrOf(images[i], "data-srcset")),
                 attrOf(images[i], "data-file"),
                 attrOf(images[i], "data-url"),
                 attrOf(images[i], "poster"),
@@ -2270,7 +2433,7 @@
 
     function buildHomeItems(entries) {
         var items = [];
-        var secondaryField = SITE.homeListSecondaryField || "category";
+        var secondaryField = SITE.homeListSecondaryField || "memo";
         for (var i = 0; i < (entries || []).length; i++) {
             var entry = entries[i];
             if (!entry) continue;
@@ -3650,6 +3813,7 @@
 
         return {
             html: html,
+            response: response,
             doc: responseDocument(response, html)
         };
     }
@@ -3736,6 +3900,9 @@
             var doc = boardPage.doc;
 
             return withSelectorContext(match, url, "board", doc, function () {
+                var context = selectorContextStack[selectorContextStack.length - 1];
+                context.documentUrl = boardPage.response && boardPage.response.url || url;
+                context.contentBaseUrl = documentContentBaseUrl(doc, context.documentUrl);
                 var parsedItems = SITE.parseBoardItemsFromHtml
                     ? parseBoardItemsFromHtmlWithProfiles(boardPage.html, url, match, boardPage)
                     : parseBoardItems(doc, url, match, boardPage);
@@ -3815,15 +3982,31 @@
                 var profileIndex = choosePostSelectorProfileIndex(doc);
                 return withSelectorProfileIndex(profileIndex, function () {
                     var titleNode = firstNode(doc, ["title"]);
-                    var contentRoot = firstNode(doc, SITE.selectors.postContent);
-                    var content = parseDetails(contentRoot, url);
+                    var contentRoot = SITE.selectPostContentRoot
+                        ? SITE.selectPostContentRoot(doc, url, match)
+                        : firstNode(doc, SITE.selectors.postContent);
+                    var contentBaseUrl = page.response && page.response.url || fetched.url || url;
+                    var selectorContext = selectorContextStack[selectorContextStack.length - 1];
+                    selectorContext.documentUrl = contentBaseUrl;
+                    selectorContext.contentBaseUrl = documentContentBaseUrl(doc, contentBaseUrl);
+                    var content = parseDetails(contentRoot, contentBaseUrl);
                     try {
                         if (SITE.filterPostContent) content = SITE.filterPostContent(content, url, doc, page, match) || content;
                     } catch (e) {
                     }
                     var rememberedItem = getRememberedItemPreview(url);
                     var schemaPost = detectSchemaPost(doc);
-                    var comments = parseComments(doc, url);
+                    var customAuthor = "";
+                    var customDate = "";
+                    var customMemo = "";
+                    try { if (SITE.parsePostAuthor) customAuthor = SITE.parsePostAuthor(doc, url, match) || ""; } catch (e) {}
+                    try { if (SITE.parsePostDate) customDate = SITE.parsePostDate(doc, url, match) || ""; } catch (e) {}
+                    try { if (SITE.parsePostMemo) customMemo = SITE.parsePostMemo(doc, url, match) || ""; } catch (e) {}
+                    var postCategory = firstNonEmpty([
+                        cleanSingleLineField(firstText(doc, SITE.selectors.postCategory), 200),
+                        rememberedItem ? rememberedItem.category : ""
+                    ]);
+                    var comments = parseComments(doc, contentBaseUrl);
                     try {
                         var fetchedComments = SITE.fetchPostComments ? SITE.fetchPostComments(match, url, doc, page, comments) : null;
                         if (Array.isArray(fetchedComments) && fetchedComments.length > 0) {
@@ -3863,22 +4046,26 @@
                             ]), match.board),
                             models: {
                                 author: firstNonEmpty([
+                                    customAuthor,
                                     cleanSingleLineField(firstAuthorText(doc, SITE.selectors.postAuthor), 80),
                                     schemaPost ? schemaPost.author : "",
                                     rememberedItem ? rememberedItem.author : ""
                                 ]),
                                 avatar: firstNonEmpty([
-                                    imageUrlFromNode(firstNode(doc, SITE.selectors.postAvatar || SITE.selectors.postAuthor), url),
+                                    imageUrlFromNode(firstNode(doc, SITE.selectors.postAvatar || SITE.selectors.postAuthor), contentBaseUrl),
                                     rememberedItem ? rememberedItem.avatar : ""
                                 ]),
                                 date: firstNonEmpty([
-                                    cleanSingleLineField(firstText(doc, SITE.selectors.postDate), 40),
+                                    customDate,
+                                    cleanSingleLineField(firstDateText(doc, SITE.selectors.postDate), 80),
                                     schemaPost ? schemaPost.datePublished : "",
                                     rememberedItem ? rememberedItem.date : ""
                                 ]),
-                                category: firstNonEmpty([
-                                    cleanSingleLineField(firstText(doc, SITE.selectors.postCategory), 60),
-                                    rememberedItem ? rememberedItem.category : ""
+                                category: SITE.postCategoryInMemo || postCategory.length > 12 ? "" : postCategory,
+                                memo: firstNonEmpty([
+                                    customMemo,
+                                    SITE.postCategoryInMemo || postCategory.length > 12 ? postCategory : "",
+                                    rememberedItem ? rememberedItem.memo : ""
                                 ]),
                                 viewCount: firstNonEmpty([
                                     parseCount(firstText(doc, SITE.selectors.postViewCount)),
@@ -4578,7 +4765,8 @@
             link: board.url,
             title: normalizeWhitespace(titleOverride || board.title),
             description: board.description || board.url.replace(/^https?:\/\//, ""),
-            category: categoryPath,
+            category: "",
+            memo: categoryPath,
             author: "",
             date: "",
             commentCount: "",

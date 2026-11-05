@@ -142,13 +142,7 @@ var SITE = {
       ".breadcrumbs a",
       ".p-breadcrumbs a"
     ],
-    "postContent": [
-      ".messageText[itemprop='text']",
-      ".message-body .bbWrapper",
-      ".postbody .content",
-      ".ipsType_richText",
-      ".cooked"
-    ],
+    "postContent": [".messageText[itemprop='text']", ".message-body .bbWrapper", ".postbody .content", ".ipsType_richText", ".cooked"],
     "commentRows": [
       "article.message",
       ".postbody",
@@ -192,9 +186,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -202,7 +194,7 @@ var SYNURA = {
   name: "india_forums",
   author: "Synura Team",
   description: "www.indiaforums.com",
-  version: 0.3,
+  version: 0.5,
   api: 0,
   license: "Apache-2.0",
   locale: "hi_IN",
@@ -238,12 +230,9 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
-    }
-    if ((!nodes || nodes.length === 0) && /\[href\*=/.test(selector)) {
-      nodes = localQueryHrefContains(root, selector);
     }
     for (var j = 0; j < nodes.length; j++) {
       if (out.indexOf(nodes[j]) < 0) out.push(nodes[j]);
@@ -253,33 +242,6 @@ function localQuerySelectorAll(root, selectors) {
 }
 
 
-function localQueryHrefContains(root, selector) {
-  var tagMatch = String(selector || "").match(/^([a-zA-Z0-9_-]*)/);
-  var tagName = tagMatch && tagMatch[1] ? tagMatch[1] : "a";
-  var needles = [];
-  var regex = /\[href\*=(['"])(.*?)\1\]/g;
-  var match;
-  while ((match = regex.exec(String(selector || "")))) {
-    if (match[2]) needles.push(match[2]);
-  }
-  if (!needles.length) return [];
-  var nodes = [];
-  try {
-    nodes = root.querySelectorAll(tagName || "a");
-  } catch (e) {
-    nodes = [];
-  }
-  var out = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var href = attrOf(nodes[i], "href");
-    var ok = !!href;
-    for (var j = 0; j < needles.length && ok; j++) {
-      ok = href.indexOf(needles[j]) >= 0;
-    }
-    if (ok) out.push(nodes[i]);
-  }
-  return out;
-}
 
 function localPathAndQuery(url) {
   var match = String(url || "").split("#")[0].match(/^https?:\/\/[^\/?#]+([^#]*)$/i);
@@ -419,7 +381,7 @@ function extractListItem(row, baseUrl) {
     localTitleFromNode(linkNode)
   ]);
   title = textOfNodeWithoutSelectors(row, selectorList("listTitleExclude", [])).length < title.length ? title : cleanPageTitle(title);
-  if (!title || title.length < 3) return null;
+  if (!title) return null;
   var commentCount = firstNonEmpty([
     parseCount(firstText(row, selectorList("listCommentCount", []))),
     localExtractCommentCount(title)
@@ -429,10 +391,11 @@ function extractListItem(row, baseUrl) {
     id: SITE.siteKey + ":" + localPostIdFromUrl(link),
     link: normalizeUrl(link) || link,
     title: title,
-    author: firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName,
+    author: firstAuthorText(row, selectorList("listAuthor", [])),
     avatar: imageUrlFromNode(firstNode(row, selectorList("listAvatar", [])), baseUrl),
-    date: firstText(row, selectorList("listDate", [])),
-    category: firstText(row, selectorList("listCategory", [])) || SITE.country || "",
+    date: firstDateText(row, selectorList("listDate", [])),
+    category: "",
+    memo: firstText(row, selectorList("listCategory", [])),
     commentCount: commentCount,
     viewCount: parseCount(firstText(row, selectorList("listViewCount", []))),
     likeCount: hideZeroCount(parseCount(firstText(row, selectorList("listLikeCount", [])))),
@@ -461,15 +424,15 @@ function localParseComments(doc, postUrl) {
   var out = [];
   var rows = allNodes(doc, selectorList("commentRows", []));
   var pageTitle = cleanPageTitle(firstText(doc, ["title"])).toLowerCase();
-  for (var i = 0; i < rows.length && out.length < 50; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var contentRoot = firstNode(rows[i], selectorList("commentContent", [])) || rows[i];
     var text = textOf(contentRoot);
-    if (text.length < 3 || text.length > 4000) continue;
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key] || key === pageTitle) continue;
+    var content = parseDetails(contentRoot, postUrl) || [];
+    if (!content.length && text) content = [{ type: "text", value: text }];
+    if (!content.length) continue;
+    var key = attrOf(rows[i], "id") || attrOf(contentRoot, "id") || String(i);
+    if (seen[key]) continue;
     seen[key] = true;
-    var content = parseDetails(contentRoot, postUrl);
-    if (!content || content.length === 0) content = [{ type: "text", value: text }];
     var domId = attrOf(rows[i], "id");
     var likeText = firstText(rows[i], selectorList("commentLikeCount", []));
     out.push({
@@ -608,15 +571,7 @@ SITE.matchBoard = function (info) {
   "time[datetime]",
   ".date"
 ];
-  SITE.selectors["postContent"] = [
-  ".post-content",
-  ".topic-content",
-  ".forum-content",
-  ".article-content",
-  "main",
-  "article",
-  "body"
-];
+  SITE.selectors["postContent"] = [".post-content", ".topic-content", ".forum-content", ".article-content", "article"];
   SITE.selectors["commentRows"] = [
   ".post",
   ".reply",
@@ -629,158 +584,6 @@ SITE.matchBoard = function (info) {
   ".comment-content",
   ".content"
 ];
-  var india_forumsPostContentSelectors = [
-  ".post-content",
-  ".topic-content",
-  ".forum-content",
-  ".article-content",
-  "main",
-  "article",
-  "body"
-];
-  var india_forumsPreviousFilterPostContent = SITE.filterPostContent;
-  function india_forumsText(node) {
-    return String(node && node.textContent || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
-  }
-  function india_forumsNodes(root, selectors) {
-    var out = [];
-    for (var i = 0; root && selectors && i < selectors.length; i++) {
-      try {
-        var nodes = root.querySelectorAll(selectors[i]);
-        for (var j = 0; nodes && j < nodes.length; j++) out.push(nodes[j]);
-      } catch (e) {}
-    }
-    return out;
-  }
-  function india_forumsDetailsFromRoot(root, url) {
-    if (!root) return [];
-    var text = india_forumsText(root);
-    if (text.length < 2) return [];
-    var details = [];
-    try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-    if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-    return details;
-  }
-  SITE.filterPostContent = function (content, url, doc, page, match) {
-    var previous = [];
-    try {
-      if (india_forumsPreviousFilterPostContent) previous = india_forumsPreviousFilterPostContent(content, url, doc, page, match) || [];
-    } catch (e) {}
-    var nodes = india_forumsNodes(doc, india_forumsPostContentSelectors);
-    var seen = {};
-    var out = [];
-    for (var i = 0; i < nodes.length && out.length < 80; i++) {
-      var text = india_forumsText(nodes[i]);
-      var key = text.substring(0, 220).toLowerCase();
-      if (!key || seen[key]) continue;
-      seen[key] = true;
-      var details = india_forumsDetailsFromRoot(nodes[i], url);
-      for (var j = 0; j < details.length && out.length < 80; j++) out.push(details[j]);
-      if (out.length && india_forumsPostContentSelectors[i] !== "body") break;
-    }
-    if (!out.length) out = previous;
-    if (!out.length) {
-      var title = "";
-      try { title = firstNonEmpty([firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["meta[property='og:description']", "meta[name='description']", "title"])]); } catch (e) {}
-      if (title) out = [{ type: "text", value: title }];
-    }
-    return out;
-  };
-  var india_forumsCommentRowSelectors = [
-  ".post",
-  ".reply",
-  ".comment",
-  "[id*='comment']"
-];
-  var india_forumsCommentContentSelectors = [
-  ".post-content",
-  ".reply-content",
-  ".comment-content",
-  ".content"
-];
-  var india_forumsCommentSummarySelectors = [
-  ".post",
-  ".reply",
-  ".comment",
-  "[id*='comment']",
-  "h1",
-  ".topic-title",
-  ".forum-title",
-  ".title"
-];
-  var india_forumsPreviousFetchPostComments = SITE.fetchPostComments;
-  function india_forumsMergeComment(target, seen, item) {
-    if (!item || !item.content) return;
-    var text = "";
-    for (var i = 0; i < item.content.length; i++) text += " " + (item.content[i] && item.content[i].value || "");
-    text = text.replace(/\s+/g, " ").trim();
-    var key = text.substring(0, 220).toLowerCase();
-    if (!key || seen[key]) return;
-    seen[key] = true;
-    target.push(item);
-  }
-  function india_forumsParseVisibleComments(doc, url, target, seen) {
-    var rows = india_forumsNodes(doc, india_forumsCommentRowSelectors);
-    for (var i = 0; i < rows.length && target.length < 80; i++) {
-      var root = null;
-      try { root = firstNode(rows[i], india_forumsCommentContentSelectors); } catch (e) {}
-      root = root || rows[i];
-      var text = india_forumsText(root);
-      if (text.length < 2 || text.length > 5000) continue;
-      var details = [];
-      try { details = parseDetails(root, url) || []; } catch (e) { details = []; }
-      if (!details.length) details = [{ type: "text", value: text.substring(0, 4000) }];
-      var domId = "";
-      try { domId = attrOf(rows[i], "id"); } catch (e) {}
-      india_forumsMergeComment(target, seen, {
-        id: SITE.siteKey + ":comment:" + target.length,
-        link: url + (domId ? ("#" + domId) : ("#comment-" + target.length)),
-        author: "",
-        avatar: "",
-        date: "",
-        content: details,
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
-  }
-  SITE.fetchPostComments = function (match, url, doc, page, comments) {
-    var out = [];
-    var seen = {};
-    var existing = Array.isArray(comments) ? comments : [];
-    for (var i = 0; i < existing.length; i++) india_forumsMergeComment(out, seen, existing[i]);
-    try {
-      if (india_forumsPreviousFetchPostComments) {
-        var fetched = india_forumsPreviousFetchPostComments(match, url, doc, page, existing) || [];
-        for (var j = 0; j < fetched.length; j++) india_forumsMergeComment(out, seen, fetched[j]);
-      }
-    } catch (e) {}
-    if (!out.length) india_forumsParseVisibleComments(doc, url, out, seen);
-    if (!out.length) {
-      var summary = "";
-      try { summary = firstNonEmpty([firstText(doc, india_forumsCommentSummarySelectors), firstText(doc, SITE.selectors.postTitle || []), firstText(doc, ["title"])]); } catch (e) {}
-      summary = String(summary || SITE.displayName || "Comments").replace(/\s+/g, " ").trim();
-      if (summary) india_forumsMergeComment(out, seen, {
-        id: SITE.siteKey + ":comment:summary",
-        link: url + "#comments",
-        author: SITE.displayName,
-        avatar: "",
-        date: "",
-        content: [{ type: "text", value: summary }],
-        likeCount: "",
-        dislikeCount: "",
-        level: 0,
-        menus: [MENU_BROWSER],
-        hotCount: 0,
-        coldCount: 0
-      });
-    }
-    return out;
-  };
 })();
 // END synurart-own-extension-validation-fix
 // BEGIN synurart-home-board-seed

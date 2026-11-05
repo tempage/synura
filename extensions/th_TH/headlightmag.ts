@@ -86,11 +86,11 @@ var SITE = {
       "tr.stickybg"
     ],
     "listLink": [
-      "td.subject span[id^='msg_'] a",
+      "td.subject span[id] a",
       "td.subject a"
     ],
     "listTitle": [
-      "td.subject span[id^='msg_'] a",
+      "td.subject span[id] a",
       "td.subject a"
     ],
     "listTitleExclude": [
@@ -118,7 +118,7 @@ var SITE = {
     "listCategory": [],
     "listImage": [],
     "postTitle": [
-      "h5[id^='subject_'] a",
+      "h5[id] a",
       "h5[id^='subject_']",
       "title"
     ],
@@ -137,10 +137,7 @@ var SITE = {
     "postViewCount": [],
     "postLikeCount": [],
     "postCategory": [],
-    "postContent": [
-      ".post .inner",
-      "div[id^='msg_']"
-    ],
+    "postContent": [".post .inner", "div[id^='msg_']"],
     "commentRows": [
       ".post_wrapper"
     ],
@@ -167,9 +164,7 @@ var SITE = {
     "data-depth",
     "depth",
     "data-level"
-  ],
-  "useRawPostParse": true,
-  "useRawPostParseInEmulator": true
+  ]
 };
 
 var SYNURA = {
@@ -177,7 +172,7 @@ var SYNURA = {
   name: "headlightmag",
   author: "Synura Team",
   description: "community.headlightmag.com",
-  version: 0.1,
+  version: 0.3,
   api: 0,
   license: "Apache-2.0",
   locale: "th_TH",
@@ -211,7 +206,7 @@ function localQuerySelectorAll(root, selectors) {
     if (!selector) continue;
     var nodes = [];
     try {
-      nodes = root.querySelectorAll(selector);
+      nodes = communityQueryAll(root, selector);
     } catch (e) {
       nodes = [];
     }
@@ -296,9 +291,9 @@ function extractListItem(row, baseUrl) {
   link = localCanonicalizeUrl(link);
   if (!link || !localLooksLikePostUrl(link)) return null;
   var title = localTitleFromNode(linkNode);
-  if (!title || title.length < 2) return null;
+  if (!title) return null;
 
-  var author = firstAuthorText(row, selectorList("listAuthor", [])) || SITE.displayName;
+  var author = firstAuthorText(row, selectorList("listAuthor", []));
   var statsNode = firstNode(row, ["td.stats"]);
   var statsText = statsNode ? textOf(statsNode) : "";
   var replyMatch = statsText.match(/(\d[\d,]*)\s*ตอบ/);
@@ -335,9 +330,9 @@ function localParseComments(doc, postUrl) {
 
   var comments = [];
   // Skip index 0 (main post)
-  for (var i = 1; i < wrappers.length && comments.length < 50; i++) {
+  for (var i = 1; i < wrappers.length; i++) {
     var wrapper = wrappers[i];
-    var author = firstAuthorText(wrapper, selectorList("commentAuthor", [])) || "Anonymous";
+    var author = firstAuthorText(wrapper, selectorList("commentAuthor", [])) || "";
     var avatar = imageUrlFromNode(firstNode(wrapper, selectorList("commentAvatar", [])), postUrl);
     var dateNode = firstNode(wrapper, selectorList("commentDate", []));
     var date = dateNode ? textOf(dateNode).replace(/«|»/g, "").trim() : "";

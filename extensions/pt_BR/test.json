@@ -3,7 +3,7 @@
     {
       "name": "clube_do_hardware",
       "description": "www.clubedohardware.com.br",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/pt_BR/clube_do_hardware.js",
       "api": 0,
       "domain": "www.clubedohardware.com.br",
@@ -19,7 +19,7 @@
     {
       "name": "outer_space",
       "description": "forum.outerspace.com.br",
-      "version": 0.3,
+      "version": 0.5,
       "url": "https://tempage.github.io/synura/extensions/pt_BR/outer_space.js",
       "api": 0,
       "domain": "forum.outerspace.com.br",

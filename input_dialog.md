@@ -28,6 +28,7 @@ The `body` model contains a list of input fields. Each field is an object with t
 | `value` | `any` | The initial value. |
 | `format` | `string` | Optional format, e.g., `'password'` for obscured text input. |
 | `lines` | `number` | Optional. Number of visible lines for multi-line text input. Only applies to `string`/`text` types. |
+| `selectOnFocus` | `boolean` | Optional. If `true`, automatically selects all text in the field upon receiving focus/tap. Defaults to `false`. |
 | `options` | `string[]` | Required for `'select'` type. Array of option strings. |
 
 #### Input Types

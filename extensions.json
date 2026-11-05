@@ -1,12 +1,12 @@
 {
   "name": "Synura Stable Repository",
   "description": "Stable Synura extensions.",
-  "version": 5.5,
+  "version": 5.9,
   "extensions": [
     {
       "name": "youtube",
       "description": "m.youtube.com",
-      "version": 0.2,
+      "version": 0.3,
       "url": "https://tempage.github.io/synura/extensions/youtube.js",
       "api": 0,
       "domain": "m.youtube.com",
