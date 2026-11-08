@@ -907,31 +907,33 @@ SITE.loadDynamicBoards = function (options) {
     if (!allowNetwork) return Array.isArray(cached) ? cached : [];
     var items = [];
     var seenBoards = {};
-    try {
-        var communityUrl = "https://" + SYNURA.domain + "/community";
-        var communityDoc = fetchDocument(communityUrl);
-        ruliwebCollectBoardsFromMenuDoc(communityDoc, "커뮤니티", items, seenBoards);
-        var seeds = ruliwebCollectPrimarySeeds(communityDoc, items, seenBoards).concat(ruliwebCollectFamilySeeds(communityDoc));
-        var seenSeedUrls = {};
-        for (var i = 0; i < seeds.length; i++) {
-            var seed = seeds[i];
-            var seedUrl = normalizeUrl(seed && seed.url);
-            var seedLabel = normalizeWhitespace(seed && seed.label);
-            if (!seedUrl || !seedLabel || seenSeedUrls[seedUrl] || seedUrl === communityUrl) continue;
-            seenSeedUrls[seedUrl] = true;
-            try {
-                ruliwebCollectBoardsFromMenuDoc(fetchDocument(seedUrl), seedLabel, items, seenBoards);
-            } catch (e) {
+    return (async function () {
+        try {
+            var communityUrl = "https://" + SYNURA.domain + "/community";
+            var communityDoc = (await fetchDocument(communityUrl));
+            ruliwebCollectBoardsFromMenuDoc(communityDoc, "커뮤니티", items, seenBoards);
+            var seeds = ruliwebCollectPrimarySeeds(communityDoc, items, seenBoards).concat(ruliwebCollectFamilySeeds(communityDoc));
+            var seenSeedUrls = {};
+            for (var i = 0; i < seeds.length; i++) {
+                var seed = seeds[i];
+                var seedUrl = normalizeUrl(seed && seed.url);
+                var seedLabel = normalizeWhitespace(seed && seed.label);
+                if (!seedUrl || !seedLabel || seenSeedUrls[seedUrl] || seedUrl === communityUrl) continue;
+                seenSeedUrls[seedUrl] = true;
+                try {
+                    ruliwebCollectBoardsFromMenuDoc((await fetchDocument(seedUrl)), seedLabel, items, seenBoards);
+                } catch (e) {
+                }
             }
+            if (items.length > 0) {
+                writeStoredJson(cacheKey, items);
+                localStorage.setItem(cacheTsKey, String(Date.now()));
+                return items;
+            }
+        } catch (e) {
         }
-        if (items.length > 0) {
-            writeStoredJson(cacheKey, items);
-            localStorage.setItem(cacheTsKey, String(Date.now()));
-            return items;
-        }
-    } catch (e) {
-    }
-    return Array.isArray(cached) ? cached : [];
+        return Array.isArray(cached) ? cached : [];
+    })();
 };
 SITE.prepareBoardContext = function (context, items, match, url) {
     return context;

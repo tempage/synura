@@ -304,17 +304,17 @@ function dcBuildSearchFetchOptions() {
   return options;
 }
 
-function dcFetchSearchMarkup(query) {
+async function dcFetchSearchMarkup(query) {
   var normalizedQuery = normalizeWhitespace(query);
   if (!normalizedQuery) return "";
   var url = dcBuildSearchApiUrl(normalizedQuery);
-  var response = fetchWithLogging(url, dcBuildSearchFetchOptions());
+  var response = (await fetchWithLogging(url, dcBuildSearchFetchOptions()));
   if (!response) {
     throw new Error("Failed to fetch " + url + " (0)");
   }
 
   var status = response.status || 0;
-  var html = response.text();
+  var html = (await response.text());
   if (shouldUseBrowserCookieAuth() && isAuthRequiredResponse(url, status, html)) {
     throw makeAuthRequiredError(url, status);
   }
@@ -1016,7 +1016,7 @@ function dcDetectCategoryGroupLabel(doc, fallbackLabel) {
   return dcCleanBoardGroupLabel(fallbackLabel);
 }
 
-function dcSyncDiscoveredBoards(full) {
+async function dcSyncDiscoveredBoards(full) {
   var bucket = {};
   var errors = [];
   var categoryQueue = [];
@@ -1031,7 +1031,7 @@ function dcSyncDiscoveredBoards(full) {
 
   for (var i = 0; i < roots.length; i++) {
     try {
-      var rootDoc = fetchDocument(roots[i].url);
+      var rootDoc = (await fetchDocument(roots[i].url));
       dcExtractBoardsFromDocument(rootDoc, roots[i].url, roots[i].description, "", bucket);
       if (!full) continue;
       var discovered = dcExtractCategoryDiscoveryEntries(rootDoc);
@@ -1050,7 +1050,7 @@ function dcSyncDiscoveredBoards(full) {
       try {
         var categoryEntry = categoryQueue[k];
         var categoryUrl = categoryEntry.url;
-        var categoryDoc = fetchDocument(categoryUrl);
+        var categoryDoc = (await fetchDocument(categoryUrl));
         dcExtractBoardsFromDocument(
           categoryDoc,
           categoryUrl,
@@ -1186,10 +1186,10 @@ function dcExtractCategoryRootEntries(doc, rootKey) {
   return entries;
 }
 
-function dcFetchCategoryRootEntries(rootKey) {
+async function dcFetchCategoryRootEntries(rootKey) {
   var spec = dcGetCategoryRootSpec(rootKey);
   if (!spec) throw new Error("알 수 없는 카테고리입니다.");
-  var doc = fetchDocument(spec.url);
+  var doc = (await fetchDocument(spec.url));
   var categories = dcExtractCategoryRootEntries(doc, rootKey);
   if (categories.length === 0) {
     throw new Error(spec.title + " 카테고리를 가져오지 못했습니다.");
@@ -1198,10 +1198,10 @@ function dcFetchCategoryRootEntries(rootKey) {
   return categories;
 }
 
-function dcEnsureCategoryRootEntries(rootKey) {
+async function dcEnsureCategoryRootEntries(rootKey) {
   var categories = dcGetCachedCategoryRootEntries(rootKey);
   if (categories.length > 0) return categories;
-  return dcFetchCategoryRootEntries(rootKey);
+  return (await dcFetchCategoryRootEntries(rootKey));
 }
 
 function dcGetCachedCategoryBoardRecord(rootKey, categoryId) {
@@ -1214,14 +1214,14 @@ function dcSetCachedCategoryBoardRecord(record) {
   return dcCategoryBoardCache[record.key];
 }
 
-function dcGetCategoryRecordMeta(rootKey, categoryId) {
+async function dcGetCategoryRecordMeta(rootKey, categoryId) {
   var categories = dcGetCachedCategoryRootEntries(rootKey);
   for (var i = 0; i < categories.length; i++) {
     if (normalizeWhitespace(categories[i].categoryId) === normalizeWhitespace(categoryId)) {
       return categories[i];
     }
   }
-  categories = dcEnsureCategoryRootEntries(rootKey);
+  categories = (await dcEnsureCategoryRootEntries(rootKey));
   for (var j = 0; j < categories.length; j++) {
     if (normalizeWhitespace(categories[j].categoryId) === normalizeWhitespace(categoryId)) {
       return categories[j];
@@ -1230,13 +1230,13 @@ function dcGetCategoryRecordMeta(rootKey, categoryId) {
   return null;
 }
 
-function dcFetchCategoryBoardRecord(rootKey, categoryId) {
+async function dcFetchCategoryBoardRecord(rootKey, categoryId) {
   var spec = dcGetCategoryRootSpec(rootKey);
   if (!spec) throw new Error("알 수 없는 카테고리입니다.");
 
-  var meta = dcGetCategoryRecordMeta(rootKey, categoryId) || {};
+  var meta = (await dcGetCategoryRecordMeta(rootKey, categoryId)) || {};
   var categoryUrl = normalizeUrl(meta.url || (spec.url + "/" + encodeURIComponent(String(categoryId))));
-  var categoryDoc = fetchDocument(categoryUrl);
+  var categoryDoc = (await fetchDocument(categoryUrl));
   var bucket = {};
   var groupLabel = dcCleanBoardGroupLabel(firstNonEmpty([
     meta.title,
@@ -1272,10 +1272,10 @@ function dcFetchCategoryBoardRecord(rootKey, categoryId) {
   });
 }
 
-function dcEnsureCategoryBoardRecord(rootKey, categoryId) {
+async function dcEnsureCategoryBoardRecord(rootKey, categoryId) {
   var cached = dcGetCachedCategoryBoardRecord(rootKey, categoryId);
   if (cached && Array.isArray(cached.boards) && cached.boards.length > 0) return cached;
-  return dcFetchCategoryBoardRecord(rootKey, categoryId);
+  return (await dcFetchCategoryBoardRecord(rootKey, categoryId));
 }
 
 function dcExtractSearchResultBoard(anchor) {
@@ -1440,26 +1440,26 @@ function dcCloneSearchReturnState(state) {
   };
 }
 
-function dcCreateRouteFromSearchReturnState(state) {
+async function dcCreateRouteFromSearchReturnState(state) {
   var target = dcCloneSearchReturnState(state);
   if (!target || target.kind === "dc_category_home") {
     return dcCreateCategoryHomeRoute(target ? target.homeViewId || 0 : 0);
   }
   if (target.kind === "dc_category_root_list") {
-    return dcCreateCategorySectionRoute(target.rootKey, target.homeViewId || 0);
+    return (await dcCreateCategorySectionRoute(target.rootKey, target.homeViewId || 0));
   }
   if (target.kind === "dc_category_board_list") {
-    return dcCreateCategoryBoardRoute(target.rootKey, target.categoryId, target.homeViewId || 0);
+    return (await dcCreateCategoryBoardRoute(target.rootKey, target.categoryId, target.homeViewId || 0));
   }
   return dcCreateCategoryHomeRoute(target ? target.homeViewId || 0 : 0);
 }
 
-function dcCreateCategorySearchRoute(query, returnState) {
+async function dcCreateCategorySearchRoute(query, returnState) {
   var normalizedQuery = normalizeWhitespace(query);
   if (!normalizedQuery) {
-    return dcCreateRouteFromSearchReturnState(returnState);
+    return (await dcCreateRouteFromSearchReturnState(returnState));
   }
-  var parsed = dcParseSearchResults(dcFetchSearchMarkup(normalizedQuery));
+  var parsed = dcParseSearchResults((await dcFetchSearchMarkup(normalizedQuery)));
   var browserUrl = dcBuildSearchMainUrl(normalizedQuery);
   var baseState = dcCloneSearchReturnState(returnState);
   return {
@@ -1543,9 +1543,9 @@ function dcBuildCategoryHomeItems() {
   return items;
 }
 
-function dcBuildCategorySectionItems(rootKey) {
+async function dcBuildCategorySectionItems(rootKey) {
   var spec = dcGetCategoryRootSpec(rootKey);
-  var categories = dcEnsureCategoryRootEntries(rootKey);
+  var categories = (await dcEnsureCategoryRootEntries(rootKey));
   var items = [];
   for (var i = 0; i < categories.length; i++) {
     items.push({
@@ -1708,7 +1708,7 @@ function dcCreateCategoryHomeRoute(homeViewId) {
   };
 }
 
-function dcCreateCategorySectionRoute(rootKey, homeViewId) {
+async function dcCreateCategorySectionRoute(rootKey, homeViewId) {
   var spec = dcGetCategoryRootSpec(rootKey);
   if (!spec) throw new Error("알 수 없는 카테고리입니다.");
   return {
@@ -1724,7 +1724,7 @@ function dcCreateCategorySectionRoute(rootKey, homeViewId) {
         pagination: false
       },
       models: {
-        contents: dcBuildCategorySectionItems(rootKey),
+        contents: (await dcBuildCategorySectionItems(rootKey)),
         menus: [MENU_BOARD_SYNC, MENU_HOME, MENU_BROWSER]
       }
     },
@@ -1739,8 +1739,8 @@ function dcCreateCategorySectionRoute(rootKey, homeViewId) {
   };
 }
 
-function dcCreateCategoryBoardRoute(rootKey, categoryId, homeViewId) {
-  var record = dcEnsureCategoryBoardRecord(rootKey, categoryId);
+async function dcCreateCategoryBoardRoute(rootKey, categoryId, homeViewId) {
+  var record = (await dcEnsureCategoryBoardRecord(rootKey, categoryId));
   var items = dcBuildCategoryBoardItems(record, 0, DC_CATEGORY_BROWSER_PAGE_SIZE);
   return {
     kind: "dc_category_board_list",
@@ -1799,7 +1799,7 @@ function dcCreateSettingsRootRoute(parentViewId) {
   };
 }
 
-function dcCreateSettingsCategoryRoute(parentViewId, rootKey) {
+async function dcCreateSettingsCategoryRoute(parentViewId, rootKey) {
   var spec = dcGetCategoryRootSpec(rootKey);
   if (!spec) throw new Error("알 수 없는 카테고리입니다.");
   return {
@@ -1814,7 +1814,7 @@ function dcCreateSettingsCategoryRoute(parentViewId, rootKey) {
         pagination: false
       },
       models: {
-        contents: dcBuildCategorySectionItems(rootKey),
+        contents: (await dcBuildCategorySectionItems(rootKey)),
         menus: [MENU_BOARD_SYNC]
       }
     },
@@ -1828,8 +1828,8 @@ function dcCreateSettingsCategoryRoute(parentViewId, rootKey) {
   };
 }
 
-function dcCreateSettingsBoardRoute(parentViewId, rootKey, categoryId) {
-  var record = dcEnsureCategoryBoardRecord(rootKey, categoryId);
+async function dcCreateSettingsBoardRoute(parentViewId, rootKey, categoryId) {
+  var record = (await dcEnsureCategoryBoardRecord(rootKey, categoryId));
   var items = dcBuildSettingsBoardItems(record, 0, DC_CATEGORY_BROWSER_PAGE_SIZE);
   return {
     kind: "dc_board_settings_category_board_list",
@@ -1860,7 +1860,7 @@ function dcCreateSettingsBoardRoute(parentViewId, rootKey, categoryId) {
   };
 }
 
-function dcRouteCustom(url, urlInfo) {
+async function dcRouteCustom(url, urlInfo) {
   if (!urlInfo) return null;
   if (urlInfo.path === "/galltotal" || urlInfo.path === "/galltotal/") {
     return dcCreateCategoryHomeRoute(0);
@@ -1872,46 +1872,46 @@ function dcRouteCustom(url, urlInfo) {
     urlInfo.path === "/search_g/"
   ) {
     var keyword = normalizeWhitespace(queryValue(urlInfo.query, "keyword"));
-    return keyword ? dcCreateCategorySearchRoute(keyword, null) : dcCreateCategoryHomeRoute(0);
+    return keyword ? (await dcCreateCategorySearchRoute(keyword, null)) : dcCreateCategoryHomeRoute(0);
   }
   var matchedRoot = urlInfo.path.match(/^\/(category|mcategory|micategory|prcategory)\/?$/);
   if (matchedRoot) {
-    return dcCreateCategorySectionRoute(matchedRoot[1], 0);
+    return (await dcCreateCategorySectionRoute(matchedRoot[1], 0));
   }
   var matchedCategory = urlInfo.path.match(/^\/(category|mcategory|micategory|prcategory)\/(\d+)\/?$/);
   if (matchedCategory) {
-    return dcCreateCategoryBoardRoute(matchedCategory[1], matchedCategory[2], 0);
+    return (await dcCreateCategoryBoardRoute(matchedCategory[1], matchedCategory[2], 0));
   }
   return null;
 }
 
-function dcRefreshCustomView(viewId, state, snackbar) {
+async function dcRefreshCustomView(viewId, state, snackbar) {
   var route = null;
   if (!state || state.kind === "dc_category_home") {
     route = dcCreateCategoryHomeRoute(state ? state.homeViewId || 0 : 0);
   } else if (state.kind === "dc_category_root_list") {
-    route = dcCreateCategorySectionRoute(state.rootKey, state.homeViewId || 0);
+    route = (await dcCreateCategorySectionRoute(state.rootKey, state.homeViewId || 0));
   } else if (state.kind === "dc_category_board_list") {
-    route = dcCreateCategoryBoardRoute(state.rootKey, state.categoryId, state.homeViewId || 0);
+    route = (await dcCreateCategoryBoardRoute(state.rootKey, state.categoryId, state.homeViewId || 0));
   } else if (state.kind === "dc_category_search_list") {
-    route = dcCreateCategorySearchRoute(state.query, state.returnState || null);
+    route = (await dcCreateCategorySearchRoute(state.query, state.returnState || null));
   } else if (state.kind === "board_settings_root") {
     route = dcCreateSettingsRootRoute(state.parentViewId || 0);
   } else if (state.kind === "dc_board_settings_category_root_list") {
-    route = dcCreateSettingsCategoryRoute(state.parentViewId || 0, state.rootKey);
+    route = (await dcCreateSettingsCategoryRoute(state.parentViewId || 0, state.rootKey));
   } else if (state.kind === "dc_board_settings_category_board_list") {
-    route = dcCreateSettingsBoardRoute(state.parentViewId || 0, state.rootKey, state.categoryId);
+    route = (await dcCreateSettingsBoardRoute(state.parentViewId || 0, state.rootKey, state.categoryId));
   }
   if (!route) return false;
   updateViewFromRoute(viewId, route, snackbar || "");
   return true;
 }
 
-function dcAppendCategoryPage(viewId, state) {
+async function dcAppendCategoryPage(viewId, state) {
   if (!state || (state.kind !== "dc_category_board_list" && state.kind !== "dc_board_settings_category_board_list")) {
     return false;
   }
-  var record = dcEnsureCategoryBoardRecord(state.rootKey, state.categoryId);
+  var record = (await dcEnsureCategoryBoardRecord(state.rootKey, state.categoryId));
   var nextIndex = Math.max(0, toInt(state.nextIndex, 0));
   if (nextIndex >= record.boards.length) {
     synura.update(viewId, {
@@ -2005,24 +2005,24 @@ function dcHandleBoardHomeToggleMenu(viewId, state) {
   return true;
 }
 
-function dcImportCategoryBrowser(state) {
+async function dcImportCategoryBrowser(state) {
   if (!state || state.kind === "dc_category_home") {
     var total = 0;
     var specs = dcGetCategoryRootSpecs();
     for (var i = 0; i < specs.length; i++) {
-      total += dcFetchCategoryRootEntries(specs[i].key).length;
+      total += (await dcFetchCategoryRootEntries(specs[i].key)).length;
     }
     return "카테고리 " + total + "개를 가져왔습니다.";
   }
 
   if (state.kind === "dc_category_root_list" || state.kind === "dc_board_settings_category_root_list") {
     var spec = dcGetCategoryRootSpec(state.rootKey);
-    var categories = dcFetchCategoryRootEntries(state.rootKey);
+    var categories = (await dcFetchCategoryRootEntries(state.rootKey));
     return (spec ? spec.title : "카테고리") + " " + categories.length + "개를 가져왔습니다.";
   }
 
   if (state.kind === "dc_category_board_list" || state.kind === "dc_board_settings_category_board_list") {
-    var record = dcFetchCategoryBoardRecord(state.rootKey, state.categoryId);
+    var record = (await dcFetchCategoryBoardRecord(state.rootKey, state.categoryId));
     return record.title + " 게시판 " + record.boards.length + "개를 가져왔습니다.";
   }
 
@@ -2039,7 +2039,7 @@ function dcShowBoardSettings(parentViewId) {
   return openRoute(dcCreateSettingsRootRoute(parentViewId || 0));
 }
 
-function dcRefreshBoardSettingsParent(viewId, snackbar) {
+async function dcRefreshBoardSettingsParent(viewId, snackbar) {
   var state = getViewState(viewId);
   if (!state) return false;
   if (
@@ -2047,12 +2047,12 @@ function dcRefreshBoardSettingsParent(viewId, snackbar) {
     state.kind === "dc_board_settings_category_root_list" ||
     state.kind === "dc_board_settings_category_board_list"
   ) {
-    return dcRefreshCustomView(viewId, state, snackbar || "");
+    return (await dcRefreshCustomView(viewId, state, snackbar || ""));
   }
   return false;
 }
 
-function dcHandleBoardSettingsRootEvent(viewId, event, state) {
+async function dcHandleBoardSettingsRootEvent(viewId, event, state) {
   if (!state || state.kind !== "board_settings_root") return false;
 
   if (event.eventId === "MENU_CLICK") {
@@ -2077,7 +2077,7 @@ function dcHandleBoardSettingsRootEvent(viewId, event, state) {
       ensureAbsoluteUrl(event.data ? event.data.link : "", SITE.browserHomeUrl);
     if (!link) return true;
     rememberItemPreview(event.data);
-    var result = openByUrl(link, false);
+    var result = (await openByUrl(link, false));
     if (!result || !result.success) {
       if (handleOpenFailure(result, link, viewId, SITE.displayName)) return true;
       openBrowser(link, SITE.displayName, {
@@ -2092,7 +2092,7 @@ function dcHandleBoardSettingsRootEvent(viewId, event, state) {
   return false;
 }
 
-function dcHandleCustomListEvent(viewId, event, state) {
+async function dcHandleCustomListEvent(viewId, event, state) {
   if (!state) return false;
 
   if (event.eventId === "QUERY") {
@@ -2108,39 +2108,39 @@ function dcHandleCustomListEvent(viewId, event, state) {
     var query = normalizeWhitespace(event.data ? event.data.query : "");
     if (!query) {
       if (state.kind !== "dc_category_search_list") return true;
-      updateViewFromRoute(viewId, dcCreateRouteFromSearchReturnState(state.returnState || null), "");
+      updateViewFromRoute(viewId, (await dcCreateRouteFromSearchReturnState(state.returnState || null)), "");
       return true;
     }
 
     updateViewFromRoute(
       viewId,
-      dcCreateCategorySearchRoute(query, state.kind === "dc_category_search_list" ? state.returnState || null : state),
+      (await dcCreateCategorySearchRoute(query, state.kind === "dc_category_search_list" ? state.returnState || null : state)),
       ""
     );
     return true;
   }
 
   if (event.eventId === "SCROLL_TO_END") {
-    return dcAppendCategoryPage(viewId, state);
+    return (await dcAppendCategoryPage(viewId, state));
   }
 
   if (event.eventId === "CLICK") {
     var clickId = normalizeWhitespace(event.data ? event.data.id : "");
     if (!clickId) return false;
     if (state.kind === "dc_category_home") {
-      openRoute(dcCreateCategorySectionRoute(clickId, state.homeViewId || 0));
+      openRoute((await dcCreateCategorySectionRoute(clickId, state.homeViewId || 0)));
       return true;
     }
     if (state.kind === "dc_category_root_list") {
-      openRoute(dcCreateCategoryBoardRoute(state.rootKey, clickId, state.homeViewId || 0));
+      openRoute((await dcCreateCategoryBoardRoute(state.rootKey, clickId, state.homeViewId || 0)));
       return true;
     }
     if (state.kind === "dc_board_settings_category_root_list") {
-      openRoute(dcCreateSettingsBoardRoute(state.parentViewId || 0, state.rootKey, clickId));
+      openRoute((await dcCreateSettingsBoardRoute(state.parentViewId || 0, state.rootKey, clickId)));
       return true;
     }
     if (state.kind === "dc_board_settings_category_board_list") {
-      var record = dcEnsureCategoryBoardRecord(state.rootKey, state.categoryId);
+      var record = (await dcEnsureCategoryBoardRecord(state.rootKey, state.categoryId));
       var board = null;
       for (var i = 0; i < record.boards.length; i++) {
         if (record.boards[i].id === clickId) {
@@ -2158,7 +2158,7 @@ function dcHandleCustomListEvent(viewId, event, state) {
         synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
         return true;
       }
-      dcRefreshCustomView(viewId, state, saved.title + (nextVisible ? " 홈에 추가했습니다." : " 홈에서 제거했습니다."));
+      (await dcRefreshCustomView(viewId, state, saved.title + (nextVisible ? " 홈에 추가했습니다." : " 홈에서 제거했습니다.")));
       if (state.parentViewId) refreshAnyHomeView(state.parentViewId, "");
       return true;
     }
@@ -2169,7 +2169,7 @@ function dcHandleCustomListEvent(viewId, event, state) {
     var itemMenu = normalizeWhitespace(event.data ? event.data.menu : "");
     var itemId = normalizeWhitespace(event.data ? event.data.id : "");
     if (itemMenu !== MENU_HOME_TOGGLE && itemMenu !== MENU_HOME_REMOVE) return false;
-    var record = dcEnsureCategoryBoardRecord(state.rootKey, state.categoryId);
+    var record = (await dcEnsureCategoryBoardRecord(state.rootKey, state.categoryId));
     var board = null;
     for (var j = 0; j < record.boards.length; j++) {
       if (record.boards[j].id === itemId) {
@@ -2186,7 +2186,7 @@ function dcHandleCustomListEvent(viewId, event, state) {
       synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
       return true;
     }
-    dcRefreshCustomView(viewId, state, savedBoard.title + (itemMenu === MENU_HOME_TOGGLE ? " 홈에 추가했습니다." : " 홈에서 제거했습니다."));
+    (await dcRefreshCustomView(viewId, state, savedBoard.title + (itemMenu === MENU_HOME_TOGGLE ? " 홈에 추가했습니다." : " 홈에서 제거했습니다.")));
     refreshAnyHomeView(state.homeViewId || 0, "");
     return true;
   }
@@ -2205,11 +2205,11 @@ function dcHandleCustomListEvent(viewId, event, state) {
       synura.update(viewId, { models: { snackbar: "게시판 상태를 변경하지 못했습니다." } });
       return true;
     }
-    dcRefreshCustomView(
+    (await dcRefreshCustomView(
       viewId,
       state,
       savedSettingsBoard.title + (settingsItemMenu === MENU_HOME_TOGGLE ? " 홈에 추가했습니다." : " 홈에서 제거했습니다.")
-    );
+    ));
     if (state.parentViewId) refreshAnyHomeView(state.parentViewId, "");
     return true;
   }
@@ -2246,8 +2246,8 @@ function dcHandleCustomListEvent(viewId, event, state) {
   if (!menu) return false;
 
   if (menu === MENU_BOARD_SYNC) {
-    var message = dcImportCategoryBrowser(state);
-    dcRefreshCustomView(viewId, state, message);
+    var message = (await dcImportCategoryBrowser(state));
+    (await dcRefreshCustomView(viewId, state, message));
     return true;
   }
   if (menu === MENU_HOME) {
@@ -2266,12 +2266,12 @@ function dcHandleCustomListEvent(viewId, event, state) {
   return false;
 }
 
-function dcHandleViewEvent(viewId, event, state) {
+async function dcHandleViewEvent(viewId, event, state) {
   if (!state) return false;
   if (state.kind === "home" && event.eventId === "QUERY") {
     var homeQuery = normalizeWhitespace(event.data ? event.data.query : "");
     if (!homeQuery) return true;
-    openRoute(dcCreateCategorySearchRoute(homeQuery, dcCreateCategoryHomeRoute(viewId || 0).context));
+    openRoute((await dcCreateCategorySearchRoute(homeQuery, dcCreateCategoryHomeRoute(viewId || 0).context)));
     return true;
   }
   if (
@@ -2282,7 +2282,7 @@ function dcHandleViewEvent(viewId, event, state) {
     state.kind === "dc_board_settings_category_root_list" ||
     state.kind === "dc_board_settings_category_board_list"
   ) {
-    return dcHandleCustomListEvent(viewId, event, state);
+    return (await dcHandleCustomListEvent(viewId, event, state));
   }
   return false;
 }
@@ -2463,7 +2463,7 @@ SITE.buildHomeAppbar = function () {
   return dcBuildCategorySearchAppbar();
 };
 
-SITE.refreshView = function (viewId, state) {
+SITE.refreshView = async function (viewId, state) {
   if (!state) return false;
   if (
     state.kind === "dc_category_home" ||
@@ -2473,7 +2473,7 @@ SITE.refreshView = function (viewId, state) {
     state.kind === "dc_board_settings_category_root_list" ||
     state.kind === "dc_board_settings_category_board_list"
   ) {
-    return dcRefreshCustomView(viewId, state, "새로고침 완료");
+    return (await dcRefreshCustomView(viewId, state, "새로고침 완료"));
   }
   return false;
 };

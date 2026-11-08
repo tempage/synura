@@ -53,16 +53,30 @@ var SYNURA = {
 };
 
 // No test may accidentally use an external response.
-fetch = function () { throw new Error("Unexpected network request"); };
+fetch = async function () { throw new Error("Unexpected network request"); };
 
 function useSyntheticResponse(doc, html, url) {
-    fetch = function () {
+    function response() {
+        var used = false;
+        async function text() {
+            if (used) throw new TypeError("Body already consumed");
+            used = true;
+            return html;
+        }
         return {
             ok: true,
             status: 200,
             url: url,
-            text: function () { return html; },
-            dom: function () { return doc; }
+            get bodyUsed() { return used; },
+            text: text,
+            json: async function () { return JSON.parse(await text()); },
+            arrayBuffer: async function () { return new TextEncoder().encode(await text()).buffer; },
+            dom: async function () { return new DOMParser().parseFromString(await text(), "text/html"); },
+            clone: function () {
+                if (used) throw new TypeError("Body already consumed");
+                return response();
+            }
         };
-    };
+    }
+    fetch = async function () { return response(); };
 }

@@ -629,8 +629,10 @@ SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
 
 SITE.loadDynamicBoards = function (options) {
   if (!options || !options.allowNetwork) return [];
-  var doc = fetchDocument(SITE.browserHomeUrl);
-  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  return (async function () {
+      var doc = (await fetchDocument(SITE.browserHomeUrl));
+      return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  })();
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {
@@ -723,10 +725,10 @@ function localCsdnItemsFromHtml(html) {
   return out;
 }
 
-SITE.routeBoardCustom = function (url, urlInfo, match, force) {
-  var response = fetch(url, { headers: SITE.fetchHeaders || {} });
+SITE.routeBoardCustom = async function (url, urlInfo, match, force) {
+  var response = (await fetch(url, { headers: SITE.fetchHeaders || {} }));
   if (!response || response.status >= 400) return null;
-  var items = localCsdnItemsFromHtml(response.text());
+  var items = localCsdnItemsFromHtml((await response.text()));
   if (!items.length) return null;
   return {
     kind: "board",

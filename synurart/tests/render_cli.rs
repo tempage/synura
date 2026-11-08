@@ -55,9 +55,7 @@ fn post_link_blocks_show_labels_and_full_destinations() {
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(
-        stdout.contains(&format!(
-            "1. link: Example article -> {destination}"
-        )),
+        stdout.contains(&format!("1. link: Example article -> {destination}")),
         "{stdout}"
     );
     assert!(

@@ -4,12 +4,12 @@ Synura uses a **passive router** architecture to enable content pre-fetching and
 
 ## Overview
 
-Instead of handling `open` directly in a click listener, extensions should export a `router(url)` function. This function is **pure** and returns the view data.
+Instead of handling `open` directly in a click listener, extensions should export a `router(url)` function. This function returns a Promise for view data and does not open views itself.
 
 ```javascript
 const handler = {
-  router: function(url) {
-    const doc = fetch(url).dom();
+  router: async function(url) {
+    const doc = await (await fetch(url)).dom();
     return {
       view: '/views/post',
       models: {
@@ -35,7 +35,7 @@ const handler = {
 The background worker runtimes used for `router(url)` have a restricted API surface to ensure safety and statelessness.
 
 **Allowed APIs:**
-*   `fetch(url, options)`: Fully supported for network requests. The response object exposes `status`, `statusText`, `ok`, `url`, `headers`, `text()`, `arrayBuffer()`, `json()`, and `dom()`.
+*   `fetch(url, options)`: Returns a Promise for the response; body readers also return Promises. The response object exposes `status`, `statusText`, `ok`, `url`, `headers`, `text()`, `arrayBuffer()`, `json()`, and `dom()`.
 *   `console.log(...)`: Logs to the system debug output.
 *   `DOMParser`: Available for parsing HTML content.
 *   `localStorage` / `sessionStorage`: Shared with the main runtime to allow reading/writing state (e.g., tokens).
@@ -56,7 +56,7 @@ To share state (like cookies or auth tokens) between the interactive View Handle
 
 ```javascript
 const token = sessionStorage.getItem('auth_token');
-const response = fetch(url, {
+const response = await fetch(url, {
   headers: {
     'Authorization': token
   }
@@ -101,10 +101,10 @@ const setCachedRoute = (url, routeData) => {
 ### Router with Caching
 
 ```javascript
-router: function(url) {
+router: async function(url) {
   const cached = getCachedRoute(url);
   if (cached) return cached;
-  const doc = fetch(url).dom();
+  const doc = await (await fetch(url)).dom();
   const result = {
     view: '/views/post',
     timestamp: Date.now(),
@@ -126,10 +126,10 @@ router: function(url) {
 When handling user clicks, simply call `router()` - it handles caching internally:
 
 ```javascript
-onViewEvent: function(viewId, event) {
+onViewEvent: async function(viewId, event) {
   if (event.eventId === 'CLICK') {
     const url = event.data.link;
-    const routeData = this.router(url);
+    const routeData = await this.router(url);
     synura.open(routeData);
   }
 }

@@ -634,11 +634,11 @@ SITE.buildBoardMenus = function (menus, state) {
 SITE.buildPostMenus = function (menus, state) {
     return menus;
 };
-SITE.routeBoardCustom = function (url, urlInfo, match, force) {
-    return damoangBuildBoardRoute(url, urlInfo, match);
+SITE.routeBoardCustom = async function (url, urlInfo, match, force) {
+    return (await damoangBuildBoardRoute(url, urlInfo, match));
 };
-SITE.routePostCustom = function (url, urlInfo, match, force) {
-    return damoangBuildPostRoute(url);
+SITE.routePostCustom = async function (url, urlInfo, match, force) {
+    return (await damoangBuildPostRoute(url));
 };
 function damoangParseComments(doc, postUrl) {
     var rows = allNodes(doc, SITE.selectors.commentRows);
@@ -673,10 +673,10 @@ function damoangParseComments(doc, postUrl) {
 SITE.parseComments = function (doc, postUrl) {
     return damoangParseComments(doc, postUrl);
 };
-SITE.fetchPostComments = function (match, url, doc, page, comments) {
+SITE.fetchPostComments = async function (match, url, doc, page, comments) {
     var postAuthor = firstAuthorText(doc, SITE.selectors.postAuthor);
     try {
-        var fetched = damoangFetchCommentsPage(url, 1, DAMOANG_COMMENT_PAGE_LIMIT);
+        var fetched = (await damoangFetchCommentsPage(url, 1, DAMOANG_COMMENT_PAGE_LIMIT));
         var models = damoangBuildCommentModels(fetched.items, postAuthor || "");
         damoangLastFetchedCommentsState = {
             url: url,
@@ -713,8 +713,8 @@ SITE.preparePostContext = function (context, match, url, doc, page) {
     }
     return context;
 };
-SITE.handleViewEvent = function (viewId, event, state, context) {
-    return damoangHandleViewEvent(viewId, event, state, context);
+SITE.handleViewEvent = async function (viewId, event, state, context) {
+    return (await damoangHandleViewEvent(viewId, event, state, context));
 };
 SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
     return false;
@@ -1341,17 +1341,17 @@ function damoangBuildCommentsApiUrl(boardId, postId, page, limit) {
     return "https://" + SYNURA.domain + "/api/boards/" + encodeURIComponent(boardId) + "/posts/" + encodeURIComponent(postId) + "/comments?page=" + encodeURIComponent(String(pageNo)) + "&limit=" + encodeURIComponent(String(limitNo));
 }
 
-function damoangFetchCommentsPage(postUrl, page, limit) {
+async function damoangFetchCommentsPage(postUrl, page, limit) {
     var match = damoangMatchPostUrl(postUrl);
     if (!match || !match.boardId || !match.postId) {
         throw new Error("Failed to match post URL for comments API");
     }
     var apiUrl = damoangBuildCommentsApiUrl(match.boardId, match.postId, page, limit);
-    var response = fetchWithLogging(apiUrl, damoangBuildFetchOptions(postUrl));
+    var response = (await fetchWithLogging(apiUrl, damoangBuildFetchOptions(postUrl)));
     if (!response || !response.ok) {
         throw new Error("HTTP " + (response ? response.status : 0) + " " + (response ? (response.statusText || "") : ""));
     }
-    return damoangParseCommentsApiResponse(response.text());
+    return damoangParseCommentsApiResponse((await response.text()));
 }
 
 function damoangBuildCommentModels(items, postAuthor) {
@@ -1371,7 +1371,7 @@ function damoangBuildLoadedCommentIds(items) {
     return seen;
 }
 
-function damoangAppendPostComments(viewId, state) {
+async function damoangAppendPostComments(viewId, state) {
     if (!state || state.kind !== "post") return false;
     var currentPage = parseInt(String(state.damoangCommentPage || 1), 10);
     if (!(currentPage > 0)) currentPage = 1;
@@ -1383,7 +1383,7 @@ function damoangAppendPostComments(viewId, state) {
     }
     try {
         var nextPage = currentPage + 1;
-        var fetched = damoangFetchCommentsPage(state.link || "", nextPage, state.damoangCommentLimit || DAMOANG_COMMENT_PAGE_LIMIT);
+        var fetched = (await damoangFetchCommentsPage(state.link || "", nextPage, state.damoangCommentLimit || DAMOANG_COMMENT_PAGE_LIMIT));
         var loaded = Array.isArray(state.damoangComments) ? state.damoangComments.slice() : [];
         var seen = state.damoangLoadedCommentIds || {};
         var items = Array.isArray(fetched.items) ? fetched.items : [];
@@ -1417,7 +1417,7 @@ function damoangAppendPostComments(viewId, state) {
     return true;
 }
 
-function damoangFetchBoardItems(boardId, page, searchField, searchQuery) {
+async function damoangFetchBoardItems(boardId, page, searchField, searchQuery) {
     var pageNo = parseInt(String(page || 1), 10);
     if (!(pageNo > 0)) pageNo = 1;
     var useApiPagination = pageNo > 1 && !(searchQuery && normalizeWhitespace(searchQuery));
@@ -1427,18 +1427,18 @@ function damoangFetchBoardItems(boardId, page, searchField, searchQuery) {
     if (useApiPagination) {
         url = "https://" + SYNURA.domain + "/api/v1/boards/" + encodeURIComponent(boardId) + "/posts?page=" + encodeURIComponent(String(pageNo)) + "&limit=30";
     }
-    var response = fetchWithLogging(url, options);
+    var response = (await fetchWithLogging(url, options));
     if (!response || !response.ok) {
         throw new Error("HTTP " + (response ? response.status : 0) + " " + (response ? (response.statusText || "") : ""));
     }
-    var responseText = response.text();
+    var responseText = (await response.text());
     var hydrated = useApiPagination ? damoangParseBoardApiResponse(responseText) : damoangParseBoardHydration(responseText);
     var merged = (hydrated.notices || []).concat(hydrated.posts || []);
     if (!useApiPagination && merged.length === 0) {
         var apiUrl = "https://" + SYNURA.domain + "/api/v1/boards/" + encodeURIComponent(boardId) + "/posts?page=" + encodeURIComponent(String(pageNo)) + "&limit=30";
-        var apiResponse = fetchWithLogging(apiUrl, options);
+        var apiResponse = (await fetchWithLogging(apiUrl, options));
         if (apiResponse && apiResponse.ok) {
-            var apiHydrated = damoangParseBoardApiResponse(apiResponse.text());
+            var apiHydrated = damoangParseBoardApiResponse((await apiResponse.text()));
             merged = (apiHydrated.notices || []).concat(apiHydrated.posts || []);
         }
     }
@@ -1449,12 +1449,12 @@ function damoangFetchBoardItems(boardId, page, searchField, searchQuery) {
     return items;
 }
 
-function damoangFetchPostViewData(url) {
-    var response = fetchWithLogging(url, damoangBuildFetchOptions(url));
+async function damoangFetchPostViewData(url) {
+    var response = (await fetchWithLogging(url, damoangBuildFetchOptions(url)));
     if (!response || !response.ok) {
         throw new Error("HTTP " + (response ? response.status : 0) + " " + (response ? (response.statusText || "") : ""));
     }
-    return damoangParsePostHydration(response.text());
+    return damoangParsePostHydration((await response.text()));
 }
 
 function damoangItemIdNumber(item) {
@@ -1511,12 +1511,12 @@ function damoangBoardAppbar(searchField) {
     };
 }
 
-function damoangBuildBoardRoute(url, urlInfo, match) {
+async function damoangBuildBoardRoute(url, urlInfo, match) {
     var boardId = match && match.board ? match.board.id : "";
     var page = match && match.page ? match.page : 1;
     var searchField = match && match.searchField ? match.searchField : queryValue(urlInfo.query, "sfl");
     var searchQuery = match && match.searchQuery ? match.searchQuery : queryValue(urlInfo.query, "stx");
-    var items = damoangFetchBoardItems(boardId, page, searchField, searchQuery);
+    var items = (await damoangFetchBoardItems(boardId, page, searchField, searchQuery));
     var boardTitle = match && match.board ? match.board.title : boardId;
     var context = {
         kind: "board",
@@ -1547,8 +1547,8 @@ function damoangBuildBoardRoute(url, urlInfo, match) {
     };
 }
 
-function damoangBuildPostRoute(url) {
-    var postView = damoangFetchPostViewData(url);
+async function damoangBuildPostRoute(url) {
+    var postView = (await damoangFetchPostViewData(url));
     var m = postView.models || {};
     var s = postView.styles || {};
     var comments = Array.isArray(m.comments) ? m.comments : [];
@@ -1557,7 +1557,7 @@ function damoangBuildPostRoute(url) {
     var commentTotalPages = 1;
     var commentLimit = DAMOANG_COMMENT_PAGE_LIMIT;
     try {
-        var fetchedComments = damoangFetchCommentsPage(url, 1, DAMOANG_COMMENT_PAGE_LIMIT);
+        var fetchedComments = (await damoangFetchCommentsPage(url, 1, DAMOANG_COMMENT_PAGE_LIMIT));
         if (fetchedComments) {
             comments = damoangBuildCommentModels(fetchedComments.items, m.author || "");
             loadedCommentIds = damoangBuildLoadedCommentIds(fetchedComments.items);
@@ -1614,8 +1614,8 @@ function damoangOpenEditor(parentViewId) {
     }, {
         kind: "editor",
         parentViewId: parentViewId || 0
-    }, function (editorEvent) {
-        handler.onViewEvent(editorEvent);
+    }, async function (editorEvent) {
+        (await handler.onViewEvent(editorEvent));
     });
     if (result && result.success) {
         setViewState(result.viewId, { kind: "editor", parentViewId: parentViewId || 0 });
@@ -1635,7 +1635,7 @@ function damoangHandleLoginSubmit(viewId, event, state) {
     return true;
 }
 
-function damoangHandleViewEvent(viewId, event, state, context) {
+async function damoangHandleViewEvent(viewId, event, state, context) {
     if (context && (context.kind === "browser_login" || context.kind === "browser_logout")) {
         if (event.eventId === "SUBMIT") {
             return damoangHandleLoginSubmit(viewId, event, context);
@@ -1649,7 +1649,7 @@ function damoangHandleViewEvent(viewId, event, state, context) {
     }
 
     if (state && state.kind === "post" && event.eventId === "SCROLL_TO_END") {
-        return damoangAppendPostComments(viewId, state);
+        return (await damoangAppendPostComments(viewId, state));
     }
 
     if (state && state.kind === "home" && event.eventId === "MENU_CLICK") {
@@ -1696,7 +1696,7 @@ function damoangHandleViewEvent(viewId, event, state, context) {
         var searchField = currentState.searchField || "wr_subject";
         var query = normalizeWhitespace(event.data ? event.data.query : "");
         var boardUrl = damoangBuildBoardUrl(currentState.boardId, 1, query ? searchField : "", query);
-        var route = routeUrl(boardUrl, true);
+        var route = (await routeUrl(boardUrl, true));
         if (route) {
             updateViewFromRoute(viewId, route, query ? "검색 결과" : "검색이 초기화되었습니다.");
         }

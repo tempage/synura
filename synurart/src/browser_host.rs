@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use base64::{engine::general_purpose, Engine as _};
 use url::Url;
 
-use super::fetch_scope::FetchScope;
+use synura_runtime::NetworkScope as FetchScope;
 
 pub struct ActiveBrowser {
     pub view_id: i64,

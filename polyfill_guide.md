@@ -12,21 +12,33 @@ This works by "mocking" the Synura API (`synura.open`, `fetch`, etc.) so your sc
     *   You should see a message: `[Synura Polyfill] Visual Emulator Ready!`.
 4.  **Paste Your Extension Code**: Copy the code from your extension's `.js` file (specifically the logic inside `handler` or your test functions) and paste it into the console.
 5.  **Run Your Functions**: Manually call your functions to test them.
-    *   Example: `handler.home()`
-    *   Example: `fetchPost("https://example.com/article/123")`
+    *   Example: `await handler.home()`
+    *   Example: `await fetchPost("https://example.com/article/123")`
 
 ## Features
 
 *   **Mock `synura` Object**: Logs all calls to `open`, `update`, and `connect` to the console with colorful output so you can verify the data being sent to the UI.
     *   Includes `synura.isPolyfill = true`, allowing your extension to detect if it is running in the emulator vs. the real app.
 *   **Visual Emulator**: Renders a floating UI overlay that mimics the Synura app interface, allowing you to see your views (List, Post, Chat, etc.) rendered in real-time.
-*   **Reset Extension**: The reload button (🔄) now resets the `SYNURA` object and clears all views without reloading the page. This allows you to paste and test new code versions instantly while keeping the emulator active.
+*   **Reset Extension**: The reload button (🔄) resets the `SYNURA` object and clears all views without reloading the page. This allows you to paste and test code while keeping the emulator active.
     *   *Note:* If you use `const SYNURA = ...`, the variable technically remains in memory (as per JavaScript rules), but pasting new code will overwrite it. For cleaner testing, consider using `var SYNURA = ...` in the console.
 *   **Minimize Mode**: The minimize button (➖) collapses the emulator to a compact header bar, keeping it out of the way while you inspect the target website.
 *   **Built-in Log Viewer**: Includes a "Logs" button (memo icon 📝) in the header. Clicking it opens a **separate popup window** showing all `console.log`, `warn`, and `error` output. This allows you to view logs side-by-side with the emulator.
-*   **Simulated `fetch`**: Replaces the browser's `fetch` with a **synchronous** implementation (using `XMLHttpRequest`) to match Synura's behavior.
-*   **Strict DOM Emulation**: The `response.dom()` method returns a wrapper that **strictly enforces** the limited DOM API available in the Synura runtime. This prevents you from accidentally using browser-only features (like `innerHTML` or `parentElement`) that would crash your extension in the real app.
+*   **Promise-based `fetch`**: Installs a persistent global `fetch` wrapper backed by the browser's native fetch. `synura.fetch` is an emulator alias. Requests remain asynchronous across handler calls and `await` continuations. Network failures reject the Promise; HTTP error statuses still produce a response.
+*   **Response Bodies**: `text()`, `json()`, `arrayBuffer()`, and `dom()` return Promises. Native `bodyUsed` and `clone()` behavior applies: consume a body once, or clone the response before reading it in multiple formats.
+*   **Strict DOM Emulation**: `await response.dom()` returns a wrapper that **strictly enforces** the limited DOM API available in the Synura runtime. This prevents you from accidentally using browser-only features (like `innerHTML` or `parentElement`) that would crash your extension in the real app. Only `text/html` is accepted.
 *   **DOM Parsing**: Includes a JavaScript port of Synura's `parse('post', ...)` logic, so you can see exactly how your content will be structured (text blocks, images, videos).
+
+```javascript
+const response = await fetch("/example");
+if (!response.ok) throw new Error("HTTP " + response.status);
+const document = await response.dom();
+console.log(document.querySelector("h1")?.textContent);
+```
+
+The response exposes the browser's standard `Headers` object: use `headers.get(name)`, `has(name)`, and iteration. A missing header returns `null`. `getSetCookie()` is the native runtime's cookie-reading API, but browsers filter `Set-Cookie` from responses and return no cookies.
+
+Request options and bodies pass directly to native fetch, including `Request`, `Headers`, `ArrayBuffer`, typed-array views, and `URLSearchParams`. Plain objects are not automatically JSON-encoded: use `body: JSON.stringify(data)` and an explicit `Content-Type: application/json` header for JSON requests.
 
 ## Debug Mode
 
@@ -64,10 +76,10 @@ The following `handler` methods are automatically wrapped for debugging:
 > For debugging to work on internal handler calls (like `router()` called from within `openPost()`), your extension code must call methods via `SYNURA.main` instead of the local `handler` variable. Example:
 > ```javascript
 > // ❌ This won't trigger the debugger:
-> const routeData = handler.router(link);
+> const routeData = await handler.router(link);
 >
 > // ✅ This will trigger the debugger:
-> const routeData = SYNURA.main.router(link);
+> const routeData = await SYNURA.main.router(link);
 > ```
 
 ## Router Architecture Testing
@@ -80,7 +92,7 @@ Since `router(url)` is designed to be a pure function called by the system (not 
 1.  Define your `handler.router` function.
 2.  Manually call it in the console:
 ```javascript
-const route = handler.router("https://example.com/article");
+const route = await handler.router("https://example.com/article");
 console.log(route);
 ```
 3.  Simulate the system opening the view:
@@ -246,7 +258,7 @@ The following standard Web APIs are available in both the Synura runtime and the
 *   **`URLSearchParams`**: Standard API for working with query strings. Use `new URLSearchParams(query)` and methods like `get()`, `set()`, `has()`, `delete()`, `toString()`.
 
 > [!IMPORTANT]
-> If your code works in the browser but fails in the app, you are likely using an unsupported DOM property. The polyfill will now throw an error or return undefined for these properties to help you catch this early.
+> If your code works in the browser but fails in the app, you may be using an unsupported DOM property. The polyfill throws an error or returns undefined for these properties to help you catch this early.
 
 ## Limitations & Common Issues
 
@@ -255,11 +267,12 @@ Some modern websites block "unsafe-inline" scripts or connections to external AP
 *   **Symptom**: `Refused to execute inline script...` or `Connect Error` in red text.
 *   **Fix**: Use a separate, isolated browser profile for development where you can disable security features, or test on a site with a more permissive CSP.
 
-### 2. Synchronous XHR Blocking
-Modern browsers dislike **synchronous** network requests on the main thread.
-*   **Symptom**: Console warnings saying `Synchronous XMLHttpRequest on the main thread is deprecated...`.
-*   **Explanation**: **This is expected behavior.** The polyfill uses synchronous requests to accurately emulate the Synura runtime's `fetch` API.
-*   **Impact**: It usually still works, but might freeze the page interface briefly while fetching. If it fails completely, the site might have a specific block.
+### 2. Asynchronous Handlers and Body Reads
+Use `await fetch(...)` and then `await response.text()`, `json()`, `arrayBuffer()`, or `dom()` inside an `async` function. A handler that starts asynchronous work should return or await that work so its caller can observe completion and errors. A second read of a consumed body rejects with `TypeError`; use `response.clone()` before the first read when two consumers are needed. The wrapper remains installed until the page is reloaded and also affects other scripts using the page's global `fetch`.
+
+The polyfill passes `redirect: "error"` to the browser, so signed requests can reject redirects in both environments. Browser cookies and `credentials` follow the browser's rules. The shared Synura runtime permits explicit Cookie headers and keeps redirect cookies only within one fetch; `credentials: "omit"` disables that redirect-cookie store but does not remove an explicitly provided Cookie header. It has no persistent browser cookie jar or SameSite context. Its supported redirect modes are `"follow"` and `"error"`.
+
+The polyfill retains browser features that the shared runtime does not yet implement, including streaming response bodies, Blob/FormData, streaming TextDecoder, and timer-based AbortSignal. The native runtime rejects these unsupported operations explicitly. Use `AbortController.signal` for request cancellation in either environment, and test extensions in `synurart` as well as the browser.
 
 ### 3. Session Storage
 Synura's `sessionStorage` supports storing **Objects**. Browsers only support **Strings**.
@@ -275,8 +288,8 @@ Synura ignores CORS (Cross-Origin Resource Sharing). Browsers enforce it.
 The `bypass` option in `fetch` (e.g., `chrome/windows`) is **ignored** by the polyfill because browsers cannot impersonate other browsers via JS. The polyfill will log a warning if you use it.
 
 ### 6. Cookie Headers
-The `Cookie` header is a "forbidden header name" in browsers. `XMLHttpRequest` will silently ignore attempts to set it via `setRequestHeader()`.
-*   **Impact**: Authenticated requests using `headers: { Cookie: "..." }` will **not work** in the polyfill, even though they work correctly in the real Synura app (Go backend).
+The `Cookie` header is a "forbidden header name" in browser fetch, and browser responses do not expose `Set-Cookie` to scripts.
+*   **Impact**: The polyfill cannot reproduce manual `Cookie` request headers or read response cookies, even though the native Synura runtime exposes these capabilities.
 *   **Workaround**: For testing authenticated flows, you must be **logged into the target website** in your browser first. The browser will automatically include its own cookies for same-origin requests.
 
 ### 7. Markdown Polyfill Limitations

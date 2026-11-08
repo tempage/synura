@@ -607,15 +607,15 @@ SITE.buildBoardUrlFromId = function (boardId) {
     return ppomppuBuildBoardUrl(boardId);
 };
 
-function ppomppuFetchMenuData(url) {
-    var response = fetchWithLogging(url, buildFetchOptions());
+async function ppomppuFetchMenuData(url) {
+    var response = (await fetchWithLogging(url, buildFetchOptions()));
     if (!response) {
         throw new Error("Failed to fetch " + url + " (0)");
     }
     if (!response.ok) {
         throw new Error("Failed to fetch " + url + " (" + (response.status || 0) + ")");
     }
-    var body = response.text();
+    var body = (await responseText(response));
     try {
         return JSON.parse(body);
     } catch (e) {
@@ -634,18 +634,20 @@ SITE.loadDynamicBoards = function (options) {
         return cached;
     }
     if (!allowNetwork) return Array.isArray(cached) ? cached : [];
-    try {
-        var sourceUrl = "https://" + SYNURA.domain + "/new/_ajax_menu_list.php";
-        var data = ppomppuFetchMenuData(sourceUrl);
-        var items = ppomppuBuildBoardsFromMenuData(data, { dynamic: true });
-        if (items.length > 0) {
-            writeStoredJson(cacheKey, items);
-            localStorage.setItem(cacheTsKey, String(Date.now()));
-            return items;
+    return (async function () {
+        try {
+            var sourceUrl = "https://" + SYNURA.domain + "/new/_ajax_menu_list.php";
+            var data = (await ppomppuFetchMenuData(sourceUrl));
+            var items = ppomppuBuildBoardsFromMenuData(data, { dynamic: true });
+            if (items.length > 0) {
+                writeStoredJson(cacheKey, items);
+                localStorage.setItem(cacheTsKey, String(Date.now()));
+                return items;
+            }
+        } catch (e) {
         }
-    } catch (e) {
-    }
-    return Array.isArray(cached) ? cached : [];
+        return Array.isArray(cached) ? cached : [];
+    })();
 };
 SITE.prepareBoardContext = function (context, items, match, url) {
     context.lastPostId = ppomppuComputeLastPostId(items);
@@ -821,14 +823,14 @@ function ppomppuWriteBoardRefreshHtml(url, html) {
     PPOMPPU_BOARD_REFRESH_HTMLS[key] = String(html);
 }
 
-function ppomppuFetchHtmlPage(url, allowRestricted) {
-    var response = fetchWithLogging(url, buildFetchOptions());
+async function ppomppuFetchHtmlPage(url, allowRestricted) {
+    var response = (await fetchWithLogging(url, buildFetchOptions()));
     if (!response) {
         throw new Error("Failed to fetch " + url + " (0)");
     }
 
     var status = response.status || 0;
-    var html = response.text();
+    var html = (await responseText(response));
     var authRequired = shouldUseBrowserCookieAuth() && isAuthRequiredResponse(url, status, html);
     var restricted = !response.ok && (status === 401 || status === 403) && !isChallengeHtml(html);
     if (authRequired) {
@@ -1097,8 +1099,8 @@ function ppomppuBuildBoardRouteFromHtml(url, match, html) {
     return route;
 }
 
-function ppomppuBuildBoardRoute(url, match) {
-    var fetched = ppomppuFetchHtmlPage(url, false);
+async function ppomppuBuildBoardRoute(url, match) {
+    var fetched = (await ppomppuFetchHtmlPage(url, false));
     return ppomppuBuildBoardRouteFromHtml(url, match, fetched.html);
 }
 
@@ -1179,8 +1181,8 @@ function ppomppuParsePostContentFast(contentRoot, baseUrl) {
     return details;
 }
 
-function ppomppuBuildPostRoute(url, match) {
-    var fetched = ppomppuFetchHtmlPage(url, true);
+async function ppomppuBuildPostRoute(url, match) {
+    var fetched = (await ppomppuFetchHtmlPage(url, true));
     var fragment = ppomppuBuildPostFragment(fetched.html);
     if (!fragment) return null;
 
@@ -1279,11 +1281,11 @@ function ppomppuBuildPostRoute(url, match) {
     };
 }
 
-SITE.routeBoardCustom = function (url, urlInfo, match, force) {
-    return ppomppuBuildBoardRoute(url, match);
+SITE.routeBoardCustom = async function (url, urlInfo, match, force) {
+    return (await ppomppuBuildBoardRoute(url, match));
 };
 
-SITE.refreshView = function (viewId, state) {
+SITE.refreshView = async function (viewId, state) {
     if (!state || state.kind !== "board" || !state.link) return false;
 
     var url = normalizeUrl(state.link);
@@ -1291,7 +1293,7 @@ SITE.refreshView = function (viewId, state) {
     var match = urlInfo ? SITE.matchBoard(urlInfo) : null;
     if (!url || !urlInfo || !match) return false;
 
-    var fetched = ppomppuFetchHtmlPage(url, false);
+    var fetched = (await ppomppuFetchHtmlPage(url, false));
     var nextListHtml = ppomppuListHtmlFromHtml(fetched.html);
     if (!nextListHtml) return false;
 
@@ -1320,57 +1322,11 @@ SITE.refreshView = function (viewId, state) {
     return true;
 };
 
-SITE.routePostCustom = function (url, urlInfo, match, force) {
-    return ppomppuBuildPostRoute(url, match);
+SITE.routePostCustom = async function (url, urlInfo, match, force) {
+    return (await ppomppuBuildPostRoute(url, match));
 };
 
-function ppomppuDecodeFetchText(response) {
-    if (!response) return "";
-    try {
-        return new TextDecoder("euc-kr").decode(response.arrayBuffer());
-    } catch (e) {
-    }
-    return response.text();
-}
-
-function ppomppuShouldDecodeUrl(url) {
-    var normalized = normalizeUrl(url) || ensureAbsoluteUrl(url, SITE.browserHomeUrl) || "";
-    var urlInfo = parseAbsoluteUrl(normalized);
-    return !!(urlInfo && isKnownHost(urlInfo.host));
-}
-
-var ppomppuOriginalFetchWithLogging = fetchWithLogging;
-fetchWithLogging = function (url, options) {
-    var response = ppomppuOriginalFetchWithLogging(url, options);
-    if (!response || !ppomppuShouldDecodeUrl(url) || response.__ppomppuDecoded) {
-        return response;
-    }
-
-    var originalText = typeof response.text === "function" ? response.text : null;
-    var decodedText = null;
-    var decodedDoc = null;
-    response.text = function () {
-        if (decodedText === null) {
-            decodedText = ppomppuDecodeFetchText({
-                arrayBuffer: function () {
-                    return response.arrayBuffer();
-                },
-                text: function () {
-                    return originalText ? originalText.call(response) : "";
-                }
-            });
-        }
-        return decodedText;
-    };
-    response.dom = function (contentType) {
-        if (!decodedDoc || (contentType && contentType !== "text/html")) {
-            decodedDoc = (new DOMParser()).parseFromString(response.text(), contentType || "text/html");
-        }
-        return decodedDoc;
-    };
-    response.__ppomppuDecoded = true;
-    return response;
-};
+SITE.textEncoding = "euc-kr";
 
 function ppomppuDecodeBase64(input) {
     var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";

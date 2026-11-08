@@ -372,69 +372,71 @@ SITE.loadDynamicBoards = function (options) {
         return cached;
     }
     if (!allowNetwork) return Array.isArray(cached) ? cached : [];
-    try {
-        var doc = fetchDocument(SITE.browserHomeUrl);
-        var items = [];
-        var seen = {};
+    return (async function () {
+        try {
+            var doc = (await fetchDocument(SITE.browserHomeUrl));
+            var items = [];
+            var seen = {};
 
-        function pushBoard(id, title, url, description, group) {
-            var boardId = normalizeWhitespace(id);
-            var boardTitle = normalizeWhitespace(title);
-            if (!boardId || !boardTitle || seen[boardId]) return;
-            seen[boardId] = true;
-            items.push({
-                id: boardId,
-                title: boardTitle,
-                url: normalizeUrl(url) || url,
-                description: normalizeWhitespace(description || boardTitle),
-                group: cleanBoardGroupText(group || ""),
-                dynamic: true
-            });
-        }
+            function pushBoard(id, title, url, description, group) {
+                var boardId = normalizeWhitespace(id);
+                var boardTitle = normalizeWhitespace(title);
+                if (!boardId || !boardTitle || seen[boardId]) return;
+                seen[boardId] = true;
+                items.push({
+                    id: boardId,
+                    title: boardTitle,
+                    url: normalizeUrl(url) || url,
+                    description: normalizeWhitespace(description || boardTitle),
+                    group: cleanBoardGroupText(group || ""),
+                    dynamic: true
+                });
+            }
 
-        var realLinks = allNodes(doc, ["a[href*='/mp/b.php?b=']"]);
-        for (var i = 0; i < realLinks.length; i++) {
-            var href = ensureAbsoluteUrl(attrOf(realLinks[i], "href"), "https://" + SYNURA.domain + "/");
-            var info = parseAbsoluteUrl(href);
-            if (!info || info.path !== "/mp/b.php") continue;
-            var boardId = normalizeWhitespace(queryValue(info.query, "b"));
-            if (!boardId || queryValue(info.query, "m") === "view" || queryValue(info.query, "id")) continue;
-            var title = firstNonEmpty([firstText(realLinks[i], ["span"]), textOf(realLinks[i]), boardId]);
-            pushBoard(
-                boardId,
-                title,
-                "https://" + SYNURA.domain + "/mp/b.php?m=list&b=" + encodeURIComponent(boardId),
-                title,
-                inferBoardGroupFromContext(realLinks[i])
-            );
-        }
+            var realLinks = allNodes(doc, ["a[href*='/mp/b.php?b=']"]);
+            for (var i = 0; i < realLinks.length; i++) {
+                var href = ensureAbsoluteUrl(attrOf(realLinks[i], "href"), "https://" + SYNURA.domain + "/");
+                var info = parseAbsoluteUrl(href);
+                if (!info || info.path !== "/mp/b.php") continue;
+                var boardId = normalizeWhitespace(queryValue(info.query, "b"));
+                if (!boardId || queryValue(info.query, "m") === "view" || queryValue(info.query, "id")) continue;
+                var title = firstNonEmpty([firstText(realLinks[i], ["span"]), textOf(realLinks[i]), boardId]);
+                pushBoard(
+                    boardId,
+                    title,
+                    "https://" + SYNURA.domain + "/mp/b.php?m=list&b=" + encodeURIComponent(boardId),
+                    title,
+                    inferBoardGroupFromContext(realLinks[i])
+                );
+            }
 
-        var bestLinks = allNodes(doc, ["a[href*='/mp/best.php?b=']"]);
-        for (var j = 0; j < bestLinks.length; j++) {
-            var bestHref = ensureAbsoluteUrl(attrOf(bestLinks[j], "href"), "https://" + SYNURA.domain + "/");
-            var bestInfo = parseAbsoluteUrl(bestHref);
-            if (!bestInfo || bestInfo.path !== "/mp/best.php") continue;
-            var baseBoardId = normalizeWhitespace(queryValue(bestInfo.query, "b"));
-            var metric = normalizeWhitespace(queryValue(bestInfo.query, "m"));
-            if (!baseBoardId || !metric) continue;
-            var metricTitle = metric === "like" ? "최다추천" : (metric === "view" ? "최고조회" : (metric === "reply" ? "최다댓글" : metric));
-            pushBoard(
-                "best_" + baseBoardId + "_" + metric,
-                baseBoardId.toUpperCase() + " " + metricTitle,
-                "https://" + SYNURA.domain + "/mp/best.php?b=" + encodeURIComponent(baseBoardId) + "&m=" + encodeURIComponent(metric),
-                metricTitle,
-                inferBoardGroupFromContext(bestLinks[j]) || "베스트"
-            );
-        }
+            var bestLinks = allNodes(doc, ["a[href*='/mp/best.php?b=']"]);
+            for (var j = 0; j < bestLinks.length; j++) {
+                var bestHref = ensureAbsoluteUrl(attrOf(bestLinks[j], "href"), "https://" + SYNURA.domain + "/");
+                var bestInfo = parseAbsoluteUrl(bestHref);
+                if (!bestInfo || bestInfo.path !== "/mp/best.php") continue;
+                var baseBoardId = normalizeWhitespace(queryValue(bestInfo.query, "b"));
+                var metric = normalizeWhitespace(queryValue(bestInfo.query, "m"));
+                if (!baseBoardId || !metric) continue;
+                var metricTitle = metric === "like" ? "최다추천" : (metric === "view" ? "최고조회" : (metric === "reply" ? "최다댓글" : metric));
+                pushBoard(
+                    "best_" + baseBoardId + "_" + metric,
+                    baseBoardId.toUpperCase() + " " + metricTitle,
+                    "https://" + SYNURA.domain + "/mp/best.php?b=" + encodeURIComponent(baseBoardId) + "&m=" + encodeURIComponent(metric),
+                    metricTitle,
+                    inferBoardGroupFromContext(bestLinks[j]) || "베스트"
+                );
+            }
 
-        if (items.length > 0) {
-            writeStoredJson(cacheKey, items);
-            localStorage.setItem(cacheTsKey, String(Date.now()));
-            return items;
+            if (items.length > 0) {
+                writeStoredJson(cacheKey, items);
+                localStorage.setItem(cacheTsKey, String(Date.now()));
+                return items;
+            }
+        } catch (e) {
         }
-    } catch (e) {
-    }
-    return Array.isArray(cached) ? cached : [];
+        return Array.isArray(cached) ? cached : [];
+    })();
 };
 SITE.prepareBoardContext = function (context, items, match, url) {
     return context;
@@ -460,8 +462,8 @@ SITE.buildPostMenus = function (menus, state) {
 SITE.routeBoardCustom = function (url, urlInfo, match, force) {
     return null;
 };
-SITE.routePostCustom = function (url, urlInfo, match, force) {
-    var page = mlbparkFetchPostPage(url);
+SITE.routePostCustom = async function (url, urlInfo, match, force) {
+    var page = (await mlbparkFetchPostPage(url));
     var doc = page.doc;
     var finalUrl = page.finalUrl || url;
     var titleNode = firstNode(doc, ["title"]);
@@ -471,7 +473,7 @@ SITE.routePostCustom = function (url, urlInfo, match, force) {
     content = mlbparkAttachImageHeaders(content, finalUrl);
     var rememberedItem = getRememberedItemPreview(url) || getRememberedItemPreview(finalUrl);
     var schemaPost = detectSchemaPost(doc);
-    var comments = parseComments(doc, finalUrl);
+    var comments = (await parseComments(doc, finalUrl));
     try {
         var fetchedComments = SITE.fetchPostComments ? SITE.fetchPostComments(match, finalUrl, doc, page, comments) : null;
         if (Array.isArray(fetchedComments) && fetchedComments.length > 0) {
@@ -554,13 +556,13 @@ SITE.routePostCustom = function (url, urlInfo, match, force) {
     };
 };
 
-function mlbparkFetchPostPage(url) {
+async function mlbparkFetchPostPage(url) {
     var currentUrl = normalizeUrl(url) || url;
     var baseSiteUrl = "https://" + SYNURA.domain + "/";
     var lastStatus = 0;
 
     for (var i = 0; i < 4; i++) {
-        var response = fetchWithLogging(currentUrl, buildFetchOptions());
+        var response = (await fetchWithLogging(currentUrl, buildFetchOptions()));
         if (!response) {
             throw new Error("Failed to fetch " + currentUrl + " (0)");
         }
@@ -573,7 +575,7 @@ function mlbparkFetchPostPage(url) {
             continue;
         }
 
-        var html = response.text();
+        var html = (await response.text());
         var authRequired = shouldUseBrowserCookieAuth() &&
             (isChallengeHtml(html) || isBrowserAuthRequiredStatus(status));
         var restricted = !response.ok && (status === 401 || status === 403) && !isChallengeHtml(html);
@@ -586,7 +588,8 @@ function mlbparkFetchPostPage(url) {
 
         return {
             response: response,
-            doc: response.dom("text/html"),
+            html: html,
+            doc: new DOMParser().parseFromString(html, "text/html"),
             restricted: restricted,
             finalUrl: normalizeUrl(currentUrl) || currentUrl
         };

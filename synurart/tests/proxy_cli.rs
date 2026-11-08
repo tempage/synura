@@ -111,7 +111,10 @@ impl Cli {
 
     fn run(&self, env: &[(&str, &str)], args: &[&str], input: &str) -> Vec<Value> {
         let mut command = Command::new(env!("CARGO_BIN_EXE_synurart"));
-        command.current_dir(&self.directory).arg("-json").args(args);
+        command
+            .current_dir(&self.directory)
+            .args(["-json", "-ext", "fixture.js", "-no-home"])
+            .args(args);
         // Keep proxy environment changes inside each child, avoiding test-thread races.
         for key in [
             "HTTP_PROXY",
@@ -148,7 +151,8 @@ impl Cli {
         let records: Vec<Value> = String::from_utf8(output.stdout)
             .unwrap()
             .lines()
-            .map(|line| serde_json::from_str(line).unwrap())
+            .map(|line| serde_json::from_str::<Value>(line).unwrap())
+            .filter(|event| event["type"] != "views")
             .collect();
         assert!(records.iter().all(|v| v["type"] != "error"), "{records:?}");
         records
@@ -170,7 +174,7 @@ impl Drop for Cli {
 }
 
 fn fetch(authority: &str) -> String {
-    format!("eval 'globalThis.SYNURA = {{domain: {authority:?}}}; fetch(\"http://{authority}/check\").text()'\n")
+    format!("eval 'globalThis.SYNURA = {{domain: {authority:?}}}; fetch(\"http://{authority}/check\").then(response => response.text())'\n")
 }
 
 fn results(records: &[Value]) -> Vec<&str> {
@@ -186,6 +190,7 @@ fn system_proxy_honors_no_proxy_in_both_environment_forms() {
     let origin = Server::new("direct");
     let proxy = Server::new("proxy");
     let cli = Cli::new();
+    cli.extension(&origin.authority);
     for (http, https, no) in [
         ("HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"),
         ("http_proxy", "https_proxy", "no_proxy"),
@@ -210,11 +215,17 @@ fn system_proxy_honors_no_proxy_in_both_environment_forms() {
 fn system_proxy_selects_each_protocol_independently() {
     let http = Server::new("http proxy");
     let https = Server::new("https proxy");
-    let records = Cli::new().run(
-        &[("HTTP_PROXY", &http.url()), ("HTTPS_PROXY", &https.url())], &[],
-        &format!("{}eval 'try {{ fetch(\"https://service.example.test/check\") }} catch (e) {{ e.name }}'\n", fetch("service.example.test")),
+    let cli = Cli::new();
+    cli.extension("service.example.test");
+    let records = cli.run(
+        &[("HTTP_PROXY", &http.url()), ("HTTPS_PROXY", &https.url())],
+        &[],
+        &format!(
+            "{}eval 'fetch(\"https://service.example.test/check\").catch(error => error.name)'\n",
+            fetch("service.example.test")
+        ),
     );
-    assert_eq!(results(&records), ["http proxy", "Error"]);
+    assert_eq!(results(&records), ["http proxy", "TypeError"]);
     assert_eq!(http.requests().len(), 1);
     assert!(http.requests()[0].starts_with("GET http://service.example.test/check "));
     assert_eq!(https.requests().len(), 1);
@@ -263,6 +274,7 @@ fn command_line_off_overrides_environment_and_explicit_url_overrides_exclusions(
     let origin = Server::new("direct");
     let proxy = Server::new("proxy");
     let cli = Cli::new();
+    cli.extension(&origin.authority);
     let request = format!("proxy\n{}", fetch(&origin.authority));
     let records = cli.run(&[("HTTP_PROXY", &proxy.url())], &["--proxy=off"], &request);
     assert_eq!(records[0]["mode"], "disabled");

@@ -274,9 +274,9 @@ function localCommunityParseComments(doc, postUrl) {
   return comments;
 }
 
-SITE.fetchPostComments = function (match, url, doc, page, comments) {
+SITE.fetchPostComments = async function (match, url, doc, page, comments) {
   var existing = Array.isArray(comments) ? comments.slice() : [];
-  var fetched = todayhumorFetchMemoComments(doc, url, existing);
+  var fetched = (await todayhumorFetchMemoComments(doc, url, existing));
   for (var i = 0; i < fetched.length; i++) {
     existing.push(fetched[i]);
   }
@@ -386,7 +386,7 @@ function todayhumorSeenComments(comments) {
   return seen;
 }
 
-function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
+async function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
   var parentTable = todayhumorScriptVar(doc, "parent_table");
   var parentId = todayhumorScriptVar(doc, "parent_id");
   if (!parentTable || !parentId) return [];
@@ -401,9 +401,9 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
   var out = [];
 
   try {
-    var response = fetchWithLogging(endpoint, buildFetchOptions());
+    var response = (await fetchWithLogging(endpoint, buildFetchOptions()));
     if (!response || !response.ok) return [];
-    var data = response.json ? response.json() : JSON.parse(response.text());
+    var data = response.json ? (await response.json()) : JSON.parse((await response.text()));
     var memos = data && Array.isArray(data.memos) ? data.memos : [];
     for (var i = 0; i < memos.length; i++) {
       var memo = memos[i] || {};
@@ -609,7 +609,6 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
     return out;
   };
   // Parse each complete row so the title and its metadata stay together.
-  // The former title-only regex discarded author/date/count cells.
   function todayhumorParseBoardDocument(doc, baseUrl) {
     var rows = allNodes(doc, selectorList("listRows", ["tr.view", "tr[class*='list_tr_']"]));
     var out = [];
@@ -632,20 +631,20 @@ function todayhumorFetchMemoComments(doc, postUrl, existingComments) {
     return todayhumorParseBoardDocument(doc, baseUrl);
   };
 
-  function todayhumorFetchBoardItems(url) {
-    var response = fetchWithLogging(url, buildFetchOptions());
+  async function todayhumorFetchBoardItems(url) {
+    var response = (await fetchWithLogging(url, buildFetchOptions()));
     if (!response) throw new Error("Failed to fetch " + url + " (0)");
-    var doc = new DOMParser().parseFromString(responseText(response), "text/html");
+    var doc = new DOMParser().parseFromString((await responseText(response)), "text/html");
     return todayhumorParseBoardDocument(doc, url);
   }
   var todayhumorPreviousRouteBoardCustom = SITE.routeBoardCustom;
-  SITE.routeBoardCustom = function (url, info, match, force) {
+  SITE.routeBoardCustom = async function (url, info, match, force) {
     var items = [];
-    try { items = todayhumorFetchBoardItems(url); } catch (e) {
-      if (todayhumorPreviousRouteBoardCustom) return todayhumorPreviousRouteBoardCustom(url, info, match, force);
+    try { items = (await todayhumorFetchBoardItems(url)); } catch (e) {
+      if (todayhumorPreviousRouteBoardCustom) return (await todayhumorPreviousRouteBoardCustom(url, info, match, force));
       throw e;
     }
-    if (!items.length && todayhumorPreviousRouteBoardCustom) return todayhumorPreviousRouteBoardCustom(url, info, match, force);
+    if (!items.length && todayhumorPreviousRouteBoardCustom) return (await todayhumorPreviousRouteBoardCustom(url, info, match, force));
     var board = match && match.board ? match.board : null;
     var page = match && match.page ? match.page : 1;
     var nextUrl = items.length ? SITE.buildNextPageUrl(match, url, page + 1) : "";

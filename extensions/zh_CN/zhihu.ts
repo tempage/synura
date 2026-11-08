@@ -638,8 +638,10 @@ SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
 
 SITE.loadDynamicBoards = function (options) {
   if (!options || !options.allowNetwork) return [];
-  var doc = fetchDocument(SITE.browserHomeUrl);
-  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  return (async function () {
+      var doc = (await fetchDocument(SITE.browserHomeUrl));
+      return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  })();
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {
@@ -765,30 +767,30 @@ function localZhihuNativeBoardRoute(url, board, items) {
   };
 }
 
-function localZhihuJson(url) {
-  var response = fetch(url, { headers: SITE.fetchHeaders || {} });
+async function localZhihuJson(url) {
+  var response = (await fetch(url, { headers: SITE.fetchHeaders || {} }));
   if (!response || response.status >= 400) return null;
   try {
-    return response.json();
+    return (await response.json());
   } catch (e) {
     return null;
   }
 }
 
-function localZhihuItemsForBoard(board) {
+async function localZhihuItemsForBoard(board) {
   if (!board) return [];
   if (board.id === "hot") {
-    return localZhihuHotItems(localZhihuJson("https://www.zhihu.com/api/v4/creators/rank/hot?domain=0&period=hour"));
+    return localZhihuHotItems((await localZhihuJson("https://www.zhihu.com/api/v4/creators/rank/hot?domain=0&period=hour")));
   }
   if (board.id === "daily") {
-    return localZhihuDailyItems(localZhihuJson("https://daily.zhihu.com/api/4/news/latest"));
+    return localZhihuDailyItems((await localZhihuJson("https://daily.zhihu.com/api/4/news/latest")));
   }
   return [];
 }
 
-function localZhihuRouteBoard(url, board) {
+async function localZhihuRouteBoard(url, board) {
   if (!board) return null;
-  var items = localZhihuItemsForBoard(board);
+  var items = (await localZhihuItemsForBoard(board));
   if (!items.length) return localZhihuBrowserRoute(url, board.title);
   return localZhihuNativeBoardRoute(url, board, items);
 }
@@ -798,7 +800,7 @@ function localZhihuDailyStoryId(url) {
   return match ? match[1] : "";
 }
 
-function localZhihuDailyComments(storyId, storyUrl) {
+async function localZhihuDailyComments(storyId, storyUrl) {
   var out = [];
   var seen = {};
   function pushComments(data) {
@@ -824,13 +826,13 @@ function localZhihuDailyComments(storyId, storyUrl) {
       });
     }
   }
-  pushComments(localZhihuJson("https://daily.zhihu.com/api/4/story/" + storyId + "/long-comments"));
-  pushComments(localZhihuJson("https://daily.zhihu.com/api/4/story/" + storyId + "/short-comments"));
+  pushComments((await localZhihuJson("https://daily.zhihu.com/api/4/story/" + storyId + "/long-comments")));
+  pushComments((await localZhihuJson("https://daily.zhihu.com/api/4/story/" + storyId + "/short-comments")));
   return out;
 }
 
-function localZhihuDailyPostRoute(url, storyId) {
-  var data = localZhihuJson("https://daily.zhihu.com/api/4/news/" + storyId);
+async function localZhihuDailyPostRoute(url, storyId) {
+  var data = (await localZhihuJson("https://daily.zhihu.com/api/4/news/" + storyId));
   if (!data || !data.title) return localZhihuBrowserRoute(url, "知乎日报");
   var bodyHtml = String(data.body || "");
   var doc = new DOMParser().parseFromString(bodyHtml, "text/html");
@@ -845,7 +847,7 @@ function localZhihuDailyPostRoute(url, storyId) {
   }
   var author = normalizeWhitespace(firstText(doc, [".author"]));
   var avatar = imageUrlFromNode(firstNode(doc, [".avatar"]), url);
-  var comments = localZhihuDailyComments(storyId, url);
+  var comments = (await localZhihuDailyComments(storyId, url));
   var board = localFindConfiguredBoard("https://daily.zhihu.com/") || { id: "daily", title: "知乎日报", url: "https://daily.zhihu.com/" };
   return {
     kind: "post",
@@ -879,17 +881,17 @@ function localZhihuDailyPostRoute(url, storyId) {
   };
 }
 
-SITE.routeBoardCustom = function (url, urlInfo, match, force) {
+SITE.routeBoardCustom = async function (url, urlInfo, match, force) {
   if (!match || !match.board) return null;
-  return localZhihuRouteBoard(url, match.board);
+  return (await localZhihuRouteBoard(url, match.board));
 };
 
-SITE.routeCustom = function (url, info, force) {
+SITE.routeCustom = async function (url, info, force) {
   var storyId = localZhihuDailyStoryId(url);
-  if (storyId) return localZhihuDailyPostRoute(url, storyId);
+  if (storyId) return (await localZhihuDailyPostRoute(url, storyId));
   var board = localFindConfiguredBoard(url);
   if (!board) return null;
-  return localZhihuRouteBoard(url, board);
+  return (await localZhihuRouteBoard(url, board));
 };
 
 SITE.isAuthRequiredResponse = function (url, status, html) {

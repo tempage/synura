@@ -476,11 +476,20 @@
             profileIndex: 0
         });
         refreshSelectorContext();
-        try {
-            return fn();
-        } finally {
+        function restoreContext() {
             selectorContextStack.pop();
             refreshSelectorContext();
+        }
+        var pending = false;
+        try {
+            var result = fn();
+            if (result && typeof result.then === "function") {
+                pending = true;
+                return Promise.resolve(result).finally(restoreContext);
+            }
+            return result;
+        } finally {
+            if (!pending) restoreContext();
         }
     }
 
@@ -493,11 +502,20 @@
         }
         activeSelectorProfileIndex = nextIndex;
         if (current) current.profileIndex = nextIndex;
-        try {
-            return fn();
-        } finally {
+        function restoreProfile() {
             activeSelectorProfileIndex = previousIndex;
             if (current) current.profileIndex = previousIndex;
+        }
+        var pending = false;
+        try {
+            var result = fn();
+            if (result && typeof result.then === "function") {
+                pending = true;
+                return Promise.resolve(result).finally(restoreProfile);
+            }
+            return result;
+        } finally {
+            if (!pending) restoreProfile();
         }
     }
 
@@ -977,6 +995,11 @@
                     force: force
                 })
                 : [];
+            if (loaded && typeof loaded.then === "function") {
+                return loaded.then(function (boards) {
+                    return setDynamicBoardsCache(Array.isArray(boards) ? boards : []);
+                });
+            }
             dynamicBoards = setDynamicBoardsCache(Array.isArray(loaded) ? loaded : []);
             return dynamicBoards;
         } catch (e) {
@@ -1690,31 +1713,27 @@
         return options;
     }
 
-    function fetchWithLogging(url, options) {
+    async function fetchWithLogging(url, options) {
         if (typeof console !== "undefined" && console && typeof console.log === "function") {
             console.log(url);
         }
-        return fetch(url, options);
+        return (await fetch(url, options));
     }
 
-    function responseText(response) {
+    async function responseText(response) {
         if (SITE.textEncoding) {
+            var decoder = null;
             try {
-                return new TextDecoder(SITE.textEncoding).decode(response.arrayBuffer());
+                decoder = new TextDecoder(SITE.textEncoding);
             } catch (e) {
             }
+            if (decoder) return decoder.decode(await response.arrayBuffer());
         }
-        return response.text();
+        return (await response.text());
     }
 
     function responseDocument(response, html) {
-        if (SITE.textEncoding) {
-            try {
-                return new DOMParser().parseFromString(html || "", "text/html");
-            } catch (e) {
-            }
-        }
-        return response.dom("text/html");
+        return new DOMParser().parseFromString(html || "", "text/html");
     }
 
     function isBrowserAuthRequiredStatus(status) {
@@ -2422,9 +2441,9 @@
         return 0;
     }
 
-    function parseComments(doc, postUrl) {
+    async function parseComments(doc, postUrl) {
         try {
-            var parsed = SITE.parseComments ? SITE.parseComments(doc, postUrl) : null;
+            var parsed = SITE.parseComments ? (await SITE.parseComments(doc, postUrl)) : null;
             if (Array.isArray(parsed)) return parsed;
         } catch (e) {
         }
@@ -3030,10 +3049,10 @@
         openRoute(route);
     }
 
-    function syncDynamicBoardsAndRefresh(viewId, parentViewId, rootState) {
+    async function syncDynamicBoardsAndRefresh(viewId, parentViewId, rootState) {
         var items;
         try {
-            items = getDynamicBoards({ allowNetwork: true, force: true });
+            items = await getDynamicBoards({ allowNetwork: true, force: true });
         } catch (e) {
             synura.update(viewId, { models: { snackbar: e.toString() } });
             return;
@@ -3074,8 +3093,8 @@
                 body: [],
                 buttons: [MENU_BOARD_SYNC, BUTTON_OPEN_CATEGORY_HOME_WITHOUT_SYNC]
             }
-        }, context, function (event) {
-            handler.onViewEvent(event);
+        }, context, async function (event) {
+            (await handler.onViewEvent(event));
         });
         if (result && result.success) {
             setViewState(result.viewId, context);
@@ -3176,8 +3195,8 @@
         }, {
             kind: "cli",
             parentViewId: parentViewId || 0
-        }, function (event) {
-            handler.onViewEvent(event);
+        }, async function (event) {
+            (await handler.onViewEvent(event));
         });
         if (result && result.success) {
             setViewState(result.viewId, { kind: "cli", parentViewId: parentViewId || 0 });
@@ -3204,8 +3223,8 @@
         }, {
             kind: "source",
             parentViewId: parentViewId || 0
-        }, function (event) {
-            handler.onViewEvent(event);
+        }, async function (event) {
+            (await handler.onViewEvent(event));
         });
         if (result && result.success) {
             setViewState(result.viewId, { kind: "source", parentViewId: parentViewId || 0 });
@@ -3224,7 +3243,7 @@
         return true;
     }
 
-    function handleCliCommand(viewId, state, context, input) {
+    async function handleCliCommand(viewId, state, context, input) {
         var parsed = tokenizeCliInput(input);
         if (!parsed.ok) {
             cliMessage(viewId, "Error: " + parsed.error);
@@ -3327,13 +3346,13 @@
                 return true;
             }
             try {
-                var response = fetchWithLogging(fetchUrl, buildFetchOptions());
+                var response = (await fetchWithLogging(fetchUrl, buildFetchOptions()));
                 if (!response) {
                     cliMessage(viewId, "fetch failed");
                     return true;
                 }
                 var status = response.status || 0;
-                var html = responseText(response);
+                var html = (await responseText(response));
                 if (shouldUseBrowserCookieAuth() && isAuthRequiredResponse(fetchUrl, status, html)) {
                     throw makeAuthRequiredError(fetchUrl, status);
                 }
@@ -3431,7 +3450,7 @@
         return true;
     }
 
-    function handleCliEvent(viewId, event, state, context) {
+    async function handleCliEvent(viewId, event, state, context) {
         if (event.eventId === "MENU_CLICK") {
             if (event.data && event.data.menu === "Exit") {
                 synura.close(viewId);
@@ -3446,16 +3465,16 @@
         }
 
         if (event.eventId === "SUBMIT" && event.data && event.data.message !== undefined) {
-            return handleCliCommand(viewId, state, context, String(event.data.message || "").trim());
+            return (await handleCliCommand(viewId, state, context, String(event.data.message || "").trim()));
         }
 
         return false;
     }
 
-    function refreshBoardSettingsParent(viewId, snackbar) {
+    async function refreshBoardSettingsParent(viewId, snackbar) {
         if (!viewId) return;
         try {
-            if (SITE.refreshBoardSettingsParent && SITE.refreshBoardSettingsParent(viewId, snackbar || "")) {
+            if (SITE.refreshBoardSettingsParent && (await SITE.refreshBoardSettingsParent(viewId, snackbar || ""))) {
                 return;
             }
         } catch (e) {
@@ -3525,8 +3544,8 @@
                 ],
                 buttons: [MENU_GO]
             }
-        }, context, function (event) {
-            handler.onViewEvent(event);
+        }, context, async function (event) {
+            (await handler.onViewEvent(event));
         });
         if (result && result.success) {
             setViewState(result.viewId, context);
@@ -3534,7 +3553,7 @@
         return result;
     }
 
-    function handleGoDialogSubmit(viewId, event) {
+    async function handleGoDialogSubmit(viewId, event) {
         var button = event.data ? event.data.button : "";
         if (button !== MENU_GO) {
             synura.close(viewId);
@@ -3547,7 +3566,7 @@
         }
         var parentViewId = event.context ? event.context.parentViewId : 0;
         synura.close(viewId);
-        var result = openByUrl(targetUrl, false);
+        var result = (await openByUrl(targetUrl, false));
         if (result && result.success) {
             return;
         }
@@ -3581,8 +3600,8 @@
                 body: getCacheSettingsBody(),
                 buttons: [BUTTON_SAVE, BUTTON_RESET]
             }
-        }, context, function (event) {
-            handler.onViewEvent(event);
+        }, context, async function (event) {
+            (await handler.onViewEvent(event));
         });
         if (result && result.success) {
             setViewState(result.viewId, context);
@@ -3609,8 +3628,8 @@
                 buttons: getSimpleBoardSettingsButtons(),
                 menus: getSimpleBoardSettingsMenus()
             }
-        }, context, function (event) {
-            handler.onViewEvent(event);
+        }, context, async function (event) {
+            (await handler.onViewEvent(event));
         });
         if (result && result.success) {
             setViewState(result.viewId, context);
@@ -3630,8 +3649,8 @@
                 body: getBoardSettingsBody(context),
                 buttons: getBoardSettingsButtons()
             }
-        }, context, function (event) {
-            handler.onViewEvent(event);
+        }, context, async function (event) {
+            (await handler.onViewEvent(event));
         });
         if (result && result.success) {
             setViewState(result.viewId, context);
@@ -3656,8 +3675,8 @@
                 body: getBoardAddDialogBody(),
                 buttons: [BUTTON_ADD]
             }
-        }, context, function (event) {
-            handler.onViewEvent(event);
+        }, context, async function (event) {
+            (await handler.onViewEvent(event));
         });
         if (result && result.success) {
             setViewState(result.viewId, context);
@@ -3699,8 +3718,8 @@
                 body: body,
                 buttons: [BUTTON_CONFIRM, BUTTON_CANCEL]
             }
-        }, context, function (event) {
-            handler.onViewEvent(event);
+        }, context, async function (event) {
+            (await handler.onViewEvent(event));
         });
         if (result && result.success) {
             setViewState(result.viewId, context);
@@ -3770,8 +3789,8 @@
         return isChallengeHtml(html) || isBrowserAuthRequiredStatus(status);
     }
 
-    function fetchDocument(url) {
-        var response = fetchWithLogging(url, buildFetchOptions());
+    async function fetchDocument(url) {
+        var response = (await fetchWithLogging(url, buildFetchOptions()));
         if (!response) {
             if (shouldUseBrowserCookieAuth()) {
                 throw makeAuthRequiredError(url, 0);
@@ -3780,7 +3799,7 @@
         }
 
         var status = response.status || 0;
-        var html = responseText(response);
+        var html = (await responseText(response));
         if (shouldUseBrowserCookieAuth() && isAuthRequiredResponse(url, status, html)) {
             throw makeAuthRequiredError(url, status);
         }
@@ -3792,8 +3811,8 @@
         return responseDocument(response, html);
     }
 
-    function fetchBoardPage(url) {
-        var response = fetchWithLogging(url, buildFetchOptions());
+    async function fetchBoardPage(url) {
+        var response = (await fetchWithLogging(url, buildFetchOptions()));
         if (!response) {
             if (shouldUseBrowserCookieAuth()) {
                 throw makeAuthRequiredError(url, 0);
@@ -3802,7 +3821,7 @@
         }
 
         var status = response.status || 0;
-        var html = responseText(response);
+        var html = (await responseText(response));
         if (shouldUseBrowserCookieAuth() && isAuthRequiredResponse(url, status, html)) {
             throw makeAuthRequiredError(url, status);
         }
@@ -3818,8 +3837,8 @@
         };
     }
 
-    function fetchPostPage(match, url) {
-        var response = fetchWithLogging(url, buildPostFetchOptions(match, url));
+    async function fetchPostPage(match, url) {
+        var response = (await fetchWithLogging(url, buildPostFetchOptions(match, url)));
         if (!response) {
             if (shouldUseBrowserCookieAuth()) {
                 throw makeAuthRequiredError(url, 0);
@@ -3828,7 +3847,7 @@
         }
 
         var status = response.status || 0;
-        var html = responseText(response);
+        var html = (await responseText(response));
         var authRequired = shouldUseBrowserCookieAuth() &&
             isAuthRequiredResponse(url, status, html);
         var restricted = !response.ok && (status === 401 || status === 403) && !isChallengeHtml(html);
@@ -3840,6 +3859,7 @@
         }
 
         return {
+            html: html,
             response: response,
             doc: responseDocument(response, html),
             restricted: restricted
@@ -3870,14 +3890,14 @@
         return urls;
     }
 
-    function fetchPostPageWithCandidates(match, currentUrl) {
+    async function fetchPostPageWithCandidates(match, currentUrl) {
         var urls = getPostFetchUrls(match, currentUrl);
         var lastError = null;
         for (var i = 0; i < urls.length; i++) {
             try {
                 return {
                     url: urls[i],
-                    page: fetchPostPage(match, urls[i])
+                    page: (await fetchPostPage(match, urls[i]))
                 };
             } catch (e) {
                 lastError = e;
@@ -3886,20 +3906,20 @@
         throw lastError || new Error("Failed to fetch " + currentUrl);
     }
 
-    function routeBoardWithMatch(url, urlInfo, match, force) {
-        return withSelectorContext(match, url, "board", null, function () {
+    async function routeBoardWithMatch(url, urlInfo, match, force) {
+        return (await withSelectorContext(match, url, "board", null, async function () {
             try {
-                var customBoardRoute = SITE.routeBoardCustom ? SITE.routeBoardCustom(url, urlInfo, match, !!force) : null;
+                var customBoardRoute = SITE.routeBoardCustom ? (await SITE.routeBoardCustom(url, urlInfo, match, !!force)) : null;
                 if (customBoardRoute) {
                     return customBoardRoute;
                 }
             } catch (e) {
             }
 
-            var boardPage = fetchBoardPage(url);
+            var boardPage = (await fetchBoardPage(url));
             var doc = boardPage.doc;
 
-            return withSelectorContext(match, url, "board", doc, function () {
+            return (await withSelectorContext(match, url, "board", doc, async function () {
                 var context = selectorContextStack[selectorContextStack.length - 1];
                 context.documentUrl = boardPage.response && boardPage.response.url || url;
                 context.contentBaseUrl = documentContentBaseUrl(doc, context.documentUrl);
@@ -3911,7 +3931,7 @@
                 }
                 parsedItems = parsedItems || { items: [], profileIndex: 0 };
 
-                return withSelectorProfileIndex(parsedItems.profileIndex || 0, function () {
+                return (await withSelectorProfileIndex(parsedItems.profileIndex || 0, async function () {
                     var items = parsedItems.items || [];
                     var title = detectBoardTitle(doc, match.board);
                     var nextUrl = SITE.buildNextPageUrl(match, url, (match.page || 1) + 1);
@@ -3932,7 +3952,7 @@
                         seenLinks: seenLinks
                     };
                     try {
-                        context = SITE.prepareBoardContext ? (SITE.prepareBoardContext(context, items, match, url) || context) : context;
+                        context = SITE.prepareBoardContext ? ((await SITE.prepareBoardContext(context, items, match, url)) || context) : context;
                     } catch (e) {
                     }
 
@@ -3949,13 +3969,13 @@
                         },
                         context: context
                     };
-                });
-            });
-        });
+                }));
+            }));
+        }));
     }
 
-    function routePostWithMatch(url, urlInfo, match, force) {
-        return withSelectorContext(match, url, "post", null, function () {
+    async function routePostWithMatch(url, urlInfo, match, force) {
+        return (await withSelectorContext(match, url, "post", null, async function () {
             if (!force) {
                 var cached = getCachedRoute("post", url);
                 if (cached && cached.route) {
@@ -3966,7 +3986,7 @@
             }
 
             try {
-                var customPostRoute = SITE.routePostCustom ? SITE.routePostCustom(url, urlInfo, match, !!force) : null;
+                var customPostRoute = SITE.routePostCustom ? (await SITE.routePostCustom(url, urlInfo, match, !!force)) : null;
                 if (customPostRoute) {
                     setCachedRoute("post", url, customPostRoute);
                     return customPostRoute;
@@ -3974,13 +3994,13 @@
             } catch (e) {
             }
 
-            var fetched = fetchPostPageWithCandidates(match, url);
+            var fetched = (await fetchPostPageWithCandidates(match, url));
             var page = fetched.page;
             var doc = page.doc;
 
-            return withSelectorContext(match, url, "post", doc, function () {
+            return (await withSelectorContext(match, url, "post", doc, async function () {
                 var profileIndex = choosePostSelectorProfileIndex(doc);
-                return withSelectorProfileIndex(profileIndex, function () {
+                return (await withSelectorProfileIndex(profileIndex, async function () {
                     var titleNode = firstNode(doc, ["title"]);
                     var contentRoot = SITE.selectPostContentRoot
                         ? SITE.selectPostContentRoot(doc, url, match)
@@ -4006,9 +4026,9 @@
                         cleanSingleLineField(firstText(doc, SITE.selectors.postCategory), 200),
                         rememberedItem ? rememberedItem.category : ""
                     ]);
-                    var comments = parseComments(doc, contentBaseUrl);
+                    var comments = (await parseComments(doc, contentBaseUrl));
                     try {
-                        var fetchedComments = SITE.fetchPostComments ? SITE.fetchPostComments(match, url, doc, page, comments) : null;
+                        var fetchedComments = SITE.fetchPostComments ? (await SITE.fetchPostComments(match, url, doc, page, comments)) : null;
                         if (Array.isArray(fetchedComments) && fetchedComments.length > 0) {
                             comments = fetchedComments;
                         }
@@ -4099,12 +4119,12 @@
                     };
                     setCachedRoute("post", url, route);
                     return route;
-                });
-            });
-        });
+                }));
+            }));
+        }));
     }
 
-    function createPendingBoardRoute(url, match) {
+    async function createPendingBoardRoute(url, match) {
         var board = match && match.board ? match.board : null;
         var title = firstNonEmpty([
             board ? board.title : "",
@@ -4127,7 +4147,7 @@
             seenLinks: []
         };
         try {
-            context = SITE.prepareBoardContext ? (SITE.prepareBoardContext(context, [], match, url) || context) : context;
+            context = SITE.prepareBoardContext ? ((await SITE.prepareBoardContext(context, [], match, url)) || context) : context;
         } catch (e) {
         }
         return {
@@ -4186,12 +4206,12 @@
         };
     }
 
-    function openLoadingRoute(pendingRoute, loadRoute, targetUrl, title) {
+    async function openLoadingRoute(pendingRoute, loadRoute, targetUrl, title) {
         var opened = openRoute(pendingRoute);
         if (!opened || !opened.success) return opened;
 
         try {
-            var route = loadRoute ? loadRoute() : null;
+            var route = loadRoute ? await loadRoute() : null;
             if (route) {
                 updateViewFromRoute(opened.viewId, route);
             } else {
@@ -4216,7 +4236,23 @@
         return opened;
     }
 
+    // Parsers use a scoped selector stack. Keep each route's scope intact across
+    // network awaits and restore it before another route starts parsing.
+    var selectorRouteQueue = Promise.resolve();
+
+    function enqueueSelectorRoute(operation) {
+        var result = selectorRouteQueue.then(operation);
+        selectorRouteQueue = result.catch(function () {});
+        return result;
+    }
+
     function routeUrl(rawUrl, force) {
+        return enqueueSelectorRoute(function () {
+            return routeUrlInContext(rawUrl, force);
+        });
+    }
+
+    async function routeUrlInContext(rawUrl, force) {
         var normalized = normalizeUrl(rawUrl);
         if (!normalized) return null;
         var info = parseAbsoluteUrl(normalized);
@@ -4228,14 +4264,14 @@
             return createCategoryGroupRoute(syntheticCategory, 0);
         }
 
-        var customRoute = SITE.routeCustom ? SITE.routeCustom(normalized, info, !!force) : null;
+        var customRoute = SITE.routeCustom ? (await SITE.routeCustom(normalized, info, !!force)) : null;
         if (customRoute) return customRoute;
 
         var postMatch = SITE.matchPost(info);
-        if (postMatch) return routePostWithMatch(normalized, info, postMatch, !!force);
+        if (postMatch) return (await routePostWithMatch(normalized, info, postMatch, !!force));
 
         var boardMatch = SITE.matchBoard(info);
-        if (boardMatch) return routeBoardWithMatch(normalized, info, boardMatch, !!force);
+        if (boardMatch) return (await routeBoardWithMatch(normalized, info, boardMatch, !!force));
 
         var homeUrl = normalizeUrl(SITE.browserHomeUrl);
         if (normalized === homeUrl) return createHomeRoute(false);
@@ -4942,8 +4978,8 @@
             models: {
                 url: browserUrl
             }
-        }, context, function (event) {
-            handler.onViewEvent(event);
+        }, context, async function (event) {
+            (await handler.onViewEvent(event));
         });
         if (result && result.success) {
             setViewState(result.viewId, context);
@@ -4987,8 +5023,8 @@
         if (shouldOpenRouteWithHistory(route)) {
             viewData.styles.history = true;
         }
-        var result = synura.open(viewData, route.context, function (event) {
-            handler.onViewEvent(event);
+        var result = synura.open(viewData, route.context, async function (event) {
+            (await handler.onViewEvent(event));
         });
         if (result && result.success) {
             setViewState(result.viewId, route.context);
@@ -5000,6 +5036,12 @@
     }
 
     function openByUrl(url, force) {
+        return enqueueSelectorRoute(function () {
+            return openByUrlInContext(url, force);
+        });
+    }
+
+    async function openByUrlInContext(url, force) {
         try {
             var normalized = normalizeUrl(url);
             if (!normalized) {
@@ -5023,33 +5065,33 @@
                     : createCategoryGroupRoute(syntheticCategory, 0));
             }
 
-            var customRoute = SITE.routeCustom ? SITE.routeCustom(normalized, info, !!force) : null;
+            var customRoute = SITE.routeCustom ? (await SITE.routeCustom(normalized, info, !!force)) : null;
             if (customRoute) {
                 return openRoute(customRoute);
             }
 
             var postMatch = SITE.matchPost(info);
             if (postMatch) {
-                return openLoadingRoute(
+                return (await openLoadingRoute(
                     createPendingPostRoute(normalized, postMatch),
-                    function () {
-                        return routePostWithMatch(normalized, info, postMatch, !!force);
+                    async function () {
+                        return (await routePostWithMatch(normalized, info, postMatch, !!force));
                     },
                     normalized,
                     SITE.displayName
-                );
+                ));
             }
 
             var boardMatch = SITE.matchBoard(info);
             if (boardMatch) {
-                return openLoadingRoute(
-                    createPendingBoardRoute(normalized, boardMatch),
-                    function () {
-                        return routeBoardWithMatch(normalized, info, boardMatch, !!force);
+                return (await openLoadingRoute(
+                    (await createPendingBoardRoute(normalized, boardMatch)),
+                    async function () {
+                        return (await routeBoardWithMatch(normalized, info, boardMatch, !!force));
                     },
                     normalized,
                     boardMatch && boardMatch.board ? boardMatch.board.title : SITE.displayName
-                );
+                ));
             }
 
             var homeUrl = normalizeUrl(SITE.browserHomeUrl);
@@ -5086,10 +5128,10 @@
         }
     }
 
-    function refreshCurrentView(viewId) {
+    async function refreshCurrentView(viewId) {
         var state = getViewState(viewId);
         try {
-            if (SITE.refreshView && SITE.refreshView(viewId, state || null)) {
+            if (SITE.refreshView && (await SITE.refreshView(viewId, state || null))) {
                 return;
             }
             if (!state || !state.kind || state.kind === "home") {
@@ -5100,7 +5142,7 @@
                 updateViewFromRoute(viewId, createCategoryRouteFromState(state), communityMessage("refreshDone"));
                 return;
             }
-            var route = routeUrl(state.link, true);
+            var route = (await routeUrl(state.link, true));
             if (!route) {
                 synura.update(viewId, { models: { snackbar: communityMessage("refreshPathNotFound") } });
                 return;
@@ -5119,7 +5161,7 @@
         }
     }
 
-    function appendNextPage(viewId) {
+    async function appendNextPage(viewId) {
         var state = getViewState(viewId);
         if (!state || state.kind !== "board") return;
         if (!state.nextUrl) {
@@ -5140,7 +5182,7 @@
             var fetchCount = 0;
 
             while (state.nextUrl && appendItems.length === 0 && fetchCount < maxEmptyAppendFetches) {
-                var route = routeUrl(state.nextUrl, false);
+                var route = (await routeUrl(state.nextUrl, false));
                 if (!route || !route.context) {
                     synura.update(viewId, { models: { snackbar: communityMessage("nextPageFailed") } });
                     return;
@@ -5459,10 +5501,10 @@
         updateViewFromRoute(viewId, createHomeRoute(true, communityMessage("orderSaved")));
     }
 
-    function handleBoardSettingsRootEvent(viewId, event, state) {
+    async function handleBoardSettingsRootEvent(viewId, event, state) {
         if (!state || state.kind !== "board_settings_root") return false;
         try {
-            if (SITE.handleBoardSettingsRootEvent && SITE.handleBoardSettingsRootEvent(viewId, event, state)) {
+            if (SITE.handleBoardSettingsRootEvent && (await SITE.handleBoardSettingsRootEvent(viewId, event, state))) {
                 return true;
             }
         } catch (e) {
@@ -5473,7 +5515,7 @@
         if (event.eventId === "MENU_CLICK") {
             var menu = normalizeWhitespace(event.data ? event.data.menu : "");
             if (menu === MENU_BOARD_SYNC) {
-                syncDynamicBoardsAndRefresh(viewId, state.parentViewId || 0, state);
+                (await syncDynamicBoardsAndRefresh(viewId, state.parentViewId || 0, state));
                 return true;
             }
             if (menu === BUTTON_ADD) {
@@ -5504,7 +5546,7 @@
         return false;
     }
 
-    function handleBrowserSubmit(viewId, event) {
+    async function handleBrowserSubmit(viewId, event) {
         var state = getViewState(viewId);
         var cookie = event.data ? event.data.cookies : "";
         if (cookie) {
@@ -5520,12 +5562,12 @@
         var targetUrl = normalizeUrl((state && state.targetUrl) || (state && state.link) || (event.data && event.data.url) || SITE.browserHomeUrl) || SITE.browserHomeUrl;
         var parentState = parentViewId ? getViewState(parentViewId) : null;
         if (parentViewId && parentState && normalizeUrl(parentState.link || "") === targetUrl) {
-            refreshCurrentView(parentViewId);
+            (await refreshCurrentView(parentViewId));
             synura.close(viewId);
             return;
         }
 
-        var result = openByUrl(targetUrl, true);
+        var result = (await openByUrl(targetUrl, true));
         if (result && result.success) {
             synura.close(viewId);
             return;
@@ -5632,13 +5674,13 @@
         return true;
     }
 
-    function handleBoardSettingsSubmit(viewId, event) {
+    async function handleBoardSettingsSubmit(viewId, event) {
         var button = event.data ? event.data.button : "";
         var parentViewId = event.context ? event.context.parentViewId : 0;
         var parentState = parentViewId ? getViewState(parentViewId) : null;
 
         if (button === MENU_BOARD_SYNC) {
-            syncDynamicBoardsAndRefresh(viewId, parentViewId || 0, null);
+            (await syncDynamicBoardsAndRefresh(viewId, parentViewId || 0, null));
             return;
         }
 
@@ -5715,7 +5757,7 @@
         }
     }
 
-    function handleBoardAddSubmit(viewId, event) {
+    async function handleBoardAddSubmit(viewId, event) {
         var button = event.data ? event.data.button : "";
         if (button !== BUTTON_ADD) {
             synura.close(viewId);
@@ -5740,12 +5782,12 @@
 
         synura.close(viewId);
         if (settingsViewId) {
-            refreshBoardSettingsParent(settingsViewId, message);
+            (await refreshBoardSettingsParent(settingsViewId, message));
         }
         updateHomeAfterBoardMutation(homeViewId, message);
     }
 
-    function handleBoardDeleteSubmit(viewId, event) {
+    async function handleBoardDeleteSubmit(viewId, event) {
         var button = event.data ? event.data.button : "";
         if (button !== BUTTON_CONFIRM) {
             synura.close(viewId);
@@ -5770,19 +5812,19 @@
         var homeViewId = event.context ? event.context.homeViewId : 0;
         var message = communityMessage("removedBoards", { count: removedCount });
         if (settingsViewId) {
-            refreshBoardSettingsParent(settingsViewId, message);
+            (await refreshBoardSettingsParent(settingsViewId, message));
         }
         updateHomeAfterBoardMutation(homeViewId, message);
     }
 
-    function handleCategoryBoardSyncPromptSubmit(viewId, event) {
+    async function handleCategoryBoardSyncPromptSubmit(viewId, event) {
         var button = event.data ? event.data.button : "";
         var homeViewId = event.context ? event.context.homeViewId : 0;
 
         if (button === MENU_BOARD_SYNC) {
             var items;
             try {
-                items = getDynamicBoards({ allowNetwork: true, force: true });
+                items = await getDynamicBoards({ allowNetwork: true, force: true });
             } catch (e) {
                 synura.update(viewId, { models: { snackbar: e.toString() } });
                 return;
@@ -5820,18 +5862,18 @@
 
         resume: function (viewId, context) {
             setViewState(viewId, context || getViewState(viewId));
-            synura.connect(viewId, context || getViewState(viewId), function (event) {
-                handler.onViewEvent(event);
+            synura.connect(viewId, context || getViewState(viewId), async function (event) {
+                (await handler.onViewEvent(event));
             });
         },
 
-        router: function (url) {
-            var route = routeUrl(url, false);
+        router: async function (url) {
+            var route = (await routeUrl(url, false));
             return route ? route.viewData : null;
         },
 
-        deeplink: function (url) {
-            var result = openByUrl(url, false);
+        deeplink: async function (url) {
+            var result = (await openByUrl(url, false));
             if (!result || !result.success) {
                 if (handleOpenFailure(result, url, 0, SITE.displayName)) return;
                 var browserUrl = ensureAbsoluteUrl(url, SITE.browserHomeUrl) || SITE.browserHomeUrl;
@@ -5842,7 +5884,7 @@
             }
         },
 
-        onViewEvent: function (event) {
+        onViewEvent: async function (event) {
             var viewId = resolveEventViewId(event, 0);
             var state = getViewState(viewId);
             var context = event && event.context ? event.context : state;
@@ -5850,14 +5892,14 @@
             logViewEvent(event, viewId);
 
             if (context && context.from === "go_url_dialog" && event.eventId === "SUBMIT") {
-                handleGoDialogSubmit(viewId, event);
+                (await handleGoDialogSubmit(viewId, event));
                 return;
             }
 
             if (context && context.from === "board_settings" && event.eventId === "MENU_CLICK") {
                 var settingsMenu = normalizeWhitespace(event.data ? event.data.menu : "");
                 if (settingsMenu === MENU_BOARD_SYNC) {
-                    syncDynamicBoardsAndRefresh(viewId, context.parentViewId || 0, null);
+                    (await syncDynamicBoardsAndRefresh(viewId, context.parentViewId || 0, null));
                     return;
                 }
                 if (settingsMenu === BUTTON_ADD) {
@@ -5880,7 +5922,7 @@
             }
 
             if (context && context.from === "board_settings" && event.eventId === "SUBMIT") {
-                handleBoardSettingsSubmit(viewId, event);
+                (await handleBoardSettingsSubmit(viewId, event));
                 return;
             }
 
@@ -5890,17 +5932,17 @@
             }
 
             if (context && context.from === "board_add_dialog" && event.eventId === "SUBMIT") {
-                handleBoardAddSubmit(viewId, event);
+                (await handleBoardAddSubmit(viewId, event));
                 return;
             }
 
             if (context && context.from === "board_delete_settings" && event.eventId === "SUBMIT") {
-                handleBoardDeleteSubmit(viewId, event);
+                (await handleBoardDeleteSubmit(viewId, event));
                 return;
             }
 
             if (context && context.from === "category_home_sync_prompt" && event.eventId === "SUBMIT") {
-                handleCategoryBoardSyncPromptSubmit(viewId, event);
+                (await handleCategoryBoardSyncPromptSubmit(viewId, event));
                 return;
             }
 
@@ -5909,12 +5951,12 @@
                 return;
             }
 
-            if (handleBoardSettingsRootEvent(viewId, event, state)) {
+            if ((await handleBoardSettingsRootEvent(viewId, event, state))) {
                 return;
             }
 
             if (context && context.kind === "cli") {
-                if (handleCliEvent(viewId, event, state, context)) {
+                if ((await handleCliEvent(viewId, event, state, context))) {
                     return;
                 }
             }
@@ -5933,7 +5975,7 @@
             }
 
             try {
-                if (SITE.handleViewEvent && SITE.handleViewEvent(viewId, event, state, context)) {
+                if (SITE.handleViewEvent && (await SITE.handleViewEvent(viewId, event, state, context))) {
                     return;
                 }
             } catch (e) {
@@ -5945,7 +5987,7 @@
                 var link = event.data ? event.data.link : "";
                 if (!link) return;
                 rememberItemPreview(event.data);
-                var result = openByUrl(link, false);
+                var result = (await openByUrl(link, false));
                 if (!result || !result.success) {
                     if (handleOpenFailure(result, link, viewId, SITE.displayName)) return;
                     openBrowser(link, SITE.displayName, {
@@ -5958,12 +6000,12 @@
             }
 
             if (event.eventId === "REFRESH") {
-                refreshCurrentView(viewId);
+                (await refreshCurrentView(viewId));
                 return;
             }
 
             if (event.eventId === "SCROLL_TO_END") {
-                appendNextPage(viewId);
+                (await appendNextPage(viewId));
                 return;
             }
 
@@ -6007,12 +6049,12 @@
 
             if (event.eventId === "SUBMIT") {
                 if (event.data && Object.prototype.hasOwnProperty.call(event.data, "cookies")) {
-                    handleBrowserSubmit(viewId, event);
+                    (await handleBrowserSubmit(viewId, event));
                     return;
                 }
                 var button = event.data ? event.data.button : "";
                 if (!button || button === BUTTON_REFRESH) {
-                    refreshCurrentView(viewId);
+                    (await refreshCurrentView(viewId));
                 }
             }
         }

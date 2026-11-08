@@ -517,8 +517,10 @@ SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
 
 SITE.loadDynamicBoards = function (options) {
   if (!options || !options.allowNetwork) return [];
-  var doc = fetchDocument(SITE.browserHomeUrl);
-  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  return (async function () {
+      var doc = (await fetchDocument(SITE.browserHomeUrl));
+      return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  })();
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {
@@ -693,15 +695,15 @@ SITE.matchBoard = function (info) {
     return out;
   };
   var clube_do_hardwarePreviousRouteBoardCustom = SITE.routeBoardCustom;
-  SITE.routeBoardCustom = function (url, info, match, force) {
+  SITE.routeBoardCustom = async function (url, info, match, force) {
     try {
       if (clube_do_hardwarePreviousRouteBoardCustom) {
-        var previous = clube_do_hardwarePreviousRouteBoardCustom(url, info, match, force);
+        var previous = (await clube_do_hardwarePreviousRouteBoardCustom(url, info, match, force));
         if (previous) return previous;
       }
-      var response = fetchWithLogging(url, buildFetchOptions());
+      var response = (await fetchWithLogging(url, buildFetchOptions()));
       if (!response || !response.ok) throw new Error("Failed to fetch " + url);
-      var html = responseText(response);
+      var html = (await responseText(response));
       var items = SITE.parseBoardItemsFromHtml ? SITE.parseBoardItemsFromHtml(html, url, match, { html: html, doc: null }) : [];
       if (Array.isArray(items) && items.length) {
         var board = match && match.board ? match.board : null;

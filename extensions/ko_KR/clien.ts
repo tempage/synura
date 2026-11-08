@@ -1,7 +1,7 @@
 // @ts-nocheck
 
 // To refresh the preloaded Clien board catalog:
-// 1. Run `./synurart -json -ext extensions/ko_KR/clien.js -e "eval JSON.stringify(SITE.loadDynamicBoards({allowNetwork:true,force:true}))"`.
+// 1. Run `./synurart.sh -json -ext extensions/ko_KR/clien.js -e "eval JSON.stringify(SITE.loadDynamicBoards({allowNetwork:true,force:true}))"`.
 // 2. Convert the returned objects to `[id, title]` rows and replace `CLIEN_PRELOADED_DYNAMIC_BOARD_ROWS`.
 
 var CLIEN_PRELOADED_DYNAMIC_BOARD_ROWS = [
@@ -513,41 +513,43 @@ SITE.loadDynamicBoards = function (options) {
         return cached;
     }
     if (!allowNetwork) return Array.isArray(cached) && cached.length > 0 ? cached : fallback;
-    try {
-        var doc = fetchDocument(SITE.browserHomeUrl);
-        var links = allNodes(doc, [".snb_groupmenu a.menu-list.somoim", "a.menu-list.somoim", "a[href^='/service/board/cm_']"]);
-        var items = [];
-        var seen = {};
-        for (var i = 0; i < links.length; i++) {
-            var href = ensureAbsoluteUrl(attrOf(links[i], "href"), SITE.browserHomeUrl);
-            var matched = String(href || "").match(/\/service\/board\/([^/?#]+)/);
-            if (!matched || !matched[1]) continue;
-            var boardId = normalizeWhitespace(matched[1]);
-            if (!boardId || seen[boardId]) continue;
-            seen[boardId] = true;
-            var title = firstNonEmpty([
-                attrOf(links[i], "title"),
-                firstText(links[i], [".menu_over"]),
-                textOf(links[i]),
-                boardId
-            ]);
-            items.push({
-                id: boardId,
-                title: title,
-                url: SITE.buildBoardUrlFromId(boardId),
-                description: title,
-                group: inferBoardGroupFromContext(links[i]),
-                dynamic: true
-            });
+    return (async function () {
+        try {
+            var doc = (await fetchDocument(SITE.browserHomeUrl));
+            var links = allNodes(doc, [".snb_groupmenu a.menu-list.somoim", "a.menu-list.somoim", "a[href^='/service/board/cm_']"]);
+            var items = [];
+            var seen = {};
+            for (var i = 0; i < links.length; i++) {
+                var href = ensureAbsoluteUrl(attrOf(links[i], "href"), SITE.browserHomeUrl);
+                var matched = String(href || "").match(/\/service\/board\/([^/?#]+)/);
+                if (!matched || !matched[1]) continue;
+                var boardId = normalizeWhitespace(matched[1]);
+                if (!boardId || seen[boardId]) continue;
+                seen[boardId] = true;
+                var title = firstNonEmpty([
+                    attrOf(links[i], "title"),
+                    firstText(links[i], [".menu_over"]),
+                    textOf(links[i]),
+                    boardId
+                ]);
+                items.push({
+                    id: boardId,
+                    title: title,
+                    url: SITE.buildBoardUrlFromId(boardId),
+                    description: title,
+                    group: inferBoardGroupFromContext(links[i]),
+                    dynamic: true
+                });
+            }
+            if (items.length > 0) {
+                writeStoredJson(cacheKey, items);
+                localStorage.setItem(cacheTsKey, String(Date.now()));
+                return items;
+            }
+        } catch (e) {
         }
-        if (items.length > 0) {
-            writeStoredJson(cacheKey, items);
-            localStorage.setItem(cacheTsKey, String(Date.now()));
-            return items;
-        }
-    } catch (e) {
-    }
-    return Array.isArray(cached) && cached.length > 0 ? cached : fallback;
+        return Array.isArray(cached) && cached.length > 0 ? cached : fallback;
+    })();
 };
 SITE.prepareBoardContext = function (context, items, match, url) {
     var page = clienBoardPage(match);
@@ -580,9 +582,9 @@ SITE.buildBoardMenus = function (menus, state) {
 SITE.buildPostMenus = function (menus, state) {
     return menus;
 };
-SITE.routeBoardCustom = function (url, urlInfo, match, force) {
+SITE.routeBoardCustom = async function (url, urlInfo, match, force) {
     if (match && match.board && match.board.id === "image") {
-        return clienBuildImageBoardRoute(url, match);
+        return (await clienBuildImageBoardRoute(url, match));
     }
     return null;
 };
@@ -1072,8 +1074,8 @@ SITE.selectorProfilesByBoard.image = {
     board: ["clien_image_board"]
 };
 
-function clienBuildImageBoardRoute(url, match) {
-    var doc = fetchDocument(url);
+async function clienBuildImageBoardRoute(url, match) {
+    var doc = (await fetchDocument(url));
     var items = clienParseImageBoardItems(doc, url);
     var title = detectBoardTitle(doc, match ? match.board : null);
     var page = clienImageBoardPage(match);

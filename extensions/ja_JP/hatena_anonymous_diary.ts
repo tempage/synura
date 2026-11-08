@@ -658,21 +658,23 @@ SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
 
 SITE.loadDynamicBoards = function (options) {
   if (!options || !options.allowNetwork) return [];
-  var doc = fetchDocument(SITE.browserHomeUrl);
-  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  return (async function () {
+      var doc = (await fetchDocument(SITE.browserHomeUrl));
+      return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  })();
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {
   return setQueryParam(url, "page", nextPage);
 };
 
-SITE.handleViewEvent = function (viewId, event, state, context) {
+SITE.handleViewEvent = async function (viewId, event, state, context) {
   if (!state || state.kind !== "post" || !event || event.eventId !== "ITEM_MENU_CLICK") return false;
   var menu = normalizeWhitespace(event.data ? event.data.menu : "");
   var link = normalizeUrl(event.data ? event.data.link : "");
   if (!link) return false;
   if (menu === LOCAL_OPEN_REACTION_POST_MENU) {
-    var result = openByUrl(link, false);
+    var result = (await openByUrl(link, false));
     if (!result || !result.success) {
       openBrowser(link, SITE.displayName, {
         from: "reaction_post_menu",

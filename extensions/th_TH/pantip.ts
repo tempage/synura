@@ -493,12 +493,12 @@ function localPantipPushJsonComments(out, items, postUrl, level) {
   }
 }
 
-function localFetchPantipComments(match, postUrl, doc) {
+async function localFetchPantipComments(match, postUrl, doc) {
   var topicId = localPostIdFromUrl(postUrl);
   if (!topicId) return [];
   var topicType = localPantipTopicType(doc);
   var endpoint = "https://pantip.com/forum/topic/render_comments?tid=" + encodeURIComponent(topicId) + "&type=" + encodeURIComponent(topicType) + "&time=0.1";
-  var response = fetch(endpoint, {
+  var response = (await fetch(endpoint, {
     headers: {
       "User-Agent": SITE.fetchHeaders["User-Agent"],
       "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -506,9 +506,9 @@ function localFetchPantipComments(match, postUrl, doc) {
       "X-Requested-With": "XMLHttpRequest",
       "Referer": postUrl
     }
-  });
+  }));
   if (!response || !response.ok) return [];
-  var raw = response.text ? response.text() : "";
+  var raw = response.text ? (await response.text()) : "";
   raw = String(raw || "").replace(/^\uFEFF/, "");
   if (!raw) return [];
   var data = JSON.parse(raw);
@@ -576,8 +576,8 @@ SITE.parseComments = function (doc, postUrl) {
   return localParseComments(doc, postUrl);
 };
 
-SITE.fetchPostComments = function (match, postUrl, doc, page, comments) {
-  return localFetchPantipComments(match, postUrl, doc);
+SITE.fetchPostComments = async function (match, postUrl, doc, page, comments) {
+  return (await localFetchPantipComments(match, postUrl, doc));
 };
 
 
@@ -591,8 +591,10 @@ SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
 
 SITE.loadDynamicBoards = function (options) {
   if (!options || !options.allowNetwork) return [];
-  var doc = fetchDocument(SITE.browserHomeUrl);
-  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  return (async function () {
+      var doc = (await fetchDocument(SITE.browserHomeUrl));
+      return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  })();
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {

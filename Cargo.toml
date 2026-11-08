@@ -1,8 +1,8 @@
 [workspace]
-members = ["rust/synurart"]
+members = ["runtime", "synurart", "mock_server"]
 resolver = "2"
 
 [workspace.package]
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/ivere27/synura"
+repository = "https://github.com/tempage/synura"

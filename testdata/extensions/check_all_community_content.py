@@ -24,21 +24,13 @@ RUNTIME = Path(os.environ.get("SYNURART_BIN", ROOT / "target/debug/synurart")).r
 # Install this before extension initialization as well as before calling hooks.
 # An API-backed comment hook sees an empty response instead of accessing a site.
 OFFLINE_FETCH = """
-fetch = function () {
-    return {
-        ok: true, status: 200,
-        headers: {get: function () { return null; }},
-        json: function () { return {}; },
-        text: function () { return '{}'; },
-        dom: function () {
-            return new DOMParser().parseFromString('<html></html>', 'text/html');
-        }
-    };
+fetch = async function () {
+    return new Response('{}', {headers: {'Content-Type': 'application/json'}});
 };
 """
 
 CONTENT_PROBE = """
-var __extensionContentProbe = (function () {
+var __extensionContentProbe = (async function () {
     if (typeof SITE === 'undefined' || !SITE ||
         (!SITE.parseComments && !SITE.fetchPostComments && !SITE.filterPostContent)) {
         return {applicable: false};
@@ -47,12 +39,12 @@ var __extensionContentProbe = (function () {
         '<html><head><title>Synthetic post without replies</title></head>' +
         '<body><h1>Synthetic post without replies</h1></body></html>', 'text/html');
     var url = SITE.browserHomeUrl;
-    var comments = SITE.parseComments ? SITE.parseComments(doc, url) : [];
+    var comments = SITE.parseComments ? await SITE.parseComments(doc, url) : [];
     var fetched = SITE.fetchPostComments
-        ? SITE.fetchPostComments(null, url, doc, {}, comments) : comments;
+        ? await SITE.fetchPostComments(null, url, doc, {}, comments) : comments;
     var image = [{type: 'image', value: 'https://fixture.example/opening-post.png'}];
     var filtered = SITE.filterPostContent
-        ? SITE.filterPostContent(image, url, doc, {}, null) : image;
+        ? await SITE.filterPostContent(image, url, doc, {}, null) : image;
     return {applicable: true, comments: comments, fetched: fetched, filtered: filtered};
 })();
 """
@@ -63,13 +55,13 @@ def audit_extension(path):
     label = str(path.relative_to(ROOT))
     try:
         bundle = OFFLINE_FETCH + path.read_text()
-        bundle += "\n" + CONTENT_PROBE
+        bundle += "\n" + OFFLINE_FETCH + CONTENT_PROBE
         with tempfile.TemporaryDirectory(prefix="synura-extension-content-") as directory:
             script = Path(directory) / "probe.js"
             script.write_text(bundle)
             result = subprocess.run(
                 [str(RUNTIME), "-json", "-no-home", "-ext", str(script),
-                 "-e", "eval JSON.stringify(__extensionContentProbe)"],
+                 "-e", "eval (async()=>JSON.stringify(await __extensionContentProbe))()"],
                 cwd=directory, text=True, capture_output=True, timeout=15,
             )
         if result.returncode:
@@ -80,11 +72,15 @@ def audit_extension(path):
                 event = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            if event.get("type") == "error":
+                return label + ": probe failed: " + event.get("message", str(event))
             if event.get("type") == "eval":
                 output = json.loads(event["result"])
         if output is None:
             return label + ": no probe result: " + result.stdout[-1000:]
-        if not output.get("applicable"):
+        if not isinstance(output, dict) or type(output.get("applicable")) is not bool:
+            return label + ": invalid probe result: " + repr(output)
+        if output["applicable"] is False:
             return False
         if output.get("comments") != []:
             return label + ": parseComments produced replies from title-only HTML"

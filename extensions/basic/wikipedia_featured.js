@@ -12,7 +12,7 @@ const SYNURA = {
 };
 
 const handler = {
-  home: function() {
+  home: async function() {
     // 1. Get today's date in the required format (YYYY/MM/DD)
     const d = new Date();
     const year = d.getFullYear();
@@ -22,18 +22,14 @@ const handler = {
 
     // 2. Fetch the featured article
     const url = `https://api.wikimedia.org/feed/v1/wikipedia/en/featured/${today}`;
-    const response = fetch(url, {
-      onProgress: (current, total) => {
-        console.log(`Downloaded ${current} of ${total} bytes`);
-      }
-    });
+    const response = await fetch(url);
 
     if (!response.ok) {
       console.log("Failed to fetch Wikipedia featured article");
       return;
     }
 
-    const data = response.json();
+    const data = await response.json();
     const article = data.tfa; // tfa = The Featured Article
 
     // 3. Create the view model

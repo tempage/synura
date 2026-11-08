@@ -302,11 +302,13 @@ SITE.loadDynamicBoards = function (options) {
     var cached = theqooGetCachedDynamicBoards();
     if (!force && cached.length > 0) return cached;
     if (!allowNetwork) return cached;
-    var synced = theqooSyncDynamicBoards();
-    if (synced && synced.ok && Array.isArray(synced.items) && synced.items.length > 0) {
-        return synced.items;
-    }
-    return cached;
+    return (async function () {
+        var synced = (await theqooSyncDynamicBoards());
+        if (synced && synced.ok && Array.isArray(synced.items) && synced.items.length > 0) {
+            return synced.items;
+        }
+        return cached;
+    })();
 };
 SITE.prepareBoardContext = function (context, items, match, url) {
     return context;
@@ -368,7 +370,7 @@ function theqooParseComments(doc, postUrl) {
 SITE.parseComments = function (doc, postUrl) {
     return theqooParseComments(doc, postUrl);
 };
-SITE.fetchPostComments = function (match, url, doc, page, comments) {
+SITE.fetchPostComments = async function (match, url, doc, page, comments) {
     function theqooCommentDate(raw) {
         var value = normalizeWhitespace(raw);
         if (!/^\d{14}$/.test(value)) return value;
@@ -384,7 +386,7 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         return parseMarkupDetails(html, url);
     }
 
-    function theqooFetchCommentPage(pageNo) {
+    async function theqooFetchCommentPage(pageNo) {
         var options = buildFetchOptions();
         if (!options.headers) options.headers = {};
         options.method = "POST";
@@ -396,9 +398,9 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
             "act=dispTheqooContentCommentListTheqoo" +
             "&document_srl=" + encodeURIComponent(match ? match.postId : "") +
             "&cpage=" + encodeURIComponent(String(pageNo));
-        var response = fetchWithLogging("https://" + SYNURA.domain + "/index.php", options);
+        var response = (await fetchWithLogging("https://" + SYNURA.domain + "/index.php", options));
         if (!response || !response.ok) return null;
-        return response.json() || null;
+        return (await response.json()) || null;
     }
 
     function theqooPushComments(data, bucket, seen) {
@@ -430,7 +432,7 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         }
     }
 
-    var latest = theqooFetchCommentPage(0);
+    var latest = (await theqooFetchCommentPage(0));
     if (!latest) return comments;
 
     var lastPage = parseInt(String(latest.now_comment_page || 1), 10);
@@ -439,7 +441,7 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
     var out = [];
     var seen = {};
     for (var pageNo = 1; pageNo < lastPage; pageNo++) {
-        theqooPushComments(theqooFetchCommentPage(pageNo), out, seen);
+        theqooPushComments((await theqooFetchCommentPage(pageNo)), out, seen);
     }
     theqooPushComments(latest, out, seen);
     return out.length > 0 ? out : comments;
@@ -587,9 +589,9 @@ function theqooSaveDynamicBoards(items) {
     localStorage.setItem(THEQOO_DYNAMIC_CACHE_TS_KEY, String(Date.now()));
     return nextItems;
 }
-function theqooCollectDynamicBoardsFromJson(items, seen) {
-    var response = fetchWithLogging("https://" + SYNURA.domain + "/files/board_search.json?version=", buildFetchOptions());
-    var data = response && response.ok ? (response.json() || []) : [];
+async function theqooCollectDynamicBoardsFromJson(items, seen) {
+    var response = (await fetchWithLogging("https://" + SYNURA.domain + "/files/board_search.json?version=", buildFetchOptions()));
+    var data = response && response.ok ? ((await response.json()) || []) : [];
     if (!Array.isArray(data)) return;
     for (var i = 0; i < data.length; i++) {
         var raw = data[i] || {};
@@ -602,8 +604,8 @@ function theqooCollectDynamicBoardsFromJson(items, seen) {
         theqooPushBoard(items, seen, boardId, title, group);
     }
 }
-function theqooCollectDynamicBoardsFromHomepage(items, seen) {
-    var doc = fetchDocument("https://" + SYNURA.domain + "/");
+async function theqooCollectDynamicBoardsFromHomepage(items, seen) {
+    var doc = (await fetchDocument("https://" + SYNURA.domain + "/"));
     var lists = allNodes(doc, ["#cate_index_pc ul.list"]);
     if (lists.length > 0) {
         for (var j = 0; j < lists.length; j++) {
@@ -643,21 +645,21 @@ function theqooCollectDynamicBoardsFromHomepage(items, seen) {
         theqooPushBoard(items, seen, fallbackId, fallbackTitle, inferBoardGroupFromContext(fallbackLinks[m]));
     }
 }
-function theqooFetchDynamicBoards() {
+async function theqooFetchDynamicBoards() {
     var items = [];
     var seen = {};
     try {
-        theqooCollectDynamicBoardsFromJson(items, seen);
+        (await theqooCollectDynamicBoardsFromJson(items, seen));
     } catch (e) {
     }
     try {
-        theqooCollectDynamicBoardsFromHomepage(items, seen);
+        (await theqooCollectDynamicBoardsFromHomepage(items, seen));
     } catch (e) {
     }
     return items;
 }
-function theqooSyncDynamicBoards() {
-    var items = theqooFetchDynamicBoards();
+async function theqooSyncDynamicBoards() {
+    var items = (await theqooFetchDynamicBoards());
     if (items.length > 0) {
         return {
             ok: true,

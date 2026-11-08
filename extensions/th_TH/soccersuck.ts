@@ -482,8 +482,10 @@ SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
 
 SITE.loadDynamicBoards = function (options) {
   if (!options || !options.allowNetwork) return [];
-  var doc = fetchDocument(SITE.browserHomeUrl);
-  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  return (async function () {
+      var doc = (await fetchDocument(SITE.browserHomeUrl));
+      return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  })();
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {
@@ -546,7 +548,7 @@ SITE.matchBoard = function (info) {
 
 // The public board page contains only navigation; its topic rows are served
 // by these same-origin form endpoints used by the site's board.js.
-SITE.routeBoardCustom = function (url, info, match) {
+SITE.routeBoardCustom = async function (url, info, match) {
   if (!info || !/^\/boards\/?$/.test(info.path || "")) return null;
   var boardId = queryInt(info.query, "forum", 3);
   if (boardId < 1) return null;
@@ -558,9 +560,9 @@ SITE.routeBoardCustom = function (url, info, match) {
   options.headers["X-Requested-With"] = "XMLHttpRequest";
   options.headers["Referer"] = "https://www.soccersuck.com/boards/";
   options.body = "id=" + boardId + "&limit=30&page=" + page;
-  var response = fetchWithLogging(endpoint, options);
+  var response = (await fetchWithLogging(endpoint, options));
   if (!response || !response.ok) return null;
-  var html = responseText(response);
+  var html = (await responseText(response));
   var items = localParseBoardItemsFromHtml(html, "https://www.soccersuck.com/boards/");
   var nextUrl = items.length >= 30 ? setQueryParam(setQueryParam(url, "forum", boardId), "page", page + 1) : "";
   var title = match && match.board ? match.board.title : SITE.displayName;

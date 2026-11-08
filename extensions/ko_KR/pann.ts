@@ -300,42 +300,44 @@ SITE.loadDynamicBoards = function (options) {
         return cached;
     }
     if (!allowNetwork) return Array.isArray(cached) ? cached : [];
-    try {
-        var doc = fetchDocument("https://" + SYNURA.domain + "/talk/category");
-        var links = allNodes(doc, ["a[href^='/talk/']"]);
-        var items = [];
-        var seen = {};
-        for (var i = 0; i < links.length; i++) {
-            var href = ensureAbsoluteUrl(attrOf(links[i], "href"), "https://" + SYNURA.domain + "/talk/category");
-            var info = parseAbsoluteUrl(href);
-            if (!info) continue;
-            var parts = pathSegments(info.path);
-            if (parts.length !== 2 || parts[0] !== "talk" || /^\d+$/.test(parts[1])) continue;
-            var boardKey = "talk_" + normalizeWhitespace(parts[1]);
-            if (!boardKey || seen[boardKey]) continue;
-            var title = normalizeWhitespace(textOf(links[i]));
-            if (!title || title === "톡 채널") continue;
-            if (/^c\d+$/.test(parts[1]) && !info.query) {
-                href = "https://" + SYNURA.domain + info.path + "?order=N";
+    return (async function () {
+        try {
+            var doc = (await fetchDocument("https://" + SYNURA.domain + "/talk/category"));
+            var links = allNodes(doc, ["a[href^='/talk/']"]);
+            var items = [];
+            var seen = {};
+            for (var i = 0; i < links.length; i++) {
+                var href = ensureAbsoluteUrl(attrOf(links[i], "href"), "https://" + SYNURA.domain + "/talk/category");
+                var info = parseAbsoluteUrl(href);
+                if (!info) continue;
+                var parts = pathSegments(info.path);
+                if (parts.length !== 2 || parts[0] !== "talk" || /^\d+$/.test(parts[1])) continue;
+                var boardKey = "talk_" + normalizeWhitespace(parts[1]);
+                if (!boardKey || seen[boardKey]) continue;
+                var title = normalizeWhitespace(textOf(links[i]));
+                if (!title || title === "톡 채널") continue;
+                if (/^c\d+$/.test(parts[1]) && !info.query) {
+                    href = "https://" + SYNURA.domain + info.path + "?order=N";
+                }
+                seen[boardKey] = true;
+                items.push({
+                    id: boardKey,
+                    title: title,
+                    url: href,
+                    description: title,
+                    group: inferBoardGroupFromContext(links[i]),
+                    dynamic: true
+                });
             }
-            seen[boardKey] = true;
-            items.push({
-                id: boardKey,
-                title: title,
-                url: href,
-                description: title,
-                group: inferBoardGroupFromContext(links[i]),
-                dynamic: true
-            });
+            if (items.length > 0) {
+                writeStoredJson(cacheKey, items);
+                localStorage.setItem(cacheTsKey, String(Date.now()));
+                return items;
+            }
+        } catch (e) {
         }
-        if (items.length > 0) {
-            writeStoredJson(cacheKey, items);
-            localStorage.setItem(cacheTsKey, String(Date.now()));
-            return items;
-        }
-    } catch (e) {
-    }
-    return Array.isArray(cached) ? cached : [];
+        return Array.isArray(cached) ? cached : [];
+    })();
 };
 SITE.prepareBoardContext = function (context, items, match, url) {
     function pannExtractBoardDate(sourceUrl, items) {
@@ -562,7 +564,7 @@ function pannParseReplyPage(html, postUrl) {
 SITE.parseComments = function (doc, postUrl) {
     return pannParseCommentsFromDoc(doc, postUrl);
 };
-SITE.fetchPostComments = function (match, url, doc, page, comments) {
+SITE.fetchPostComments = async function (match, url, doc, page, comments) {
     function pannReplyViewUrl(pageNo) {
         var info = parseAbsoluteUrl(url);
         var query = [];
@@ -584,10 +586,10 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         return "https://" + SYNURA.domain + "/talk/reply/view?" + query.join("&");
     }
 
-    function pannFetchReplyPage(pageNo) {
-        var response = fetchWithLogging(pannReplyViewUrl(pageNo), buildFetchOptions());
+    async function pannFetchReplyPage(pageNo) {
+        var response = (await fetchWithLogging(pannReplyViewUrl(pageNo), buildFetchOptions()));
         if (!response || !response.ok) return null;
-        return pannParseReplyPage(response.text(), url);
+        return pannParseReplyPage((await response.text()), url);
     }
 
     function pannDecorateComments(list, pageNo) {
@@ -601,7 +603,7 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         return out;
     }
 
-    var firstPage = pannFetchReplyPage(1);
+    var firstPage = (await pannFetchReplyPage(1));
     if (!firstPage) return comments;
 
     var out = [];
@@ -613,7 +615,7 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
     for (var pageNo = 2; pageNo <= maxPage; pageNo++) {
         if (seenPages[String(pageNo)]) continue;
         seenPages[String(pageNo)] = true;
-        var replyPage = pannFetchReplyPage(pageNo);
+        var replyPage = (await pannFetchReplyPage(pageNo));
         if (!replyPage) continue;
         out = out.concat(pannDecorateComments(replyPage.comments, pageNo));
     }

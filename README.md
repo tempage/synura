@@ -5,6 +5,20 @@
 ## What is Synura?
 Synura is a versatile application that lets you browse content from various sources using powerful mini-apps called "extensions". Think of it as a browser, but instead of websites, you use extensions to get content in a clean, native-app format.
 
+## Shared extension runtime
+
+[`synura-runtime`](runtime/README.md) is the public Rust crate for one isolated Synura extension VM. It owns QuickJS, fetch, Web Crypto, encoding and the Synura DOM adapter. `synurart` embeds one VM; application hosts manage multiple owner-thread VMs and provide their own view, storage and logging adapters.
+
+The workspace separates the shared VM in `runtime/` from the CLI host in
+`synurart/`. Run the CLI with `./synurart.sh` or `make synurart`.
+
+```sh
+cargo test --workspace
+cargo run -p synura-runtime --example multi_vm
+```
+
+The [embedding guide](runtime/README.md) covers host-approved network permissions, cancellation, resource limits and the Android integration boundary.
+
 ## Downloads
 
 - [Synura Android app](https://play.google.com/store/apps/details?id=io.tempage.synura)

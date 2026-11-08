@@ -209,7 +209,7 @@ function naverNewsPublishedDate(doc) {
   ]) || naverNewsNormalizeDate((detectSchemaPost(doc) || {}).datePublished);
 }
 
-function naverNewsFillListMetadata(items) {
+async function naverNewsFillListMetadata(items) {
   var pendingCounts = {};
   var objectIds = [];
   var now = Date.now();
@@ -229,13 +229,13 @@ function naverNewsFillListMetadata(items) {
   }
   if (!objectIds.length) return;
   try {
-    var response = fetchWithLogging(
+    var response = (await fetchWithLogging(
       "https://news.naver.com/section/template/NEWS_COMMENT_COUNT_LIST?ticket=news&objectIds=" +
         encodeURIComponent(objectIds.join(";")),
       buildFetchOptions()
-    );
+    ));
     if (!response || !response.ok) return;
-    var data = JSON.parse(responseText(response));
+    var data = JSON.parse((await responseText(response)));
     var component = data && data.component && data.component.NEWS_COMMENT_COUNT_LIST;
     var counts = component && component.value;
     if (!Array.isArray(counts)) return;
@@ -532,8 +532,8 @@ routeBoardWithMatch = function (url, urlInfo, match, force) {
 
 function naverNewsConnectBoardState(viewId, context) {
   setViewState(viewId, context);
-  synura.connect(viewId, context, function (event) {
-    handler.onViewEvent(event);
+  synura.connect(viewId, context, async function (event) {
+    (await handler.onViewEvent(event));
   });
 }
 
@@ -545,7 +545,7 @@ updateViewFromRoute = function (viewId, route, snackbar) {
   }
 };
 
-SITE.parseComments = function (doc, postUrl) {
+SITE.parseComments = async function (doc, postUrl) {
   try {
     var match = postUrl ? postUrl.match(/article\/(\d+)\/(\d+)/) : null;
     if (!match && doc) {
@@ -562,15 +562,15 @@ SITE.parseComments = function (doc, postUrl) {
       "&objectId=news" + oid + "%2C" + aid +
       "&pageSize=30&page=1&sort=favorite";
 
-    var res = fetch(commentApiUrl, {
+    var res = (await fetch(commentApiUrl, {
       headers: {
         "Referer": naverNewsArticleUrl(postUrl, doc) || "https://n.news.naver.com/",
         "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
       }
-    });
+    }));
 
     if (!res || res.status !== 200) return [];
-    var body = res.text().trim();
+    var body = (await res.text()).trim();
     if (!body) return [];
 
     // cbox normally returns _callback(...); also accept plain JSON without eval.
@@ -632,11 +632,11 @@ SITE.buildBoardUrlFromId = function (boardId) {
   return b ? b.url : "";
 };
 
-SITE.prepareBoardContext = function (context, items, match, url) {
+SITE.prepareBoardContext = async function (context, items, match, url) {
   context.pendingItems = items.splice(NAVER_NEWS_PAGE_SIZE);
   context.nextUrl = context.pendingItems.length ? url : "";
   context.seenLinks = items.map(function (item) { return item.link; });
-  naverNewsFillListMetadata(items);
+  (await naverNewsFillListMetadata(items));
   return context;
 };
 
@@ -708,13 +708,13 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
   return comments || [];
 };
 
-SITE.handleViewEvent = function (viewId, event, state, context) {
+SITE.handleViewEvent = async function (viewId, event, state, context) {
   var current = state && state.kind ? state : context || {};
   if (current.kind === "board" && event &&
       (event.eventId === "SCROLL_TO_END" || event.eventId === "APPEND")) {
     var pending = current.pendingItems || [];
     var nextItems = pending.slice(0, NAVER_NEWS_PAGE_SIZE);
-    naverNewsFillListMetadata(nextItems);
+    (await naverNewsFillListMetadata(nextItems));
     current.pendingItems = pending.slice(nextItems.length);
     current.nextUrl = current.pendingItems.length ? current.link : "";
     current.page = (current.page || 1) + (nextItems.length ? 1 : 0);
