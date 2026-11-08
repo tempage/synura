@@ -1,7 +1,7 @@
 {
   "name": "Synura Test Repository",
   "description": "All Synura extensions, including beta and test extensions.",
-  "version": 6.4,
+  "version": 6.5,
   "includes": [
     "extensions/ar_SA/test.json",
     "extensions/de_DE/test.json",

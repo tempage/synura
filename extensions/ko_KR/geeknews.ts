@@ -8,7 +8,7 @@ var SYNURA = {
     name: "geeknews",
     author: "Synura Team",
     description: "news.hada.io",
-    version: 0.2,
+    version: 0.3,
     api: 0,
     license: "Apache-2.0",
     icon: "https://news.hada.io/favicon.ico",
@@ -490,11 +490,18 @@ var commentCountFromTopicInfo = function(info) {
     var links = info ? info.querySelectorAll("a") : [];
     for (var i = links.length - 1; i >= 0; i--) {
         var label = textOf(links[i]);
-        if (label.indexOf("댓글") >= 0) return parseCommentCount(label);
+        if (label.indexOf("댓글") >= 0 || label.indexOf("토론") >= 0 || /comments?\b/i.test(label)) {
+            return parseCommentCount(label);
+        }
     }
     var countNode = info ? info.querySelector("[data-topic-comment-count]") : null;
     var raw = attrOf(countNode, "data-topic-comment-count");
-    return raw ? parseIntText(raw) : null;
+    if (raw) return parseIntText(raw);
+    if (info) {
+        var match = textOf(info).match(/([0-9,]+)\s*(?:개의\s*)?(?:댓글|토론|comments?\b)/i);
+        if (match) return parseIntText(match[1]);
+    }
+    return null;
 };
 
 var parseTopicNode = function(node, baseUrl) {
@@ -517,7 +524,12 @@ var parseTopicNode = function(node, baseUrl) {
     }
 
     var info = node.querySelector(".topicinfo");
-    var score = parseIntText(textOf(info ? info.querySelector("[id^='tp']") : null));
+    var scoreNode = info ? info.querySelector("span") : null;
+    var score = parseIntText(textOf(scoreNode));
+    if (score === null && info) {
+        var scoreMatch = textOf(info).match(/([0-9,]+)\s*P?oints?\b/i);
+        if (scoreMatch) score = parseIntText(scoreMatch[1]);
+    }
     var author = authorFromInfo(info);
     var date = dateFromTopicInfo(info, author);
     var commentCount = commentCountFromTopicInfo(info);
@@ -541,7 +553,7 @@ var parseTopicNode = function(node, baseUrl) {
         viewCount: "",
         menus: [],
         hotCount: score || 0,
-        coldCount: 0
+        coldCount: commentCount || 0
     };
     if (parsedTitle.category) story.category = parsedTitle.category;
     return story;
@@ -978,8 +990,8 @@ var buildFeedListStyles = function(feed, pastDay, pagination) {
     var styles = {
         title: feedDisplayTitle(feed, pastDay),
         layout: "card",
-        hotThreshold: 100,
-        coldThreshold: 0,
+        hotThreshold: 20,
+        coldThreshold: 20,
         history: true,
         pagination: !!pagination,
         authorClickable: true
@@ -991,6 +1003,8 @@ var buildFeedListStyles = function(feed, pastDay, pagination) {
 var buildFeedUpdateStyles = function(feed, pastDay, pagination) {
     var styles = {
         title: feedDisplayTitle(feed, pastDay),
+        hotThreshold: 20,
+        coldThreshold: 20,
         pagination: !!pagination
     };
     if (isPastFeed(feed)) styles.appbar = buildPastDateAppbar(pastDay);
@@ -1219,6 +1233,8 @@ var buildUserActivityStyles = function(title, pagination) {
     return {
         title: title,
         layout: "card",
+        hotThreshold: 20,
+        coldThreshold: 20,
         history: true,
         pagination: !!pagination,
         authorClickable: true

@@ -13,7 +13,7 @@ var SYNURA = {
     name: "naver_webtoon",
     author: "Synura Team",
     description: "comic.naver.com",
-    version: 0.6,
+    version: 0.7,
     api: 0,
     license: "Apache-2.0",
     icon: "https://www.naver.com/favicon.ico",
@@ -1188,7 +1188,9 @@ async function webtoonLoadPaidEpisode(viewId, context, loginRetry) {
         state.reader = handler.createPaidReader();
         var episode = await state.reader.loadEpisode(ids.contentsNo, ids.volumeNo);
         if (!active()) return;
-        var blocks = [{ type: "anchor", value: "webtoon_" + context.titleId + "_" + context.no }];
+        var CHUNK_SIZE = 5;
+        var firstChunkSent = false;
+        var currentChunk = [{ type: "anchor", value: "webtoon_" + context.titleId + "_" + context.no }];
         for (var i = 0; i < episode.images.length; i++) {
             if (!active()) return;
             var bytes = await state.reader.readImage(i);
@@ -1202,23 +1204,38 @@ async function webtoonLoadPaidEpisode(viewId, context, loginRetry) {
             bytes.fill(0);
             if (Number(image.width) > 0) block.width = Number(image.width);
             if (Number(image.height) > 0) block.height = Number(image.height);
-            blocks.push(block);
-            if ((i + 1) % 10 === 0 && i + 1 < episode.images.length) {
-                if (!update({ models: { snackbar: "이미지 불러오는 중 " + (i + 1) + "/" + episode.images.length } })) return;
+            currentChunk.push(block);
+            if (currentChunk.length >= CHUNK_SIZE || i + 1 === episode.images.length) {
+                var progressText = "이미지 불러오는 중 " + (i + 1) + "/" + episode.images.length;
+                if (!firstChunkSent) {
+                    if (!update({ models: { content: currentChunk, snackbar: progressText } })) return;
+                    firstChunkSent = true;
+                } else {
+                    if (!update({ models: { append: currentChunk, snackbar: progressText } })) return;
+                }
+                currentChunk = [];
             }
         }
-        if (context.nextUrl) blocks.push({ type: "link", value: "👉 다음 화 보기", link: context.nextUrl });
-        if (context.prevUrl) blocks.push({ type: "link", value: "👈 이전 화 보기", link: context.prevUrl });
+        var footerBlocks = [];
+        if (context.nextUrl) footerBlocks.push({ type: "link", value: "👉 다음 화 보기", link: context.nextUrl });
+        if (context.prevUrl) footerBlocks.push({ type: "link", value: "👈 이전 화 보기", link: context.prevUrl });
+        if (footerBlocks.length > 0) {
+            if (!firstChunkSent) {
+                if (!update({ models: { content: footerBlocks } })) return;
+                firstChunkSent = true;
+            } else {
+                if (!update({ models: { append: footerBlocks } })) return;
+            }
+        }
         var comments = (await fetchEpisodeComments(context.titleId, context.no, context.link, ""));
         if (!active()) return;
         context.comments = comments.comments;
         context.commentCursor = comments.nextCursor;
         context.commentFailed = comments.failed;
         context.paidLoaded = true;
-        // Post views replace the content model. Send image data URLs once after all
-        // downloads, rather than repeatedly copying the growing image list.
+        // Post views append blocks in chunks during download. Send metadata and comments.
         update({ styles: { title: context.title }, models: {
-            title: context.title, author: context.title, content: blocks,
+            title: context.title, author: context.title,
             menus: webtoonPaidMenus(context), buttons: viewerButtons(context), comments: comments.comments,
             snackbar: comments.failed ? "댓글을 불러오지 못했습니다." : ""
         } });

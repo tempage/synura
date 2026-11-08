@@ -165,6 +165,7 @@ Displays a detailed post with content and comments.
 *   `viewCount`, `likeCount`, `dislikeCount`: Strings.
 *   `content`: List of content blocks.
     *   `details`: Array of JSON strings. Each block: `{ type: "text"|"image"|"video"|"link", value: "..." }`.
+*   `append`: List of content blocks to append to existing `content` (useful for chunked/progressive loading).
 *   `comments`: List of comments.
     *   `details`: Array of JSON strings.
     *   Comment object:
