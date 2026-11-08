@@ -35,6 +35,7 @@ The core object for interacting with the Synura application.
     -   **Special Model Keys**:
         -   For `'/views/list'`, `data.models.append` appends new list items to the existing `contents` instead of replacing them. This is useful for pagination.
         -   For `'/views/chat'`, `data.models.append` appends new chat messages.
+        -   For `'/views/post'`, `data.models.append` appends new content items (e.g. text, images, video) to the existing `content` instead of replacing them. This is useful for progressive loading of long posts or chunked webtoon images.
     -   **Returns**: An object `{ success: boolean, viewId: number, viewName: string, error?: string }`.
 
 -   **`synura.connect(viewId, context, callback)`**

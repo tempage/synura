@@ -2344,6 +2344,10 @@ const BOOTSTRAP: &str = r#"
             const append = view.data.models.append || { details: [] };
             append.details = (append.details || []).concat(processed.append.details || []);
             view.data.models.append = append;
+          } else if (view.path === "/views/post") {
+            const content = view.data.models.content || { details: [] };
+            content.details = (content.details || []).concat(processed.append.details || []);
+            view.data.models.content = content;
           }
           delete processed.append;
         }

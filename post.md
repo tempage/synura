@@ -67,6 +67,7 @@ The `models` object contains the data to be displayed.
 | `menus` | `list<string\|object>` | List of menu items to show in the app bar. Can be strings or objects with `label` (string) and optional `checked` (boolean) for checkbox items. |
 | `buttons` | `list<string>` | List of buttons to show at the bottom of the post. |
 | `content` | `value` | Contains the main content of the post (string or list of content items). See below. |
+| `append` | `list` | A list of content items to append to the existing `content` (useful for progressive or chunked loading). |
 | `comments` | `object` | Contains the list of comments. See below. |
 
 ### Content Object
@@ -108,6 +109,30 @@ You can automatically generate the `details` array from a DOM element using the 
   { "type": "video", "value": "https://example.com/video.mp4" },
   { "type": "link", "value": "Click here", "link": "https://example.com" }
 ]
+```
+
+### Progressive Loading with `append`
+
+When displaying long posts, image galleries, or webtoons with numerous high-resolution images or embedded data URLs, sending all items in a single update can exceed memory or IPC payload limits.
+
+To stream content progressively, send the initial batch using `models.content` (which replaces any placeholder or loading text), and send subsequent batches using `synura.update` with `models.append`:
+
+```javascript
+// 1. Initial chunk replaces the loading view
+synura.update(viewId, {
+  models: {
+    content: firstBatchImages,
+    snackbar: "Loading 5/50..."
+  }
+});
+
+// 2. Subsequent chunks append to existing content without replacing
+synura.update(viewId, {
+  models: {
+    append: nextBatchImages,
+    snackbar: "Loading 10/50..."
+  }
+});
 ```
 
 ### Comments Object
