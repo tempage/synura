@@ -551,8 +551,10 @@ SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
 
 SITE.loadDynamicBoards = function (options) {
   if (!options || !options.allowNetwork) return [];
-  var doc = fetchDocument(SITE.browserHomeUrl);
-  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  return (async function () {
+      var doc = (await fetchDocument(SITE.browserHomeUrl));
+      return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  })();
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {
@@ -574,9 +576,9 @@ SITE.buildPostFetchUrls = function (match, currentUrl) {
   return [localCanonicalizeUrl(currentUrl)];
 };
 
-SITE.fetchPostComments = function (match, postUrl, doc, page, comments) {
+SITE.fetchPostComments = async function (match, postUrl, doc, page, comments) {
   try {
-    var commentDoc = fetchDocument(localHabrCommentsUrl(postUrl));
+    var commentDoc = (await fetchDocument(localHabrCommentsUrl(postUrl)));
     var fetched = localParseComments(commentDoc, postUrl);
     if (fetched && fetched.length > 0) return fetched;
   } catch (e) {

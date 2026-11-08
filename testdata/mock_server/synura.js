@@ -22,7 +22,7 @@ var testLogin = (viewId) => {
 
     if (result.success) {
         synura.connect(result.viewId, { from: "browser_login_test", parentViewId: viewId }, (event) => {
-            handler.onViewEvent(event.viewId, event);
+            return handler.onViewEvent(event.viewId, event);
         });
     }
 };
@@ -37,31 +37,31 @@ var testLogout = (viewId) => {
 
     if (result.success) {
         synura.connect(result.viewId, { from: "browser_logout_test", parentViewId: viewId }, (event) => {
-            handler.onViewEvent(event.viewId, event);
+            return handler.onViewEvent(event.viewId, event);
         });
     }
 };
 
-var testUserAgent = (viewId) => {
+var testUserAgent = async (viewId) => {
     console.log("Testing User Agent...");
     try {
         const cookie = localStorage.getItem("user_cookie");
         const options = cookie ? { headers: { "Cookie": cookie } } : {};
-        const response = fetch(baseUrl + "/ua", options);
-        const json = response.json();
+        const response = await fetch(baseUrl + "/ua", options);
+        const json = await response.json();
         synura.update(viewId, { models: { snackbar: "UA: " + json.user_agent } });
     } catch (e) {
         synura.update(viewId, { models: { snackbar: "UA Test Failed: " + e } });
     }
 };
 
-var testFetchGet = (viewId) => {
+var testFetchGet = async (viewId) => {
     console.log("Testing Fetch GET...");
     try {
         const cookie = localStorage.getItem("user_cookie");
         const options = cookie ? { headers: { "Cookie": cookie } } : {};
-        const response = fetch(baseUrl + "/get?foo=bar&baz=qux", options);
-        const json = response.json();
+        const response = await fetch(baseUrl + "/get?foo=bar&baz=qux", options);
+        const json = await response.json();
 
         let msg = "";
         if (json.query && json.query.foo === "bar") {
@@ -80,7 +80,7 @@ var testFetchGet = (viewId) => {
     }
 };
 
-var testFetchPost = (viewId) => {
+var testFetchPost = async (viewId) => {
     console.log("Testing Fetch POST...");
     try {
         const cookie = localStorage.getItem("user_cookie");
@@ -88,12 +88,12 @@ var testFetchPost = (viewId) => {
         if (cookie) headers["Cookie"] = cookie;
 
         const body = JSON.stringify({ key: "value", number: 123 });
-        const response = fetch(baseUrl + "/post", {
+        const response = await fetch(baseUrl + "/post", {
             method: "POST",
             body: body,
             headers: headers
         });
-        const json = response.json();
+        const json = await response.json();
 
         let msg = "";
         if (json.json && json.json.key === "value") {
@@ -112,7 +112,7 @@ var testFetchPost = (viewId) => {
     }
 };
 
-var testFileUpload = (viewId) => {
+var testFileUpload = async (viewId) => {
     console.log("Testing File Upload...");
 
     // Generate a random boundary to avoid collisions with content
@@ -137,12 +137,12 @@ var testFileUpload = (viewId) => {
         const headers = { "Content-Type": "multipart/form-data; boundary=" + boundary };
         if (cookie) headers["Cookie"] = cookie;
 
-        const response = fetch(baseUrl + "/upload", {
+        const response = await fetch(baseUrl + "/upload", {
             method: "POST",
             headers: headers,
             body: body
         });
-        const json = response.json();
+        const json = await response.json();
 
         if (json.filename === "test.txt") {
             synura.update(viewId, { models: { snackbar: "Upload OK: " + json.size + " bytes" } });
@@ -154,12 +154,12 @@ var testFileUpload = (viewId) => {
     }
 };
 
-var testAuthFetchGet = (viewId) => {
+var testAuthFetchGet = async (viewId) => {
     console.log("Testing Auth Fetch GET...");
     try {
         const cookie = localStorage.getItem("user_cookie");
         const options = cookie ? { headers: { "Cookie": cookie } } : {};
-        const response = fetch(baseUrl + "/login/get?foo=bar", options);
+        const response = await fetch(baseUrl + "/login/get?foo=bar", options);
 
         if (response.status === 401) {
             synura.update(viewId, { models: { snackbar: "Auth GET: 401 Unauthorized" } });
@@ -172,7 +172,7 @@ var testAuthFetchGet = (viewId) => {
     }
 };
 
-var testAuthFetchPost = (viewId) => {
+var testAuthFetchPost = async (viewId) => {
     console.log("Testing Auth Fetch POST...");
     try {
         const cookie = localStorage.getItem("user_cookie");
@@ -180,7 +180,7 @@ var testAuthFetchPost = (viewId) => {
         if (cookie) headers["Cookie"] = cookie;
 
         const body = JSON.stringify({ key: "value" });
-        const response = fetch(baseUrl + "/login/post", {
+        const response = await fetch(baseUrl + "/login/post", {
             method: "POST",
             body: body,
             headers: headers
@@ -197,7 +197,7 @@ var testAuthFetchPost = (viewId) => {
     }
 };
 
-var testAuthFileUpload = (viewId) => {
+var testAuthFileUpload = async (viewId) => {
     console.log("Testing Auth File Upload...");
 
     // Generate a random boundary to avoid collisions with content
@@ -222,7 +222,7 @@ var testAuthFileUpload = (viewId) => {
         const headers = { "Content-Type": "multipart/form-data; boundary=" + boundary };
         if (cookie) headers["Cookie"] = cookie;
 
-        const response = fetch(baseUrl + "/login/upload", {
+        const response = await fetch(baseUrl + "/login/upload", {
             method: "POST",
             headers: headers,
             body: body
@@ -233,7 +233,7 @@ var testAuthFileUpload = (viewId) => {
             return;
         }
 
-        const json = response.json();
+        const json = await response.json();
         if (json.filename === "test.txt") {
             synura.update(viewId, { models: { snackbar: "Auth Upload OK" } });
         } else {
@@ -244,7 +244,7 @@ var testAuthFileUpload = (viewId) => {
     }
 };
 
-var testCookieCheck = (viewId) => {
+var testCookieCheck = async (viewId) => {
     console.log("Testing Cookie Validity...");
 
     const cookie = localStorage.getItem("user_cookie");
@@ -254,7 +254,7 @@ var testCookieCheck = (viewId) => {
     }
 
     try {
-        const response = fetch(baseUrl + "/login/get", { headers: { "Cookie": cookie } });
+        const response = await fetch(baseUrl + "/login/get", { headers: { "Cookie": cookie } });
 
         if (response.status === 401) {
             synura.update(viewId, { models: { snackbar: "Cookie Invalid (Session Expired)" } });
@@ -292,7 +292,7 @@ var home = () => {
 var resume = (viewId, context) => {
     // Reconnect to the restored view to handle future events
     synura.connect(viewId, context, (event) => {
-        handler.onViewEvent(event.viewId, event);
+        return handler.onViewEvent(event.viewId, event);
     });
 };
 
@@ -303,21 +303,21 @@ var deeplink = (url) => {
     return true; // Handled
 };
 
-var onViewEvent = (viewId, event) => {
+var onViewEvent = async (viewId, event) => {
     console.log("Event:", JSON.stringify(event));
 
     if (event.eventId === "CLICK") {
         const item = event.data;
         if (item.title === "Login Test") testLogin(viewId);
         if (item.title === "Logout Test") testLogout(viewId);
-        if (item.title === "User Agent Test") testUserAgent(viewId);
-        if (item.title === "Fetch GET Test") testFetchGet(viewId);
-        if (item.title === "Fetch POST Test") testFetchPost(viewId);
-        if (item.title === "File Upload Test") testFileUpload(viewId);
-        if (item.title === "Auth GET Test") testAuthFetchGet(viewId);
-        if (item.title === "Auth POST Test") testAuthFetchPost(viewId);
-        if (item.title === "Auth Upload Test") testAuthFileUpload(viewId);
-        if (item.title === "Cookie Check") testCookieCheck(viewId);
+        if (item.title === "User Agent Test") await testUserAgent(viewId);
+        if (item.title === "Fetch GET Test") await testFetchGet(viewId);
+        if (item.title === "Fetch POST Test") await testFetchPost(viewId);
+        if (item.title === "File Upload Test") await testFileUpload(viewId);
+        if (item.title === "Auth GET Test") await testAuthFetchGet(viewId);
+        if (item.title === "Auth POST Test") await testAuthFetchPost(viewId);
+        if (item.title === "Auth Upload Test") await testAuthFileUpload(viewId);
+        if (item.title === "Cookie Check") await testCookieCheck(viewId);
     }
 
     if (event.context.from === "browser_login_test" && event.eventId === "SUBMIT") {

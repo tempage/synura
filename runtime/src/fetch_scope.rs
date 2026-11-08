@@ -4,21 +4,22 @@ use serde::Deserialize;
 use url::Url;
 
 /// Network metadata is captured when an extension is loaded, not on each request.
-#[derive(Default, Deserialize)]
-pub(super) struct NetworkPackage {
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct NetworkPackage {
     #[serde(default)]
-    domain: String,
+    pub domain: String,
     #[serde(default)]
-    host_permissions: Vec<String>,
+    pub host_permissions: Vec<String>,
     pub bypass: Option<String>,
 }
 
-#[derive(Default)]
-pub(super) struct FetchScope {
+#[derive(Clone, Default)]
+pub struct FetchScope {
     rules: Vec<Rule>,
     pub bypass: Option<String>,
 }
 
+#[derive(Clone)]
 struct Rule {
     scheme: String,
     host: String,
@@ -28,7 +29,7 @@ struct Rule {
 }
 
 impl FetchScope {
-    pub(super) fn new(package: NetworkPackage) -> Result<Self, String> {
+    pub fn new(package: NetworkPackage) -> Result<Self, String> {
         if let Some(bypass) = &package.bypass {
             let mut parts = bypass.split('/');
             if !matches!(parts.next(), Some("chrome" | "firefox" | "tor"))
@@ -75,7 +76,7 @@ impl FetchScope {
         })
     }
 
-    pub(super) fn check(&self, url: &Url) -> Result<(), String> {
+    pub fn check(&self, url: &Url) -> Result<(), String> {
         if self.rules.is_empty() {
             return Err("Network access is disabled: declare SYNURA.domain".into());
         }

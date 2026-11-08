@@ -13,7 +13,7 @@ var SYNURA = {
     name: "naver_webtoon",
     author: "Synura Team",
     description: "comic.naver.com",
-    version: 0.3,
+    version: 0.6,
     api: 0,
     license: "Apache-2.0",
     icon: "https://www.naver.com/favicon.ico",
@@ -42,6 +42,147 @@ var WEBTOON_COOKIE_KEY = "naver_webtoon:cookie";
 var BUTTON_BROWSER = "웹브라우저에서 보기";
 var BUTTON_MORE_COMMENTS = "댓글 더 보기";
 var BUTTON_RETRY_COMMENTS = "댓글 다시 불러오기";
+var PAID_EPISODE_NOTICE = "유료 회차는 로그인한 계정의 유효한 구매 또는 대여 권한이 필요합니다.";
+
+// Shared viewer client settings; account cookies and device IDs are separate.
+var WEBTOON_VIEWER_HMAC_KEY = "PTgNYfPDlFeiWm7wGxY5VCFkbcHWZbwleeEfDFpsRxzyHHmZIY5taMNBLQDgxi2T";
+var WEBTOON_VIEWER_DRM_HMAC_KEY = "5OYnVJbYCTY1A6rVjBP9AqD6F9r8PRyeOR-43IbTIOs";
+var WEBTOON_VIEWER_IMAGE_BASE_KEY = "wqQz3o9gS4N5KT80BjV9PwOrjtcumweSf1OlT0Wz2JM=";
+var WEBTOON_VIEWER_KEYS_STORAGE = "naver_webtoon:viewer_keys";
+
+function webtoonViewerKeyDefaults() {
+    return {
+        hmacKey: WEBTOON_VIEWER_HMAC_KEY,
+        drmHmacKey: WEBTOON_VIEWER_DRM_HMAC_KEY,
+        imageBaseKey: WEBTOON_VIEWER_IMAGE_BASE_KEY
+    };
+}
+
+function webtoonViewerConfigError() {
+    var error = new Error("웹툰 뷰어 키 설정을 확인해 주세요.");
+    error.viewerConfigRequired = true;
+    return error;
+}
+
+function validateWebtoonViewerKeys(keys) {
+    if (!keys || typeof keys !== "object" || Array.isArray(keys)) throw webtoonViewerConfigError();
+    var fields = ["hmacKey", "drmHmacKey", "imageBaseKey"];
+    for (var i = 0; i < fields.length; i++) {
+        var value = keys[fields[i]];
+        if (typeof value !== "string" || !value || value.length > 16384 || /[\x00-\x1f\x7f]/.test(value)) {
+            throw webtoonViewerConfigError();
+        }
+    }
+    // 32 bytes encoded as canonical, padded Base64. Avoid relying on atob.
+    var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    if (!/^[A-Za-z0-9+/]{43}=$/.test(keys.imageBaseKey) ||
+        alphabet.indexOf(keys.imageBaseKey.charAt(42)) % 4 !== 0) {
+        throw webtoonViewerConfigError();
+    }
+    return keys;
+}
+
+function webtoonViewerKeys() {
+    var keys = webtoonViewerKeyDefaults();
+    var saved;
+    try {
+        var raw = localStorage.getItem(WEBTOON_VIEWER_KEYS_STORAGE);
+        saved = raw ? JSON.parse(raw) : {};
+    } catch (_) {
+        throw webtoonViewerConfigError();
+    }
+    if (!saved || typeof saved !== "object" || Array.isArray(saved)) throw webtoonViewerConfigError();
+    var fields = Object.keys(saved);
+    for (var i = 0; i < fields.length; i++) {
+        if (!Object.prototype.hasOwnProperty.call(keys, fields[i])) throw webtoonViewerConfigError();
+        keys[fields[i]] = saved[fields[i]];
+    }
+    return validateWebtoonViewerKeys(keys);
+}
+
+function getWebtoonViewerConfig() {
+    var keys = webtoonViewerKeys();
+    return {
+        hmac: { key: keys.hmacKey, consumerId: "comic-viewer.series-comic-viewer", version: "0" },
+        rtdrmHmac: { key: keys.drmHmacKey, keyId: "PCVIEWER" },
+        imageBaseKey: keys.imageBaseKey,
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) comic-viewer-electron/1.0.13 Chrome/108.0.5359.215 Electron/22.3.27 Safari/537.36 NaverSeriesPC/1.0.13 (x64;10.0.19045))",
+        packageId: "series_pc"
+    };
+}
+
+function webtoonOpenViewerSettings(parentViewId) {
+    var keys;
+    var invalid = false;
+    try { keys = webtoonViewerKeys(); }
+    catch (_) { keys = webtoonViewerKeyDefaults(); invalid = true; }
+    var context = { kind: "viewer_settings", parentViewId: parentViewId || 0 };
+    var result = synura.open({
+        view: "/views/settings",
+        styles: {
+            title: "웹툰 뷰어 설정",
+            message: "필요할 때 뷰어 키를 변경할 수 있습니다. 빈 칸은 기본값을 사용합니다."
+        },
+        models: {
+            body: [
+                { type: "string", name: "hmacKey", label: "Series 서명 키", format: "password", value: keys.hmacKey },
+                { type: "string", name: "drmHmacKey", label: "이미지 서버 서명 키", format: "password", value: keys.drmHmacKey },
+                { type: "string", name: "imageBaseKey", label: "이미지 경로 키 (Base64)", format: "password", value: keys.imageBaseKey }
+            ],
+            buttons: ["저장", "기본값 복원", "취소"],
+            snackbar: invalid ? "저장된 설정을 읽지 못해 기본값을 표시합니다. 저장하거나 기본값을 복원해 주세요." : ""
+        }
+    }, context, async function (event) {
+        return (await SYNURA.main.onViewEvent(event.viewId, event));
+    });
+    if (result && result.viewId) viewStates[result.viewId] = context;
+    return result;
+}
+
+function handleWebtoonViewerSettings(viewId, event, context) {
+    if (event.eventId === "CLOSE") {
+        delete viewStates[viewId];
+        return;
+    }
+    if (event.eventId !== "SUBMIT") return;
+    var data = event.data || {};
+    if (data.button === "취소") {
+        synura.close(viewId);
+        delete viewStates[viewId];
+        return;
+    }
+    if (data.button !== "저장" && data.button !== "기본값 복원") return;
+    try {
+        if (data.button === "기본값 복원") {
+            localStorage.removeItem(WEBTOON_VIEWER_KEYS_STORAGE);
+        } else {
+            var defaults = webtoonViewerKeyDefaults();
+            var keys = {};
+            var fields = Object.keys(defaults);
+            for (var i = 0; i < fields.length; i++) {
+                var field = fields[i];
+                if (data[field] !== undefined && typeof data[field] !== "string") throw webtoonViewerConfigError();
+                keys[field] = data[field] === undefined || data[field] === "" ? defaults[field] : data[field];
+            }
+            validateWebtoonViewerKeys(keys);
+            var overrides = {};
+            for (var j = 0; j < fields.length; j++) {
+                if (keys[fields[j]] !== defaults[fields[j]]) overrides[fields[j]] = keys[fields[j]];
+            }
+            if (Object.keys(overrides).length) localStorage.setItem(WEBTOON_VIEWER_KEYS_STORAGE, JSON.stringify(overrides));
+            else localStorage.removeItem(WEBTOON_VIEWER_KEYS_STORAGE);
+        }
+    } catch (_) {
+        synura.update(viewId, { models: { snackbar: "설정을 저장하지 못했습니다. 서명 키와 32바이트 Base64 이미지 경로 키를 확인해 주세요." } });
+        return;
+    }
+    invalidateWebtoonPaidViews("설정이 변경되었습니다. 다시 불러와 주세요.");
+    synura.close(viewId);
+    delete viewStates[viewId];
+    if (context.parentViewId) {
+        synura.update(context.parentViewId, { models: { snackbar: data.button === "기본값 복원" ? "뷰어 키를 기본값으로 복원했습니다." : "뷰어 설정을 저장했습니다." } });
+    }
+}
 
 var WEEKDAY_MENUS = [
     { id: "mon", title: "월요웹툰", link: BASE_URL + "/webtoon/weekday?week=mon" },
@@ -63,6 +204,9 @@ var webtoonEpisodeTitles = {};
 var firstEpisodeUrls = {};
 var previewItemsMap = {};
 var webtoonAuthRetrying = false;
+var webtoonPaidLoads = {};
+var BUTTON_PAID_RETRY = "다시 불러오기";
+var BUTTON_VIEWER_SETTINGS = "뷰어 설정";
 
 function normalizeWebtoonDate(value) {
     var text = String(value || "").trim();
@@ -257,7 +401,7 @@ function webtoonCookieHost(url) {
     return /^https:\/\/(?:m\.)?comic\.naver\.com(?::\d+)?(?:[/?#]|$)/i.test(String(url || ""));
 }
 
-function webtoonFetch(url, headers, method, body) {
+async function webtoonFetch(url, headers, method, body) {
     var requestHeaders = {};
     var source = headers || FETCH_HEADERS;
     var keys = Object.keys(source);
@@ -275,7 +419,10 @@ function webtoonFetch(url, headers, method, body) {
     var options = { headers: requestHeaders };
     if (method) options.method = method;
     if (body != null) options.body = body;
-    return fetch(url, options);
+    if ((method && !/^(GET|HEAD)$/i.test(method)) || keys.some(function (key) {
+        return key.toLowerCase() === "x-xsrf-token";
+    })) options.redirect = "error";
+    return (await fetch(url, options));
 }
 
 function webtoonNeedsLogin(response, html) {
@@ -295,10 +442,10 @@ function webtoonLoginError(url) {
     return error;
 }
 
-function fetchHtml(url) {
+async function fetchHtml(url) {
     try {
-        var resp = webtoonFetch(url);
-        var html = resp ? resp.text() : "";
+        var resp = (await webtoonFetch(url));
+        var html = resp ? (await resp.text()) : "";
         if (webtoonNeedsLogin(resp, html) || resp && resp.status === 401) throw webtoonLoginError(url);
         if (resp && resp.status === 200) {
             if (!html && webtoonAuthRetrying) throw new Error("WEBTOON_RETRY_FAILED");
@@ -362,7 +509,7 @@ function webtoonFirstEpisodeUrlFromDoc(doc, seriesUrl) {
     return url;
 }
 
-function openFirstEpisode(viewId, item, context) {
+async function openFirstEpisode(viewId, item, context) {
     var titleId = item.titleId || extractTitleId(item.link);
     var section = webtoonSection(item.link);
     var key = section + ":" + titleId;
@@ -375,7 +522,7 @@ function openFirstEpisode(viewId, item, context) {
     }
     if (!url) {
         var listUrl = BASE_URL + "/" + section + "/list?titleId=" + titleId + "&page=1";
-        var html = fetchHtml(listUrl);
+        var html = (await fetchHtml(listUrl));
         if (html) {
             var listDoc = parseDoc(html);
             url = webtoonFirstEpisodeUrlFromDoc(listDoc, listUrl);
@@ -385,8 +532,8 @@ function openFirstEpisode(viewId, item, context) {
     }
     if (!url) {
         try {
-            var response = webtoonFetch("https://comic.naver.com/api/article/list?titleId=" + titleId + "&page=1&sort=ASC");
-            var body = response ? response.text() : "";
+            var response = (await webtoonFetch("https://comic.naver.com/api/article/list?titleId=" + titleId + "&page=1&sort=ASC"));
+            var body = response ? (await response.text()) : "";
             if (webtoonNeedsLogin(response, body) || response && response.status === 401) throw webtoonLoginError(listUrl);
             if ((!response || response.status !== 200) && webtoonAuthRetrying) throw new Error("WEBTOON_RETRY_FAILED");
             var data = response && response.status === 200 ? JSON.parse(body) : null;
@@ -405,10 +552,10 @@ function openFirstEpisode(viewId, item, context) {
         return;
     }
     firstEpisodeUrls[key] = url;
-    openEpisodePostView(url, "", context.kind === "viewer" ? viewId : undefined, viewId);
+    (await openEpisodePostView(url, "", context.kind === "viewer" ? viewId : undefined, viewId));
 }
 
-function fetchEpisodeComments(titleId, no, episodeUrl, cursor) {
+async function fetchEpisodeComments(titleId, no, episodeUrl, cursor) {
     if (!titleId || !no) return { comments: [], nextCursor: "", failed: false };
     var commentSection = webtoonSection(episodeUrl) === "webtoon" ? "webtoon" : "challenge";
     var apiUrl = BASE_URL + "/comment/api/community/v2/posts?pageId=" +
@@ -416,13 +563,13 @@ function fetchEpisodeComments(titleId, no, episodeUrl, cursor) {
         "&prevSize=0&nextSize=20&pinRepresentation=none&displayBlindCommentAsService=false";
     if (cursor) apiUrl += "&cursor=" + encodeURIComponent(cursor);
     try {
-        var response = webtoonFetch(apiUrl, {
+        var response = (await webtoonFetch(apiUrl, {
             "Accept": "application/json",
             "Service-Ticket-Id": "comic_" + commentSection,
             "Referer": BASE_URL + "/scrolltoon/comment?titleId=" + titleId + "&no=" + no
-        });
+        }));
         if (!response || response.status !== 200) throw new Error("댓글 요청 실패");
-        var data = JSON.parse(response.text());
+        var data = JSON.parse((await response.text()));
         if (!data || data.status !== "success" || !data.result || !Array.isArray(data.result.posts)) {
             throw new Error("댓글 응답 오류");
         }
@@ -494,9 +641,9 @@ function viewerButtons(context) {
     return buttons;
 }
 
-function loadMoreEpisodeComments(viewId, context) {
+async function loadMoreEpisodeComments(viewId, context) {
     if (!context.commentCursor && !context.commentFailed) return;
-    var page = fetchEpisodeComments(context.titleId, context.no, context.link, context.commentCursor);
+    var page = (await fetchEpisodeComments(context.titleId, context.no, context.link, context.commentCursor));
     context.commentFailed = page.failed;
     if (!page.failed) {
         var comments = context.comments || [];
@@ -545,7 +692,7 @@ function formatFreeConvertDate(dateStr) {
     return diffDays + "일 후";
 }
 
-function fetchPreviewVolumesInfo(doc, titleId, contentsNo, volumeNos) {
+async function fetchPreviewVolumesInfo(doc, titleId, contentsNo, volumeNos) {
     var info = {};
     if (!contentsNo || !volumeNos || volumeNos.length === 0) return info;
 
@@ -568,9 +715,9 @@ function fetchPreviewVolumesInfo(doc, titleId, contentsNo, volumeNos) {
         };
         if (csrfToken) headers["X-XSRF-TOKEN"] = csrfToken;
 
-        var resp = webtoonFetch(BASE_URL + "/api/store/linkedCostVolumesInfo", headers, "POST", bodyParts.join("&"));
+        var resp = (await webtoonFetch(BASE_URL + "/api/store/linkedCostVolumesInfo", headers, "POST", bodyParts.join("&")));
         if (resp && resp.status === 200) {
-            var data = JSON.parse(resp.text());
+            var data = JSON.parse((await resp.text()));
             if (data && data.result && Array.isArray(data.result.volumeList)) {
                 var list = data.result.volumeList;
                 for (var j = 0; j < list.length; j++) {
@@ -594,7 +741,7 @@ function fetchPreviewVolumesInfo(doc, titleId, contentsNo, volumeNos) {
     return info;
 }
 
-function parsePreviewEpisodesFromDoc(doc, baseUrl, seenMap) {
+async function parsePreviewEpisodesFromDoc(doc, baseUrl, seenMap) {
     var previewItems = doc.querySelectorAll(".toon_preview li.item");
     if (!previewItems || previewItems.length === 0) return [];
 
@@ -606,9 +753,10 @@ function parsePreviewEpisodesFromDoc(doc, baseUrl, seenMap) {
     for (var i = 0; i < previewItems.length; i++) {
         var li = previewItems[i];
         var itemTitleId = li.getAttribute("data-title-id") || titleId;
-        var no = li.getAttribute("data-no") || li.getAttribute("data-volume-no") || "";
+        var no = li.getAttribute("data-no") || li.getAttribute("data-article-no") || "";
         var itemContentsNo = li.getAttribute("data-contents-no") || "";
-        var volumeNo = li.getAttribute("data-volume-no") || no;
+        var volumeNo = li.getAttribute("data-volume-no") || "";
+        if (!/^\d+$/.test(itemTitleId) || !/^\d+$/.test(no)) continue;
         var freeConvertDate = li.getAttribute("data-free-convert-date") || "";
 
         if (itemContentsNo && !contentsNo) contentsNo = itemContentsNo;
@@ -640,7 +788,7 @@ function parsePreviewEpisodesFromDoc(doc, baseUrl, seenMap) {
         });
     }
 
-    var volumesInfo = fetchPreviewVolumesInfo(doc, titleId, contentsNo, volumeNos);
+    var volumesInfo = (await fetchPreviewVolumesInfo(doc, titleId, contentsNo, volumeNos));
 
     var episodes = [];
     for (var k = 0; k < itemsData.length; k++) {
@@ -687,11 +835,11 @@ function parsePreviewEpisodesFromDoc(doc, baseUrl, seenMap) {
     return episodes;
 }
 
-function parseEpisodesFromDoc(doc, baseUrl, seenMap, isFirstPage) {
+async function parseEpisodesFromDoc(doc, baseUrl, seenMap, isFirstPage) {
     var episodes = [];
 
     if (isFirstPage) {
-        var previewEps = parsePreviewEpisodesFromDoc(doc, baseUrl, seenMap);
+        var previewEps = (await parsePreviewEpisodesFromDoc(doc, baseUrl, seenMap));
         for (var p = 0; p < previewEps.length; p++) {
             episodes.push(previewEps[p]);
         }
@@ -741,8 +889,8 @@ function parseEpisodesFromDoc(doc, baseUrl, seenMap, isFirstPage) {
     return episodes;
 }
 
-function openWeekdayView(url, title) {
-    var html = fetchHtml(url);
+async function openWeekdayView(url, title) {
+    var html = (await fetchHtml(url));
     var doc = parseDoc(html);
     var toons = [];
     var seen = {};
@@ -790,17 +938,17 @@ function openWeekdayView(url, title) {
             contents: toons,
             menus: []
         }
-    }, { kind: "weekday", link: url, title: title }, function (e) {
-        SYNURA.main.onViewEvent(e.viewId, e);
+    }, { kind: "weekday", link: url, title: title }, async function (e) {
+        return (await SYNURA.main.onViewEvent(e.viewId, e));
     });
 }
 
-function openEpisodeListView(url, titleHint) {
+async function openEpisodeListView(url, titleHint) {
     var fetchUrl = url.split("&week=")[0];
     var titleId = extractTitleId(fetchUrl);
     var section = webtoonSection(fetchUrl);
     var targetUrl = BASE_URL + "/" + section + "/list?titleId=" + titleId + "&page=1";
-    var html = fetchHtml(targetUrl);
+    var html = (await fetchHtml(targetUrl));
     var doc = parseDoc(html);
 
     var titleEl = doc.querySelector(".area_info .title") || doc.querySelector(".title");
@@ -814,7 +962,7 @@ function openEpisodeListView(url, titleHint) {
     var toonAvatar = webtoonThumbnailUrl(thumbEl ? (thumbEl.getAttribute("data-src") || thumbEl.getAttribute("src") || "") : "");
 
     var seenMap = {};
-    var episodes = parseEpisodesFromDoc(doc, BASE_URL, seenMap, true);
+    var episodes = (await parseEpisodesFromDoc(doc, targetUrl, seenMap, true));
     var firstEpisodeUrl = webtoonFirstEpisodeUrlFromDoc(doc, fetchUrl);
     var sub = isSubscribed(titleId);
 
@@ -839,8 +987,8 @@ function openEpisodeListView(url, titleHint) {
             contents: episodes,
             menus: ["첫화보기", sub ? "구독 취소" : "구독", "브라우저로 열기", "쿠키"]
         }
-    }, contextData, function (e) {
-        SYNURA.main.onViewEvent(e.viewId, e);
+    }, contextData, async function (e) {
+        return (await SYNURA.main.onViewEvent(e.viewId, e));
     });
 
     if (res && res.viewId) {
@@ -848,8 +996,281 @@ function openEpisodeListView(url, titleHint) {
     }
 }
 
-function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
-    var html = fetchHtml(url);
+function webtoonCancelPaidLoad(viewId) {
+    var state = webtoonPaidLoads[viewId];
+    if (!state) return;
+    state.cancelled = true;
+    if (state.reader && state.reader.cancel) state.reader.cancel();
+    delete webtoonPaidLoads[viewId];
+}
+
+function invalidateWebtoonPaidViews(message) {
+    Object.keys(webtoonPaidLoads).forEach(webtoonCancelPaidLoad);
+    Object.keys(viewStates).forEach(function (id) {
+        var context = viewStates[id];
+        if (!context.paid) return;
+        context.paidLoaded = false;
+        synura.update(Number(id), { models: {
+            content: [{ type: "text", value: message }],
+            buttons: [BUTTON_PAID_RETRY, BUTTON_VIEWER_SETTINGS],
+            snackbar: ""
+        } });
+    });
+}
+
+function webtoonPaidMenus(context) {
+    var menus = [];
+    if (context.nextUrl) menus.push("다음 화");
+    if (context.prevUrl) menus.push("이전 화");
+    return menus.concat(["첫화보기", "회차 목록", BUTTON_VIEWER_SETTINGS, "브라우저로 열기"]);
+}
+
+function webtoonPaidIdentifier(value) {
+    if (!/^\d{1,16}$/.test(String(value || ""))) return 0;
+    var number = Number(value);
+    return Number.isSafeInteger(number) && number > 0 ? number : 0;
+}
+
+async function webtoonResolvePaidEpisode(context) {
+    var listPrefix = BASE_URL + "/" + context.section + "/list?titleId=" + context.titleId + "&page=";
+    var listUrl = listPrefix + "1";
+    var doc = parseDoc((await fetchHtml(listUrl)));
+    var seriesNode = doc.querySelector(".area_info .title");
+    var seriesTitle = cleanWebtoonTitle(seriesNode && seriesNode.textContent);
+    if (seriesTitle) {
+        context.seriesTitle = seriesTitle;
+        webtoonSeriesTitles[context.section + ":" + context.titleId] = seriesTitle;
+    }
+    context.firstEpisodeUrl = webtoonFirstEpisodeUrlFromDoc(doc, listUrl) || context.firstEpisodeUrl;
+    var item = previewItemsMap[webtoonEpisodeUrl(context.link)];
+    var neighbours = {};
+    var pages = [], seenPages = { "1": true };
+    function mapped(candidate) {
+        return candidate && webtoonPaidIdentifier(candidate.contentsNo) && webtoonPaidIdentifier(candidate.volumeNo);
+    }
+    function pageNumber(href) {
+        // Follow only pagination actually advertised by the same comic list.
+        // Rebuild its URL below so unrelated parameters or origins cannot leak
+        // into authenticated requests. Never guess an unadvertised page.
+        var path = href.replace(/^(?:https?:)?\/\/(?:m\.)?comic\.naver\.com(?=\/)/i, "");
+        if (path.charAt(0) === "?") path = "/" + context.section + "/list" + path;
+        else if (path.indexOf("list?") === 0) path = "/" + context.section + "/" + path;
+        var query = path.indexOf("?");
+        if (query < 0 || path.substring(0, query) !== "/" + context.section + "/list") return 0;
+        var params = new URLSearchParams(path.substring(query + 1).split("#")[0]);
+        if (params.get("titleId") !== context.titleId) return 0;
+        return webtoonPaidIdentifier(params.get("page"));
+    }
+    while (doc) {
+        var nodes = doc.querySelectorAll("[data-volume-no]");
+        var hasEpisodes = false;
+        for (var i = 0; i < nodes.length; i++) {
+            var node = nodes[i];
+            var titleId = node.getAttribute("data-title-id") || context.titleId;
+            var articleNo = node.getAttribute("data-no") || node.getAttribute("data-article-no") || "";
+            if (titleId !== context.titleId || !webtoonPaidIdentifier(articleNo)) continue;
+            hasEpisodes = true;
+            var titleNode = node.querySelector(".title .name") || node.querySelector(".title");
+            var episodeTitle = cleanWebtoonTitle(titleNode && titleNode.textContent);
+            neighbours[articleNo] = episodeTitle;
+            if (articleNo !== context.no) continue;
+            var candidate = {
+                contentsNo: node.getAttribute("data-contents-no"),
+                volumeNo: node.getAttribute("data-volume-no"),
+                title: episodeTitle
+            };
+            if (mapped(candidate)) item = candidate;
+        }
+        var links = doc.querySelectorAll("a[href]");
+        for (var j = 0; j < links.length; j++) {
+            var href = String(links[j].getAttribute("href") || "").trim();
+            if (webtoonContentUrl(href, "detail") && extractTitleId(href) === context.titleId &&
+                webtoonSection(href) === context.section) {
+                var number = extractEpisodeNo(href);
+                if (webtoonPaidIdentifier(number)) {
+                    hasEpisodes = true;
+                    neighbours[number] = neighbours[number] || "";
+                }
+            }
+            var page = pageNumber(href);
+            if (page && !seenPages[page]) {
+                seenPages[page] = true;
+                pages.push(page);
+            }
+        }
+        if (mapped(item) || !hasEpisodes || !pages.length) break;
+        var html = (await fetchHtml(listPrefix + pages.shift()));
+        // A failed/empty page should not trigger a sweep through every queued
+        // link. Leave the caller with the existing controlled mapping error.
+        if (!html) break;
+        doc = parseDoc(html);
+    }
+    // Only use an explicit series mapping. A webtoon article number is not a
+    // Series volume number, even when the values happen to match.
+    var contentsNo = item && webtoonPaidIdentifier(item.contentsNo);
+    var volumeNo = item && webtoonPaidIdentifier(item.volumeNo);
+    if (!contentsNo || !volumeNo) throw new Error("WEBTOON_EPISODE_MAPPING_MISSING");
+    if (item.title) context.episodeTitle = cleanWebtoonTitle(item.title);
+    context.title = context.seriesTitle && context.episodeTitle
+        ? context.seriesTitle + " - " + context.episodeTitle
+        : context.episodeTitle || context.seriesTitle || context.title;
+    var current = Number(context.no), before = 0, after = 0;
+    Object.keys(neighbours).forEach(function (number) {
+        var value = Number(number);
+        if (value < current && value > before) before = value;
+        if (value > current && (!after || value < after)) after = value;
+    });
+    var prefix = BASE_URL + "/" + context.section + "/detail?titleId=" + context.titleId + "&no=";
+    context.prevUrl = before ? prefix + before : "";
+    context.nextUrl = after ? prefix + after : "";
+    context.prevTitle = neighbours[before] || "이전 화";
+    context.nextTitle = neighbours[after] || "다음 화";
+    return { contentsNo: contentsNo, volumeNo: volumeNo };
+}
+
+function webtoonEncodeBase64(value) {
+    var bytes;
+    if (value instanceof ArrayBuffer) bytes = new Uint8Array(value);
+    else if (ArrayBuffer.isView(value)) bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    else throw new TypeError("Expected binary data");
+    var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    var parts = [];
+    // Each chunk ends on a complete Base64 group. Bound string concatenation
+    // and avoid spreading image-sized byte arrays into function arguments.
+    for (var start = 0; start < bytes.length; start += 3072) {
+        var end = Math.min(start + 3072, bytes.length);
+        var part = "";
+        for (var i = start; i < end; i += 3) {
+            var a = bytes[i], b = i + 1 < end ? bytes[i + 1] : 0, c = i + 2 < end ? bytes[i + 2] : 0;
+            var bits = (a << 16) | (b << 8) | c;
+            part += alphabet[(bits >>> 18) & 63] + alphabet[(bits >>> 12) & 63]
+                + (i + 1 < end ? alphabet[(bits >>> 6) & 63] : "=")
+                + (i + 2 < end ? alphabet[bits & 63] : "=");
+        }
+        parts.push(part);
+    }
+    return parts.join("");
+}
+
+function webtoonImageMime(bytes) {
+    if (bytes.length >= 3 && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return "image/jpeg";
+    if (bytes.length >= 8 && bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71 &&
+        bytes[4] === 13 && bytes[5] === 10 && bytes[6] === 26 && bytes[7] === 10) return "image/png";
+    if (bytes.length >= 6 && bytes[0] === 71 && bytes[1] === 73 && bytes[2] === 70 && bytes[3] === 56 &&
+        (bytes[4] === 55 || bytes[4] === 57) && bytes[5] === 97) return "image/gif";
+    if (bytes.length >= 12 && bytes[0] === 82 && bytes[1] === 73 && bytes[2] === 70 && bytes[3] === 70 &&
+        bytes[8] === 87 && bytes[9] === 69 && bytes[10] === 66 && bytes[11] === 80) return "image/webp";
+    throw new Error("WEBTOON_INVALID_IMAGE");
+}
+
+async function webtoonLoadPaidEpisode(viewId, context, loginRetry) {
+    if (webtoonPaidLoads[viewId]) return;
+    var state = { cancelled: false, reader: null };
+    webtoonPaidLoads[viewId] = state;
+    viewStates[viewId] = context;
+    context.paidLoaded = false;
+    function active() { return !state.cancelled && webtoonPaidLoads[viewId] === state; }
+    function update(diff) {
+        if (!active()) return false;
+        var result = synura.update(viewId, diff);
+        if (result && result.success === false) webtoonCancelPaidLoad(viewId);
+        return active();
+    }
+    try {
+        if (!localStorage.getItem(WEBTOON_COOKIE_KEY)) throw { loginRequired: true };
+        if (typeof crypto === "undefined" || !crypto.subtle || typeof crypto.randomUUID !== "function") {
+            throw new Error("WEBTOON_CRYPTO_UNAVAILABLE");
+        }
+        if (!update({ models: { content: [{ type: "text", value: "회차 이미지를 불러오는 중입니다." }],
+            buttons: [BUTTON_VIEWER_SETTINGS], snackbar: "열람 권한을 확인하고 있습니다." } })) return;
+        var ids = (await webtoonResolvePaidEpisode(context));
+        if (!active()) return;
+        state.reader = handler.createPaidReader();
+        var episode = await state.reader.loadEpisode(ids.contentsNo, ids.volumeNo);
+        if (!active()) return;
+        var blocks = [{ type: "anchor", value: "webtoon_" + context.titleId + "_" + context.no }];
+        for (var i = 0; i < episode.images.length; i++) {
+            if (!active()) return;
+            var bytes = await state.reader.readImage(i);
+            if (!active()) return;
+            var image = episode.images[i];
+            var mimeType = webtoonImageMime(bytes);
+            var block = {
+                type: "image", value: "data:" + mimeType + ";base64," + webtoonEncodeBase64(bytes),
+                mimeType: mimeType
+            };
+            bytes.fill(0);
+            if (Number(image.width) > 0) block.width = Number(image.width);
+            if (Number(image.height) > 0) block.height = Number(image.height);
+            blocks.push(block);
+            if ((i + 1) % 10 === 0 && i + 1 < episode.images.length) {
+                if (!update({ models: { snackbar: "이미지 불러오는 중 " + (i + 1) + "/" + episode.images.length } })) return;
+            }
+        }
+        if (context.nextUrl) blocks.push({ type: "link", value: "👉 다음 화 보기", link: context.nextUrl });
+        if (context.prevUrl) blocks.push({ type: "link", value: "👈 이전 화 보기", link: context.prevUrl });
+        var comments = (await fetchEpisodeComments(context.titleId, context.no, context.link, ""));
+        if (!active()) return;
+        context.comments = comments.comments;
+        context.commentCursor = comments.nextCursor;
+        context.commentFailed = comments.failed;
+        context.paidLoaded = true;
+        // Post views replace the content model. Send image data URLs once after all
+        // downloads, rather than repeatedly copying the growing image list.
+        update({ styles: { title: context.title }, models: {
+            title: context.title, author: context.title, content: blocks,
+            menus: webtoonPaidMenus(context), buttons: viewerButtons(context), comments: comments.comments,
+            snackbar: comments.failed ? "댓글을 불러오지 못했습니다." : ""
+        } });
+        return { loaded: true, imageCount: episode.images.length };
+    } catch (error) {
+        if (!active() || error && error.cancelled) return;
+        var loginRequired = !!(error && (error.loginRequired || error.webtoonLoginRequired));
+        var message = loginRequired ? "구매한 네이버 계정으로 로그인해 주세요."
+            : error && error.rightsRequired ? "이 회차의 열람 권한이 없습니다. 구매 또는 대여 상태를 확인해 주세요."
+            : error && error.viewerConfigRequired ? "뷰어 설정을 확인해 주세요."
+            : error && error.message === "WEBTOON_CRYPTO_UNAVAILABLE" ? "이 런타임은 웹툰 열람에 필요한 crypto API를 지원하지 않습니다."
+            : error && error.message === "WEBTOON_EPISODE_MAPPING_MISSING" ? "회차 정보를 찾지 못했습니다. 회차 목록을 새로고침한 뒤 다시 선택해 주세요."
+            : error && error.message === "WEBTOON_INVALID_IMAGE" ? "올바른 이미지 데이터를 받지 못했습니다. 다시 불러와 주세요."
+            : "회차 이미지를 불러오지 못했습니다. 로그인 상태와 뷰어 설정을 확인한 뒤 다시 시도해 주세요.";
+        update({ models: { content: [{ type: "text", value: message }], snackbar: "",
+            buttons: (loginRequired ? ["로그인"] : []).concat([BUTTON_PAID_RETRY, BUTTON_VIEWER_SETTINGS, BUTTON_BROWSER]) } });
+        if (loginRequired && !loginRetry) {
+            webtoonOpenLoginBrowser("https://nid.naver.com/nidlogin.login?url=" + encodeURIComponent(BASE_URL + "/webtoon/list?titleId=" + context.titleId),
+                { kind: "paid_view", viewId: viewId });
+        }
+        return { loginRequired: loginRequired };
+    } finally {
+        if (state.reader) { try { state.reader.reset(); } catch (_) {} }
+        if (webtoonPaidLoads[viewId] === state) delete webtoonPaidLoads[viewId];
+    }
+}
+
+function openPaidEpisodeView(url, metadata, replaceViewId, episodeDate) {
+    var context = {
+        kind: "viewer", paid: true, link: webtoonEpisodeUrl(url),
+        titleId: extractTitleId(url), no: extractEpisodeNo(url), section: webtoonSection(url),
+        title: metadata.title || "웹툰 보기", seriesTitle: metadata.seriesTitle, episodeTitle: metadata.episodeTitle,
+        comments: [], commentCursor: "", commentFailed: false
+    };
+    if (replaceViewId) {
+        webtoonCancelPaidLoad(replaceViewId);
+        synura.close(replaceViewId);
+        delete viewStates[replaceViewId];
+    }
+    var res = synura.open({
+        view: "/views/post",
+        styles: { title: context.title, fullWidth: true, menu: true, anchor: "webtoon_" + context.titleId + "_" + context.no },
+        models: { title: context.title, author: context.title, date: episodeDate || "", category: "",
+            content: [{ type: "text", value: "회차 이미지를 불러오는 중입니다." }],
+            link: context.link, menus: webtoonPaidMenus(context), buttons: [BUTTON_VIEWER_SETTINGS] }
+    }, context, async function (e) { return (await SYNURA.main.onViewEvent(e.viewId, e)); });
+    if (res && res.viewId && !viewStates[res.viewId]) viewStates[res.viewId] = context;
+    return res;
+}
+
+async function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
+    var html = (await fetchHtml(url));
     var errorViewId = replaceViewId || parentViewId;
     if (!html) {
         if (errorViewId) synura.update(errorViewId, { models: { snackbar: "회차를 불러오지 못했습니다. 다시 시도해 주세요." } });
@@ -870,6 +1291,13 @@ function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
     var inheritedContext = viewStates[parentViewId] || viewStates[replaceViewId];
     var metadata = webtoonEpisodeMetadata(doc, url, titleHint, inheritedContext);
     var epTitle = metadata.title || "웹툰 보기";
+
+    // Paid episodes return a script-only notice, even for an owned episode.
+    // The official list opens the app bridge instead of this HTML viewer.
+    if (/alert\s*\(\s*(['"])유료로\s*전환된\s*회차입니다\.?\1\s*\)/.test(html)) {
+        openPaidEpisodeView(url, metadata, replaceViewId, episodeDate);
+        return;
+    }
 
     // Extract comic cuts without using comma-separated selectors in querySelectorAll
     var imgEls = doc.querySelectorAll("img.toon_image");
@@ -896,7 +1324,7 @@ function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
         var img = imgEls[i];
         var src = img.getAttribute("data-src") || img.getAttribute("src") || "";
         if (!src || src.indexOf("http") !== 0) continue;
-        if (src.indexOf("bg_transparency") >= 0 || src.indexOf("age_") >= 0 || src.indexOf("ico_") >= 0 || src.indexOf("banner") >= 0 || src.indexOf("/thumbnail/") >= 0) continue;
+        if (/(?:^|\/)(?:bg_transparency|age_|ico_|banner)[^/]*(?:\?|$)/i.test(src) || src.indexOf("/thumbnail/") >= 0) continue;
         if (seen[src]) continue;
         seen[src] = true;
 
@@ -948,6 +1376,11 @@ function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
     var nextUrl = (nextNo && titleId) ? (BASE_URL + "/" + section + "/detail?titleId=" + titleId + "&no=" + nextNo) : "";
     var prevUrl = (prevNo && titleId) ? (BASE_URL + "/" + section + "/detail?titleId=" + titleId + "&no=" + prevNo) : "";
 
+    // Navigation alone is not an episode body. Make a missing body explicit.
+    if (blocks.length === 0) {
+        blocks.push({ type: "text", value: "회차 본문 이미지를 불러오지 못했습니다. 아래 ‘웹브라우저에서 보기’ 버튼으로 확인해 주세요." });
+    }
+
     // Append navigation blocks at the bottom of content
     if (nextUrl) {
         blocks.push({
@@ -964,14 +1397,6 @@ function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
         });
     }
 
-    if (blocks.length === 0) {
-        blocks.push({
-            type: "link",
-            link: url,
-            value: "웹툰 보러가기: " + epTitle
-        });
-    }
-
     var viewerMenus = [];
     if (nextUrl) viewerMenus.push("다음 화");
     if (prevUrl) viewerMenus.push("이전 화");
@@ -979,7 +1404,7 @@ function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
     viewerMenus.push("회차 목록");
     viewerMenus.push("브라우저로 열기");
 
-    var commentPage = fetchEpisodeComments(titleId, no, url, "");
+    var commentPage = (await fetchEpisodeComments(titleId, no, url, ""));
     var contextData = {
         kind: "viewer",
         link: url,
@@ -1021,11 +1446,12 @@ function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
             snackbar: commentPage.failed ? "댓글을 불러오지 못했습니다. 다시 시도하거나 웹브라우저에서 확인해 주세요." : ""
         }
     };
-    var callback = function (e) {
-        SYNURA.main.onViewEvent(e.viewId, e);
+    var callback = async function (e) {
+        return (await SYNURA.main.onViewEvent(e.viewId, e));
     };
 
     if (replaceViewId) {
+        webtoonCancelPaidLoad(replaceViewId);
         synura.close(replaceViewId);
         delete viewStates[replaceViewId];
     }
@@ -1037,9 +1463,9 @@ function openEpisodePostView(url, titleHint, replaceViewId, parentViewId) {
     }
 }
 
-function openSearchView(keyword) {
+async function openSearchView(keyword) {
     var url = BASE_URL + "/search/result?keyword=" + encodeURIComponent(keyword);
-    var html = fetchHtml(url);
+    var html = (await fetchHtml(url));
     var doc = parseDoc(html);
     var toons = [];
     var seen = {};
@@ -1099,8 +1525,8 @@ function openSearchView(keyword) {
             contents: toons,
             menus: ["검색", "브라우저로 열기"]
         }
-    }, { kind: "search", keyword: keyword, link: url, title: "검색: " + keyword }, function (e) {
-        SYNURA.main.onViewEvent(e.viewId, e);
+    }, { kind: "search", keyword: keyword, link: url, title: "검색: " + keyword }, async function (e) {
+        return (await SYNURA.main.onViewEvent(e.viewId, e));
     });
 }
 
@@ -1118,8 +1544,8 @@ function showSearchDialog(viewId) {
             ],
             buttons: ["검색", "취소"]
         }
-    }, { from: "search_dialog", parentViewId: viewId || 0 }, function (e) {
-        SYNURA.main.onViewEvent(e.viewId, e);
+    }, { from: "search_dialog", parentViewId: viewId || 0 }, async function (e) {
+        return (await SYNURA.main.onViewEvent(e.viewId, e));
     });
 }
 
@@ -1166,7 +1592,7 @@ function refreshWebtoonHomeView(viewId, context) {
     if (changed) {
         update.models = {
             contents: items,
-            menus: ["검색", "새로고침", "브라우저로 열기", "쿠키", "로그인", "로그아웃"]
+            menus: ["검색", "새로고침", "브라우저로 열기", "쿠키", BUTTON_VIEWER_SETTINGS, "로그인", "로그아웃"]
         };
     }
     var result = synura.update(viewId, update);
@@ -1177,8 +1603,8 @@ function refreshWebtoonHomeView(viewId, context) {
     if (changed) {
         context.homeSignature = signature;
         viewStates[viewId] = context;
-        synura.connect(viewId, context, function (e) {
-            SYNURA.main.onViewEvent(e.viewId, e);
+        synura.connect(viewId, context, async function (e) {
+            return (await SYNURA.main.onViewEvent(e.viewId, e));
         });
     }
 }
@@ -1204,10 +1630,10 @@ var handler = {
             styles: webtoonListStyles("네이버 웹툰", false, { layout: "list" }),
             models: {
                 contents: items,
-                menus: ["검색", "새로고침", "브라우저로 열기", "쿠키", "로그인", "로그아웃"]
+                menus: ["검색", "새로고침", "브라우저로 열기", "쿠키", BUTTON_VIEWER_SETTINGS, "로그인", "로그아웃"]
             }
-        }, contextData, function (e) {
-            SYNURA.main.onViewEvent(e.viewId, e);
+        }, contextData, async function (e) {
+            return (await SYNURA.main.onViewEvent(e.viewId, e));
         });
 
         if (res && res.viewId) {
@@ -1215,21 +1641,28 @@ var handler = {
         }
     },
 
-    resume: function (viewId, context) {
+    resume: async function (viewId, context) {
         var current = viewStates[viewId];
-        if (context && !(current && current.kind === "home" && context.kind === "home")) {
+        if (context && !(current && (current.kind === "home" && context.kind === "home" || current.paid && context.paid))) {
             current = viewStates[viewId] = context;
         }
         current = current || {};
-        synura.connect(viewId, current, function (e) {
-            SYNURA.main.onViewEvent(e.viewId, e);
+        synura.connect(viewId, current, async function (e) {
+            return (await SYNURA.main.onViewEvent(e.viewId, e));
         });
-        handler.onViewEvent(viewId, { eventId: "RESUME", context: current });
+        return (await handler.onViewEvent(viewId, { eventId: "RESUME", context: current }));
     },
 
-    onViewEvent: function (viewId, event) {
+    onViewEvent: async function (viewId, event) {
         if (!event) return;
         var ctx = (viewStates[viewId] || event.context || {});
+
+        if (ctx.kind === "viewer_settings") return handleWebtoonViewerSettings(viewId, event, ctx);
+        if (ctx.paid && (event.eventId === "LOAD" || event.eventId === "RESUME" || event.eventId === "REFRESH")) {
+            if (event.eventId === "REFRESH") webtoonCancelPaidLoad(viewId);
+            else if (ctx.paidLoaded) return;
+            return (await webtoonLoadPaidEpisode(viewId, ctx));
+        }
 
         if ((event.eventId === "LOAD" || event.eventId === "RESUME") &&
             (ctx.kind === "home" || ctx.kind === "weekday" || ctx.kind === "search" || ctx.kind === "episodes")) {
@@ -1245,31 +1678,31 @@ var handler = {
             return;
         }
 
-function isWebtoonLoggedIn() {
+async function isWebtoonLoggedIn() {
     var cookie = localStorage.getItem(WEBTOON_COOKIE_KEY);
     if (!cookie) return false;
     try {
-        var resp = webtoonFetch(BASE_URL + "/api/loginStatus", {
+        var resp = (await webtoonFetch(BASE_URL + "/api/loginStatus", {
             "Accept": "application/json",
             "Referer": BASE_URL
-        }, "POST");
+        }, "POST"));
         if (!resp || resp.status !== 200) return false;
-        var data = JSON.parse(resp.text());
+        var data = JSON.parse((await resp.text()));
         return !!(data && data.result && data.result.login);
     } catch (e) {
         return false;
     }
 }
 
-function handlePreviewEpisodeClick(viewId, item, ctx) {
+async function handlePreviewEpisodeClick(viewId, item, ctx) {
     if (!item) return;
 
     if (item.isOwned) {
-        openEpisodePostView(item.link, item.title, undefined, viewId);
+        (await openEpisodePostView(item.link, item.title, undefined, viewId));
         return;
     }
 
-    var loggedIn = isWebtoonLoggedIn();
+    var loggedIn = (await isWebtoonLoggedIn());
     if (!loggedIn) {
         var targetUrl = item.link || (BASE_URL + "/webtoon/detail?titleId=" + item.titleId + "&no=" + item.no);
         var loginUrl = "https://nid.naver.com/nidlogin.login?url=" + encodeURIComponent(targetUrl);
@@ -1286,14 +1719,18 @@ function handlePreviewEpisodeClick(viewId, item, ctx) {
     var titleId = item.titleId || extractTitleId(item.link);
     var no = item.no || extractEpisodeNo(item.link);
     var contentsNo = item.contentsNo || "";
-    var volumeNo = item.volumeNo || no;
+    var volumeNo = item.volumeNo || "";
+    if (!webtoonPaidIdentifier(contentsNo) || !webtoonPaidIdentifier(volumeNo)) {
+        synura.update(viewId, { models: { snackbar: "회차 정보를 찾지 못했습니다. 목록을 새로고침해 주세요." } });
+        return;
+    }
     var cookieCount = item.cookieCount || 3;
 
     var userAlreadyOwns = false;
     var csrfToken = "";
     try {
         var listUrl = BASE_URL + "/webtoon/list?titleId=" + titleId;
-        var html = fetchHtml(listUrl);
+        var html = (await fetchHtml(listUrl));
         if (html) {
             var doc = parseDoc(html);
             var csrfMeta = doc.querySelector("meta[name='csrf-token']");
@@ -1311,9 +1748,9 @@ function handlePreviewEpisodeClick(viewId, item, ctx) {
                 "Referer": listUrl
             };
             if (csrfToken) headers["X-XSRF-TOKEN"] = csrfToken;
-            var resp = webtoonFetch(BASE_URL + "/api/store/linkedCostVolumesInfo", headers, "POST", bodyParts.join("&"));
+            var resp = (await webtoonFetch(BASE_URL + "/api/store/linkedCostVolumesInfo", headers, "POST", bodyParts.join("&")));
             if (resp && resp.status === 200) {
-                var data = JSON.parse(resp.text());
+                var data = JSON.parse((await resp.text()));
                 if (data && data.result && Array.isArray(data.result.volumeList) && data.result.volumeList[0]) {
                     var vInfo = data.result.volumeList[0];
                     if (vInfo.userVolume) userAlreadyOwns = true;
@@ -1324,7 +1761,7 @@ function handlePreviewEpisodeClick(viewId, item, ctx) {
     } catch (e) {}
 
     if (userAlreadyOwns) {
-        openEpisodePostView(item.link, item.title, undefined, viewId);
+        (await openEpisodePostView(item.link, item.title, undefined, viewId));
         return;
     }
 
@@ -1340,9 +1777,9 @@ function handlePreviewEpisodeClick(viewId, item, ctx) {
         var valBody = "contentsNo=" + encodeURIComponent(contentsNo) +
             "&volumeNo=" + encodeURIComponent(volumeNo) +
             "&reqUsePassCount=" + encodeURIComponent(String(cookieCount));
-        var valResp = webtoonFetch(BASE_URL + "/api/store/contentsPassUseValidation", valHeaders, "POST", valBody);
+        var valResp = (await webtoonFetch(BASE_URL + "/api/store/contentsPassUseValidation", valHeaders, "POST", valBody));
         if (valResp && valResp.status === 200) {
-            var valData = JSON.parse(valResp.text());
+            var valData = JSON.parse((await valResp.text()));
             if (valData && valData.result) {
                 usableCookieCount = valData.result.usablePassCount || 0;
                 if (valData.result.licenseDay) licenseDay = valData.result.licenseDay;
@@ -1352,6 +1789,7 @@ function handlePreviewEpisodeClick(viewId, item, ctx) {
 
     var confirmMessage = "사용 가능 쿠키 : " + usableCookieCount + "개\n" +
         "쿠키 " + cookieCount + "개로 " + licenseDay + "일간 대여하시겠습니까?\n\n" +
+        PAID_EPISODE_NOTICE + "\n\n" +
         (item.title ? ("작품: " + item.title) : "");
 
     var dialogContext = {
@@ -1378,12 +1816,12 @@ function handlePreviewEpisodeClick(viewId, item, ctx) {
         models: {
             buttons: ["대여하기", "취소"]
         }
-    }, dialogContext, function (e) {
-        SYNURA.main.onViewEvent(e.viewId, e);
+    }, dialogContext, async function (e) {
+        return (await SYNURA.main.onViewEvent(e.viewId, e));
     });
 }
 
-function handleCookieConfirmSubmit(viewId, event, context) {
+async function handleCookieConfirmSubmit(viewId, event, context) {
     var button = event.data ? event.data.button : "";
     synura.close(viewId);
     if (button !== "대여하기") return;
@@ -1403,8 +1841,8 @@ function handleCookieConfirmSubmit(viewId, event, context) {
             view: "/views/browser",
             styles: { title: "쿠키 충전" },
             models: { url: "https://m.series.naver.com/my/cookie/sellingList.series" }
-        }, chargeContext, function (e) {
-            SYNURA.main.onViewEvent(e.viewId, e);
+        }, chargeContext, async function (e) {
+            return (await SYNURA.main.onViewEvent(e.viewId, e));
         });
         if (context.parentViewId) {
             synura.update(context.parentViewId, {
@@ -1425,8 +1863,8 @@ function handleCookieConfirmSubmit(viewId, event, context) {
             "&volumeNo=" + encodeURIComponent(context.volumeNo) +
             "&reqUsePassCount=" + encodeURIComponent(String(context.cookieCount)) +
             "&paymentType=COST_PASS";
-        var resp = webtoonFetch(BASE_URL + "/api/store/contentsPassUse", headers, "POST", body);
-        var resData = resp && resp.status === 200 ? JSON.parse(resp.text()) : null;
+        var resp = (await webtoonFetch(BASE_URL + "/api/store/contentsPassUse", headers, "POST", body));
+        var resData = resp && resp.status === 200 ? JSON.parse((await resp.text())) : null;
 
         if (resData && resData.code === 0) {
             if (context.parentViewId) {
@@ -1434,7 +1872,7 @@ function handleCookieConfirmSubmit(viewId, event, context) {
                     models: { snackbar: "쿠키 " + context.cookieCount + "개가 차감되었습니다." }
                 });
             }
-            openEpisodePostView(context.item.link, context.item.title, undefined, context.parentViewId);
+            (await openEpisodePostView(context.item.link, context.item.title, undefined, context.parentViewId));
         } else {
             var msg = (resData && resData.message) ? resData.message : "쿠키 대여 처리에 실패했습니다.";
             if (context.parentViewId) {
@@ -1448,13 +1886,13 @@ function handleCookieConfirmSubmit(viewId, event, context) {
     }
 }
 
-function fetchUserCookieCount() {
+async function fetchUserCookieCount() {
     if (!localStorage.getItem(WEBTOON_COOKIE_KEY)) return { success: false, loginRequired: true };
     var accountUrl = BASE_URL + "/mypage/favorite";
     try {
         // The MY page supplies the CSRF token for the account-wide balance API.
-        var page = webtoonFetch(accountUrl);
-        var html = page ? page.text() : "";
+        var page = (await webtoonFetch(accountUrl));
+        var html = page ? (await page.text()) : "";
         if (webtoonNeedsLogin(page, html) || page && page.status === 401) {
             return { success: false, loginRequired: true };
         }
@@ -1467,10 +1905,10 @@ function fetchUserCookieCount() {
             "Referer": accountUrl,
             "X-XSRF-TOKEN": csrfToken
         };
-        var resp = webtoonFetch(BASE_URL + "/api/store/usablePassCount", headers);
+        var resp = (await webtoonFetch(BASE_URL + "/api/store/usablePassCount", headers));
         if (resp && resp.status === 401) return { success: false, loginRequired: true };
         if (resp && resp.status === 200) {
-            var body = resp.text();
+            var body = (await resp.text());
             if (webtoonNeedsLogin(resp, body)) return { success: false, loginRequired: true };
             var data = JSON.parse(body);
             var count = data && data.result && data.result.totalPassCount;
@@ -1485,8 +1923,8 @@ function fetchUserCookieCount() {
     return { success: false };
 }
 
-function showCookieInfoDialog(viewId, ctx) {
-    if (!isWebtoonLoggedIn()) {
+async function showCookieInfoDialog(viewId, ctx) {
+    if (!(await isWebtoonLoggedIn())) {
         synura.open({
             view: "/dialogs/confirmation",
             styles: {
@@ -1497,13 +1935,13 @@ function showCookieInfoDialog(viewId, ctx) {
             models: {
                 buttons: ["로그인", "닫기"]
             }
-        }, { kind: "cookie_info_login", parentViewId: viewId }, function (e) {
-            SYNURA.main.onViewEvent(e.viewId, e);
+        }, { kind: "cookie_info_login", parentViewId: viewId }, async function (e) {
+            return (await SYNURA.main.onViewEvent(e.viewId, e));
         });
         return;
     }
 
-    var cookieRes = fetchUserCookieCount();
+    var cookieRes = (await fetchUserCookieCount());
     if (!cookieRes.success) {
         if (cookieRes.loginRequired) {
             synura.open({
@@ -1516,8 +1954,8 @@ function showCookieInfoDialog(viewId, ctx) {
                 models: {
                     buttons: ["로그인", "닫기"]
                 }
-            }, { kind: "cookie_info_login", parentViewId: viewId }, function (e) {
-                SYNURA.main.onViewEvent(e.viewId, e);
+            }, { kind: "cookie_info_login", parentViewId: viewId }, async function (e) {
+                return (await SYNURA.main.onViewEvent(e.viewId, e));
             });
             return;
         }
@@ -1531,8 +1969,8 @@ function showCookieInfoDialog(viewId, ctx) {
             models: {
                 buttons: ["확인"]
             }
-        }, { kind: "cookie_info", parentViewId: viewId }, function (e) {
-            SYNURA.main.onViewEvent(e.viewId, e);
+        }, { kind: "cookie_info", parentViewId: viewId }, async function (e) {
+            return (await SYNURA.main.onViewEvent(e.viewId, e));
         });
         return;
     }
@@ -1547,8 +1985,8 @@ function showCookieInfoDialog(viewId, ctx) {
         models: {
             buttons: ["충전하기", "확인"]
         }
-    }, { kind: "cookie_info", parentViewId: viewId }, function (e) {
-        SYNURA.main.onViewEvent(e.viewId, e);
+    }, { kind: "cookie_info", parentViewId: viewId }, async function (e) {
+        return (await SYNURA.main.onViewEvent(e.viewId, e));
     });
 }
 
@@ -1561,16 +1999,16 @@ function showCookieInfoDialog(viewId, ctx) {
 
             if (itemData.preview || (previewItemsMap && previewItemsMap[link])) {
                 var previewItem = itemData.preview ? itemData : previewItemsMap[link];
-                handlePreviewEpisodeClick(viewId, previewItem, ctx);
+                (await handlePreviewEpisodeClick(viewId, previewItem, ctx));
                 return;
             }
 
             if (webtoonContentUrl(link, "detail")) {
-                openEpisodePostView(link, title, ctx.kind === "viewer" ? viewId : undefined, viewId);
+                (await openEpisodePostView(link, title, ctx.kind === "viewer" ? viewId : undefined, viewId));
             } else if (webtoonContentUrl(link, "list")) {
-                openEpisodeListView(link, title);
+                (await openEpisodeListView(link, title));
             } else if (link.indexOf("/webtoon/weekday") >= 0 || link.indexOf("/webtoon/finish") >= 0) {
-                openWeekdayView(link, title);
+                (await openWeekdayView(link, title));
             } else {
                 synura.open({
                     view: "/views/browser",
@@ -1584,6 +2022,7 @@ function showCookieInfoDialog(viewId, ctx) {
         // 2. VIEW MENU CLICK
         if (event.eventId === "MENU_CLICK" || event.eventId === "MENU") {
             var menu = event.data ? event.data.menu : "";
+            if (menu === BUTTON_VIEWER_SETTINGS) return webtoonOpenViewerSettings(viewId);
             if (menu === "검색") {
                 showSearchDialog(viewId);
                 return;
@@ -1595,25 +2034,25 @@ function showCookieInfoDialog(viewId, ctx) {
                 return;
             }
             if (menu === "첫화보기") {
-                openFirstEpisode(viewId, ctx, ctx);
+                (await openFirstEpisode(viewId, ctx, ctx));
                 return;
             }
             if (menu === "다음 화") {
                 if (ctx.nextUrl) {
-                    openEpisodePostView(ctx.nextUrl, ctx.nextTitle || "다음 화", viewId);
+                    (await openEpisodePostView(ctx.nextUrl, ctx.nextTitle || "다음 화", viewId));
                 }
                 return;
             }
             if (menu === "이전 화") {
                 if (ctx.prevUrl) {
-                    openEpisodePostView(ctx.prevUrl, ctx.prevTitle || "이전 화", viewId);
+                    (await openEpisodePostView(ctx.prevUrl, ctx.prevTitle || "이전 화", viewId));
                 }
                 return;
             }
             if (menu === "회차 목록") {
                 var tid = ctx.titleId || extractTitleId(ctx.link);
                 if (tid) {
-                    openEpisodeListView(BASE_URL + "/" + webtoonSection(ctx.link) + "/list?titleId=" + tid, ctx.seriesTitle || ctx.title || "회차 목록");
+                    (await openEpisodeListView(BASE_URL + "/" + webtoonSection(ctx.link) + "/list?titleId=" + tid, ctx.seriesTitle || ctx.title || "회차 목록"));
                 }
                 return;
             }
@@ -1645,7 +2084,7 @@ function showCookieInfoDialog(viewId, ctx) {
                 return;
             }
             if (menu === "쿠키") {
-                showCookieInfoDialog(viewId, ctx);
+                (await showCookieInfoDialog(viewId, ctx));
                 return;
             }
             if (menu === "로그인") {
@@ -1656,6 +2095,7 @@ function showCookieInfoDialog(viewId, ctx) {
                 return;
             }
             if (menu === "로그아웃") {
+                invalidateWebtoonPaidViews("로그아웃되었습니다. 다시 로그인한 뒤 회차를 불러와 주세요.");
                 localStorage.removeItem(WEBTOON_COOKIE_KEY);
                 synura.update(viewId, { models: { snackbar: "로그아웃되었습니다." } });
                 synura.open({
@@ -1674,7 +2114,7 @@ function showCookieInfoDialog(viewId, ctx) {
             var itemTid = itemData.titleId || extractTitleId(itemData.link);
 
             if (itemMenu === "첫화보기") {
-                openFirstEpisode(viewId, itemData, ctx);
+                (await openFirstEpisode(viewId, itemData, ctx));
                 return;
             }
             if (itemMenu === "구독" || itemMenu === "구독 취소") {
@@ -1707,16 +2147,17 @@ function showCookieInfoDialog(viewId, ctx) {
         // 4. PAGINATION (SCROLL_TO_END / APPEND)
         if (event.eventId === "SCROLL_TO_END" || event.eventId === "APPEND") {
             if (ctx.kind === "viewer") {
-                if (!ctx.commentFailed) loadMoreEpisodeComments(viewId, ctx);
+                if (ctx.paid && !ctx.paidLoaded) return;
+                if (!ctx.commentFailed) (await loadMoreEpisodeComments(viewId, ctx));
                 return;
             }
             if (ctx.kind === "episodes" && ctx.titleId) {
                 var nextPage = (ctx.page || 1) + 1;
                 var pageUrl = BASE_URL + "/" + webtoonSection(ctx.link) + "/list?titleId=" + ctx.titleId + "&page=" + nextPage;
-                var html = fetchHtml(pageUrl);
+                var html = (await fetchHtml(pageUrl));
                 var doc = parseDoc(html);
                 ctx.seenMap = ctx.seenMap || {};
-                var newEpisodes = parseEpisodesFromDoc(doc, BASE_URL, ctx.seenMap, false);
+                var newEpisodes = (await parseEpisodesFromDoc(doc, pageUrl, ctx.seenMap, false));
 
                 if (newEpisodes.length > 0) {
                     ctx.page = nextPage;
@@ -1737,6 +2178,17 @@ function showCookieInfoDialog(viewId, ctx) {
 
         // 5. POST BUTTON / DIALOG SUBMIT
         if (event.eventId === "SUBMIT") {
+            if (ctx.paid && event.data) {
+                if (event.data.button === BUTTON_VIEWER_SETTINGS) return webtoonOpenViewerSettings(viewId);
+                if (event.data.button === BUTTON_PAID_RETRY) {
+                    webtoonCancelPaidLoad(viewId);
+                    return (await webtoonLoadPaidEpisode(viewId, ctx));
+                }
+                if (event.data.button === "로그인") {
+                    return webtoonOpenLoginBrowser("https://nid.naver.com/nidlogin.login?url=" + encodeURIComponent(BASE_URL + "/webtoon/list?titleId=" + ctx.titleId),
+                        { kind: "paid_view", viewId: viewId });
+                }
+            }
             if (ctx.kind === "cookie_charge") {
                 var cData = event.data || {};
                 var cCookie = typeof cData.cookies === "string" ? cData.cookies.trim() : "";
@@ -1745,14 +2197,14 @@ function showCookieInfoDialog(viewId, ctx) {
                 }
                 synura.close(viewId);
                 if (ctx.item && ctx.parentViewId) {
-                    handlePreviewEpisodeClick(ctx.parentViewId, ctx.item, { kind: "episodes", titleId: ctx.titleId });
+                    (await handlePreviewEpisodeClick(ctx.parentViewId, ctx.item, { kind: "episodes", titleId: ctx.titleId }));
                 } else if (ctx.parentViewId) {
                     synura.update(ctx.parentViewId, { models: { snackbar: "쿠키 정보가 반영되었습니다." } });
                 }
                 return;
             }
             if (ctx.kind === "cookie_confirm") {
-                handleCookieConfirmSubmit(viewId, event, ctx);
+                (await handleCookieConfirmSubmit(viewId, event, ctx));
                 return;
             }
             if (ctx.kind === "cookie_info") {
@@ -1766,8 +2218,8 @@ function showCookieInfoDialog(viewId, ctx) {
                     }, {
                         kind: "cookie_charge",
                         parentViewId: ctx.parentViewId
-                    }, function (e) {
-                        SYNURA.main.onViewEvent(e.viewId, e);
+                    }, async function (e) {
+                        return (await SYNURA.main.onViewEvent(e.viewId, e));
                     });
                 }
                 return;
@@ -1793,7 +2245,7 @@ function showCookieInfoDialog(viewId, ctx) {
             }
             if (ctx.kind === "viewer" && event.data &&
                 (event.data.button === BUTTON_MORE_COMMENTS || event.data.button === BUTTON_RETRY_COMMENTS)) {
-                loadMoreEpisodeComments(viewId, ctx);
+                (await loadMoreEpisodeComments(viewId, ctx));
                 return;
             }
             if (ctx.from === "search_dialog") {
@@ -1801,7 +2253,7 @@ function showCookieInfoDialog(viewId, ctx) {
                 var keyword = event.data ? (event.data.keyword || "") : "";
                 synura.close(viewId);
                 if (btn !== "취소" && keyword.trim()) {
-                    openSearchView(keyword.trim());
+                    (await openSearchView(keyword.trim()));
                 }
                 return;
             }
@@ -1809,25 +2261,24 @@ function showCookieInfoDialog(viewId, ctx) {
 
         // 6. CLOSE EVENT
         if (event.eventId === "CLOSE") {
-            if (ctx.kind === "cookie_confirm" || ctx.kind === "cookie_info" || ctx.kind === "cookie_info_login") {
-                delete viewStates[viewId];
-                return;
-            }
+            webtoonCancelPaidLoad(viewId);
+            delete viewStates[viewId];
+            return;
         }
     },
 
-    deeplink: function (url) {
+    deeplink: async function (url) {
         if (!url || url.indexOf("comic.naver.com") < 0) return false;
         if (webtoonContentUrl(url, "detail")) {
-            openEpisodePostView(url, "웹툰");
+            (await openEpisodePostView(url, "웹툰"));
             return true;
         }
         if (webtoonContentUrl(url, "list")) {
-            openEpisodeListView(url, "웹툰");
+            (await openEpisodeListView(url, "웹툰"));
             return true;
         }
         if (url.indexOf("/webtoon/weekday") >= 0 || url.indexOf("/webtoon/finish") >= 0) {
-            openWeekdayView(url, "네이버 웹툰");
+            (await openWeekdayView(url, "네이버 웹툰"));
             return true;
         }
         return false;
@@ -1850,15 +2301,20 @@ function webtoonOpenLoginBrowser(targetUrl, action) {
         view: "/views/browser",
         styles: { title: "네이버 로그인 · 연령 확인" },
         models: { url: targetUrl }
-    }, context, function (event) {
-        SYNURA.main.onViewEvent(event.viewId, event);
+    }, context, async function (event) {
+        return (await SYNURA.main.onViewEvent(event.viewId, event));
     });
     if (result && result.success) viewStates[result.viewId] = context;
     return result;
 }
 
-function webtoonRetryLoginAction(action) {
+async function webtoonRetryLoginAction(action) {
     if (!action) return;
+    if (action.kind === "paid_view") {
+        var context = viewStates[action.viewId];
+        if (context && context.paid) return (await webtoonLoadPaidEpisode(action.viewId, context, true));
+        return;
+    }
     var previous = webtoonAuthRetrying;
     webtoonAuthRetrying = true;
     try {
@@ -1868,20 +2324,20 @@ function webtoonRetryLoginAction(action) {
             }
             return;
         }
-        if (action.kind === "deeplink") return webtoonOriginalDeeplink(action.url);
-        if (action.kind === "search") return openSearchView(action.keyword);
-        return webtoonOriginalViewEvent(action.viewId, {
+        if (action.kind === "deeplink") return (await webtoonOriginalDeeplink(action.url));
+        if (action.kind === "search") return (await openSearchView(action.keyword));
+        return (await webtoonOriginalViewEvent(action.viewId, {
             viewId: action.viewId,
             eventId: action.eventId,
             data: action.data,
             context: action.context
-        });
+        }));
     } finally {
         webtoonAuthRetrying = previous;
     }
 }
 
-function webtoonHandleLoginEvent(viewId, event, context) {
+async function webtoonHandleLoginEvent(viewId, event, context) {
     if (event.eventId === "CLOSE") {
         delete viewStates[viewId];
         return;
@@ -1895,9 +2351,13 @@ function webtoonHandleLoginEvent(viewId, event, context) {
         synura.update(viewId, { models: { snackbar: "쿠키를 가져오지 못했습니다. 로그인과 연령 확인을 마친 뒤 상단 확인을 다시 눌러 주세요." } });
         return;
     }
+    if (localStorage.getItem(WEBTOON_COOKIE_KEY) !== cookie) {
+        invalidateWebtoonPaidViews("로그인 정보가 변경되었습니다. 회차를 다시 불러와 주세요.");
+    }
     localStorage.setItem(WEBTOON_COOKIE_KEY, cookie);
     try {
-        webtoonRetryLoginAction(context.action);
+        var outcome = await webtoonRetryLoginAction(context.action);
+        if (outcome && outcome.loginRequired) throw { webtoonLoginRequired: true };
         synura.close(viewId);
         delete viewStates[viewId];
     } catch (error) {
@@ -1910,15 +2370,14 @@ function webtoonHandleLoginEvent(viewId, event, context) {
 }
 
 var webtoonOriginalViewEvent = handler.onViewEvent;
-handler.onViewEvent = function (viewId, event) {
+handler.onViewEvent = async function (viewId, event) {
     if (!event) return;
     var context = viewStates[viewId] || event.context || {};
     if (context.kind === "webtoon_login") {
-        webtoonHandleLoginEvent(viewId, event, context);
-        return;
+        return (await webtoonHandleLoginEvent(viewId, event, context));
     }
     try {
-        return webtoonOriginalViewEvent(viewId, event);
+        return (await webtoonOriginalViewEvent(viewId, event));
     } catch (error) {
         if (!error || !error.webtoonLoginRequired) throw error;
         if (context.from === "search_dialog" && event.eventId === "SUBMIT") {
@@ -1938,12 +2397,390 @@ handler.onViewEvent = function (viewId, event) {
 };
 
 var webtoonOriginalDeeplink = handler.deeplink;
-handler.deeplink = function (url) {
+handler.deeplink = async function (url) {
     try {
-        return webtoonOriginalDeeplink(url);
+        return (await webtoonOriginalDeeplink(url));
     } catch (error) {
         if (!error || !error.webtoonLoginRequired) throw error;
         webtoonOpenLoginBrowser(error.targetUrl, { kind: "deeplink", url: url });
         return true;
     }
+};
+
+function createWebtoonPaidReader(config, options) {
+  options = options || {};
+  const fetcher = options.fetch || fetch;
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder('utf-8');
+  const apiOrigin = 'https://api.series.naver.com';
+  const drmOrigin = 'https://rtdrm.webtoon.naver.com';
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const deviceId = checkedHeader(options.deviceId, 'Device ID');
+  const packageId = checkedHeader(options.packageId || config.packageId || 'series_pc', 'Package ID');
+  const userAgent = checkedHeader(options.userAgent || config.userAgent, 'User agent');
+  if (typeof fetcher !== 'function') throw new TypeError('A fetch implementation is required');
+  if (!config.hmac || !config.rtdrmHmac) throw new TypeError('Signing configuration is required');
+  const consumerId = checkedHeader(config.hmac.consumerId, 'Consumer ID');
+  const keyId = checkedHeader(config.rtdrmHmac.keyId || config.keyId, 'DRM key ID');
+  const version = String(config.hmac.version);
+  if (!/^\d{1,4}$/.test(version)) throw new TypeError('Invalid signature version');
+  const now = typeof options.clock === 'function' ? options.clock : Date.now;
+  let n3rKey, nfrontKey, session = null, loading = false, activeReads = 0;
+  let clockOffset = 0, clockSynchronized = false, cancelled = false;
+
+  class ReaderError extends Error {
+    constructor(message, status, code) {
+      super(message);
+      this.name = 'WebtoonReaderError';
+      this.status = Number.isInteger(status) ? status : 0;
+      this.code = Number.isInteger(code) ? code : null;
+      this.loginRequired = this.status === 401 || this.code === 1004;
+      this.rightsRequired = this.code === 4005;
+      this.cancelled = false;
+    }
+  }
+  function fail(message, status, code) { return new ReaderError(message, status, code); }
+  function checkCancelled() {
+    if (!cancelled) return;
+    const error = fail('Viewer request was cancelled');
+    error.name = 'AbortError';
+    error.cancelled = true;
+    throw error;
+  }
+  function clearSession() {
+    if (session) session.iv.fill(0);
+    session = null;
+  }
+  function apiCode(data) {
+    const code = data && typeof data === 'object' ? data.code : undefined;
+    if (Number.isInteger(code)) return code;
+    if (typeof code === 'string' && /^-?\d{1,9}$/.test(code)) return Number(code);
+    return null;
+  }
+  function apiFailure(status, code) {
+    if (status === 401 || code === 1004) return loginFailure(status, code);
+    if (code === 4005) return fail('This episode requires a purchase or rental', status, code);
+    return fail('Viewer API request failed', status, code);
+  }
+  function loginFailure(status, code) {
+    const error = fail('Naver login is required', status, code);
+    error.loginRequired = true;
+    return error;
+  }
+  function checkedHeader(value, label) {
+    if (typeof value !== 'string' || !value || value.length > 16384 || /[\r\n\0]/.test(value)) {
+      throw new TypeError(label + ' is missing or invalid');
+    }
+    return value;
+  }
+  function timestamp() {
+    const value = Number(now()) + clockOffset;
+    if (!Number.isSafeInteger(value) || value < 0) throw fail('Invalid clock value');
+    return String(value);
+  }
+  function originOf(url) {
+    if (typeof url !== 'string' || /[\r\n\0\\#]/.test(url)) throw fail('Invalid request URL');
+    if (url.indexOf(apiOrigin + '/') === 0) return apiOrigin;
+    if (url.indexOf(drmOrigin + '/') === 0) return drmOrigin;
+    throw fail('Unsupported request origin');
+  }
+  function bytesOf(value) {
+    if (value instanceof ArrayBuffer) return new Uint8Array(value);
+    if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    throw fail('Expected binary response');
+  }
+  function decodeBase64(value) {
+    if (typeof value !== 'string' || value.length % 4 !== 0 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+      throw fail('Invalid encoded key response');
+    }
+    const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0;
+    const output = new Uint8Array(value.length / 4 * 3 - padding);
+    let cursor = 0;
+    for (let i = 0; i < value.length; i += 4) {
+      const bits = (alphabet.indexOf(value[i]) << 18) | (alphabet.indexOf(value[i + 1]) << 12)
+        | ((value[i + 2] === '=' ? 0 : alphabet.indexOf(value[i + 2])) << 6)
+        | (value[i + 3] === '=' ? 0 : alphabet.indexOf(value[i + 3]));
+      if (cursor < output.length) output[cursor++] = bits >>> 16;
+      if (cursor < output.length) output[cursor++] = bits >>> 8;
+      if (cursor < output.length) output[cursor++] = bits;
+    }
+    return output;
+  }
+  function hex(value) {
+    const bytes = bytesOf(value);
+    let output = '';
+    for (let i = 0; i < bytes.length; i++) output += bytes[i].toString(16).padStart(2, '0');
+    return output;
+  }
+  function randomText(length) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const random = new Uint8Array(64);
+    let output = '', rounds = 0;
+    while (output.length < length) {
+      if (++rounds > 32) throw fail('Random source failed');
+      crypto.getRandomValues(random);
+      for (let i = 0; i < random.length && output.length < length; i++) {
+        if (random[i] < 248) output += characters[random[i] % 62];
+      }
+    }
+    random.fill(0);
+    return output;
+  }
+  async function synchronizeClock() {
+    checkCancelled();
+    if (clockSynchronized || typeof options.clock === 'function') return;
+    try {
+      const response = await fetcher(apiOrigin + '/current-time', {method:'GET',headers:{'User-Agent':userAgent}});
+      checkCancelled();
+      if (!response || response.status !== 200) return;
+      const data = await response.json();
+      checkCancelled();
+      if (data && Number.isSafeInteger(data.result) && data.result > 100) {
+        clockOffset = data.result - Number(now());
+        clockSynchronized = true;
+      }
+    } catch (_) {
+      checkCancelled();
+      // The protocol can use local time when the optional clock lookup fails.
+    }
+  }
+  async function signingKey(family) {
+    const group = family === 'series' ? config.hmac : config.rtdrmHmac;
+    const secret = checkedHeader(group.key, 'Signing key');
+    return crypto.subtle.importKey('raw', encoder.encode(secret),
+      {name:'HMAC',hash:family === 'series' ? 'SHA-1' : 'SHA-256'},false,['sign']);
+  }
+  async function headersFor(url, family, withCookie, token) {
+    checkCancelled();
+    const origin = originOf(url);
+    if ((family === 'series' && origin !== apiOrigin) || (family === 'drm' && origin !== drmOrigin)) {
+      throw fail('Incorrect signing origin');
+    }
+    const headers = {'User-Agent':userAgent};
+    const time = timestamp();
+    if (family === 'series') {
+      if (!n3rKey) n3rKey = (await signingKey('series'));
+      const input = url.replace(/^https:/, 'http:').slice(0,255) + time;
+      const signature = await crypto.subtle.sign('HMAC',await n3rKey,encoder.encode(input));
+      headers['x-consumer-id'] = consumerId;
+      headers['x-hmac-msgpad'] = time;
+      headers['x-hmac-md'] = 'v' + version + ':' + webtoonEncodeBase64(signature);
+      headers['Device-Id'] = deviceId;
+    } else {
+      if (!nfrontKey) nfrontKey = (await signingKey('drm'));
+      const signature = await crypto.subtle.sign('HMAC',await nfrontKey,encoder.encode(url + time));
+      headers['n-hmac-key-id'] = keyId;
+      headers['n-hmac-timestamp'] = time;
+      headers['n-hmac-signature'] = webtoonEncodeBase64(signature);
+    }
+    if (withCookie) {
+      const cookie = typeof options.cookie === 'function' ? await options.cookie() : options.cookie;
+      checkCancelled();
+      if (typeof cookie !== 'string' || !cookie.trim() || cookie.length > 16384 || /[\r\n\0]/.test(cookie)) {
+        throw loginFailure();
+      }
+      headers.Cookie = cookie;
+    }
+    if (token) headers['X-Webtoon-Verify-Token'] = checkedHeader(token,'Webtoon token');
+    return headers;
+  }
+  async function request(url, family, withCookie, token) {
+    checkCancelled();
+    originOf(url);
+    const headers = await headersFor(url,family,withCookie,token);
+    checkCancelled();
+    let response;
+    try { response = await fetcher(url,{method:'GET',headers,redirect:'error'}); }
+    catch (_) { checkCancelled(); throw fail('Viewer network request failed'); }
+    checkCancelled();
+    if (!response || !Number.isInteger(response.status)) throw fail('Invalid HTTP response');
+    if (response.url && originOf(response.url) !== originOf(url)) throw fail('Unexpected request redirect');
+    if (response.status < 200 || response.status >= 300) {
+      let data;
+      try { data = await response.json(); } catch (_) {}
+      checkCancelled();
+      throw apiFailure(response.status, apiCode(data));
+    }
+    return response;
+  }
+  async function resultOf(response) {
+    checkCancelled();
+    let data;
+    try { data = await response.json(); }
+    catch (_) { checkCancelled(); throw fail('Invalid API response', response.status); }
+    checkCancelled();
+    if (data && typeof data === 'object' && data.code !== undefined && apiCode(data) !== 0) {
+      throw apiFailure(response.status, apiCode(data));
+    }
+    if (!data || typeof data !== 'object' || !data.result || typeof data.result !== 'object') {
+      throw fail('Missing API result', response.status);
+    }
+    return data.result;
+  }
+  function responseHeader(response, name) {
+    const headers = response.headers;
+    if (headers && typeof headers.get === 'function') return headers.get(name);
+    if (headers && typeof headers === 'object') {
+      for (const key of Object.keys(headers)) if (key.toLowerCase() === name.toLowerCase()) return headers[key];
+    }
+    return undefined;
+  }
+  async function encryptedPath(contentsNo, volumeNo, userId) {
+    const prefix = encoder.encode(userId.slice(0,3));
+    const base = decodeBase64(config.imageBaseKey);
+    const combined = new Uint8Array(prefix.length + base.length + 32);
+    combined.set(prefix);
+    combined.set(base,prefix.length);
+    const keyBytes = combined.slice(0,32);
+    const iv = new Uint8Array(16);
+    try {
+      const key = await crypto.subtle.importKey('raw',keyBytes,'AES-CBC',false,['encrypt']);
+      checkCancelled();
+      const plain = encoder.encode(JSON.stringify({contentsNo,volumeNo,preview:false,deviceId}));
+      const encrypted = new Uint8Array(await crypto.subtle.encrypt({name:'AES-CBC',iv},key,plain));
+      checkCancelled();
+      const wire = new Uint8Array(iv.length + encrypted.length);
+      wire.set(iv); wire.set(encrypted,iv.length);
+      return webtoonEncodeBase64(wire).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    } finally {
+      base.fill(0); combined.fill(0); keyBytes.fill(0);
+    }
+  }
+  async function exchangeKeys(token) {
+    checkCancelled();
+    const rsaResult = await resultOf(await request(drmOrigin + '/pcviewer/api/issue_rsa_key','drm',false));
+    checkCancelled();
+    const modulus = rsaResult.rsa_public_key_modulus;
+    const exponent = rsaResult.rsa_public_key_exponent;
+    const clientKeyBytes = encoder.encode(randomText(16));
+    const clientIv = encoder.encode(randomText(16));
+    let serverKeyBytes, serverIv, completed = false;
+    try {
+      const encryptedKey = rsaPkcs1Encrypt(clientKeyBytes,modulus,exponent);
+      const encryptedIv = rsaPkcs1Encrypt(clientIv,modulus,exponent);
+      const params = new URLSearchParams({device_id:deviceId,package_id:packageId,
+        client_aes_key:hex(encryptedKey),client_aes_iv_vector:hex(encryptedIv),type:'AES_GCM'});
+      const result = await resultOf(await request(drmOrigin + '/pcviewer/api/submit_aes_key?' + params.toString(),'drm',true,token));
+      checkCancelled();
+      const clientKey = await crypto.subtle.importKey('raw',clientKeyBytes,'AES-GCM',false,['decrypt']);
+      checkCancelled();
+      async function unwrap(value) {
+        const wire = decodeBase64(value);
+        if (wire.length < 16) throw fail('Invalid encrypted key response');
+        const clear = new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:clientIv,tagLength:128},clientKey,wire));
+        try { checkCancelled(); return encoder.encode(decoder.decode(clear)); } finally { clear.fill(0); }
+      }
+      serverKeyBytes = await unwrap(result.server_aes_key);
+      checkCancelled();
+      serverIv = await unwrap(result.server_aes_iv_vector);
+      checkCancelled();
+      if (serverKeyBytes.length !== 16 || serverIv.length === 0) throw fail('Invalid server encryption parameters');
+      const key = await crypto.subtle.importKey('raw',serverKeyBytes,'AES-GCM',false,['decrypt']);
+      checkCancelled();
+      completed = true;
+      return {key,iv:serverIv};
+    } finally {
+      clientKeyBytes.fill(0);
+      clientIv.fill(0);
+      if (serverKeyBytes) serverKeyBytes.fill(0);
+      if (serverIv && !completed) serverIv.fill(0);
+    }
+  }
+  async function loadEpisode(contentsNo, volumeNo) {
+    checkCancelled();
+    if (loading || activeReads) throw fail('Reader is busy');
+    if (!/^\d{1,20}$/.test(String(contentsNo)) || !/^\d{1,20}$/.test(String(volumeNo))
+        || (typeof contentsNo === 'number' && !Number.isSafeInteger(contentsNo))
+        || (typeof volumeNo === 'number' && !Number.isSafeInteger(volumeNo))
+        || !['string','number'].includes(typeof contentsNo) || !['string','number'].includes(typeof volumeNo)) {
+      throw fail('Invalid episode identifiers');
+    }
+    loading = true;
+    clearSession();
+    try {
+      await synchronizeClock();
+      checkCancelled();
+      const statusResponse = await request(apiOrigin + '/user-status?platformType=VIEWER_PC','series',true);
+      const status = await resultOf(statusResponse);
+      if (typeof status.naverId !== 'string' || !status.naverId) throw loginFailure(statusResponse.status);
+      const path = await encryptedPath(contentsNo,volumeNo,status.naverId);
+      const response = await request(apiOrigin + '/v2/comic-viewer/image/' + path,'series',true);
+      const metadata = await resultOf(response);
+      if (metadata.provider !== 'WEBTOON') throw fail('Unsupported image provider');
+      const imageList = metadata.imageContext && metadata.imageContext.imageList;
+      if (!Array.isArray(imageList) || !imageList.length) throw fail('Episode contains no images');
+      const token = responseHeader(response,'X-Webtoon-Verify-Token');
+      if (typeof token !== 'string' || !token) throw fail('Missing Webtoon verification token');
+      const images = imageList.map((image,index) => {
+        if (!image || originOf(image.url) !== drmOrigin) throw fail('Unsupported image origin');
+        return {index,url:image.url,width:image.width,height:image.height};
+      });
+      const keys = await exchangeKeys(token);
+      if (cancelled) {
+        keys.iv.fill(0);
+        checkCancelled();
+      }
+      session = {images,token,key:keys.key,iv:keys.iv};
+      return {metadata,images:images.map(image => Object.assign({},image))};
+    } catch (error) {
+      clearSession();
+      checkCancelled();
+      if (error instanceof ReaderError) throw error;
+      throw fail('Purchased episode initialization failed');
+    } finally { loading = false; }
+  }
+  async function readImage(index) {
+    checkCancelled();
+    const current = session;
+    if (!current) throw fail('No purchased episode is loaded');
+    if (!Number.isInteger(index) || index < 0 || index >= current.images.length) throw fail('Invalid image index');
+    activeReads++;
+    try {
+      const params = new URLSearchParams({device_id:deviceId,package_id:packageId,type:'AES_GCM'});
+      const url = current.images[index].url + '?' + params.toString();
+      const response = await request(url,'drm',true,current.token);
+      const encrypted = bytesOf(await response.arrayBuffer());
+      checkCancelled();
+      if (encrypted.length < 16) throw fail('Invalid encrypted image');
+      const clear = new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:current.iv,tagLength:128},current.key,encrypted));
+      if (cancelled) {
+        clear.fill(0);
+        checkCancelled();
+      }
+      return clear;
+    } catch (error) {
+      checkCancelled();
+      if (error instanceof ReaderError) throw error;
+      throw fail('Purchased image decryption failed');
+    } finally { activeReads--; }
+  }
+  function reset() {
+    if (loading || activeReads) throw fail('Reader is busy');
+    clearSession();
+  }
+  function cancel() {
+    cancelled = true;
+    clearSession();
+    n3rKey = nfrontKey = undefined;
+  }
+  return {loadEpisode,readImage,reset,cancel};
+}
+
+
+// Account cookies and the locally generated device ID remain separate from
+// the shared client defaults and optional user configuration.
+handler.createPaidReader = function (config, options) {
+    var settings = Object.assign({}, options || {});
+    if (settings.cookie === undefined) {
+        settings.cookie = function () { return localStorage.getItem(WEBTOON_COOKIE_KEY) || ""; };
+    }
+    if (!settings.deviceId) {
+        var deviceKey = "naver_webtoon:viewer_device_id";
+        settings.deviceId = localStorage.getItem(deviceKey);
+        if (!settings.deviceId) {
+            settings.deviceId = crypto.randomUUID();
+            localStorage.setItem(deviceKey, settings.deviceId);
+        }
+    }
+    return createWebtoonPaidReader(config || getWebtoonViewerConfig(), settings);
 };

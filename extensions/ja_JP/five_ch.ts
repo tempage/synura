@@ -449,18 +449,18 @@ function localFiveChReadUrl(boardUrl, threadId) {
   return board.scheme + "://" + board.host + "/test/read.cgi/" + board.boardId + "/" + threadId + "/";
 }
 
-function localFiveChFetchText(url) {
+async function localFiveChFetchText(url) {
   if (!url) throw new Error("Missing 5ch endpoint URL");
   if (typeof console !== "undefined" && console && typeof console.log === "function") console.log(url);
-  var response = fetch(url, {
+  var response = (await fetch(url, {
     headers: SITE.fetchHeaders || {
       "User-Agent": "Monazilla/1.00 Synura/1.0",
       "Accept": "text/plain,text/html,*/*"
     }
-  });
+  }));
   if (!response) throw new Error("Failed to fetch " + url + " (0)");
   var status = response.status || 0;
-  var text = responseText(response);
+  var text = (await responseText(response));
   if (!response.ok) throw new Error("Failed to fetch " + url + " (" + status + ")");
   return text;
 }
@@ -845,11 +845,11 @@ SITE.parseComments = function (doc, postUrl) {
   return localParseComments(doc, postUrl);
 };
 
-SITE.routeBoardCustom = function (url, urlInfo, match, force) {
+SITE.routeBoardCustom = async function (url, urlInfo, match, force) {
   var boardUrl = localFiveChMirrorBoardUrl(url, "");
   var subjectUrl = localFiveChSubjectUrl(boardUrl);
   if (!subjectUrl) return null;
-  var text = localFiveChFetchText(subjectUrl);
+  var text = (await localFiveChFetchText(subjectUrl));
   var items = localFiveChParseSubjectItems(text, boardUrl, match);
   var board = match && match.board ? match.board : localFiveChConfiguredBoardForKey((localFiveChBoardInfoFromUrl(boardUrl) || {}).boardId);
   var title = board && board.title ? board.title : localTitleFromBoardUrl(boardUrl);
@@ -881,11 +881,11 @@ SITE.routeBoardCustom = function (url, urlInfo, match, force) {
   };
 };
 
-SITE.routePostCustom = function (url, urlInfo, match, force) {
+SITE.routePostCustom = async function (url, urlInfo, match, force) {
   var postUrl = localFiveChMirrorPostUrl(url);
   var datUrl = localFiveChDatUrl(postUrl);
   if (!datUrl) return null;
-  var text = localFiveChFetchText(datUrl);
+  var text = (await localFiveChFetchText(datUrl));
   var thread = localFiveChParseDatThread(text, postUrl);
   if (!thread || !thread.posts || thread.posts.length === 0) return null;
   var info = localFiveChThreadInfoFromUrl(postUrl);
@@ -954,8 +954,10 @@ SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
 
 SITE.loadDynamicBoards = function (options) {
   if (!options || !options.allowNetwork) return [];
-  var doc = fetchDocument(SITE.browserHomeUrl);
-  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  return (async function () {
+      var doc = (await fetchDocument(SITE.browserHomeUrl));
+      return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  })();
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {

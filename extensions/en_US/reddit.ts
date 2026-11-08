@@ -516,9 +516,7 @@ var redditCookies = (url) => {
 };
 
 var saveRedditCookies = (response, url) => {
-    const headers = response.headers || {};
-    const values = typeof headers.getAll === 'function' ? headers.getAll('set-cookie') :
-        String(headers['set-cookie'] || headers['Set-Cookie'] || '').split('\n');
+    const values = response.headers.getSetCookie();
     const path = url.replace('https://www.reddit.com', '').split('?')[0];
     for (const value of values) {
         const parts = value.split(';');
@@ -556,13 +554,13 @@ var redditFetchOptions = (url) => {
     return { headers };
 };
 
-var redditFetchDocument = (rawUrl) => {
+var redditFetchDocument = async (rawUrl) => {
     const url = redditRequestUrl(rawUrl);
     let requestUrl = url;
     for (let attempt = 0; attempt < 2; attempt++) {
         const options = redditFetchOptions(requestUrl);
         if (attempt) options.headers['Referer'] = url;
-        const response = fetch(requestUrl, options);
+        const response = (await fetch(requestUrl, options));
         saveRedditCookies(response, requestUrl);
         if (!response.ok) {
             if (response.status === 429) throw new Error('Reddit is rate limiting requests. Please try again later.');
@@ -572,7 +570,7 @@ var redditFetchDocument = (rawUrl) => {
         }
         // Streamed page fragments (including comments) arrive in inert templates.
         // Expose their markup to the static parser without running page scripts.
-        const html = response.text().replace(/<(\/?)template\b/gi, '<$1div');
+        const html = (await response.text()).replace(/<(\/?)template\b/gi, '<$1div');
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const challenge = doc.querySelector('input[name="js_challenge"]');
         if (!challenge) return doc;
@@ -781,9 +779,9 @@ var redditSearchCard = (node) => {
     };
 };
 
-var fetchSubredditPosts = (subredditId, sort, after, timeFilter, query, videoInList) => {
+var fetchSubredditPosts = async (subredditId, sort, after, timeFilter, query, videoInList) => {
     const url = buildRedditListingUrl(subredditId, sort, timeFilter, query, after);
-    const doc = redditFetchDocument(url);
+    const doc = (await redditFetchDocument(url));
     const search = !!query;
     const nodes = Array.from(doc.querySelectorAll(search ? '[data-testid="search-sdui-post"]' : 'shreddit-post'));
     const seen = new Set();
@@ -872,7 +870,7 @@ var initPostCommentsMeta = (url, subreddit, postId, initialComments) => {
     };
 };
 
-var fetchNextCommentsBatch = (params) => {
+var fetchNextCommentsBatch = async (params) => {
     const { url, subreddit, postId, sortQueue, afterQueue, afterIndex, seenCommentIds, allComments } = params;
     const seen = new Set(seenCommentIds || []);
     const newItems = [];
@@ -886,7 +884,7 @@ var fetchNextCommentsBatch = (params) => {
         try {
             const separator = url.includes('?') ? '&' : '?';
             const sortUrl = `${url}${separator}sort=${encodeURIComponent(nextSort)}`;
-            const doc = redditFetchDocument(sortUrl);
+            const doc = (await redditFetchDocument(sortUrl));
             const batch = parseRedditComments(doc, url);
             for (const c of batch) {
                 if (c.id && !seen.has(c.id)) {
@@ -908,7 +906,7 @@ var fetchNextCommentsBatch = (params) => {
             attempts++;
             try {
                 const afterUrl = `https://www.reddit.com/svc/shreddit/comments/r/${encodeURIComponent(subreddit)}/${encodeURIComponent(postId)}?render-mode=partial&after=${encodeURIComponent(cId)}&sort=confidence`;
-                const doc = redditFetchDocument(afterUrl);
+                const doc = (await redditFetchDocument(afterUrl));
                 const batch = parseRedditComments(doc, url);
                 for (const c of batch) {
                     if (c.id && !seen.has(c.id)) {
@@ -938,9 +936,9 @@ var fetchNextCommentsBatch = (params) => {
     };
 };
 
-var fetchPost = (permalink) => {
+var fetchPost = async (permalink) => {
     const url = redditRequestUrl(permalink);
-    const doc = redditFetchDocument(url);
+    const doc = (await redditFetchDocument(url));
     const post = doc.querySelector('shreddit-post');
     if (!post) throw new Error('Reddit did not return this post. It may be private, removed, or unavailable.');
     const card = redditCard(post, false);
@@ -971,7 +969,7 @@ var fetchPost = (permalink) => {
 // 6. VIEW OPENERS
 // =============================================================================
 
-var openPost = (parentViewId, link) => {
+var openPost = async (parentViewId, link) => {
     try {
         console.log("Opening post view for link:", link);
 
@@ -995,8 +993,8 @@ var openPost = (parentViewId, link) => {
                 menus: ["Open in Browser"],
                 buttons: ["Refresh"]
             }
-        }, { from: "post", link: link }, (event) => {
-            SYNURA.main.onViewEvent(event.viewId, event)
+        }, { from: "post", link: link }, async (event) => {
+            (await SYNURA.main.onViewEvent(event.viewId, event))
         });
 
         if (postViewResult.success) {
@@ -1004,7 +1002,7 @@ var openPost = (parentViewId, link) => {
             const viewId = postViewResult.viewId;
 
             try {
-                const postData = fetchPost(link);
+                const postData = (await fetchPost(link));
                 if (postData) {
                     if (postData.meta) {
                         setParams(viewId, { ...postData.meta });
@@ -1035,8 +1033,8 @@ var openPost = (parentViewId, link) => {
 
 var resume = (viewId, context) => {
     console.log("resume " + viewId + " " + JSON.stringify(context));
-    const connectResult = synura.connect(viewId, context, (event) => {
-        SYNURA.main.onViewEvent(viewId, event)
+    const connectResult = synura.connect(viewId, context, async (event) => {
+        (await SYNURA.main.onViewEvent(viewId, event))
     });
     if (connectResult.success) {
         console.log("✅ Successfully connected to the restored view.");
@@ -1062,8 +1060,8 @@ var home = () => {
                 contents: initialItems,
                 menus: ["Go", "Subreddits", "Settings", "Reorder", "CLI", loginMenu],
             }
-        }, { from: "home" }, (event) => {
-            SYNURA.main.onViewEvent(event.viewId, event)
+        }, { from: "home" }, async (event) => {
+            (await SYNURA.main.onViewEvent(event.viewId, event))
         });
 
         if (result.success) {
@@ -1145,8 +1143,8 @@ var handleHomeEvent = (viewId, event) => {
                 models: {
                     menus: menus
                 }
-            }, { from: "subreddit", subredditId: sub.id, sort: defaultSort, timeFilter: timeFilter }, (event) => {
-                SYNURA.main.onViewEvent(event.viewId, event)
+            }, { from: "subreddit", subredditId: sub.id, sort: defaultSort, timeFilter: timeFilter }, async (event) => {
+                (await SYNURA.main.onViewEvent(event.viewId, event))
             });
 
             if (result.success) {
@@ -1168,16 +1166,16 @@ var handleHomeEvent = (viewId, event) => {
                     ],
                     buttons: ['Go']
                 }
-            }, { from: 'go_subreddit', parentViewId: viewId }, (event) => {
-                SYNURA.main.onViewEvent(event.viewId, event);
+            }, { from: 'go_subreddit', parentViewId: viewId }, async (event) => {
+                (await SYNURA.main.onViewEvent(event.viewId, event));
             });
         } else if (event.data.menu === "Login") {
             synura.open({
                 view: '/views/browser',
                 styles: { title: 'Login to Reddit' },
                 models: { url: 'https://www.reddit.com/login' }
-            }, { from: 'login', parentViewId: viewId }, (event) => {
-                SYNURA.main.onViewEvent(event.viewId, event);
+            }, { from: 'login', parentViewId: viewId }, async (event) => {
+                (await SYNURA.main.onViewEvent(event.viewId, event));
             });
         } else if (event.data.menu === "Logout") {
             localStorage.removeItem(COOKIE_KEY);
@@ -1203,8 +1201,8 @@ var handleHomeEvent = (viewId, event) => {
                     body: body,
                     buttons: ['Save', 'Reset', 'Add', 'Remove', 'Cancel']
                 }
-            }, { from: 'subreddit_settings', parentViewId: viewId }, (event) => {
-                SYNURA.main.onViewEvent(event.viewId, event);
+            }, { from: 'subreddit_settings', parentViewId: viewId }, async (event) => {
+                (await SYNURA.main.onViewEvent(event.viewId, event));
             });
         } else if (event.data.menu === "Settings") {
             const currentTTL = getCacheTTL() / 60000;
@@ -1225,8 +1223,8 @@ var handleHomeEvent = (viewId, event) => {
                     ],
                     buttons: ['Save', 'Clear Cache']
                 }
-            }, { from: 'global_settings', parentViewId: viewId }, (event) => {
-                SYNURA.main.onViewEvent(event.viewId, event);
+            }, { from: 'global_settings', parentViewId: viewId }, async (event) => {
+                (await SYNURA.main.onViewEvent(event.viewId, event));
             });
         } else if (event.data.menu === "CLI") {
             openCLI(viewId);
@@ -1293,7 +1291,7 @@ var handleHomeEvent = (viewId, event) => {
     }
 };
 
-var handleSubredditEvent = (viewId, event) => {
+var handleSubredditEvent = async (viewId, event) => {
     const videoInList = getGlobalSettings().video_in_list;
 
     if (event.eventId === "LOAD" || event.eventId === "REFRESH") {
@@ -1310,7 +1308,7 @@ var handleSubredditEvent = (viewId, event) => {
 
         try {
             console.log(`[DEBUG] Calling fetchSubredditPosts for ${event.context.subredditId}, sort: ${sort}, time: ${timeFilter}, query: ${query}`);
-            const result = fetchSubredditPosts(event.context.subredditId, sort, null, timeFilter, query, videoInList);
+            const result = (await fetchSubredditPosts(event.context.subredditId, sort, null, timeFilter, query, videoInList));
             console.log(`[DEBUG] fetchSubredditPosts returned items: ${result.items.length}, after: ${result.after}`);
 
             setParams(viewId, { after: result.after, seenPostLinks: result.items.map(item => item.link) });
@@ -1347,7 +1345,7 @@ var handleSubredditEvent = (viewId, event) => {
         }
 
         try {
-            const result = fetchSubredditPosts(event.context.subredditId, sort, after, timeFilter, query, videoInList);
+            const result = (await fetchSubredditPosts(event.context.subredditId, sort, after, timeFilter, query, videoInList));
             const seen = new Set(params.seenPostLinks || []);
             const items = result.items.filter(item => !seen.has(item.link));
             items.forEach(item => seen.add(item.link));
@@ -1378,8 +1376,8 @@ var handleSubredditEvent = (viewId, event) => {
                 if (routeData.meta) {
                     setParams(result.viewId, { ...routeData.meta });
                 }
-                synura.connect(result.viewId, { from: "post", link: link }, (event) => {
-                    SYNURA.main.onViewEvent(event.viewId, event);
+                synura.connect(result.viewId, { from: "post", link: link }, async (event) => {
+                    (await SYNURA.main.onViewEvent(event.viewId, event));
                 });
                 showCacheSnackbar(result.viewId, routeData);
             } else {
@@ -1388,7 +1386,7 @@ var handleSubredditEvent = (viewId, event) => {
         } else {
             // Cache Miss - Optimistic Open
             console.log("Cache MISS - Opening view optimistically...");
-            openPost(viewId, link);
+            (await openPost(viewId, link));
         }
     } else if (event.eventId === "MENU_CLICK") {
         const menu = event.data.menu;
@@ -1460,7 +1458,7 @@ var handleSubredditEvent = (viewId, event) => {
                 setParams(viewId, { sort: sortOpt.id, timeFilter: timeFilter, after: null });
                 localStorage.setItem(SORT_KEY, sortOpt.id);
 
-                updateMenuAndReload(viewId, event.context.subredditId, sortOpt.id, timeFilter);
+                (await updateMenuAndReload(viewId, event.context.subredditId, sortOpt.id, timeFilter));
                 return;
             }
 
@@ -1471,7 +1469,7 @@ var handleSubredditEvent = (viewId, event) => {
                 setParams(viewId, { sort: 'top', timeFilter: timeOpt.id, after: null });
                 localStorage.setItem(TIME_FILTER_KEY, timeOpt.id);
 
-                updateMenuAndReload(viewId, event.context.subredditId, 'top', timeOpt.id);
+                (await updateMenuAndReload(viewId, event.context.subredditId, 'top', timeOpt.id));
                 return;
             }
         }
@@ -1482,7 +1480,7 @@ var handleSubredditEvent = (viewId, event) => {
 
         try {
             const params = getParams(viewId);
-            const result = fetchSubredditPosts(event.context.subredditId, params.sort || event.context.sort, null, params.timeFilter, query, videoInList);
+            const result = (await fetchSubredditPosts(event.context.subredditId, params.sort || event.context.sort, null, params.timeFilter, query, videoInList));
             setParams(viewId, { after: result.after, seenPostLinks: result.items.map(item => item.link) });
             synura.update(viewId, {
                 models: {
@@ -1496,7 +1494,7 @@ var handleSubredditEvent = (viewId, event) => {
 };
 
 // Helper to avoid duplication in MENU_CLICK
-var updateMenuAndReload = (viewId, subredditId, sort, timeFilter) => {
+var updateMenuAndReload = async (viewId, subredditId, sort, timeFilter) => {
     // Update menu
     const showMedia = getShowMedia(subredditId);
     const galleryMode = getGalleryMode(subredditId);
@@ -1512,7 +1510,7 @@ var updateMenuAndReload = (viewId, subredditId, sort, timeFilter) => {
 
     // Reload
     try {
-        const result = fetchSubredditPosts(subredditId, sort, null, timeFilter, getParams(viewId).searchQuery, videoInList);
+        const result = (await fetchSubredditPosts(subredditId, sort, null, timeFilter, getParams(viewId).searchQuery, videoInList));
         setParams(viewId, { after: result.after, seenPostLinks: result.items.map(item => item.link) });
 
         synura.update(viewId, {
@@ -1525,7 +1523,7 @@ var updateMenuAndReload = (viewId, subredditId, sort, timeFilter) => {
     }
 };
 
-var handlePostEvent = (viewId, event) => {
+var handlePostEvent = async (viewId, event) => {
     if (event.eventId === "LOAD") {
         // Handle anchor scroll for restored/cached posts
         if (event.context && event.context.anchor) {
@@ -1579,7 +1577,7 @@ var handlePostEvent = (viewId, event) => {
         setParams(viewId, { loadingComments: true });
 
         try {
-            const { newItems, updatedParams } = fetchNextCommentsBatch(params);
+            const { newItems, updatedParams } = (await fetchNextCommentsBatch(params));
             setParams(viewId, updatedParams);
 
             if (newItems.length === 0) {
@@ -1602,7 +1600,7 @@ var handlePostEvent = (viewId, event) => {
         const link = event.context.link;
         console.log("Refreshing post:", link);
         try {
-            const postData = fetchPost(link);
+            const postData = (await fetchPost(link));
             if (postData.meta) {
                 setParams(viewId, { ...postData.meta });
             }
@@ -1629,7 +1627,7 @@ var handlePostEvent = (viewId, event) => {
         if (event.data.button === "Refresh") {
             const link = event.context.link;
             try {
-                const postData = fetchPost(link);
+                const postData = (await fetchPost(link));
                 if (postData.meta) {
                     setParams(viewId, { ...postData.meta });
                 }
@@ -1717,8 +1715,8 @@ var handleSubredditSettingsEvent = (viewId, event) => {
                     ],
                     buttons: ['Add', 'Cancel']
                 }
-            }, { from: 'subreddit_add_dialog', parentViewId: viewId }, (event) => {
-                SYNURA.main.onViewEvent(event.viewId, event);
+            }, { from: 'subreddit_add_dialog', parentViewId: viewId }, async (event) => {
+                (await SYNURA.main.onViewEvent(event.viewId, event));
             });
         } else if (event.data.button === 'Remove') {
             const customSubs = getCustomSubreddits();
@@ -1741,8 +1739,8 @@ var handleSubredditSettingsEvent = (viewId, event) => {
                     body: body,
                     buttons: ['Confirm', 'Cancel']
                 }
-            }, { from: 'subreddit_delete_settings', parentViewId: viewId }, (event) => {
-                SYNURA.main.onViewEvent(event.viewId, event);
+            }, { from: 'subreddit_delete_settings', parentViewId: viewId }, async (event) => {
+                (await SYNURA.main.onViewEvent(event.viewId, event));
             });
         } else {
             synura.close(viewId);
@@ -1822,7 +1820,7 @@ var handleSubredditDeleteEvent = (viewId, event) => {
 // CLI IMPLEMENTATION
 // =============================================================================
 
-var handleCLIEvent = (viewId, event) => {
+var handleCLIEvent = async (viewId, event) => {
     if (event.eventId === "MENU_CLICK") {
         if (event.data.menu === "Exit") {
             synura.close(viewId);
@@ -1992,8 +1990,8 @@ var handleCLIEvent = (viewId, event) => {
         if (!url.startsWith('http://') && !url.startsWith('https://')) url = `https://${url}`;
 
         try {
-            const response = fetch(url);
-            const htmlContent = response.text();
+            const response = (await fetch(url));
+            const htmlContent = (await response.text());
             const viewKey = `__cli_fetch_${Date.now()}`;
             sessionStorage.setItem(viewKey, { html: htmlContent, url: url });
 
@@ -2020,8 +2018,8 @@ var openCLI = (parentViewId) => {
             menus: ["Help", "Exit"],
             append: [{ user: "System", message: getCLIWelcome(), format: "markdown" }]
         }
-    }, { from: "cli", parentViewId: parentViewId }, (event) => {
-        SYNURA.main.onViewEvent(event.viewId, event);
+    }, { from: "cli", parentViewId: parentViewId }, async (event) => {
+        (await SYNURA.main.onViewEvent(event.viewId, event));
     });
 };
 
@@ -2107,8 +2105,8 @@ var handleGoSubredditEvent = (viewId, event) => {
                     models: {
                         menus: menus
                     }
-                }, { from: "subreddit", subredditId: subreddit, sort: defaultSort, timeFilter: timeFilter }, (event) => {
-                    SYNURA.main.onViewEvent(event.viewId, event);
+                }, { from: "subreddit", subredditId: subreddit, sort: defaultSort, timeFilter: timeFilter }, async (event) => {
+                    (await SYNURA.main.onViewEvent(event.viewId, event));
                 });
 
                 if (!result.success) {
@@ -2154,15 +2152,15 @@ var handleGlobalSettingsEvent = (viewId, event) => {
     }
 };
 
-var onViewEvent = (viewId, event) => {
+var onViewEvent = async (viewId, event) => {
     console.log("Received event:", JSON.stringify(event));
 
     if (event.context.from === "home") {
         handleHomeEvent(viewId, event);
     } else if (event.context.from === "subreddit") {
-        handleSubredditEvent(viewId, event);
+        (await handleSubredditEvent(viewId, event));
     } else if (event.context.from === "post") {
-        handlePostEvent(viewId, event);
+        (await handlePostEvent(viewId, event));
     } else if (event.context.from === "subreddit_settings") {
         handleSubredditSettingsEvent(viewId, event);
     } else if (event.context.from === "global_settings") {
@@ -2172,7 +2170,7 @@ var onViewEvent = (viewId, event) => {
     } else if (event.context.from === "subreddit_delete_settings") {
         handleSubredditDeleteEvent(viewId, event);
     } else if (event.context.from === "cli") {
-        handleCLIEvent(viewId, event);
+        (await handleCLIEvent(viewId, event));
     } else if (event.context.from === "login") {
         handleLoginEvent(viewId, event);
     } else if (event.context.from === "go_subreddit") {
@@ -2184,7 +2182,7 @@ var onViewEvent = (viewId, event) => {
 // 8. ROUTER & HANDLER EXPORT
 // =============================================================================
 
-var router = (url) => {
+var router = async (url) => {
     console.log("Router called with URL:", url);
 
     try {
@@ -2212,7 +2210,7 @@ var router = (url) => {
         // Match Reddit post URLs
         const postMatch = url.match(/reddit\.com\/r\/([^\/]+)\/comments\/([^\/]+)/);
         if (postMatch) {
-            const postData = fetchPost(url);
+            const postData = (await fetchPost(url));
             const result = createPostRouteData(url, postData, anchor);
             setCachedRoute(url, result);
             return result;
@@ -2223,7 +2221,7 @@ var router = (url) => {
         if (galleryMatch) {
             const galleryId = galleryMatch[1];
             const commentsUrl = `https://www.reddit.com/comments/${galleryId}`;
-            const postData = fetchPost(commentsUrl);
+            const postData = (await fetchPost(commentsUrl));
             const result = createPostRouteData(url, postData, anchor);
             setCachedRoute(url, result);
             return result;
@@ -2256,7 +2254,7 @@ var router = (url) => {
             const galleryMode = getGalleryMode(subId);
             const videoInList = getGlobalSettings().video_in_list;
 
-            const posts = fetchSubredditPosts(subId, sort, null, timeFilter, query, videoInList);
+            const posts = (await fetchSubredditPosts(subId, sort, null, timeFilter, query, videoInList));
 
             const title = query ? `r/${subId} - Search` : `r/${subId}`;
             const appbar = query ? { type: "query", label: title, hint: query } : null;
@@ -2302,7 +2300,7 @@ var handler = {
     onViewEvent: onViewEvent,
     showBoardSettings: () => { },
 
-    deeplink: (url) => {
+    deeplink: async (url) => {
         console.log("Deep link called with url:", url);
         const prefix = "https://www.reddit.com/";
         if (!url.startsWith(prefix)) return false;
@@ -2315,7 +2313,7 @@ var handler = {
 
             let routeData = getCachedRoute(url);
             if (!routeData) {
-                routeData = SYNURA.main.router(url);
+                routeData = (await SYNURA.main.router(url));
                 if (routeData) setCachedRoute(url, routeData);
             }
 
@@ -2325,8 +2323,8 @@ var handler = {
                     if (routeData.meta) {
                         setParams(v.viewId, { ...routeData.meta });
                     }
-                    synura.connect(v.viewId, { from: "post", link: url }, (event) => {
-                        SYNURA.main.onViewEvent(event.viewId, event);
+                    synura.connect(v.viewId, { from: "post", link: url }, async (event) => {
+                        (await SYNURA.main.onViewEvent(event.viewId, event));
                     });
                     showCacheSnackbar(v.viewId, routeData);
                 }

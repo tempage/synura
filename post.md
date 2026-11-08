@@ -75,10 +75,29 @@ The `content` object has a `details` field which is a list of content items. Eac
 | Type | Field | Description |
 | :--- | :--- | :--- |
 | `text` | `value` | The text content to display. |
-| `image`| `value` | The URL of the image to display. |
+| `image`| `value` | An HTTP(S) image URL or an embedded image data URL. |
 | `video`| `value` | The URL of the video to play. Supports 'rtsp' protocol. |
 | `thumbnail`| `value` | The URL of the high-res thumbnail/poster for video content. |
 | `link` | `value` | The text to display for the link. If the URL is a YouTube link, it will be automatically converted to a media player. |
+
+For an image already available as file bytes, an extension can put a Base64
+data URL in the existing `value` field. Optional `mimeType`, `width`, and
+`height` describe the image:
+
+```javascript
+{ type: "image", value: "data:image/jpeg;base64,...",
+  mimeType: "image/jpeg", width: 690, height: 1600 }
+```
+
+The payload after the comma encodes the complete image file. No separate `data`
+array is needed. The Android application decodes data URLs locally for post
+images, fullscreen viewing, saving, and sharing, without an HTTP request or a
+disk-cache entry for the data URL. Base64 and percent-encoded file bytes are
+accepted, up to 8 MiB per decoded image file. The data URL must declare a raster
+image MIME type: JPEG, PNG, GIF, WebP, BMP, AVIF, or ICO; actual decoding depends
+on the platform's image codec support. SVG and non-image data URLs are rejected.
+The loader checks the MIME type in the data URL; optional `mimeType` metadata
+does not override it. `width` and `height` can reserve space before decoding.
 
 You can automatically generate the `details` array from a DOM element using the `synura.parse('post', element)` API.
 

@@ -219,7 +219,7 @@
     {
       "name": "naver_webtoon",
       "description": "comic.naver.com",
-      "version": 0.3,
+      "version": 0.6,
       "url": "https://tempage.github.io/synura/extensions/ko_KR/naver_webtoon.js",
       "api": 0,
       "domain": "comic.naver.com",

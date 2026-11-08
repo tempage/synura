@@ -16,7 +16,7 @@ COMMUNITY_EXTENSION_LANGUAGE_ALIASES = ar bn de en es fa fr he hi id it ja ko pl
 COMMUNITY_EXTENSION_LOCALE_TARGETS = $(addprefix build_,$(addsuffix _community_extensions,$(COMMUNITY_EXTENSION_LOCALES)))
 COMMUNITY_EXTENSION_LANGUAGE_ALIAS_TARGETS = $(addprefix build_,$(addsuffix _community_extensions,$(COMMUNITY_EXTENSION_LANGUAGE_ALIASES)))
 CARGO ?= cargo
-SYNURART ?= ./synurart
+SYNURART ?= ./synurart.sh
 
 .PHONY: $(COMMUNITY_EXTENSION_LOCALE_TARGETS) $(COMMUNITY_EXTENSION_LANGUAGE_ALIAS_TARGETS)
 
@@ -28,7 +28,7 @@ help:
 	@echo "  make server              - Start the mock server on port 8080"
 	@echo "  make fetch ARGS=\"...\"   - Run fetch client (curl-like)"
 	@echo "  make synurart EXT=...    - Run Synura CLI runtime shell"
-	@echo "  make test                - Run Go helper tests and Rust runtime tests"
+	@echo "  make test                - Run Rust workspace tests"
 	@echo "  make test-common         - Test shared parser and runtime APIs with synthetic data"
 	@echo "  make test-worldwide      - Test shared APIs and every extension's packaging and scope"
 	@echo "  make reverse             - Setup ADB reverse for Android testing"
@@ -61,9 +61,9 @@ help:
 server:
 	@echo "Starting mock server on :8080..."
 ifdef EXTDIR
-	go run ./cmd/mock_server -path $(EXTDIR)
+	$(CARGO) run -p mock_server --bin mock_server -- -path $(EXTDIR)
 else
-	go run ./cmd/mock_server
+	$(CARGO) run -p mock_server --bin mock_server
 endif
 
 # Run curl-like fetch helper
@@ -81,7 +81,6 @@ endif
 # Run tests
 test:
 	@echo "Running tests..."
-	go test -v ./cmd/... ./internal/...
 	$(CARGO) test --workspace
 
 build_worldwide_community_extensions:
@@ -91,6 +90,7 @@ test-common:
 	$(CARGO) build -p synurart --bin synurart
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s testdata/community_common -p 'test_*.py'
 	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s testdata/synurart -p 'test_*.py'
+	PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s testdata/extensions -p 'test_*.py'
 
 test-worldwide: test-common
 	PYTHONDONTWRITEBYTECODE=1 python3 testdata/extensions/check_extension_inventory.py --compile
@@ -111,18 +111,17 @@ android: reverse server
 clean:
 	@echo "Cleaning..."
 	rm -rf bin target
-	go clean ./...
 	@echo "Clean complete."
 
 # Build the server binary
 build:
-	@echo "Building mock_server, fetch, and Rust synurart..."
+	@echo "Building mock_server and Rust synurart..."
 	mkdir -p bin
-	go build -o bin/mock_server ./cmd/mock_server
-	go build -o bin/fetch ./cmd/fetch
+	$(CARGO) build -p mock_server --bin mock_server
+	cp target/debug/mock_server bin/mock_server
 	$(CARGO) build -p synurart --bin synurart
 	cp target/debug/synurart bin/synurart
-	@echo "Build complete: bin/mock_server, bin/fetch, bin/synurart"
+	@echo "Build complete: bin/mock_server, bin/synurart"
 
 # Generate extension repository manifests
 generate_extensions:

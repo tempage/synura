@@ -1,7 +1,7 @@
 {
   "name": "Synura Stable Repository",
   "description": "Stable Synura extensions.",
-  "version": 5.9,
+  "version": 6.0,
   "extensions": [
     {
       "name": "youtube",

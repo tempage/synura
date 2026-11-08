@@ -532,8 +532,10 @@ SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
 
 SITE.loadDynamicBoards = function (options) {
   if (!options || !options.allowNetwork) return [];
-  var doc = fetchDocument(SITE.browserHomeUrl);
-  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  return (async function () {
+      var doc = (await fetchDocument(SITE.browserHomeUrl));
+      return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  })();
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {
@@ -828,20 +830,20 @@ function bersosialOwnText(node) {
     }
     return out;
   }
-  function bersosialRegexFetchBoard(url) {
-    var response = fetchWithLogging(url, buildFetchOptions());
+  async function bersosialRegexFetchBoard(url) {
+    var response = (await fetchWithLogging(url, buildFetchOptions()));
     if (!response) throw new Error("Failed to fetch " + url + " (0)");
-    var html = responseText(response);
+    var html = (await responseText(response));
     return bersosialRegexItems(html, url);
   }
   var bersosialRegexPreviousRouteBoardCustom = SITE.routeBoardCustom;
-  SITE.routeBoardCustom = function (url, info, match, force) {
+  SITE.routeBoardCustom = async function (url, info, match, force) {
     var items = [];
-    try { items = bersosialRegexFetchBoard(url); } catch (e) {
-      if (bersosialRegexPreviousRouteBoardCustom) return bersosialRegexPreviousRouteBoardCustom(url, info, match, force);
+    try { items = (await bersosialRegexFetchBoard(url)); } catch (e) {
+      if (bersosialRegexPreviousRouteBoardCustom) return (await bersosialRegexPreviousRouteBoardCustom(url, info, match, force));
       throw e;
     }
-    if (!items.length && bersosialRegexPreviousRouteBoardCustom) return bersosialRegexPreviousRouteBoardCustom(url, info, match, force);
+    if (!items.length && bersosialRegexPreviousRouteBoardCustom) return (await bersosialRegexPreviousRouteBoardCustom(url, info, match, force));
     var board = match && match.board ? match.board : null;
     return {
       kind: "board",

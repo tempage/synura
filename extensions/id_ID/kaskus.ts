@@ -438,12 +438,12 @@ SITE.matchBoard = function (info) {
 
 // Current community pages render their threads client-side. These read-only,
 // same-origin JSON endpoints are also used by the public Kaskus web client.
-function localKaskusJson(path) {
+async function localKaskusJson(path) {
   var options = buildFetchOptions();
   options.headers["Accept"] = "application/json";
-  var response = fetchWithLogging("https://www.kaskus.co.id/api" + path, options);
+  var response = (await fetchWithLogging("https://www.kaskus.co.id/api" + path, options));
   if (!response || !response.ok) return null;
-  try { return JSON.parse(responseText(response)); } catch (e) { return null; }
+  try { return JSON.parse((await responseText(response))); } catch (e) { return null; }
 }
 
 function localKaskusDate(value) {
@@ -468,11 +468,11 @@ function localKaskusItem(thread) {
   };
 }
 
-SITE.routeBoardCustom = function (url, info, match) {
+SITE.routeBoardCustom = async function (url, info, match) {
   var community = String(info && info.path || "").match(/\/(?:forum|komunitas)\/(\d+)/);
   if (!community) return null;
   var page = Math.max(1, queryInt(info.query, "page", 1));
-  var payload = localKaskusJson("/communities/" + community[1] + "/threads?page=" + page + "&limit=20");
+  var payload = (await localKaskusJson("/communities/" + community[1] + "/threads?page=" + page + "&limit=20"));
   if (!payload || !Array.isArray(payload.data)) return null;
   var items = payload.data.map(localKaskusItem).filter(function (item) { return !!item; });
   var meta = payload.meta || {};
@@ -496,17 +496,17 @@ function localKaskusContent(post, url) {
   return content.text ? [{ type: "text", value: content.text }] : [];
 }
 
-SITE.routePostCustom = function (url, info, match) {
+SITE.routePostCustom = async function (url, info, match) {
   var id = localPostIdFromUrl(url);
   if (!/^[0-9a-f]{24}$/i.test(id)) return null;
-  var payload = localKaskusJson("/threads/" + id + "/cache");
+  var payload = (await localKaskusJson("/threads/" + id + "/cache"));
   var thread = payload && payload.data;
   if (!thread || !thread.first_post) return null;
   var first = thread.first_post;
   var content = localKaskusContent(first, url);
   if (!content.length) return null;
   var comments = [];
-  var replies = localKaskusJson("/threads/" + id + "/posts?page=1&limit=50");
+  var replies = (await localKaskusJson("/threads/" + id + "/posts?page=1&limit=50"));
   var rows = replies && Array.isArray(replies.data) ? replies.data : [];
   var seen = {};
   for (var i = 0; i < rows.length; i++) {

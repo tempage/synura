@@ -97,7 +97,7 @@ const handler = {
   },
   loadPostData: function(viewId) {
     // In a real extension, you would fetch data from a URL here.
-    // const response = fetch("https://example.com/api/post");
+    // In an async handler: const response = await fetch("https://example.com/api/post");
 
     // Simulating data
     const postData = {

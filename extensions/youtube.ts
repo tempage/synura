@@ -347,9 +347,9 @@ var SYNURA = {
     void synura.connect(viewId, context || {}, handler.onPostEvent);
     ensureListState(viewId, context || {}), synura.connect(viewId, context || {}, handler.onListEvent);
   },
-  onListEvent: function(event) {
+  onListEvent: async function(event) {
     var viewId = event.viewId, state = ensureListState(viewId, event.context || {});
-    if ("LOAD" === event.eventId) return YT_KEY_RELATED === state.mode ? void renderRelatedList(viewId, state) : YT_KEY_HOME === state.mode ? void renderHomeList(viewId, state) : YT_KEY_CHANNEL === state.mode ? void (state.loaded ? renderChannelList(viewId, state) : loadChannelFirstPage(viewId, !1)) : void (state.loaded || loadSearchFirstPage(viewId, state.query || DEFAULT_QUERY));
+    if ("LOAD" === event.eventId) return YT_KEY_RELATED === state.mode ? void renderRelatedList(viewId, state) : YT_KEY_HOME === state.mode ? void (await renderHomeList(viewId, state)) : YT_KEY_CHANNEL === state.mode ? void (state.loaded ? renderChannelList(viewId, state) : (await loadChannelFirstPage(viewId, !1))) : void (state.loaded || (await loadSearchFirstPage(viewId, state.query || DEFAULT_QUERY)));
     if ("REFRESH" !== event.eventId) {
       if ("QUERY" === event.eventId) {
         if (YT_KEY_HOME === state.mode) {
@@ -357,10 +357,10 @@ var SYNURA = {
           return void openSearchView(homeQuery || getHomeFallbackSearchQuery());
         }
         if (YT_KEY_CHANNEL === state.mode) return state.channelQuery = cleanQuery(event.data && event.data.query),
-        void loadChannelFirstPage(viewId, !1);
+        void (await loadChannelFirstPage(viewId, !1));
         if (YT_KEY_SEARCH !== state.mode) return;
         var query = cleanQuery(event.data && event.data.query) || getHomeFallbackSearchQuery();
-        return state.query = query, void loadSearchFirstPage(viewId, query);
+        return state.query = query, void (await loadSearchFirstPage(viewId, query));
       }
       if ("SCROLL_TO_END" !== event.eventId) {
         if ("CLICK" === event.eventId) {
@@ -376,22 +376,22 @@ var SYNURA = {
           return videoId || (videoId = parseVideoId(getString(event.data && event.data.link))), 
           videoId ? void openVideoView(videoId, getString(event.data && event.data.title) || t(YT_KEY_TITLE_YOUTUBE), buildVideoOpenData(state, event.data)) : void showSnackbar(viewId, t(YT_KEY_ERROR_COULD_NOT_FIND_VIDEO_ID));
         }
-        if ("ITEM_MENU_CLICK" !== event.eventId) "MENU_CLICK" !== event.eventId ? "AUTHOR_CLICK" === event.eventId && (openChannelFromEventData(state, event.data) || showSnackbar(viewId, t(YT_KEY_ERROR_COULD_NOT_FIND_CHANNEL))) : handleListMenu(viewId, state, getString(event.data && event.data.menu)); else {
+        if ("ITEM_MENU_CLICK" !== event.eventId) "MENU_CLICK" !== event.eventId ? "AUTHOR_CLICK" === event.eventId && (openChannelFromEventData(state, event.data) || showSnackbar(viewId, t(YT_KEY_ERROR_COULD_NOT_FIND_CHANNEL))) : (await handleListMenu(viewId, state, getString(event.data && event.data.menu))); else {
           var itemMenu = getString(event.data && event.data.menu), itemLink = getString(event.data && event.data.link);
           if (matchesUIString(itemMenu, ITEM_MENU_OPEN_CHANNEL)) return void (openChannelFromEventData(state, event.data) || showSnackbar(viewId, t(YT_KEY_ERROR_COULD_NOT_FIND_CHANNEL)));
           if (matchesUIString(itemMenu, ITEM_MENU_REMOVE_BOOKMARK) && YT_KEY_HOME === state.mode) {
             var homeChannel = resolveChannelFromListEvent(state, event.data), removed = removeStarredChannel(homeChannel.channelUrl, homeChannel.channelId);
-            return refreshHomeList(viewId), void showSnackbar(viewId, removed ? t("snackbar_removed_bookmark") : t(YT_KEY_SNACKBAR_BOOKMARK_NOT_FOUND));
+            return (await refreshHomeList(viewId)), void showSnackbar(viewId, removed ? t("snackbar_removed_bookmark") : t(YT_KEY_SNACKBAR_BOOKMARK_NOT_FOUND));
           }
           if (matchesUIString(itemMenu, ITEM_MENU_OPEN_BROWSER) && itemLink) {
             var browserTitle = YT_KEY_CHANNEL === state.mode || YT_KEY_HOME === state.mode && !isHomeTrendingState(state) ? getString(event.data && event.data.title) || t(YT_KEY_TITLE_CHANNEL) : t(YT_KEY_TITLE_YOUTUBE);
             openBrowser(localizedURL(itemLink), browserTitle);
           }
         }
-      } else YT_KEY_RELATED === state.mode ? loadMoreRelated(viewId) : YT_KEY_HOME === state.mode && isHomeTrendingState(state) ? loadMoreTrending(viewId) : YT_KEY_CHANNEL === state.mode ? loadMoreChannel(viewId) : loadMoreSearch(viewId);
-    } else YT_KEY_RELATED === state.mode ? refreshRelatedList(viewId) : YT_KEY_HOME === state.mode ? refreshHomeList(viewId) : YT_KEY_CHANNEL === state.mode ? loadChannelFirstPage(viewId, !0) : loadSearchFirstPage(viewId, state.query || DEFAULT_QUERY);
+      } else YT_KEY_RELATED === state.mode ? (await loadMoreRelated(viewId)) : YT_KEY_HOME === state.mode && isHomeTrendingState(state) ? (await loadMoreTrending(viewId)) : YT_KEY_CHANNEL === state.mode ? (await loadMoreChannel(viewId)) : (await loadMoreSearch(viewId));
+    } else YT_KEY_RELATED === state.mode ? refreshRelatedList(viewId) : YT_KEY_HOME === state.mode ? (await refreshHomeList(viewId)) : YT_KEY_CHANNEL === state.mode ? (await loadChannelFirstPage(viewId, !0)) : (await loadSearchFirstPage(viewId, state.query || DEFAULT_QUERY));
   },
-  onPostEvent: function(event) {
+  onPostEvent: async function(event) {
     var viewId = event.viewId, state = ensurePostState(viewId, event.context || {});
     if ("LOAD" !== event.eventId && "REFRESH" !== event.eventId) if ("SCROLL_TO_END" !== event.eventId) if ("SUBMIT" !== event.eventId) if ("ITEM_MENU_CLICK" !== event.eventId) {
       if ("MENU_CLICK" === event.eventId) {
@@ -405,7 +405,7 @@ var SYNURA = {
     } else {
       var button = getString(event.data && event.data.button);
       matchesUIString(button, POST_MENU_OPEN) ? openBrowser(localizedURL(watchURL(state.videoId)), t(YT_KEY_TITLE_YOUTUBE)) : matchesUIString(button, POST_MENU_RELATED) && openRelatedFromPost(viewId);
-    } else loadMoreComments(viewId); else loadWatchPost(viewId);
+    } else (await loadMoreComments(viewId)); else (await loadWatchPost(viewId));
   }
 }, openHomeView = function() {
   var savedFilters = loadVideoListFilters(), hasStarredChannels = loadStarredChannels().length > 0, result = synura.open({
@@ -797,7 +797,7 @@ var SYNURA = {
     checked: normalizeEnabledFlag(state && state.enableStreams)
   }), menus.push(buildShortsToggleMenu(state)), menus.push(t(state.starred ? CHANNEL_MENU_UNBOOKMARK : CHANNEL_MENU_BOOKMARK)), 
   menus;
-}, setChannelBookmark = function(viewId, state, shouldStar) {
+}, setChannelBookmark = async function(viewId, state, shouldStar) {
   if (state && (state.channelUrl || state.channelId)) {
     var changed = !1;
     changed = shouldStar ? upsertStarredChannel({
@@ -813,7 +813,7 @@ var SYNURA = {
         menus: buildChannelMenus(state),
         snackbar: shouldStar ? changed ? t("snackbar_channel_bookmarked") : t(YT_KEY_SNACKBAR_CHANNEL_ALREADY_BOOKMARKED) : changed ? t("snackbar_bookmark_removed") : t(YT_KEY_SNACKBAR_BOOKMARK_NOT_FOUND)
       }
-    }), refreshAllHomeLists();
+    }), (await refreshAllHomeLists());
   } else showSnackbar(viewId, t(YT_KEY_ERROR_COULD_NOT_FIND_CHANNEL));
 }, openSettingsDialog = function(parentViewId, targetState) {
   var currentApiKey = loadApiKeyOverride(), currentLanguage = getCurrentLanguageSetting(), currentChannelChunkSize = loadChannelListChunkSize(), languageOptions = getLanguageOptions(), dialogViewId = 0, result = synura.open({
@@ -895,7 +895,7 @@ var SYNURA = {
         body: buildChannelManagerFields(channels),
         buttons: managerButtons
       }
-    }, function(event) {
+    }, async function(event) {
       if ("SUBMIT" === event.eventId) {
         var button = getString(event.data && event.data.button);
         if (matchesUIString(button, "button_export_subscriptions")) return void synura.open({
@@ -904,7 +904,7 @@ var SYNURA = {
           models: { content: JSON.stringify(loadStarredChannels(), null, 2) }
         });
         if (matchesUIString(button, YT_KEY_BUTTON_IMPORT_SUBSCRIPTIONS)) return void openSubscriptionsImport(parentViewId, managerViewId);
-        if (matchesUIString(button, BUTTON_SAVE)) return applyChannelManagerValues(channels, event.data), saveStarredChannels(channels) ? (refreshHomeList(parentViewId),
+        if (matchesUIString(button, BUTTON_SAVE)) return applyChannelManagerValues(channels, event.data), saveStarredChannels(channels) ? ((await refreshHomeList(parentViewId)),
         showSnackbar(parentViewId, t(YT_KEY_SNACKBAR_CHANNEL_LIST_SAVED)), void synura.close(managerViewId)) : void showSnackbar(managerViewId, t(YT_KEY_ERROR_COULD_NOT_SAVE_CHANNEL_LIST));
         synura.close(managerViewId);
       }
@@ -948,7 +948,7 @@ var SYNURA = {
       body: [{ type: "text", name: "subscriptions", label: "JSON", lines: 12, selectOnFocus: true, value: JSON.stringify(loadStarredChannels(), null, 2) }],
       buttons: [t("button_replace_subscriptions"), t(BUTTON_CANCEL)]
     }
-  }, function(event) {
+  }, async function(event) {
     if (event.eventId === "CLOSE") return void synura.close(dialogViewId);
     if (event.eventId !== "SUBMIT") return;
     if (matchesUIString(getString(event.data && event.data.button), BUTTON_CANCEL)) return void synura.close(dialogViewId);
@@ -959,14 +959,14 @@ var SYNURA = {
     if (!saveStarredChannels(channels)) return void showSnackbar(dialogViewId, t(YT_KEY_ERROR_COULD_NOT_SAVE_CHANNEL_LIST));
     synura.close(dialogViewId);
     synura.close(managerViewId);
-    refreshAllHomeLists();
+    (await refreshAllHomeLists());
     showSnackbar(parentViewId, t(YT_KEY_SNACKBAR_CHANNEL_LIST_SAVED));
   });
   if (result.success) dialogViewId = result.viewId;
   else showSnackbar(managerViewId, t(YT_KEY_ERROR_COULD_NOT_OPEN_CHANNEL_LIST));
 }, isMenuMatch = function(menu, label) {
   return matchesUIString(menu, label);
-}, handleListMenu = function(viewId, state, menu) {
+}, handleListMenu = async function(viewId, state, menu) {
   if (menu) {
     if (YT_KEY_HOME === state.mode && matchesUIString(menu, MENU_SETTINGS)) return void openSettingsDialog(viewId, state);
     if (YT_KEY_HOME === state.mode && matchesUIString(menu, HOME_MENU_CHANNEL_LIST)) return void openChannelListManager(viewId);
@@ -976,13 +976,13 @@ var SYNURA = {
     if (YT_KEY_CHANNEL === state.mode) return matchesUIString(menu, CHANNEL_MENU_OPEN_BROWSER) && state.channelUrl ? void openBrowser(localizedURL(state.channelUrl), state.channelTitle || t(YT_KEY_TITLE_CHANNEL)) : isMenuMatch(menu, CHANNEL_MENU_ENABLE_VIDEOS) ? (state.enableVideos = !normalizeEnabledFlag(state.enableVideos),
     updateVideoListFilters({
       enableVideos: state.enableVideos
-    }), void loadChannelFirstPage(viewId, !1)) : isMenuMatch(menu, CHANNEL_MENU_ENABLE_STREAMS) ? (state.enableStreams = !normalizeEnabledFlag(state.enableStreams), 
+    }), void (await loadChannelFirstPage(viewId, !1))) : isMenuMatch(menu, CHANNEL_MENU_ENABLE_STREAMS) ? (state.enableStreams = !normalizeEnabledFlag(state.enableStreams),
     updateVideoListFilters({
       enableStreams: state.enableStreams
-    }), void loadChannelFirstPage(viewId, !1)) : isMenuMatch(menu, MENU_ENABLE_SHORTS) ? (state.enableShorts = !normalizeEnabledFlag(state.enableShorts), 
+    }), void (await loadChannelFirstPage(viewId, !1))) : isMenuMatch(menu, MENU_ENABLE_SHORTS) ? (state.enableShorts = !normalizeEnabledFlag(state.enableShorts),
     updateVideoListFilters({
       enableShorts: state.enableShorts
-    }), void loadChannelFirstPage(viewId, !1)) : matchesUIString(menu, CHANNEL_MENU_BOOKMARK) ? void setChannelBookmark(viewId, state, !0) : matchesUIString(menu, CHANNEL_MENU_UNBOOKMARK) ? void setChannelBookmark(viewId, state, !1) : void 0;
+    }), void (await loadChannelFirstPage(viewId, !1))) : matchesUIString(menu, CHANNEL_MENU_BOOKMARK) ? void (await setChannelBookmark(viewId, state, !0)) : matchesUIString(menu, CHANNEL_MENU_UNBOOKMARK) ? void (await setChannelBookmark(viewId, state, !1)) : void 0;
     if (isMenuMatch(menu, MENU_ENABLE_SHORTS) && (YT_KEY_SEARCH === state.mode || YT_KEY_RELATED === state.mode || isHomeTrendingState(state))) return state.enableShorts = !normalizeEnabledFlag(state.enableShorts),
     updateVideoListFilters({
       enableShorts: state.enableShorts
@@ -990,7 +990,7 @@ var SYNURA = {
     void (YT_KEY_RELATED === state.mode ? renderRelatedList(viewId, state) : YT_KEY_SEARCH === state.mode ? renderSearchList(viewId, state) : renderHomeTrendingList(viewId, state));
     if (!matchesUIString(menu, SEARCH_MENU_OPEN)) if (!matchesUIString(menu, POST_MENU_OPEN) || YT_KEY_RELATED !== state.mode) {
       if (YT_KEY_SEARCH === state.mode) for (var i = 0; i < QUICK_QUERIES.length; i++) if (matchesUIString(menu, QUICK_QUERIES[i].labelKey)) return state.query = QUICK_QUERIES[i].query,
-      void loadSearchFirstPage(viewId, state.query);
+      void (await loadSearchFirstPage(viewId, state.query));
     } else openBrowser(localizedURL(watchURL(state.parentVideoId)), t(YT_KEY_TITLE_YOUTUBE)); else openBrowser(localizedURL(YT_ORIGIN + "/"), t(YT_KEY_TITLE_YOUTUBE));
   }
 }, ensureListState = function(viewId, context) {
@@ -1221,7 +1221,7 @@ var SYNURA = {
       snackbar: void 0 === snackbar ? items.length ? "" : t(YT_KEY_SNACKBAR_NO_VIDEOS_FOUND) : snackbar
     }
   }, previousRenderedItems);
-}, loadHomeFallbackList = function(viewId, state) {
+}, loadHomeFallbackList = async function(viewId, state) {
   if (state && !state.loading) {
     var keepItems = isHomeTrendingState(state), homeLabel = getHomeFallbackLabel(), homeQuery = getHomeFallbackSearchQuery();
     state.loading = !0, state.mode = YT_KEY_HOME, state.homeFeedMode = "trending", state.homeQuery = homeLabel,
@@ -1246,7 +1246,7 @@ var SYNURA = {
     }
     });
     try {
-      var page = fetchHomeFallbackDesktopSearchPage(homeQuery);
+      var page = (await fetchHomeFallbackDesktopSearchPage(homeQuery));
       state.allItems = page.items, state.items = page.items, state.continuation = page.continuation, 
       state.continuationSource = page.continuationSource || "", state.apiCfg = page.apiCfg, 
       renderHomeTrendingList(viewId, state, page.items.length ? "" : t(YT_KEY_SNACKBAR_NO_VIDEOS_FOUND));
@@ -1257,9 +1257,9 @@ var SYNURA = {
     }
     state.loading = !1;
   }
-}, renderHomeList = function(viewId, state) {
+}, renderHomeList = async function(viewId, state) {
   var allChannels = loadStarredChannels();
-  if (!allChannels.length) return void loadHomeFallbackList(viewId, state);
+  if (!allChannels.length) return void (await loadHomeFallbackList(viewId, state));
   state.items = starredChannelsToListItems(allChannels), state.loaded = !0, state.mode = YT_KEY_HOME,
   state.homeFeedMode = "channels", state.homeQuery = "", state.continuation = "", state.pendingItems = [], 
   state.allItems = [], 
@@ -1280,15 +1280,15 @@ var SYNURA = {
       snackbar: buildHomeSnackbar(allChannels, state.items)
     }
   });
-}, refreshHomeList = function(viewId) {
+}, refreshHomeList = async function(viewId) {
   var state = listViewState[String(viewId)];
-  state && renderHomeList(viewId, state);
-}, refreshAllHomeLists = function() {
+  state && (await renderHomeList(viewId, state));
+}, refreshAllHomeLists = async function() {
   for (var key in listViewState) if (Object.prototype.hasOwnProperty.call(listViewState, key)) {
     var state = listViewState[key];
     if (state && YT_KEY_HOME === state.mode) {
       var viewId = parseInt(key, 10);
-      viewId && renderHomeList(viewId, state);
+      viewId && (await renderHomeList(viewId, state));
     }
   }
 }, buildChannelAppbar = function(state) {
@@ -1337,7 +1337,7 @@ var SYNURA = {
     styles: s,
     models: m
   }, p);
-}, loadChannelFirstPage = function(viewId, forceRefresh) {
+}, loadChannelFirstPage = async function(viewId, forceRefresh) {
   var state = listViewState[String(viewId)];
   if (state && !state.loading) if (state.channelUrl || state.channelId) {
     if (!normalizeEnabledFlag(state.enableVideos) && !normalizeEnabledFlag(state.enableStreams) && !normalizeEnabledFlag(state.enableShorts)) return state.items = [], 
@@ -1351,7 +1351,7 @@ var SYNURA = {
         streams: normalizeEnabledFlag(state.enableStreams),
         shorts: normalizeEnabledFlag(state.enableShorts)
       }, channelSeed = toChannelSeed(state), page = forceRefresh ? null : getCachedChannelPage(state.channelUrl, state.channelId, options);
-      page || (page = fetchChannelPage(state.channelUrl, state.channelId, options, channelSeed), 
+      page || (page = (await fetchChannelPage(state.channelUrl, state.channelId, options, channelSeed)),
       saveCachedChannelPage(state.channelUrl, state.channelId, options, page));
       var sortedItems = sortVideoItemsForState(state, page.items), split = splitBufferedItems(sortedItems, loadChannelListChunkSize());
       state.mode = YT_KEY_CHANNEL, state.items = split.visible, state.pendingItems = split.pending,
@@ -1367,7 +1367,7 @@ var SYNURA = {
     }
     state.loading = !1;
   } else showSnackbar(viewId, t(YT_KEY_ERROR_COULD_NOT_FIND_CHANNEL));
-}, loadMoreChannel = function(viewId) {
+}, loadMoreChannel = async function(viewId) {
   var state = listViewState[String(viewId)];
   if (state && !state.loading) {
     var previousVisibleItems = (state.items || []).slice(), appendedBufferedItems = drainPendingItems(state, loadChannelListChunkSize());
@@ -1377,15 +1377,15 @@ var SYNURA = {
       state.loading = !0;
       try {
         var page = null, loadingDeferredTabs = !1, channelSeed = toChannelSeed(state);
-        !state.continuation && state.channelTabFallbackPending ? (page = fetchChannelPageFromTabs(state.channelUrl, state.channelId, {
+        !state.continuation && state.channelTabFallbackPending ? (page = (await fetchChannelPageFromTabs(state.channelUrl, state.channelId, {
           query: "",
           videos: normalizeEnabledFlag(state.enableVideos),
           streams: normalizeEnabledFlag(state.enableStreams),
           shorts: normalizeEnabledFlag(state.enableShorts)
-        }, state.channelTabEndpoints, state.apiCfg, channelSeed), state.channelTabFallbackPending = !1, state.continuation = page.continuation, 
+        }, state.channelTabEndpoints, state.apiCfg, channelSeed)), state.channelTabFallbackPending = !1, state.continuation = page.continuation,
         state.continuationSource = page.continuationSource || "", state.apiCfg = page.apiCfg || state.apiCfg, 
         state.channelTabEndpoints = mergeChannelTabEndpoints(state.channelTabEndpoints, page.channelTabEndpoints), 
-        loadingDeferredTabs = !0) : (page = fetchChannelContinuation(state.continuation, state.apiCfg, state.continuationSource, channelSeed), 
+        loadingDeferredTabs = !0) : (page = (await fetchChannelContinuation(state.continuation, state.apiCfg, state.continuationSource, channelSeed)),
         state.continuation = page.continuation);
         applyChannel(state, page.channel), channelSeed = toChannelSeed(state);
         for (var known = {}, i = 0; i < state.items.length; i++) known[getString(state.items[i] && state.items[i].videoId)] = !0;
@@ -1408,14 +1408,14 @@ var SYNURA = {
       state.loading = !1;
     }
   }
-}, loadSearchFirstPage = function(viewId, query) {
+}, loadSearchFirstPage = async function(viewId, query) {
   var state = ensureListState(viewId, {
     kind: YT_KEY_SEARCH
   });
   if (!state.loading) {
     state.loading = !0;
     try {
-      var page = fetchSearchPage(query);
+      var page = (await fetchSearchPage(query));
       state.mode = YT_KEY_SEARCH, state.query = query, state.allItems = page.items, state.items = page.items, state.continuation = page.continuation,
       state.apiCfg = page.apiCfg, renderSearchList(viewId, state, page.items.length ? "" : t(YT_KEY_SNACKBAR_NO_VIDEOS_FOUND));
     } catch (e) {
@@ -1425,12 +1425,12 @@ var SYNURA = {
     }
     state.loading = !1;
   }
-}, loadMoreTrending = function(viewId) {
+}, loadMoreTrending = async function(viewId) {
   var state = listViewState[String(viewId)];
   if (state && !state.loading && state.continuation) {
     state.loading = !0;
     try {
-      var previousItems = (state.items || []).slice(), sourceItems = getVideoListSourceItems(state), page = fetchSearchContinuation(state.continuation, state.apiCfg), pageItems = sortVideoItemsForState(state, page.items);
+      var previousItems = (state.items || []).slice(), sourceItems = getVideoListSourceItems(state), page = (await fetchSearchContinuation(state.continuation, state.apiCfg)), pageItems = sortVideoItemsForState(state, page.items);
       state.continuation = page.continuation, state.allItems = sourceItems.concat(pageItems), 
       renderHomeTrendingList(viewId, state, page.items.length ? "" : t(YT_KEY_SNACKBAR_NO_MORE_RESULTS), previousItems, !0),
       page.items.length && state.continuation || showSnackbar(viewId, t(YT_KEY_SNACKBAR_NO_MORE_RESULTS));
@@ -1441,12 +1441,12 @@ var SYNURA = {
     }
     state.loading = !1;
   } else state && state.loaded && showSnackbar(viewId, t(YT_KEY_SNACKBAR_NO_MORE_RESULTS));
-}, loadMoreSearch = function(viewId) {
+}, loadMoreSearch = async function(viewId) {
   var state = listViewState[String(viewId)];
   if (state && !state.loading && state.continuation) {
     state.loading = !0;
     try {
-      var previousItems = (state.items || []).slice(), sourceItems = getVideoListSourceItems(state), page = fetchSearchContinuation(state.continuation, state.apiCfg), pageItems = sortVideoItemsForState(state, page.items);
+      var previousItems = (state.items || []).slice(), sourceItems = getVideoListSourceItems(state), page = (await fetchSearchContinuation(state.continuation, state.apiCfg)), pageItems = sortVideoItemsForState(state, page.items);
       state.continuation = page.continuation, state.allItems = sourceItems.concat(pageItems), 
       renderSearchList(viewId, state, page.items.length ? "" : t(YT_KEY_SNACKBAR_NO_MORE_RESULTS), previousItems, !0),
       page.items.length && state.continuation || showSnackbar(viewId, t(YT_KEY_SNACKBAR_NO_MORE_RESULTS));
@@ -1460,12 +1460,12 @@ var SYNURA = {
 }, refreshRelatedList = function(viewId) {
   var state = listViewState[String(viewId)];
   state && renderRelatedList(viewId, state, "");
-}, loadMoreRelated = function(viewId) {
+}, loadMoreRelated = async function(viewId) {
   var state = listViewState[String(viewId)];
   if (state && !state.loading && state.continuation) {
     state.loading = !0;
     try {
-      var previousItems = (state.items || []).slice(), sourceItems = getVideoListSourceItems(state), page = fetchRelatedContinuation(state.continuation, state.apiCfg), pageItems = sortVideoItemsForState(state, page.items);
+      var previousItems = (state.items || []).slice(), sourceItems = getVideoListSourceItems(state), page = (await fetchRelatedContinuation(state.continuation, state.apiCfg)), pageItems = sortVideoItemsForState(state, page.items);
       state.continuation = page.continuation, state.allItems = sourceItems.concat(pageItems), 
       renderRelatedList(viewId, state, page.items.length ? "" : t(YT_KEY_SNACKBAR_NO_MORE_RELATED_VIDEOS), previousItems, !0),
       page.items.length && state.continuation || showSnackbar(viewId, t(YT_KEY_SNACKBAR_NO_MORE_RELATED_VIDEOS));
@@ -1476,12 +1476,12 @@ var SYNURA = {
     }
     state.loading = !1;
   }
-}, loadWatchPost = function(viewId) {
+}, loadWatchPost = async function(viewId) {
   var state = postViewState[String(viewId)];
   if (state && !state.loading && state.videoId) {
     state.loading = !0;
     try {
-      var payload = fetchWatchPayload(state.videoId);
+      var payload = (await fetchWatchPayload(state.videoId));
       state.title = getString(payload.title).trim() || getString(state.title);
       state.apiCfg = payload.apiCfg, state.channelUrl = payload.channelUrl || state.channelUrl, 
       state.channelId = payload.channelId || state.channelId, state.channelTitle = payload.channelTitle || payload.author || state.channelTitle, 
@@ -1499,12 +1499,12 @@ var SYNURA = {
     }
     state.loading = !1;
   }
-}, loadMoreComments = function(viewId) {
+}, loadMoreComments = async function(viewId) {
   var state = postViewState[String(viewId)];
   if (state && !state.loading && state.commentsContinuation) {
     state.loading = !0;
     try {
-      var page = fetchCommentsContinuation(state.commentsContinuation, state.apiCfg);
+      var page = (await fetchCommentsContinuation(state.commentsContinuation, state.apiCfg));
       state.commentsContinuation = page.continuation, state.comments = state.comments.concat(page.comments), 
       synura.update(viewId, {
         models: {
@@ -1561,12 +1561,12 @@ var SYNURA = {
 }, buildHomeMenus = function(state) {
   for (var menus = [ t(HOME_MENU_CHANNEL_LIST), t(MENU_SETTINGS) ], sortMenus = isHomeTrendingState(state) ? buildVideoSortMenus(state && state.videoSort) : [], i = 0; i < sortMenus.length; i++) menus.push(sortMenus[i]);
   return isHomeTrendingState(state) && menus.push(buildShortsToggleMenu(state)), menus;
-}, fetchSearchPage = function(query) {
+}, fetchSearchPage = async function(query) {
   var normalizedQuery = cleanQuery(query) || DEFAULT_QUERY, cachedCfg = loadInnertubeConfigCache();
   if (cachedCfg && cachedCfg.apiKey) try {
-    return fetchSearchPageInnertube(normalizedQuery, cachedCfg);
+    return (await fetchSearchPageInnertube(normalizedQuery, cachedCfg));
   } catch (e) {}
-  var url = localizedURL(YT_ORIGIN + "/results?search_query=" + encodeURIComponent(normalizedQuery)), html = fetchText(url), initialData = extractJSONVar(html, YT_KEY_YT_INITIAL_DATA);
+  var url = localizedURL(YT_ORIGIN + "/results?search_query=" + encodeURIComponent(normalizedQuery)), html = (await fetchText(url)), initialData = extractJSONVar(html, YT_KEY_YT_INITIAL_DATA);
   if (!initialData) throw new Error("Could not parse ytInitialData from search page.");
   var apiCfg = extractInnertubeConfig(html), sectionContents = getIn(initialData, [ YT_KEY_CONTENTS, YT_KEY_SECTION_LIST_RENDERER, YT_KEY_CONTENTS ], []);
   return {
@@ -1574,29 +1574,29 @@ var SYNURA = {
     continuation: extractContinuationToken(sectionContents),
     apiCfg: apiCfg
   };
-}, fetchSearchPageInnertube = function(query, apiCfg) {
+}, fetchSearchPageInnertube = async function(query, apiCfg) {
   var cfg = resolveInnertubeConfig(apiCfg);
   if (!cfg || !cfg.apiKey) throw new Error("Missing Innertube API key.");
   var payload = {
     context: buildInnertubeContext(cfg),
     query: cleanQuery(query) || DEFAULT_QUERY
-  }, response = callInnertube("/youtubei/v1/search", payload, cfg), videos = normalizeVideoItems(collectVideos(response), query), continuation = extractContinuationToken(response);
+  }, response = (await callInnertube("/youtubei/v1/search", payload, cfg)), videos = normalizeVideoItems(collectVideos(response), query), continuation = extractContinuationToken(response);
   if (!videos.length && !continuation) throw new Error("Could not parse search response.");
   return {
     items: videos,
     continuation: continuation,
     apiCfg: cfg
   };
-}, fetchSearchContinuation = function(token, apiCfg) {
+}, fetchSearchContinuation = async function(token, apiCfg) {
   var payload = {
     context: buildInnertubeContext(apiCfg),
     continuation: token
-  }, response = callInnertube("/youtubei/v1/search", payload, apiCfg), items = extractContinuationItems(response);
+  }, response = (await callInnertube("/youtubei/v1/search", payload, apiCfg)), items = extractContinuationItems(response);
   return {
     items: normalizeVideoItems(collectVideos(items), ""),
     continuation: extractContinuationToken(items)
   };
-}, fetchHomeFallbackDesktopSearchPage = function(query) {
+}, fetchHomeFallbackDesktopSearchPage = async function(query) {
   var normalizedQuery = cleanQuery(query) || DEFAULT_QUERY, apiCfg = applyLocaleToConfig({
     apiKey: HOME_FALLBACK_API_KEY,
     clientName: HOME_FALLBACK_CLIENT_NAME,
@@ -1612,7 +1612,7 @@ var SYNURA = {
       }
     },
     query: normalizedQuery
-  }, url = YT_ORIGIN + "/youtubei/v1/search?key=" + encodeURIComponent(apiCfg.apiKey), response = fetch(url, {
+  }, url = YT_ORIGIN + "/youtubei/v1/search?key=" + encodeURIComponent(apiCfg.apiKey), response = (await fetch(url, {
     method: "POST",
     bypass: SYNURA.bypass,
     headers: {
@@ -1620,9 +1620,9 @@ var SYNURA = {
       "Accept-Language": resolveAcceptLanguage(apiCfg)
     },
     body: JSON.stringify(payload)
-  });
+  }));
   if (!response || !response.ok) throw new Error("HTTP " + getNumber(response && response.status) + " from home fallback search.");
-  var result = response.json() || {}, videos = normalizeVideoItems(collectVideos(result), normalizedQuery), continuation = extractContinuationToken(result);
+  var result = (await response.json()) || {}, videos = normalizeVideoItems(collectVideos(result), normalizedQuery), continuation = extractContinuationToken(result);
   if (!videos.length && !continuation) throw new Error("Could not parse home fallback search response.");
   return {
     items: videos,
@@ -1630,7 +1630,7 @@ var SYNURA = {
     continuationSource: YT_KEY_SEARCH,
     apiCfg: apiCfg
   };
-}, fetchChannelTabPageHTML = function(u, id, tab, opt, seed) {
+}, fetchChannelTabPageHTML = async function(u, id, tab, opt, seed) {
   var url = toChannelTabURL(u, tab);
   if (!url) {
     if (opt) return null;
@@ -1638,7 +1638,7 @@ var SYNURA = {
   }
   var html = "";
   try {
-    html = fetchText(localizedURL(url));
+    html = (await fetchText(localizedURL(url)));
   } catch (e) {
     if (opt) return null;
     throw e;
@@ -1658,7 +1658,7 @@ var SYNURA = {
     channel: channel,
     channelTabEndpoints: tabs
   };
-}, fetchChannelTabPageBrowse = function(u, id, tab, opt, tabs, cfg, seed) {
+}, fetchChannelTabPageBrowse = async function(u, id, tab, opt, tabs, cfg, seed) {
   var key = getString(tab).toLowerCase(), endpoint = getIn(tabs, [ key ], null), browseId = getString(endpoint && endpoint.browseId) || getString(id) || extractChannelIdFromUrl(u), params = getString(endpoint && endpoint.params);
   if (!browseId || !params) {
     if (opt) return null;
@@ -1670,7 +1670,7 @@ var SYNURA = {
     params: params
   }, response = null;
   try {
-    response = callInnertube("/youtubei/v1/browse", payload, api);
+    response = (await callInnertube("/youtubei/v1/browse", payload, api));
   } catch (e) {
     if (opt) return null;
     throw e;
@@ -1683,17 +1683,17 @@ var SYNURA = {
     apiCfg: api,
     channel: channel
   };
-}, fetchChannelTabPage = function(u, id, tab, opt, tabs, cfg, seed) {
+}, fetchChannelTabPage = async function(u, id, tab, opt, tabs, cfg, seed) {
   var endpoints = mergeChannelTabEndpoints(null, tabs), key = getString(tab).toLowerCase();
   if (endpoints[key]) try {
-    return fetchChannelTabPageBrowse(u, id, tab, opt, endpoints, cfg, seed);
+    return (await fetchChannelTabPageBrowse(u, id, tab, opt, endpoints, cfg, seed));
   } catch (e) {}
   if (opt && (endpoints.videos || endpoints.streams || endpoints.shorts)) return null;
-  return fetchChannelTabPageHTML(u, id, tab, opt, seed);
-}, fetchChannelSearchPage = function(u, id, q, seed) {
+  return (await fetchChannelTabPageHTML(u, id, tab, opt, seed));
+}, fetchChannelSearchPage = async function(u, id, q, seed) {
   var url = toChannelSearchURL(u, q);
   if (!url) throw new Error("Missing channel URL.");
-  var html = fetchText(localizedURL(url)), initialData = extractJSONVar(html, YT_KEY_YT_INITIAL_DATA);
+  var html = (await fetchText(localizedURL(url))), initialData = extractJSONVar(html, YT_KEY_YT_INITIAL_DATA);
   if (!initialData) throw new Error("Could not parse ytInitialData from channel search page.");
   var root = findSelectedChannelTabContent(initialData) || initialData, channel = parseChannelMetadata(initialData, u, id, seed), apiCfg = extractInnertubeConfig(html), videos = dedupeByVideoId(hydrateChannelItems(normalizeVideoItems(collectVideos(root), q, channel), channel));
   return {
@@ -1702,10 +1702,10 @@ var SYNURA = {
     apiCfg: apiCfg,
     channel: channel
   };
-}, fetchChannelHomePage = function(u, id, o, seed) {
+}, fetchChannelHomePage = async function(u, id, o, seed) {
   var url = stripChannelTabSuffix(u) || u;
   if (!url) throw new Error("Missing channel URL.");
-  var html = fetchText(localizedURL(url)), apiCfg = extractInnertubeConfig(html), fastPage = extractChannelHomePageFromHTML(html, u, id, o, apiCfg, seed);
+  var html = (await fetchText(localizedURL(url))), apiCfg = extractInnertubeConfig(html), fastPage = extractChannelHomePageFromHTML(html, u, id, o, apiCfg, seed);
   if (fastPage) return fastPage;
   var initialData = extractJSONVar(html, YT_KEY_YT_INITIAL_DATA);
   if (!initialData) throw new Error("Could not parse ytInitialData from channel home page.");
@@ -1829,13 +1829,13 @@ var SYNURA = {
     if (nestedURL) return nestedURL;
   }
   return "";
-}, fetchChannelPage = function(u, id, o, seed) {
+}, fetchChannelPage = async function(u, id, o, seed) {
   var normalized = normalizeChannelUrl(u);
   if (!normalized && id && (normalized = normalizeChannelUrl("/channel/" + id)), 
   !normalized) throw new Error("Missing channel URL.");
   var q = cleanQuery(o && o.query), wantVideos = normalizeEnabledFlag(o && o.videos), wantStreams = normalizeEnabledFlag(o && o.streams), wantShorts = normalizeEnabledFlag(o && o.shorts);
   if (q) {
-    var search = fetchChannelSearchPage(normalized, id, q, seed);
+    var search = (await fetchChannelSearchPage(normalized, id, q, seed));
     return {
       items: filterChannelItemsForOptions(search.items, wantVideos, wantStreams, wantShorts),
       continuation: search.continuation,
@@ -1854,10 +1854,10 @@ var SYNURA = {
   };
   var home = null;
   try {
-    home = fetchChannelHomePage(normalized, id, o, seed);
+    home = (await fetchChannelHomePage(normalized, id, o, seed));
     if (home && home.items.length) {
       if (home.channelTabFallbackPending && !home.continuation && home.items.length < 9) try {
-        var resolved = fetchChannelPageFromTabs(normalized, id, o, home.channelTabEndpoints, home.apiCfg, home.channel || seed);
+        var resolved = (await fetchChannelPageFromTabs(normalized, id, o, home.channelTabEndpoints, home.apiCfg, home.channel || seed));
         resolved.items.length && (home.items = resolved.items), home.continuation = resolved.continuation, 
         home.continuationSource = resolved.continuationSource || "", home.apiCfg = resolved.apiCfg || home.apiCfg, 
         home.channel = resolved.channel || home.channel, home.channelTabFallbackPending = !1, 
@@ -1866,9 +1866,9 @@ var SYNURA = {
       return home;
     }
   } catch (e) {}
-  return fetchChannelPageFromTabs(normalized, id, o, home && home.channelTabEndpoints, home && home.apiCfg, seed);
-}, fetchChannelPageFromTabs = function(u, id, o, tabs, cfg, seed) {
-  var wantVideos = normalizeEnabledFlag(o && o.videos), wantStreams = normalizeEnabledFlag(o && o.streams), wantShorts = normalizeEnabledFlag(o && o.shorts), mergedTabs = mergeChannelTabEndpoints(null, tabs), videos = wantVideos ? fetchChannelTabPage(u, id, "videos", wantStreams || wantShorts, mergedTabs, cfg, seed) : null, streams = wantStreams ? fetchChannelTabPage(u, id, YT_KEY_STREAMS, !0, mergedTabs, cfg, seed) : null, shorts = wantShorts ? fetchChannelTabPage(u, id, YT_KEY_SHORTS, !0, mergedTabs, cfg, seed) : null, items = [];
+  return (await fetchChannelPageFromTabs(normalized, id, o, home && home.channelTabEndpoints, home && home.apiCfg, seed));
+}, fetchChannelPageFromTabs = async function(u, id, o, tabs, cfg, seed) {
+  var wantVideos = normalizeEnabledFlag(o && o.videos), wantStreams = normalizeEnabledFlag(o && o.streams), wantShorts = normalizeEnabledFlag(o && o.shorts), mergedTabs = mergeChannelTabEndpoints(null, tabs), videos = wantVideos ? (await fetchChannelTabPage(u, id, "videos", wantStreams || wantShorts, mergedTabs, cfg, seed)) : null, streams = wantStreams ? (await fetchChannelTabPage(u, id, YT_KEY_STREAMS, !0, mergedTabs, cfg, seed)) : null, shorts = wantShorts ? (await fetchChannelTabPage(u, id, YT_KEY_SHORTS, !0, mergedTabs, cfg, seed)) : null, items = [];
   mergedTabs = mergeChannelTabEndpoints(mergedTabs, videos && videos.channelTabEndpoints), 
   mergedTabs = mergeChannelTabEndpoints(mergedTabs, streams && streams.channelTabEndpoints), 
   mergedTabs = mergeChannelTabEndpoints(mergedTabs, shorts && shorts.channelTabEndpoints), 
@@ -1888,24 +1888,24 @@ var SYNURA = {
     channelTabFallbackPending: !1,
     channelTabEndpoints: mergedTabs
   };
-}, fetchChannelContinuation = function(token, apiCfg, source, channel) {
+}, fetchChannelContinuation = async function(token, apiCfg, source, channel) {
   var payload = {
     context: buildInnertubeContext(apiCfg),
     continuation: token
   }, endpoint = YT_KEY_SEARCH === source ? "/youtubei/v1/search" : "/youtubei/v1/browse", response = null;
   try {
-    response = callInnertube(endpoint, payload, apiCfg);
+    response = (await callInnertube(endpoint, payload, apiCfg));
   } catch (e) {
     if ("/youtubei/v1/search" !== endpoint) throw e;
-    response = callInnertube("/youtubei/v1/browse", payload, apiCfg);
+    response = (await callInnertube("/youtubei/v1/browse", payload, apiCfg));
   }
   var items = extractContinuationItems(response || {}), videos = normalizeVideoItems(collectVideos(items), "", channel);
   return {
     items: dedupeByVideoId(videos),
     continuation: extractContinuationToken(items)
   };
-}, fetchWatchPayload = function(videoId) {
-  var url = localizedURL(watchURL(videoId)), html = fetchText(url), initialData = extractJSONVar(html, YT_KEY_YT_INITIAL_DATA);
+}, fetchWatchPayload = async function(videoId) {
+  var url = localizedURL(watchURL(videoId)), html = (await fetchText(url)), initialData = extractJSONVar(html, YT_KEY_YT_INITIAL_DATA);
   if (!initialData) throw new Error("Could not parse ytInitialData from watch page.");
   var apiCfg = extractInnertubeConfig(html), resultsContents = getIn(initialData, [ YT_KEY_CONTENTS, "singleColumnWatchNextResults", YT_KEY_RESULTS, YT_KEY_RESULTS, YT_KEY_CONTENTS ], []), metadata = parseWatchMetadata(initialData, videoId), player = extractJSONVar(html, "ytInitialPlayerResponse"), relatedRaw = collectVideos(resultsContents), related = normalizeVideoItems(relatedRaw, "").filter(function(item) {
     return item.videoId && item.videoId !== videoId;
@@ -1935,26 +1935,26 @@ var SYNURA = {
     relatedContinuation: relatedContinuation,
     apiCfg: apiCfg
   };
-}, fetchRelatedContinuation = function(token, apiCfg) {
+}, fetchRelatedContinuation = async function(token, apiCfg) {
   var payload = {
     context: buildInnertubeContext(apiCfg),
     continuation: token
-  }, response = callInnertube("/youtubei/v1/next", payload, apiCfg), items = extractContinuationItems(response), videos = normalizeVideoItems(collectVideos(items), "");
+  }, response = (await callInnertube("/youtubei/v1/next", payload, apiCfg)), items = extractContinuationItems(response), videos = normalizeVideoItems(collectVideos(items), "");
   return {
     items: dedupeByVideoId(videos),
     continuation: extractContinuationToken(items)
   };
-}, fetchCommentsContinuation = function(token, apiCfg) {
+}, fetchCommentsContinuation = async function(token, apiCfg) {
   var payload = {
     context: buildInnertubeContext(apiCfg),
     continuation: token
-  }, response = callInnertube("/youtubei/v1/next", payload, apiCfg), items = extractContinuationItems(response);
+  }, response = (await callInnertube("/youtubei/v1/next", payload, apiCfg)), items = extractContinuationItems(response);
   return {
     comments: parseComments(items),
     continuation: extractContinuationToken(items)
   };
-}, callInnertube = function(path, body, apiCfg) {
-  var cfg = resolveInnertubeConfig(apiCfg), url = YT_ORIGIN + path + "?key=" + encodeURIComponent(cfg.apiKey || DEFAULT_API_KEY), response = fetch(url, {
+}, callInnertube = async function(path, body, apiCfg) {
+  var cfg = resolveInnertubeConfig(apiCfg), url = YT_ORIGIN + path + "?key=" + encodeURIComponent(cfg.apiKey || DEFAULT_API_KEY), response = (await fetch(url, {
     method: "POST",
     bypass: SYNURA.bypass,
     headers: {
@@ -1962,18 +1962,18 @@ var SYNURA = {
       "Accept-Language": resolveAcceptLanguage(cfg)
     },
     body: JSON.stringify(body || {})
-  });
+  }));
   if (!response || !response.ok) throw new Error("HTTP " + getNumber(response && response.status) + " from " + path);
-  return response.json() || {};
-}, fetchText = function(url) {
-  for (var current = getString(url), localeCfg = defaultConfig(), response = null, i = 0; i <= 4 && (response = fetch(current, {
+  return (await response.json()) || {};
+}, fetchText = async function(url) {
+  for (var current = getString(url), localeCfg = defaultConfig(), response = null, i = 0; i <= 4 && (response = (await fetch(current, {
     method: "GET",
     bypass: SYNURA.bypass,
     redirect: "follow",
     headers: {
       "Accept-Language": resolveAcceptLanguage(localeCfg)
     }
-  })); i++) {
+  }))); i++) {
     var status = getNumber(response.status);
     if (status < 300 || status >= 400) break;
     var location = getHeaderValue(response.headers, "location");
@@ -1981,7 +1981,7 @@ var SYNURA = {
     current = resolveURL(current, location);
   }
   if (!response || !response.ok) throw new Error("HTTP " + getNumber(response && response.status) + " from " + url);
-  return response.text();
+  return (await response.text());
 }, parseWatchMetadata = function(initialData, fallbackVideoId) {
   var out = {
     title: "",

@@ -86,14 +86,19 @@ def audit_extension(path):
             if not urls:
                 return 0, []  # Local view examples need no network scope.
             commands = ["mapurl " + quote(url) + " " + quote(str(fixture)) for url in urls]
-            expression = "JSON.stringify(" + quote(urls) + """.map(function (url) {
-                try {
-                    var response = fetch(url);
-                    return {url: url, status: response.status};
-                } catch (error) {
-                    return {url: url, error: String(error)};
+            # Keep only one request pending per VM. Fetch resolves at headers;
+            # consume the body too so its pending-request slot is released.
+            expression = "(async()=>{var results = []; for (var url of " + quote(urls) + """) {
+                    try {
+                        var response = await fetch(url);
+                        await response.arrayBuffer();
+                        results.push({url: url, status: response.status});
+                    } catch (error) {
+                        results.push({url: url, error: String(error)});
+                    }
                 }
-            }))"""
+                return JSON.stringify(results);
+            })()"""
             results = run_commands(script, directory, commands + [eval_command(expression)])
         errors = [
             label + ": " + result["url"] + ": "

@@ -535,8 +535,10 @@ SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
 
 SITE.loadDynamicBoards = function (options) {
   if (!options || !options.allowNetwork) return [];
-  var doc = fetchDocument(SITE.browserHomeUrl);
-  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  return (async function () {
+      var doc = (await fetchDocument(SITE.browserHomeUrl));
+      return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  })();
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {
@@ -812,20 +814,20 @@ function overclockzoneOwnText(node) {
     }
     return out;
   }
-  function overclockzoneRegexFetchBoard(url) {
-    var response = fetchWithLogging(url, buildFetchOptions());
+  async function overclockzoneRegexFetchBoard(url) {
+    var response = (await fetchWithLogging(url, buildFetchOptions()));
     if (!response) throw new Error("Failed to fetch " + url + " (0)");
-    var html = responseText(response);
+    var html = (await responseText(response));
     return overclockzoneRegexItems(html, url);
   }
   var overclockzoneRegexPreviousRouteBoardCustom = SITE.routeBoardCustom;
-  SITE.routeBoardCustom = function (url, info, match, force) {
+  SITE.routeBoardCustom = async function (url, info, match, force) {
     var items = [];
-    try { items = overclockzoneRegexFetchBoard(url); } catch (e) {
-      if (overclockzoneRegexPreviousRouteBoardCustom) return overclockzoneRegexPreviousRouteBoardCustom(url, info, match, force);
+    try { items = (await overclockzoneRegexFetchBoard(url)); } catch (e) {
+      if (overclockzoneRegexPreviousRouteBoardCustom) return (await overclockzoneRegexPreviousRouteBoardCustom(url, info, match, force));
       throw e;
     }
-    if (!items.length && overclockzoneRegexPreviousRouteBoardCustom) return overclockzoneRegexPreviousRouteBoardCustom(url, info, match, force);
+    if (!items.length && overclockzoneRegexPreviousRouteBoardCustom) return (await overclockzoneRegexPreviousRouteBoardCustom(url, info, match, force));
     var board = match && match.board ? match.board : null;
     return {
       kind: "board",

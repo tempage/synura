@@ -379,7 +379,7 @@ SITE.preparePostContext = function (context, match, url, doc, page) {
     if (!doc) return context;
 
     var comments = fmkoreaParseComments(doc, url);
-    var html = page && page.response ? page.response.text() : "";
+    var html = page && page.html ? page.html : "";
     var currentCommentPage = fmkoreaParseCommentPageFromUrl(url);
     var latestCommentPage = fmkoreaDetectLatestCommentPage(doc, html);
     var renderedCommentPage = fmkoreaDetectRenderedCommentPage(doc, html);
@@ -410,10 +410,10 @@ SITE.preparePostContext = function (context, match, url, doc, page) {
     context.fmkoreaLoadedCommentLinks = loadedCommentLinks;
     return context;
 };
-SITE.handleViewEvent = function (viewId, event, state, context) {
+SITE.handleViewEvent = async function (viewId, event, state, context) {
     if (!state || state.kind !== "post") return false;
     if (!event || event.eventId !== "SCROLL_TO_END") return false;
-    return fmkoreaAppendOlderComments(viewId, state);
+    return (await fmkoreaAppendOlderComments(viewId, state));
 };
 SITE.handleBoardSettingsRootEvent = function (viewId, event, state) {
     return false;
@@ -794,7 +794,7 @@ function fmkoreaBuildCommentPageUrlFromState(state, pageNo) {
     return setPageParam(canonicalPostUrl, "cpage", currentPage);
 }
 
-function fmkoreaAppendOlderComments(viewId, state) {
+async function fmkoreaAppendOlderComments(viewId, state) {
     var nextPage = parseInt(String(state && state.fmkoreaCommentCursorPage || 0), 10);
     if (!(nextPage > 0)) return true;
 
@@ -802,7 +802,7 @@ function fmkoreaAppendOlderComments(viewId, state) {
     if (!targetUrl) return true;
 
     try {
-        var page = fetchPostPage(null, targetUrl);
+        var page = (await fetchPostPage(null, targetUrl));
         var fetchedComments = fmkoreaParseComments(page.doc, targetUrl);
         var seen = state.fmkoreaLoadedCommentLinks || {};
         var loaded = Array.isArray(state.fmkoreaLoadedComments) ? state.fmkoreaLoadedComments.slice() : [];

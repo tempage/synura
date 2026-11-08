@@ -1,6 +1,11 @@
 # synurart CLI Shell Guide
 
-`synurart` runs a Synura extension JavaScript file in a local Rust runtime simulator. Use it to load an extension, inspect view state, and emit common view events without launching the mobile app.
+`synurart` runs a Synura extension JavaScript file in one
+[`synura-runtime` VM](runtime/README.md). The CLI supplies the view
+simulator, storage, browser integration, and terminal interface; the shared
+crate supplies JavaScript execution, fetch, Web Crypto, and DOM APIs. Use it to
+load an extension, inspect view state, and emit common view events without
+launching the mobile app.
 
 ## Start Commands
 
@@ -9,19 +14,19 @@
 make synurart EXT=extensions/basic/list.js
 
 # Direct wrapper
-./synurart -ext extensions/basic/list.js
+./synurart.sh -ext extensions/basic/list.js
 
 # One-shot command
-./synurart -json -ext extensions/basic/list.js -e "views"
+./synurart.sh -json -ext extensions/basic/list.js -e "views"
 
 # Build a reusable binary
 make build
 ./bin/synurart -ext extensions/basic/list.js
 ```
 
-The root `./synurart` wrapper runs an incremental Cargo build and then executes `target/debug/synurart` from this checkout.
+The root `./synurart.sh` wrapper runs an incremental Cargo build and then executes `target/debug/synurart` from this checkout.
 
-Building the HTTP client requires a C/C++ toolchain, CMake, Perl, and libclang in addition to Rust. On Debian/Ubuntu, install `build-essential cmake perl libclang-dev pkg-config`. The first build compiles BoringSSL and takes longer than subsequent builds.
+Building the native HTTP and cryptography libraries requires a C/C++ toolchain, CMake, Perl, and libclang in addition to Rust. On Debian/Ubuntu, install `build-essential cmake perl libclang-dev pkg-config`. The first build compiles BoringSSL, shared by HTTP and Web Crypto, and takes longer than subsequent builds.
 
 ## CLI Flags
 
@@ -49,7 +54,7 @@ By default, proxy routing follows the environment's protocol-specific `HTTP_PROX
 Example:
 
 ```bash
-printf 'views\ntap index 1\nviews\nquit\n' | ./synurart -json -ext extensions/basic/list.js
+printf 'views\ntap index 1\nviews\nquit\n' | ./synurart.sh -json -ext extensions/basic/list.js
 ```
 
 ## Commands
@@ -88,12 +93,12 @@ printf 'views\ntap index 1\nviews\nquit\n' | ./synurart -json -ext extensions/ba
 | `storage [local|session]` | Show storage snapshots. |
 | `storage clear [local|session|all]` | Clear storage. |
 | `browser [open\|submit\|close\|status] [id]` | Launch OS native browser (Chrome/Edge) with DevTools for `/views/browser`, capture cookies via CDP on submit, or close/cancel. |
-| `eval <javascript>` | Evaluate JavaScript in the current runtime. |
+| `eval <javascript>` | Evaluate JavaScript in the current runtime and await a returned Promise. |
 | `proxy [url\|clear\|system]` | Show proxy mode, set an explicit URL, disable all proxies with `clear`, or restore system/environment routing with `system`. |
 
 ## Practical Workflow
 
-1. Start with `./synurart -json -ext <ext.js> -e "views"`.
+1. Start with `./synurart.sh -json -ext <ext.js> -e "views"`.
 2. Read the active view from the `type=views` output.
 3. Pick an action by path:
    - `/views/list`: `tap index`, `query`, `menu`, `n`
@@ -105,21 +110,28 @@ printf 'views\ntap index 1\nviews\nquit\n' | ./synurart -json -ext extensions/ba
 
 - `fetch` uses browser TLS/HTTP profiles when `SYNURA.bypass` is set, with the extension's request headers preserved. It does not execute page JavaScript or provide a WebView.
 - Post content rendering shows link labels and their full destinations (`link: label -> URL`), including when the label is shortened for the terminal.
-- Response headers support property access plus case-insensitive `get(name)` and `getAll(name)`. `entries()` returns an array of all header pairs. Multiple `Set-Cookie` values remain separate in `getAll()` and are joined with newlines for property access or `get()`.
-- `fetch` follows redirects within host permissions, with a limit of 10 requests. It preserves the method/body, checks each destination, and carries matching cookies within that redirect chain. An explicit `Cookie` header takes precedence; cookies are not automatically retained between separate `fetch` calls.
-- Native browser profiles are isolated by extension path and starting origin under `.synurart/browser_profiles/`. The old shared `browser_profile` is not reused, so an existing login may need to be repeated.
+- Response headers are `Headers` objects: use `get(name)`, `has(name)`, iterators, and `getSetCookie()`. Missing headers return `null`; fetched response headers are immutable.
+- `fetch` follows up to 20 redirects within host permissions. A 301/302 changes POST to GET; a 303 changes methods other than GET/HEAD to GET, discarding the body and its headers. A 307/308 preserves the method/body. `redirect: "error"` rejects redirect responses; `"manual"` and invalid modes reject before network access.
+- Explicit `Authorization` and `Cookie` headers are removed on a change of scheme, host, or effective port and stay removed for that redirect chain. Matching `Set-Cookie` values are selected per destination with domain/path/security and expiry checks; an explicit `Cookie` takes precedence while present. Cookies are not automatically retained between separate `fetch` calls. `credentials: "omit"` disables automatic redirect-cookie collection and forwarding. Browser origin/SameSite context is not implemented. Use `redirect: "error"` for custom signed requests or sensitive submissions.
+- Native browser profiles are isolated by extension path and starting origin under `.synurart/browser_profiles/`.
 - `browser submit` requires the current page URL to match the extension's load-time `SYNURA.domain` / `host_permissions`. Only unexpired, unpartitioned cookies matching that URL's host, path, and HTTPS status are submitted, including matching HttpOnly cookies. External pages can still be opened; return to an authorized page before capturing cookies. Failed capture leaves the browser open.
-- Fetch errors throw JavaScript exceptions. `text()` uses UTF-8; extensions select other encodings explicitly with `TextDecoder(label).decode(response.arrayBuffer())`. Decoder labels use the common encoding registry, with no site or language-specific runtime branches.
-- Network metadata is validated and bound when the extension is loaded. In a fresh shell without a loaded extension, the first fetch binds the declared metadata. Reload the extension to change its network scope.
-- `onProgress` callbacks receive recorded byte counts before fetch returns. A missing response header returns `undefined`; empty `json()` throws `SyntaxError`.
+- `fetch()` returns a Promise at response headers. `text()`, `json()`, `arrayBuffer()`, and `dom()` return Promises and consume the body once; use `clone()` before reading for additional representations. Network errors reject with `TypeError`; host cancellation rejects with `AbortError`. HTTP error statuses resolve normally. `text()` uses UTF-8; extensions select other encodings explicitly with `TextDecoder(label).decode(await response.arrayBuffer())`. Decoder labels use the common encoding registry, with no site or language-specific runtime branches.
+- Network metadata is validated and bound once when the extension is loaded. A fresh shell without a loaded extension has no network access, even if an `eval` command writes `SYNURA.domain`. Reload the extension to create a fresh VM and bind a new scope.
+- A missing response header returns `null`; empty `json()` rejects with `SyntaxError`. Concurrent HTTP requests run on the native executor. CLI commands drain HTTP and crypto completions, including asynchronous view callbacks.
 - `localStorage` is persisted in `.synurart/local_storage.json`, namespaced by the loaded extension path.
 - `navigator.language` defaults to `en-US` and can be changed with `locale <tag>`.
+- `globalThis.crypto` provides native random values/UUIDs and standard Web Crypto operations for SHA, HMAC, AES-GCM/CBC, RSA-OAEP, RSASSA-PKCS1-v1_5, RSA-PSS, ECDSA/ECDH, Ed25519/X25519, PBKDF2, and HKDF. QuickJS bindings and key lifetime management are implemented in Rust; native operations execute on a worker thread. Standard algorithm constraints and per-VM queue, input-byte, live-key, heap, stack, and execution limits apply. `subtle` methods return Promises; `eval`, extension entry points, and view callbacks complete their submitted crypto work before the command returns. See supported operations, formats, and limits in `api_reference.md`. These runtime functions add no cryptographic library bytes to an extension's 128 KiB source budget.
+- `Request`, `Response`, `Headers`, `AbortController`, and `AbortSignal` are available. Request bodies accept strings, `URLSearchParams`, `ArrayBuffer`, and typed-array/DataView ranges. Encode JSON explicitly with `JSON.stringify`.
+- This is a buffered Web API subset. Streams, Blob, FormData, manual redirects, browser CORS/origin policies, and host timers are not implemented. Unsupported security-sensitive request modes reject explicitly; see [API scope](api_reference.md#fetchinput-options).
+- CLI view events preserve their source view across `await`: the first open replaces that view's forward branch, and nested asynchronous opens continue on the active branch. Updates alone do not prune views. Asynchronous `LOAD` callbacks are background work; their opens join the current interaction's branch, or append to the active branch when no interaction is running. They do not restore a historical callback context.
 - This is a standalone `synurart` simulator, not the full Synura Rust app backend.
 
 ## Embedded Runtime Network Settings
+
+New application hosts should depend on [`synura-runtime`](runtime/README.md) directly. The settings below are CLI-host convenience methods; they do not turn the CLI simulator into an app backend.
 
 Rust hosts can configure `SynurartRuntime::set_timeout(milliseconds)` and `set_fetch_proxy(Some(url))`; use `set_fetch_proxy(None)` to clear the explicit proxy and restore system/environment routing, or `disable_fetch_proxy()` to force direct connections. These settings do not widen extension host permissions.
 
 To cancel an in-flight fetch, create a `FetchCancellation::default()`, pass a clone to `set_fetch_cancellation(handle)`, and call `cancel()` on the other clone from the host thread. Supply a fresh handle for the next request. Cancellation interrupts network work; it is not a JavaScript CPU execution limit.
 
-The fetch implementation and its local HTTP tests build from this repository alone. The extension-facing contract is described in `api_reference.md`; no application backend source or service is required.
+The shared fetch implementation and its local HTTP/isolation tests build from this repository alone. To see two independently managed VM workers, run `cargo run -p synura-runtime --example multi_vm`. The extension-facing contract is described in `api_reference.md`; no application backend source or service is required.

@@ -23,6 +23,7 @@
         return;
     }
     window._synuraEmulatorActive = true;
+    const _nativeFetch = window.fetch.bind(window);
 
     console.log("%c[Synura Polyfill] Initializing Visual Emulator...", "color: #00bcd4; font-weight: bold; font-size: 12px;");
 
@@ -628,19 +629,9 @@
                         console.log(`%c[Synura Debug] Breaking on ${methodName}()`, "color: #f0f; font-weight: bold");
                         debugger;
                     }
-                    // SWAP FETCH: Temporarily enforce Synura sync fetch for the global scope
-                    // This allows code pasted in console (global scope) to use the correct fetch
-                    const nativeFetch = window.fetch;
-                    window.fetch = window.synura.fetch;
-
-                    try {
-                        return original.apply(this, args);
-                    } finally {
-                        // RESTORE FETCH
-                        window.fetch = nativeFetch;
-                    }
+                    return original.apply(this, args);
                 };
-                console.log(`%c[Synura] Wrapped handler.${methodName}() for debugging & fetch-swapping`, "color: #888");
+                console.log(`%c[Synura] Wrapped handler.${methodName}() for debugging`, "color: #888");
             }
         });
     }
@@ -670,7 +661,7 @@
         }
     }, 100);
 
-    // --- New Control Handlers ---
+    // --- Control Handlers ---
     document.getElementById('synura-home').onclick = () => {
         const h = getHandler();
         if (h && h.home) {
@@ -2644,39 +2635,37 @@
         return details;
     }
 
-    // Fetch polyfill
-    window.synura.fetch = (url, options) => {
-        console.log(`%c[Synura] FETCH ${url}`, "color: grey", options);
+    // Fetch uses the browser's network stack and body consumption rules.
+    function wrapFetchResponse(response) {
+        const clone = response.clone.bind(response);
+        Object.defineProperties(response, {
+            dom: {
+                value: async function (mimeType = 'text/html') {
+                    if (String(mimeType).toLowerCase() !== 'text/html') {
+                        throw new TypeError('Unsupported mimeType for dom(): ' + mimeType);
+                    }
+                    const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    return new StrictDOMElement(doc);
+                }
+            },
+            clone: { value: () => wrapFetchResponse(clone()) }
+        });
+        return response;
+    }
 
-        if (options && options.bypass) {
-            console.warn(`%c[Synura] Bypass '${options.bypass}' requested but not supported in polyfill.`, "color: orange");
+    window.synura.fetch = async function (url, options) {
+        if (!arguments.length) throw new TypeError('fetch URL is required');
+        console.log('%c[Synura] FETCH', 'color: grey', url, options);
+        const bypass = options == null ? undefined : options.bypass;
+        if (bypass) {
+            console.warn(`%c[Synura] Bypass '${bypass}' requested but not supported in polyfill.`, "color: orange");
         }
-
-        const request = new XMLHttpRequest();
-        const method = (options && options.method) || 'GET';
-        try {
-            request.open(method, url, false);
-            if (options && options.headers) {
-                for (const h in options.headers) request.setRequestHeader(h, options.headers[h]);
-            }
-            request.send(options ? options.body : null);
-        } catch (e) {
-            console.error("%c[Synura] Fetch Failed! Likely CORS.", "color: red");
-            return { ok: false, status: 0, text: () => "", json: () => ({}), dom: () => new StrictDOMElement(document.createElement('div')) };
-        }
-        return {
-            status: request.status,
-            statusText: request.statusText,
-            ok: request.status >= 200 && request.status < 300,
-            text: () => request.responseText,
-            json: () => JSON.parse(request.responseText),
-            dom: (mime) => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(request.responseText, mime || 'text/html');
-                return new StrictDOMElement(doc);
-            }
-        };
+        // Native RequestInit conversion preserves inherited options and binary
+        // BodyInit values; unknown Synura options are ignored by the browser.
+        const response = await _nativeFetch(url, options);
+        return wrapFetchResponse(response);
     };
+    window.fetch = window.synura.fetch;
 
     console.log("%c[Synura Polyfill] Visual Emulator Ready! Run your extension code.", "color: green; font-weight: bold;");
     // Open logs by default

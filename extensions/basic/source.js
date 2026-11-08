@@ -47,7 +47,7 @@ const handler = {
     }, { from: "home" }, this.onViewEvent);
   },
 
-  onViewEvent: function(event) {
+  onViewEvent: async function(event) {
     if (event.eventId === "CLICK") {
       const selectedId = event.data.id;
       const lang = languages.find(l => l.id === selectedId);
@@ -56,20 +56,20 @@ const handler = {
         console.log(`Fetching ${lang.name} from ${lang.url}...`);
 
         try {
-          const response = fetch(lang.url, {
+          const response = (await fetch(lang.url, {
             headers: {
               'User-Agent': 'SynuraTestClient/1.0 (https://github.com/my-user/synura; my-email@example.com)'
             }
-          });
+          }));
           let content = "";
 
           if (lang.id === 'html') {
             // For HTML, show the full raw source
-            content = response.text();
+            content = (await response.text());
           } else {
             // Standard extraction
             console.log(`Parsing ${lang.url}...`);
-            const doc = response.dom();
+            const doc = (await response.dom());
 
             // Use div.mw-highlight as requested
             const selectors = ['div.mw-highlight', '.mw-highlight'];

@@ -124,7 +124,7 @@ $(LOCAL_COMMUNITY_TARGETS): %: %.js
 ko_KR/geeknews.js: ko_KR/geeknews.ts
 	$(compile_js)
 
-ko_KR/naver_webtoon.js: ko_KR/naver_webtoon.ts
+ko_KR/naver_webtoon.js: ko_KR/naver_webtoon.ts lib/rsa_pkcs1.ts
 	$(compile_js)
 
 en_US/hackernews.js: en_US/hackernews.ts community_common_en_US.ts $(COMMUNITY_COMMON_TS)

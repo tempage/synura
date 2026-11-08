@@ -35,7 +35,7 @@ class CommunityCommonTests(unittest.TestCase):
         cls.compilation.cleanup()
 
     def evaluate(self, expression, html=''):
-        source = self.bundle + '\nvar __commonResult=(function(){'
+        source = self.bundle + '\nvar __commonResult=(async function(){'
         source += 'var html=' + json.dumps(html, ensure_ascii=False) + ';'
         source += 'var doc=new DOMParser().parseFromString(html,"text/html");'
         source += expression + '})();\n'
@@ -44,7 +44,7 @@ class CommunityCommonTests(unittest.TestCase):
             script.write_text(source)
             result = subprocess.run(
                 [str(RUNTIME), '-json', '-no-home', '-proxy', 'http://127.0.0.1:9', '-ext', str(script)],
-                input='eval JSON.stringify(__commonResult)\nquit\n', cwd=directory,
+                input='eval (async()=>JSON.stringify(await __commonResult))()\nquit\n', cwd=directory,
                 capture_output=True, text=True, check=True, timeout=20,
             )
         events = [json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]
@@ -55,7 +55,7 @@ class CommunityCommonTests(unittest.TestCase):
 
     def route(self, html, response_url=POST_URL, before='', expression='return result.models;'):
         setup = before + 'useSyntheticResponse(doc,html,' + json.dumps(response_url) + ');'
-        setup += 'var result=SYNURA.main.router(' + json.dumps(POST_URL) + ');'
+        setup += 'var result=await SYNURA.main.router(' + json.dumps(POST_URL) + ');'
         return self.evaluate(setup + expression, html)
 
     def test_media_links_and_video_poster_resolve_against_content_origin(self):
@@ -103,6 +103,83 @@ var values=withSelectorContext(null,"https://example.test/post/a","post",doc,fun
                 value = self.evaluate('return documentContentBaseUrl(doc,"https://example.test/post/item");', '<base href="' + href + '">')
                 self.assertEqual(value, POST_URL)
 
+    def test_concurrent_async_routes_keep_their_document_base_and_comment_context(self):
+        expression = '''fetch=async function(url){
+    await Promise.resolve();
+    var suffix=url.split("/").pop();
+    var markup='<base href="https://media.example.test/'+suffix+'/"><h1>'+suffix+'</h1><div id="post-body"><img src="body.png"></div><div id="reply"><img src="reply.png"></div>';
+    var consumed=false;
+    return {ok:true,status:200,url:url,text:async function(){
+        if(consumed) throw new TypeError("Body already consumed");
+        consumed=true;await Promise.resolve();return markup;
+    }};
+};
+SITE.fetchPostComments=async function(match,url,doc){
+    await Promise.resolve();await Promise.resolve();
+    return [{content:parseDetails(doc.querySelector("#reply"),url)}];
+};
+var routes=await Promise.all(["first","second","third"].map(function(name){
+    return SYNURA.main.router("https://example.test/post/"+name);
+}));
+return {images:routes.map(function(route){return [route.models.content[0].value,route.models.comments[0].content[0].value]}),
+    outside:resolveContentUrl("outside.png","https://example.test/outside/"),depth:selectorContextStack.length};'''
+        result = self.evaluate(expression)
+        self.assertEqual(result['images'], [
+            [f'https://media.example.test/{name}/body.png', f'https://media.example.test/{name}/reply.png']
+            for name in ('first', 'second', 'third')
+        ])
+        self.assertEqual(result['outside'], 'https://example.test/outside/outside.png')
+        self.assertEqual(result['depth'], 0)
+
+    def test_failed_async_route_restores_context_and_does_not_block_the_next_route(self):
+        expression = '''useSyntheticResponse(doc,html,"https://example.test/post/working");
+var successfulFetch=fetch;
+fetch=async function(url){
+    await Promise.resolve();
+    if(url.endsWith("/failed")) throw new TypeError("Synthetic network failure");
+    return successfulFetch(url);
+};
+var results=await Promise.all([
+    SYNURA.main.router("https://example.test/post/failed").then(function(){return "unexpected"},function(error){return error.name}),
+    SYNURA.main.router("https://example.test/post/working")
+]);
+return {error:results[0],image:results[1].models.content[0].value,depth:selectorContextStack.length};'''
+        result = self.evaluate(expression, '<base href="https://media.example.test/working/"><div id="post-body"><img src="image.png"></div>')
+        self.assertEqual(result, {'error': 'TypeError', 'image': 'https://media.example.test/working/image.png', 'depth': 0})
+
+    def test_catalog_refresh_awaits_network_and_cached_board_lookup_stays_synchronous(self):
+        expression = '''var cached=[{id:"cached",title:"Cached",url:"https://example.test/cached/"}];
+SITE.loadDynamicBoards=function(options){
+    if(!options.allowNetwork) return cached;
+    return Promise.resolve([{id:"fetched",title:"Fetched",url:"https://example.test/fetched/"}]);
+};
+clearDynamicBoardsCache();
+var before=getDynamicBoards({allowNetwork:false});
+var refreshed=await getDynamicBoards({allowNetwork:true,force:true});
+var after=getDynamicBoards({allowNetwork:false});
+return {before:Array.isArray(before)&&before[0].id,refreshed:refreshed[0].id,after:Array.isArray(after)&&after[0].id};'''
+        self.assertEqual(self.evaluate(expression), {'before': 'cached', 'refreshed': 'fetched', 'after': 'fetched'})
+
+    def test_encoded_response_preserves_body_failure_without_consuming_it_again(self):
+        expression = '''SITE.textEncoding="utf-8";
+var fallbackCalls=0;
+var failure=new TypeError("Synthetic body transport failure");
+try {
+    await responseText({arrayBuffer:async function(){throw failure},text:async function(){fallbackCalls++;throw new TypeError("Body already consumed")}});
+    return {unexpected:true};
+} catch(error) { return {same:error===failure,message:error.message,fallbackCalls:fallbackCalls}; }'''
+        self.assertEqual(self.evaluate(expression), {
+            'same': True, 'message': 'Synthetic body transport failure', 'fallbackCalls': 0,
+        })
+
+    def test_decoder_construction_failure_uses_utf8_without_reading_the_body_twice(self):
+        expression = '''SITE.textEncoding="synthetic-unsupported-encoding";
+TextDecoder=function(){throw new RangeError("Unsupported encoding")};
+var reads=0;
+var text=await responseText({arrayBuffer:async function(){reads++;throw new Error("Unexpected body reader")},text:async function(){reads++;return "Synthetic text"}});
+return {text:text,reads:reads};'''
+        self.assertEqual(self.evaluate(expression), {'text': 'Synthetic text', 'reads': 1})
+
     def test_post_filter_reparse_retains_document_base(self):
         html = '<base href="//media.example.test/assets/"><div id="post-body"><img src="image.png"></div>'
         hook = 'SITE.filterPostContent=function(content,url,doc){return parseDetails(doc.querySelector("#post-body"),url)};'
@@ -111,7 +188,7 @@ var values=withSelectorContext(null,"https://example.test/post/a","post",doc,fun
 
     def test_board_media_uses_redirect_and_relative_document_base(self):
         html = '<base href="../assets/"><div data-card id="card">Synthetic item<img src="image.png"></div>'
-        result = self.evaluate('useSyntheticResponse(doc,html,"https://example.test/mobile/list/");return SYNURA.main.router("https://example.test/board/").models.contents;', html)
+        result = self.evaluate('useSyntheticResponse(doc,html,"https://example.test/mobile/list/");return (await SYNURA.main.router("https://example.test/board/")).models.contents;', html)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['mediaUrl'], 'https://example.test/mobile/assets/image.png')
 
@@ -125,6 +202,23 @@ var values=withSelectorContext(null,"https://example.test/post/a","post",doc,fun
         comments[-1]['content'] = [{'type': 'image', 'value': 'https://example.test/tail.png'}]
         result = self.route('<div id="post-body">Synthetic body</div>', before='SITE.parseComments=function(){return ' + json.dumps(comments) + '};')
         self.assertEqual(result['comments'], comments)
+
+    def test_markup_comment_parsing_reclaims_temporary_documents_and_keeps_every_comment(self):
+        hook = '''SITE.parseComments=function(doc,url){
+    var comments=[];
+    for(var i=0;i<257;i++) comments.push({id:"entry-"+i,
+        content:parseMarkupDetails('<p>Comment '+i+'</p><img src="images/'+i+'.png">',url)});
+    return comments;
+};'''
+        result = self.route(
+            '<div id="post-body">Synthetic body</div>', before=hook,
+            expression='return {comments:result.models.comments,after:parseMarkupDetails("<p>Follow-on parse</p>","https://example.test/post/item")};',
+        )
+        self.assertEqual([comment['id'] for comment in result['comments']],
+                         ['entry-' + str(i) for i in range(257)])
+        self.assertEqual([[part['value'] for part in comment['content']] for comment in result['comments']],
+                         [[f'Comment {i}', f'https://example.test/post/images/{i}.png'] for i in range(257)])
+        self.assertEqual([part['value'] for part in result['after']], ['Follow-on parse'])
 
     def test_missing_comment_hook_does_not_invent_comments(self):
         result = self.evaluate('delete SITE.parseComments;return parseComments(doc,"https://example.test/post/item");', '<h1>Synthetic heading</h1>')

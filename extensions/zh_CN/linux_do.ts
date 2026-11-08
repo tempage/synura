@@ -506,16 +506,16 @@ SITE.parseComments = function (doc, postUrl) {
   return localParseComments(doc, postUrl);
 };
 
-function localDiscourseJson(url) {
-  var response = fetch(url, {
+async function localDiscourseJson(url) {
+  var response = (await fetch(url, {
     headers: {
       "User-Agent": SITE.fetchHeaders["User-Agent"],
       "Accept": "application/json,text/plain,*/*",
       "Accept-Language": SITE.acceptLanguage
     }
-  });
+  }));
   if (!response || !response.ok) throw new Error("Failed to fetch " + url + " (" + (response ? response.status : 0) + ")");
-  return JSON.parse(String(response.text ? response.text() : "").replace(/^\uFEFF/, ""));
+  return JSON.parse(String(response.text ? (await response.text()) : "").replace(/^\uFEFF/, ""));
 }
 
 function localDiscourseUserMap(data) {
@@ -620,10 +620,10 @@ function localDiscoursePostModel(post, postUrl, index, level) {
   };
 }
 
-SITE.routeBoardCustom = function (url, urlInfo, match, force) {
+SITE.routeBoardCustom = async function (url, urlInfo, match, force) {
   var path = urlInfo ? (urlInfo.path || "/") : "/";
   if (path !== "/" && path !== "/latest" && path !== "/latest.json") return null;
-  var data = localDiscourseJson("https://linux.do/latest.json");
+  var data = (await localDiscourseJson("https://linux.do/latest.json"));
   var items = localDiscourseTopicItems(data);
   var title = match && match.board ? match.board.title : SITE.displayName;
   return {
@@ -648,8 +648,8 @@ SITE.routeBoardCustom = function (url, urlInfo, match, force) {
   };
 };
 
-SITE.routePostCustom = function (url, urlInfo, match, force) {
-  var data = localDiscourseJson(localDiscourseTopicJsonUrl(url));
+SITE.routePostCustom = async function (url, urlInfo, match, force) {
+  var data = (await localDiscourseJson(localDiscourseTopicJsonUrl(url)));
   var posts = data && data.post_stream && Array.isArray(data.post_stream.posts) ? data.post_stream.posts : [];
   if (!posts || posts.length === 0) return null;
   var first = posts[0];
@@ -701,8 +701,10 @@ SITE.parseBoardItemsFromHtml = function (html, baseUrl, match, boardPage) {
 
 SITE.loadDynamicBoards = function (options) {
   if (!options || !options.allowNetwork) return [];
-  var doc = fetchDocument(SITE.browserHomeUrl);
-  return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  return (async function () {
+      var doc = (await fetchDocument(SITE.browserHomeUrl));
+      return localDiscoverBoardRecords(doc, SITE.browserHomeUrl);
+  })();
 };
 
 SITE.buildNextPageUrl = function (match, url, nextPage) {
@@ -763,13 +765,13 @@ var linux_doPreviousRouteBoardCustom = SITE.routeBoardCustom;
     if (matched && (path === "/" || path === "/latest")) matched.page = linux_doPageNumber(info && info.query, matched.page || 0);
     return matched;
   };
-  SITE.routeBoardCustom = function (url, urlInfo, match, force) {
+  SITE.routeBoardCustom = async function (url, urlInfo, match, force) {
     var path = linux_doInfoPath(urlInfo);
     if (path !== "/" && path !== "/latest" && path !== "/latest.json") {
-      return linux_doPreviousRouteBoardCustom ? linux_doPreviousRouteBoardCustom(url, urlInfo, match, force) : null;
+      return linux_doPreviousRouteBoardCustom ? (await linux_doPreviousRouteBoardCustom(url, urlInfo, match, force)) : null;
     }
     var page = linux_doPageNumber(urlInfo && urlInfo.query, match && match.page ? match.page : 0);
-    var data = localDiscourseJson(linux_doLatestJsonUrl(page));
+    var data = (await localDiscourseJson(linux_doLatestJsonUrl(page)));
     var items = localDiscourseTopicItems(data);
     var title = match && match.board ? match.board.title : SITE.displayName;
     var nextPage = page + 1;

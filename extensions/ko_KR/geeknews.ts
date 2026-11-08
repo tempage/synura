@@ -547,18 +547,18 @@ var parseTopicNode = function(node, baseUrl) {
     return story;
 };
 
-var fetchDocument = function(url) {
+var fetchDocument = async function(url) {
     var normalized = normalizeGNUrl(url);
     if (!normalized) throw new Error("지원하지 않는 GeekNews URL입니다");
 
     console.log("Fetching:", normalized);
     var options = { headers: GN_HEADERS };
     if (SYNURA.bypass) options.bypass = SYNURA.bypass;
-    var response = fetch(normalized, options);
+    var response = (await fetch(normalized, options));
     if (!response || !response.ok) {
         throw new Error("GeekNews를 불러오지 못했습니다: " + normalized + " (" + (response ? response.status : 0) + ")");
     }
-    return response.dom("text/html");
+    return (await response.dom("text/html"));
 };
 
 var parseContentNode = function(node) {
@@ -676,9 +676,9 @@ var parseCommentListItem = function(row, baseUrl, userId) {
     };
 };
 
-var fetchFeed = function(url) {
+var fetchFeed = async function(url) {
     var normalized = normalizeGNUrl(url);
-    var doc = fetchDocument(normalized);
+    var doc = (await fetchDocument(normalized));
     var feed = feedForUrl(normalized) || feeds[0];
     var items = [];
     var seen = {};
@@ -713,7 +713,7 @@ var fetchFeed = function(url) {
     };
 };
 
-var fetchUserProfile = function(userIdOrUrl) {
+var fetchUserProfile = async function(userIdOrUrl) {
     var normalized = normalizeGNUrl(userIdOrUrl);
     var userId = "";
     if (normalized && (gnPathFromUrl(normalized).charAt(0) === "@" || gnPathFromUrl(normalized).indexOf("user/") === 0)) {
@@ -724,7 +724,7 @@ var fetchUserProfile = function(userIdOrUrl) {
     }
     if (!userId) throw new Error("GeekNews 사용자 ID가 없습니다");
 
-    var doc = fetchDocument(normalized);
+    var doc = (await fetchDocument(normalized));
     var root = doc.querySelector("[data-user-profile-root]");
     var profileUserId = attrOf(root, "data-profile-userid") || textOf(doc.querySelector(".profile-userid")) || userId;
     var karma = parseIntText(textOf(doc.querySelector(".profile-meta-value")));
@@ -767,7 +767,7 @@ var fetchUserProfile = function(userIdOrUrl) {
     };
 };
 
-var fetchUserActivity = function(url) {
+var fetchUserActivity = async function(url) {
     var normalized = normalizeGNUrl(url);
     if (!normalized) throw new Error("지원하지 않는 GeekNews URL입니다");
 
@@ -777,7 +777,7 @@ var fetchUserActivity = function(url) {
     var userId = userIdFromUrl(normalized);
     if (!userId) throw new Error("GeekNews 사용자 ID가 없습니다");
 
-    var doc = fetchDocument(normalized);
+    var doc = (await fetchDocument(normalized));
     var items = [];
     var seen = {};
 
@@ -813,13 +813,13 @@ var fetchUserActivity = function(url) {
     };
 };
 
-var fetchPost = function(link) {
+var fetchPost = async function(link) {
     var id = topicIdFromUrl(link);
     if (!id) throw new Error("GeekNews 글 ID가 없습니다");
 
     var url = discussionUrlForId(id);
     var postLink = normalizeGNUrl(link) || url;
-    var doc = fetchDocument(url);
+    var doc = (await fetchDocument(url));
     var story = parseTopicNode(doc.querySelector(".topic"), url);
     if (!story) {
         story = {
@@ -915,16 +915,16 @@ var openGoDialog = function(parentViewId) {
             ],
             buttons: [BUTTON_GO]
         }
-    }, { from: "go", parentViewId: parentViewId }, function(event) {
-        SYNURA.main.onViewEvent(event.viewId, event);
+    }, { from: "go", parentViewId: parentViewId }, async function(event) {
+        (await SYNURA.main.onViewEvent(event.viewId, event));
     });
 };
 
-var openRoute = function(parentViewId, url) {
-    var route = routeForUrl(url);
+var openRoute = async function(parentViewId, url) {
+    var route = (await routeForUrl(url));
     if (route) {
-        var result = synura.open(route.viewData, route.context, function(event) {
-            SYNURA.main.onViewEvent(event.viewId, event);
+        var result = synura.open(route.viewData, route.context, async function(event) {
+            (await SYNURA.main.onViewEvent(event.viewId, event));
         });
         if (result && result.success) setParams(result.viewId, route.context);
         else if (parentViewId && result) synura.update(parentViewId, { models: { snackbar: result.error } });
@@ -997,14 +997,14 @@ var buildFeedUpdateStyles = function(feed, pastDay, pagination) {
     return styles;
 };
 
-var updateFeedView = function(viewId, url, append) {
+var updateFeedView = async function(viewId, url, append) {
     var normalizedUrl = normalizeGNUrl(url);
     var feed = feedForUrl(normalizedUrl) || feeds[0];
     var params = getParams(viewId);
     var requestedPastDay = isPastFeed(feed) ? (pastDayFromUrl(normalizedUrl) || params.pastDay || "") : "";
 
     try {
-        var result = fetchFeed(normalizedUrl);
+        var result = (await fetchFeed(normalizedUrl));
         var pastDay = result.pastDay || requestedPastDay;
         var currentItems = append && params.allItems ? params.allItems : [];
         var allItems = append ? currentItems.concat(result.items) : result.items;
@@ -1047,7 +1047,7 @@ var updateFeedView = function(viewId, url, append) {
     }
 };
 
-var openFeed = function(parentViewId, feed) {
+var openFeed = async function(parentViewId, feed) {
     var url = feedUrl(feed);
     var models = {
         contents: [],
@@ -1059,13 +1059,13 @@ var openFeed = function(parentViewId, feed) {
         view: "/views/list",
         styles: buildFeedListStyles(feed, "", false),
         models: models
-    }, { from: "feed", feedId: feed.id, url: url, nextUrl: "", loaded: true }, function(event) {
-        SYNURA.main.onViewEvent(event.viewId, event);
+    }, { from: "feed", feedId: feed.id, url: url, nextUrl: "", loaded: true }, async function(event) {
+        (await SYNURA.main.onViewEvent(event.viewId, event));
     });
 
     if (result && result.success) {
         setParams(result.viewId, { feedId: feed.id, url: url, nextUrl: "", allItems: [], pastNavLinks: {} });
-        updateFeedView(result.viewId, url, false);
+        (await updateFeedView(result.viewId, url, false));
     } else if (parentViewId && result) {
         synura.update(parentViewId, { models: { snackbar: result.error } });
     }
@@ -1080,9 +1080,9 @@ var createPostRouteData = function(link, postData) {
     };
 };
 
-var updatePostView = function(viewId, link) {
+var updatePostView = async function(viewId, link) {
     try {
-        var postData = fetchPost(link);
+        var postData = (await fetchPost(link));
         var anchor = commentAnchorForId(commentTargetIdFromUrl(link));
         setParams(viewId, {
             link: postData.models.link,
@@ -1097,20 +1097,20 @@ var updatePostView = function(viewId, link) {
     }
 };
 
-var openPost = function(parentViewId, link) {
+var openPost = async function(parentViewId, link) {
     var targetCommentId = commentTargetIdFromUrl(link);
     var targetAnchor = commentAnchorForId(targetCommentId);
     if (targetCommentId) {
         try {
-            var postData = fetchPost(link);
+            var postData = (await fetchPost(link));
             var fullResult = synura.open(createPostRouteData(link, postData), {
                 from: "post",
                 link: postData.models.link,
                 externalUrl: postData.externalUrl || "",
                 loaded: true,
                 anchor: targetAnchor
-            }, function(event) {
-                SYNURA.main.onViewEvent(event.viewId, event);
+            }, async function(event) {
+                (await SYNURA.main.onViewEvent(event.viewId, event));
             });
 
             if (fullResult && fullResult.success) {
@@ -1149,21 +1149,21 @@ var openPost = function(parentViewId, link) {
             menus: [MENU_OPEN_GN],
             buttons: [BUTTON_REFRESH]
         }
-    }, { from: "post", link: link, loaded: true }, function(event) {
-        SYNURA.main.onViewEvent(event.viewId, event);
+    }, { from: "post", link: link, loaded: true }, async function(event) {
+        (await SYNURA.main.onViewEvent(event.viewId, event));
     });
 
     if (result && result.success) {
         setParams(result.viewId, { link: link, externalUrl: "" });
-        updatePostView(result.viewId, link);
+        (await updatePostView(result.viewId, link));
     } else if (parentViewId && result) {
         synura.update(parentViewId, { models: { snackbar: result.error } });
     }
 };
 
-var updateUserProfileView = function(viewId, userIdOrUrl) {
+var updateUserProfileView = async function(viewId, userIdOrUrl) {
     try {
-        var profile = fetchUserProfile(userIdOrUrl);
+        var profile = (await fetchUserProfile(userIdOrUrl));
         setParams(viewId, {
             userId: profile.userId,
             url: profile.url,
@@ -1179,7 +1179,7 @@ var updateUserProfileView = function(viewId, userIdOrUrl) {
     }
 };
 
-var openUserProfile = function(parentViewId, userId) {
+var openUserProfile = async function(parentViewId, userId) {
     if (!userId) return;
     var url = userUrlForId(userId);
     var result = synura.open({
@@ -1203,13 +1203,13 @@ var openUserProfile = function(parentViewId, userId) {
             ],
             buttons: [BUTTON_REFRESH]
         }
-    }, { from: "user", userId: userId, url: url, loaded: true }, function(event) {
-        SYNURA.main.onViewEvent(event.viewId, event);
+    }, { from: "user", userId: userId, url: url, loaded: true }, async function(event) {
+        (await SYNURA.main.onViewEvent(event.viewId, event));
     });
 
     if (result && result.success) {
         setParams(result.viewId, { userId: userId, url: url });
-        updateUserProfileView(result.viewId, userId);
+        (await updateUserProfileView(result.viewId, userId));
     } else if (parentViewId && result) {
         synura.update(parentViewId, { models: { snackbar: result.error } });
     }
@@ -1225,9 +1225,9 @@ var buildUserActivityStyles = function(title, pagination) {
     };
 };
 
-var updateUserActivityView = function(viewId, url, append) {
+var updateUserActivityView = async function(viewId, url, append) {
     try {
-        var result = fetchUserActivity(url);
+        var result = (await fetchUserActivity(url));
         var params = getParams(viewId);
         var currentItems = append && params.allItems ? params.allItems : [];
         var allItems = append ? currentItems.concat(result.items) : result.items;
@@ -1261,7 +1261,7 @@ var updateUserActivityView = function(viewId, url, append) {
     }
 };
 
-var openUserActivity = function(parentViewId, userId, kind) {
+var openUserActivity = async function(parentViewId, userId, kind) {
     if (!userId || !isUserActivityKind(kind)) return;
     var url = userActivityUrl(kind, userId);
     var title = userActivityTitle(kind, userId);
@@ -1272,13 +1272,13 @@ var openUserActivity = function(parentViewId, userId, kind) {
             contents: [],
             menus: [MENU_OPEN_GN]
         }
-    }, { from: "user_activity", kind: kind, userId: userId, url: url, nextUrl: "", loaded: true }, function(event) {
-        SYNURA.main.onViewEvent(event.viewId, event);
+    }, { from: "user_activity", kind: kind, userId: userId, url: url, nextUrl: "", loaded: true }, async function(event) {
+        (await SYNURA.main.onViewEvent(event.viewId, event));
     });
 
     if (result && result.success) {
         setParams(result.viewId, { kind: kind, userId: userId, url: url, nextUrl: "", allItems: [] });
-        updateUserActivityView(result.viewId, url, false);
+        (await updateUserActivityView(result.viewId, url, false));
     } else if (parentViewId && result) {
         synura.update(parentViewId, { models: { snackbar: result.error } });
     }
@@ -1295,8 +1295,8 @@ var home = function() {
             contents: buildHomeItems(),
             menus: [MENU_GO, MENU_OPEN_GN]
         }
-    }, { from: "home" }, function(event) {
-        SYNURA.main.onViewEvent(event.viewId, event);
+    }, { from: "home" }, async function(event) {
+        (await SYNURA.main.onViewEvent(event.viewId, event));
     });
 
     if (!result || !result.success) {
@@ -1305,19 +1305,19 @@ var home = function() {
 };
 
 var resume = function(viewId, context) {
-    synura.connect(viewId, context || {}, function(event) {
-        SYNURA.main.onViewEvent(event.viewId, event);
+    synura.connect(viewId, context || {}, async function(event) {
+        (await SYNURA.main.onViewEvent(event.viewId, event));
     });
 };
 
-var handleHomeEvent = function(viewId, event) {
+var handleHomeEvent = async function(viewId, event) {
     if (event.eventId === "CLICK") {
         if (event.data && event.data.link && topicIdFromUrl(event.data.link)) {
-            openPost(viewId, event.data.link);
+            (await openPost(viewId, event.data.link));
             return;
         }
         var feed = findFeed(event.data && event.data.id ? event.data.id : "top");
-        openFeed(viewId, feed);
+        (await openFeed(viewId, feed));
     } else if (event.eventId === "MENU_CLICK") {
         if (event.data && event.data.menu === MENU_GO) {
             openGoDialog(viewId);
@@ -1327,7 +1327,7 @@ var handleHomeEvent = function(viewId, event) {
     }
 };
 
-var handleGoEvent = function(viewId, event) {
+var handleGoEvent = async function(viewId, event) {
     if (event.eventId !== "SUBMIT") return;
     if (!event.data || event.data.button !== BUTTON_GO) {
         synura.close(viewId);
@@ -1344,7 +1344,7 @@ var handleGoEvent = function(viewId, event) {
     synura.close(viewId);
 
     try {
-        if (!openRoute(parentViewId, url)) {
+        if (!(await openRoute(parentViewId, url))) {
             openBrowser(url, "GeekNews");
         }
     } catch (e) {
@@ -1353,16 +1353,16 @@ var handleGoEvent = function(viewId, event) {
     }
 };
 
-var handleFeedEvent = function(viewId, event) {
+var handleFeedEvent = async function(viewId, event) {
     var params = getParams(viewId);
 
     if (event.eventId === "LOAD") {
         if (!params.loaded && !(event.context && event.context.loaded) && (params.url || (event.context && event.context.url))) {
             setParams(viewId, { loaded: true });
-            updateFeedView(viewId, params.url || event.context.url, false);
+            (await updateFeedView(viewId, params.url || event.context.url, false));
         }
     } else if (event.eventId === "REFRESH") {
-        updateFeedView(viewId, params.url || (event.context && event.context.url) || feedUrl(feeds[0]), false);
+        (await updateFeedView(viewId, params.url || (event.context && event.context.url) || feedUrl(feeds[0]), false));
     } else if (event.eventId === "SCROLL_TO_END") {
         var nextUrl = params.nextUrl || (event.context && event.context.nextUrl) || "";
         if (!nextUrl) {
@@ -1372,15 +1372,15 @@ var handleFeedEvent = function(viewId, event) {
             });
             return;
         }
-        updateFeedView(viewId, nextUrl, true);
+        (await updateFeedView(viewId, nextUrl, true));
     } else if (event.eventId === "CLICK") {
         var link = event.data && event.data.link ? event.data.link : "";
-        if (link) openPost(viewId, link);
+        if (link) (await openPost(viewId, link));
     } else if (event.eventId === "MENU_CLICK") {
         var menu = event.data ? event.data.menu : "";
         var pastNavLinks = params.pastNavLinks || {};
         if (pastNavLinks[menu]) {
-            updateFeedView(viewId, pastNavLinks[menu], false);
+            (await updateFeedView(viewId, pastNavLinks[menu], false));
             return;
         }
         if (menu === MENU_OPEN_GN) {
@@ -1400,11 +1400,11 @@ var handleFeedEvent = function(viewId, event) {
             return;
         }
 
-        updateFeedView(viewId, pastUrlForDay(day), false);
+        (await updateFeedView(viewId, pastUrlForDay(day), false));
     }
 };
 
-var handlePostEvent = function(viewId, event) {
+var handlePostEvent = async function(viewId, event) {
     var params = getParams(viewId);
     var link = params.link || (event.context && event.context.link) || (event.data && event.data.link) || "";
     var anchor = params.anchor || (event.context && event.context.anchor) || commentAnchorForId(commentTargetIdFromUrl(link));
@@ -1419,10 +1419,10 @@ var handlePostEvent = function(viewId, event) {
         }
         if (!params.loaded && !(event.context && event.context.loaded) && link) {
             setParams(viewId, { loaded: true });
-            updatePostView(viewId, link);
+            (await updatePostView(viewId, link));
         }
     } else if (event.eventId === "REFRESH" || (event.eventId === "SUBMIT" && event.data && event.data.button === BUTTON_REFRESH)) {
-        if (link) updatePostView(viewId, link);
+        if (link) (await updatePostView(viewId, link));
     } else if (event.eventId === "MENU_CLICK") {
         var menu = event.data ? event.data.menu : "";
         if (menu === MENU_OPEN_ARTICLE) {
@@ -1441,12 +1441,12 @@ var handlePostEvent = function(viewId, event) {
         }
     } else if (event.eventId === "AUTHOR_CLICK") {
         if (event.data && event.data.author) {
-            openUserProfile(viewId, event.data.author);
+            (await openUserProfile(viewId, event.data.author));
         }
     }
 };
 
-var handleUserProfileEvent = function(viewId, event) {
+var handleUserProfileEvent = async function(viewId, event) {
     var params = getParams(viewId);
     var userId = params.userId || (event.context && event.context.userId) || "";
     var url = params.url || (event.context && event.context.url) || (userId ? userUrlForId(userId) : "");
@@ -1454,15 +1454,15 @@ var handleUserProfileEvent = function(viewId, event) {
     if (event.eventId === "LOAD") {
         if (!params.loaded && !(event.context && event.context.loaded) && (userId || url)) {
             setParams(viewId, { loaded: true });
-            updateUserProfileView(viewId, userId || url);
+            (await updateUserProfileView(viewId, userId || url));
         }
     } else if (event.eventId === "REFRESH" || (event.eventId === "SUBMIT" && event.data && event.data.button === BUTTON_REFRESH)) {
-        if (userId || url) updateUserProfileView(viewId, userId || url);
+        if (userId || url) (await updateUserProfileView(viewId, userId || url));
     } else if (event.eventId === "MENU_CLICK") {
         var menu = event.data ? event.data.menu : "";
         var kind = userActivityKindForMenu(menu);
         if (kind) {
-            openUserActivity(viewId, userId, kind);
+            (await openUserActivity(viewId, userId, kind));
             return;
         }
         if (menu === MENU_OPEN_GN) {
@@ -1471,16 +1471,16 @@ var handleUserProfileEvent = function(viewId, event) {
     }
 };
 
-var handleUserActivityEvent = function(viewId, event) {
+var handleUserActivityEvent = async function(viewId, event) {
     var params = getParams(viewId);
 
     if (event.eventId === "LOAD") {
         if (!params.loaded && !(event.context && event.context.loaded) && (params.url || (event.context && event.context.url))) {
             setParams(viewId, { loaded: true });
-            updateUserActivityView(viewId, params.url || event.context.url, false);
+            (await updateUserActivityView(viewId, params.url || event.context.url, false));
         }
     } else if (event.eventId === "REFRESH") {
-        updateUserActivityView(viewId, params.url || (event.context && event.context.url), false);
+        (await updateUserActivityView(viewId, params.url || (event.context && event.context.url), false));
     } else if (event.eventId === "SCROLL_TO_END") {
         var nextUrl = params.nextUrl || (event.context && event.context.nextUrl) || "";
         if (!nextUrl) {
@@ -1490,12 +1490,12 @@ var handleUserActivityEvent = function(viewId, event) {
             });
             return;
         }
-        updateUserActivityView(viewId, nextUrl, true);
+        (await updateUserActivityView(viewId, nextUrl, true));
     } else if (event.eventId === "CLICK") {
         var link = event.data && event.data.link ? event.data.link : "";
-        if (link) openPost(viewId, link);
+        if (link) (await openPost(viewId, link));
     } else if (event.eventId === "AUTHOR_CLICK") {
-        if (event.data && event.data.author) openUserProfile(viewId, event.data.author);
+        if (event.data && event.data.author) (await openUserProfile(viewId, event.data.author));
     } else if (event.eventId === "MENU_CLICK") {
         var menu = event.data ? event.data.menu : "";
         if (menu === MENU_OPEN_GN) {
@@ -1504,30 +1504,30 @@ var handleUserActivityEvent = function(viewId, event) {
     }
 };
 
-var onViewEvent = function(viewId, event) {
+var onViewEvent = async function(viewId, event) {
     var context = event && event.context ? event.context : {};
     if (context.from === "home") {
-        handleHomeEvent(viewId, event);
+        (await handleHomeEvent(viewId, event));
     } else if (context.from === "feed") {
-        handleFeedEvent(viewId, event);
+        (await handleFeedEvent(viewId, event));
     } else if (context.from === "post") {
-        handlePostEvent(viewId, event);
+        (await handlePostEvent(viewId, event));
     } else if (context.from === "user") {
-        handleUserProfileEvent(viewId, event);
+        (await handleUserProfileEvent(viewId, event));
     } else if (context.from === "user_activity") {
-        handleUserActivityEvent(viewId, event);
+        (await handleUserActivityEvent(viewId, event));
     } else if (context.from === "go") {
-        handleGoEvent(viewId, event);
+        (await handleGoEvent(viewId, event));
     }
 };
 
-var routeForUrl = function(url) {
+var routeForUrl = async function(url) {
     var normalized = normalizeGNUrl(url);
     if (!normalized) return null;
 
     var path = gnPathFromUrl(normalized);
     if (path.charAt(0) === "@" || path.indexOf("user/") === 0) {
-        var profile = fetchUserProfile(normalized);
+        var profile = (await fetchUserProfile(normalized));
         return {
             viewData: {
                 view: "/views/post",
@@ -1545,7 +1545,7 @@ var routeForUrl = function(url) {
     }
 
     if (isUserActivityKind(path) && userIdFromUrl(normalized)) {
-        var activity = fetchUserActivity(normalized);
+        var activity = (await fetchUserActivity(normalized));
         var activityModels = {
             contents: activity.items,
             menus: [MENU_OPEN_GN]
@@ -1573,7 +1573,7 @@ var routeForUrl = function(url) {
 
     var id = topicIdFromUrl(normalized);
     if (id && path === "topic") {
-        var postData = fetchPost(normalized);
+        var postData = (await fetchPost(normalized));
         return {
             viewData: createPostRouteData(normalized, postData),
             context: {
@@ -1587,7 +1587,7 @@ var routeForUrl = function(url) {
 
     var feed = feedForUrl(normalized);
     if (feed) {
-        var feedData = fetchFeed(normalized);
+        var feedData = (await fetchFeed(normalized));
         var models = {
             contents: feedData.items,
             menus: buildFeedMenus(feedData.pastNavLinks)
@@ -1617,9 +1617,9 @@ var routeForUrl = function(url) {
     return null;
 };
 
-var router = function(url) {
+var router = async function(url) {
     try {
-        var route = routeForUrl(url);
+        var route = (await routeForUrl(url));
         return route ? route.viewData : null;
     } catch (e) {
         console.log("Router error:", e);
@@ -1633,12 +1633,12 @@ var handler = {
     router: router,
     onViewEvent: onViewEvent,
     showBoardSettings: function() { },
-    deeplink: function(url) {
+    deeplink: async function(url) {
         try {
-            var route = routeForUrl(url);
+            var route = (await routeForUrl(url));
             if (route) {
-                var result = synura.open(route.viewData, route.context, function(event) {
-                    SYNURA.main.onViewEvent(event.viewId, event);
+                var result = synura.open(route.viewData, route.context, async function(event) {
+                    (await SYNURA.main.onViewEvent(event.viewId, event));
                 });
                 if (result && result.success) setParams(result.viewId, route.context);
                 return;

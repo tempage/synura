@@ -47,7 +47,7 @@ const handler = {
   // DOES NOT call synura.open().
   // Handles caching internally using sessionStorage.
   // -------------------------------------------------------------------------
-  router: function(url) {
+  router: async function(url) {
     console.log("Router called for: " + url);
 
     // Check cache first
@@ -59,7 +59,8 @@ const handler = {
     // const headers = token ? { Authorization: token } : {};
 
     // Fetch content (simulated)
-    // const doc = fetch(url, { headers: headers }).dom();
+    // const response = await fetch(url, { headers: headers });
+    // const doc = await response.dom();
 
     // Return standard view structure
     const result = {
@@ -116,23 +117,23 @@ const handler = {
         title: "Router Demo"
       }
     }, { from: "home" }, (event) => {
-      handler.onViewEvent(event.viewId, event);
+      return handler.onViewEvent(event.viewId, event);
     });
   },
 
-  onViewEvent: function(viewId, event) {
+  onViewEvent: async function(viewId, event) {
     if (event.eventId === 'CLICK') {
       const url = event.data.link;
       console.log("User clicked: " + url);
 
       // Router handles caching internally
-      const routeData = this.router(url);
+      const routeData = await this.router(url);
 
       // Open View
       const v = synura.open(routeData);
       // Re-attach handlers to the new view
       synura.connect(v.id, {}, (event) => {
-        handler.onViewEvent(event.viewId, event);
+        return handler.onViewEvent(event.viewId, event);
       });
     }
   }

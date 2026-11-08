@@ -97,9 +97,9 @@ The server also serves example extensions from the `extensions` directory:
 ## Files
 
 - `testdata/mock_server/synura.js` - Synura extension for UI testing
-- `cmd/mock_server/main.go` - mock server command entrypoint
-- `internal/mockserver/server.go` - server implementation
-- `internal/mockserver/server_test.go` - unit tests
+- `mock_server/src/main.rs` - Rust mock server CLI binary entrypoint
+- `mock_server/src/lib.rs` - Rust mock server implementation and unit tests
+- `mock_server/tests/e2e.rs` - end-to-end integration tests
 - `cmd/fetch/main.go` - curl-like fetch helper
-- `rust/synurart/src/lib.rs` - Rust Synurart runtime engine and shell implementation
-- `rust/synurart/src/main.rs` - thin CLI binary entrypoint
+- `synurart/src/lib.rs` - Rust Synurart runtime engine and shell implementation
+- `synurart/src/main.rs` - thin CLI binary entrypoint

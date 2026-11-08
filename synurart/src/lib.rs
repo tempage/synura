@@ -6,35 +6,30 @@ use std::fs;
 use std::io::{self, BufRead, IsTerminal};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::time::Instant;
 
-use base64::{engine::general_purpose, Engine as _};
-use encoding_rs::{Encoding, UTF_8};
-use kuchiki::traits::TendrilSink;
-use kuchiki::{NodeData, NodeRef};
-use rquickjs::{CatchResultExt, Coerced, Context, Ctx, Exception, Function, Runtime as JsRuntime};
+use rquickjs::promise::MaybePromise;
+use rquickjs::{CatchResultExt, Coerced, Ctx, Function};
 use rustyline::completion::{Completer, Pair};
 use rustyline::error::ReadlineError;
 use rustyline::highlight::Highlighter;
 use rustyline::hint::Hinter;
 use rustyline::validate::Validator;
 use rustyline::{CompletionType, Config, Editor, Helper};
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use synura_runtime::rquickjs;
 use url::Url;
 
 mod browser_host;
-mod fetch_scope;
-mod fetch_session;
 #[cfg(test)]
 mod fetch_tests;
-mod fetch_transport;
 
 use browser_host::ActiveBrowser;
-use fetch_scope::{FetchScope, NetworkPackage};
-use fetch_session::RedirectCookies;
-pub use fetch_transport::FetchCancellation;
-use fetch_transport::{HttpResponse, HttpTransport, TransportSettings, MAX_BODY_BYTES};
+pub use synura_runtime::CancellationToken as FetchCancellation;
+#[cfg(test)]
+use synura_runtime::MAX_BODY_BYTES;
+use synura_runtime::{
+    FetchMetric, NetworkPolicy as NetworkPackage, NetworkScope as FetchScope, Vm, VmConfig,
+};
 
 const DEFAULT_TIMEOUT_MS: u64 = 10_000;
 const DEFAULT_LOCALE: &str = "en-US";
@@ -1142,7 +1137,7 @@ impl ShellState {
                 }
             }
             [cmd] if cmd == "clear" => {
-                self.runtime.host.borrow_mut().fetch_overrides.clear();
+                self.runtime.clear_fetch_overrides();
                 if self.json {
                     json_out(&json!({"type":"mapurl_cleared"}));
                 } else {
@@ -1156,11 +1151,7 @@ impl ShellState {
             [url, file] => {
                 let abs = absolute_path(Path::new(file))?;
                 fs::metadata(&abs).map_err(|e| format!("stat {}: {e}", abs.display()))?;
-                self.runtime
-                    .host
-                    .borrow_mut()
-                    .fetch_overrides
-                    .insert(normalize_url(url)?, abs.to_string_lossy().into_owned());
+                self.runtime.set_fetch_override(url, &abs)?;
                 if self.json {
                     json_out(&json!({"type":"mapurl_set","url":url,"file":file}));
                 } else {
@@ -1592,16 +1583,41 @@ impl ShellState {
     }
 }
 
+/// CLI host for a single shared extension VM. UI, files and terminal output stay here.
 pub struct SynurartRuntime {
-    _js_runtime: JsRuntime,
-    ctx: Context,
+    vm: Vm,
     host: Rc<RefCell<HostState>>,
+}
+
+fn describe_js_error(error: &rquickjs::CaughtError<'_>) -> String {
+    // QuickJS's native DOMException is not classified as JS_CLASS_ERROR by
+    // rquickjs. Preserve its name/message instead of printing an object address.
+    if let rquickjs::CaughtError::Value(value) = error {
+        if let Some(object) = value.as_object() {
+            let field = |name: &str| match object.get::<_, rquickjs::Value>(name) {
+                Ok(value) => value.as_string().and_then(|text| text.to_string().ok()),
+                Err(rquickjs::Error::Exception) => {
+                    let _ = object.ctx().catch();
+                    None
+                }
+                Err(_) => None,
+            };
+            if let Some(name) = field("name") {
+                if let Some(message) = field("message") {
+                    return format!("{name}: {message}");
+                }
+            }
+        }
+        if let Some(text) = value.as_string().and_then(|text| text.to_string().ok()) {
+            return text;
+        }
+    }
+    error.to_string()
 }
 
 impl SynurartRuntime {
     pub fn new(json_mode: bool, storage_path: PathBuf, namespace: PathBuf) -> Result<Self, String> {
-        let js_runtime = JsRuntime::new().map_err(|e| format!("create JS runtime: {e}"))?;
-        let ctx = Context::full(&js_runtime).map_err(|e| format!("create JS context: {e}"))?;
+        let vm = Vm::new(VmConfig::default())?;
         let local_storage = read_local_storage(&storage_path, &namespace)?;
         let host = Rc::new(RefCell::new(HostState::new(
             json_mode,
@@ -1609,12 +1625,12 @@ impl SynurartRuntime {
             namespace,
             local_storage.clone(),
         )));
-        let init_result: Result<(), String> = ctx.with(|ctx| {
+        vm.context().with(|ctx| -> Result<(), String> {
             install_host_functions(&ctx, host.clone())
                 .map_err(|e| format!("install host functions: {e}"))?;
             ctx.eval::<(), _>(BOOTSTRAP)
                 .catch(&ctx)
-                .map_err(|e| format!("bootstrap JS: {e}"))?;
+                .map_err(|e| format!("bootstrap CLI host: {e}"))?;
             let init = format!(
                 "__synurart_init({}, {}, {});",
                 serde_json::to_string(&local_storage).unwrap(),
@@ -1623,31 +1639,38 @@ impl SynurartRuntime {
             );
             ctx.eval::<(), _>(init)
                 .catch(&ctx)
-                .map_err(|e| format!("initialize JS globals: {e}"))
-        });
-        init_result?;
-        Ok(Self {
-            _js_runtime: js_runtime,
-            ctx,
-            host,
-        })
+                .map_err(|e| format!("initialize CLI host: {e}"))
+        })?;
+        Ok(Self { vm, host })
     }
 
     pub fn load_extension(&self, path: &Path) -> Result<(), String> {
         let abs = absolute_path(path)?;
         let script =
             fs::read_to_string(&abs).map_err(|e| format!("read {}: {e}", abs.display()))?;
-        self.host.borrow_mut().fetch_scope = Some(FetchScope::default());
-        self.ctx.with(|ctx| -> Result<(), String> {
-            ctx.eval::<(), _>(script)
+        if self.host.borrow().fetch_scope.is_some() {
+            return Err("an extension is already loaded; create a new VM to replace it".into());
+        }
+        self.vm.begin_turn()?;
+        let evaluated = self.vm.context().with(|ctx| -> Result<(), String> {
+            let evaluated = ctx
+                .eval::<MaybePromise, _>(script)
                 .catch(&ctx)
-                .map_err(|e| format!("evaluate extension: {e}"))?;
+                .map_err(|e| format!("evaluate extension: {}", describe_js_error(&e)))?;
             let package = ctx
                 .eval::<String, _>("__synurart_network_package()")
                 .catch(&ctx)
                 .map_err(|e| format!("read extension network metadata: {e}"))?;
-            self.host.borrow_mut().bind_network(&package)
-        })
+            let policy: NetworkPackage = serde_json::from_str(&package)
+                .map_err(|e| format!("invalid network metadata: {e}"))?;
+            self.bind_network(policy)?;
+            self.vm
+                .finish::<()>(&ctx, evaluated)
+                .catch(&ctx)
+                .map_err(|e| format!("finish extension initialization: {}", describe_js_error(&e)))
+        });
+        let finished = self.finish_runtime_turn();
+        evaluated.and(finished)
     }
 
     pub fn call_main(&self, name: &str, args: &[Value]) -> Result<(), String> {
@@ -1712,6 +1735,7 @@ impl SynurartRuntime {
     }
 
     pub fn set_timeout(&self, timeout_ms: u64) -> Result<(), String> {
+        self.vm.set_timeout(timeout_ms);
         self.host.borrow_mut().timeout_ms = timeout_ms;
         self.eval_unit(&format!("__synurart_set_timeout({timeout_ms});"))
     }
@@ -1728,20 +1752,25 @@ impl SynurartRuntime {
 
     /// Disable all proxies, including those configured in the environment.
     pub fn disable_fetch_proxy(&self) {
+        self.vm
+            .set_proxy(synura_runtime::Proxy::Disabled)
+            .expect("valid disabled proxy");
         self.host.borrow_mut().fetch_proxy = FetchProxy::Disabled;
     }
 
     fn set_fetch_proxy_mode(&self, proxy: FetchProxy) -> Result<(), String> {
-        if let FetchProxy::Explicit(url) = &proxy {
-            wreq::Proxy::all(url).map_err(|e| format!("invalid proxy: {e}"))?;
-        }
+        self.vm.set_proxy(match &proxy {
+            FetchProxy::System => synura_runtime::Proxy::System,
+            FetchProxy::Disabled => synura_runtime::Proxy::Disabled,
+            FetchProxy::Explicit(url) => synura_runtime::Proxy::Explicit(url.clone()),
+        })?;
         self.host.borrow_mut().fetch_proxy = proxy;
         Ok(())
     }
 
     /// Replace the request's cancellation handle before invoking an extension.
     pub fn set_fetch_cancellation(&self, cancellation: FetchCancellation) {
-        self.host.borrow_mut().fetch_cancellation = cancellation;
+        self.vm.set_request_cancellation(cancellation);
     }
 
     pub fn set_locale(&self, locale: &str) -> Result<(), String> {
@@ -1761,7 +1790,7 @@ impl SynurartRuntime {
     pub fn set_fetch_override(&self, url: &str, file: impl Into<PathBuf>) -> Result<(), String> {
         let normalized = normalize_url(url)?;
         let file = file.into();
-        fs::metadata(&file).map_err(|e| format!("stat {}: {e}", file.display()))?;
+        self.vm.set_fetch_override(&normalized, &file)?;
         self.host
             .borrow_mut()
             .fetch_overrides
@@ -1770,24 +1799,57 @@ impl SynurartRuntime {
     }
 
     pub fn clear_fetch_overrides(&self) {
+        self.vm.clear_fetch_overrides();
         self.host.borrow_mut().fetch_overrides.clear();
     }
 
     fn eval_json(&self, src: &str) -> Result<Value, String> {
-        let text = self.ctx.with(|ctx| -> Result<String, String> {
-            ctx.eval::<String, _>(src.to_string())
+        self.vm.begin_turn()?;
+        let text = self.vm.context().with(|ctx| -> Result<String, String> {
+            ctx.eval::<MaybePromise, _>(src.to_string())
+                .and_then(|value| self.vm.finish::<String>(&ctx, value))
                 .catch(&ctx)
-                .map_err(|e| format!("execute JS: {e}"))
-        })?;
+                .map_err(|e| format!("execute JS: {}", describe_js_error(&e)))
+        });
+        let finished = self.finish_runtime_turn();
+        let text = text?;
+        finished?;
         serde_json::from_str(&text).map_err(|e| format!("decode JS result: {e}: {text}"))
     }
 
     fn eval_unit(&self, src: &str) -> Result<(), String> {
-        self.ctx.with(|ctx| -> Result<(), String> {
-            ctx.eval::<(), _>(src.to_string())
+        self.vm.begin_turn()?;
+        let evaluated = self.vm.context().with(|ctx| -> Result<(), String> {
+            ctx.eval::<MaybePromise, _>(src.to_string())
+                .and_then(|value| self.vm.finish::<()>(&ctx, value))
                 .catch(&ctx)
-                .map_err(|e| format!("execute JS: {e}"))
-        })
+                .map_err(|e| format!("execute JS: {}", describe_js_error(&e)))
+        });
+        let finished = self.finish_runtime_turn();
+        evaluated.and(finished)
+    }
+
+    /// Only the trusted host may approve network authority, once per VM.
+    pub fn bind_network(&self, policy: NetworkPackage) -> Result<(), String> {
+        let scope = FetchScope::new(policy.clone())?;
+        self.vm.bind_network(policy)?;
+        self.host.borrow_mut().fetch_scope = Some(scope);
+        Ok(())
+    }
+
+    fn finish_runtime_turn(&self) -> Result<(), String> {
+        let finished = self.vm.drain();
+        for metric in self.vm.take_fetch_metrics() {
+            self.host.borrow().log_fetch(&metric);
+        }
+        // Release interaction navigation state even when an unfinished promise
+        // or a failed worker ends the host turn before its JS finally runs.
+        let callbacks = self.vm.context().with(|ctx| {
+            ctx.eval::<(), _>("__synurart_finish_callbacks()")
+                .catch(&ctx)
+                .map_err(|e| format!("finish JS callbacks: {}", describe_js_error(&e)))
+        });
+        finished.and(callbacks)
     }
 }
 
@@ -1815,24 +1877,6 @@ fn install_host_functions(ctx: &Ctx<'_>, host: Rc<RefCell<HostState>>) -> rquick
     )?;
 
     globals.set(
-        "__host_fetch",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |ctx: Ctx<'_>, req_json: Coerced<String>| -> rquickjs::Result<String> {
-                if host.borrow().fetch_scope.is_none() {
-                    let package: String = ctx.eval("__synurart_network_package()")?;
-                    host.borrow_mut()
-                        .bind_network(&package)
-                        .map_err(|e| Exception::throw_message(&ctx, &e))?;
-                }
-                host.borrow_mut()
-                    .fetch(&req_json.0)
-                    .map_err(|e| Exception::throw_message(&ctx, &e))
-            }
-        })?,
-    )?;
-
-    globals.set(
         "__host_storage_save",
         Function::new(ctx.clone(), {
             let host = host.clone();
@@ -1842,145 +1886,6 @@ fn install_host_functions(ctx: &Ctx<'_>, host: Rc<RefCell<HostState>>) -> rquick
                     .map_err(|e| rquickjs::Error::new_into_js_message("rust", "js", e))
             }
         })?,
-    )?;
-
-    globals.set(
-        "__host_dom_parse",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |html: Coerced<String>| -> i64 { host.borrow_mut().dom_parse(&html.0) }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_query",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64, selector: Coerced<String>| -> String {
-                serde_json::to_string(&host.borrow_mut().dom_query(doc_id, node_id, &selector.0))
-                    .unwrap()
-            }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_children",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64| -> String {
-                serde_json::to_string(&host.borrow_mut().dom_children(doc_id, node_id)).unwrap()
-            }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_next_sibling",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64| -> i64 {
-                host.borrow_mut().dom_sibling(doc_id, node_id, true)
-            }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_previous_sibling",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64| -> i64 {
-                host.borrow_mut().dom_sibling(doc_id, node_id, false)
-            }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_text",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64| -> String { host.borrow().dom_text(doc_id, node_id) }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_tag",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64| -> String { host.borrow().dom_tag(doc_id, node_id) }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_attr",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64, name: Coerced<String>| -> String {
-                host.borrow()
-                    .dom_attr(doc_id, node_id, &name.0)
-                    .unwrap_or_default()
-            }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_has_attr",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64, name: Coerced<String>| -> bool {
-                host.borrow().dom_attr(doc_id, node_id, &name.0).is_some()
-            }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_set_attr",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64, name: Coerced<String>, value: Coerced<String>| {
-                host.borrow_mut()
-                    .dom_set_attr(doc_id, node_id, &name.0, &value.0);
-            }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_remove_attr",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64, name: Coerced<String>| {
-                host.borrow_mut().dom_remove_attr(doc_id, node_id, &name.0);
-            }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_remove",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64| {
-                host.borrow_mut().dom_remove(doc_id, node_id);
-            }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_dom_clone",
-        Function::new(ctx.clone(), {
-            let host = host.clone();
-            move |doc_id: i64, node_id: i64| -> i64 { host.borrow_mut().dom_clone(doc_id, node_id) }
-        })?,
-    )?;
-
-    globals.set(
-        "__host_decode",
-        Function::new(
-            ctx.clone(),
-            move |label: Coerced<String>,
-                  body_base64: Coerced<String>|
-                  -> rquickjs::Result<String> {
-                decode_text(&label.0, &body_base64.0)
-                    .map_err(|e| rquickjs::Error::new_into_js_message("rust", "js", e))
-            },
-        )?,
     )?;
 
     Ok(())
@@ -1996,10 +1901,6 @@ struct HostState {
     fetch_overrides: HashMap<String, String>,
     fetch_scope: Option<FetchScope>,
     fetch_proxy: FetchProxy,
-    fetch_cancellation: FetchCancellation,
-    transport: Option<HttpTransport>,
-    doms: HashMap<i64, DomDoc>,
-    next_doc_id: i64,
 }
 
 impl HostState {
@@ -2019,10 +1920,6 @@ impl HostState {
             fetch_overrides: HashMap::new(),
             fetch_scope: None,
             fetch_proxy: FetchProxy::System,
-            fetch_cancellation: FetchCancellation::default(),
-            transport: None,
-            doms: HashMap::new(),
-            next_doc_id: 1,
         }
     }
 
@@ -2142,34 +2039,17 @@ impl HostState {
         )
     }
 
-    fn bind_network(&mut self, package: &str) -> Result<(), String> {
-        let package: NetworkPackage =
-            serde_json::from_str(package).map_err(|e| format!("invalid network metadata: {e}"))?;
-        self.fetch_scope = Some(FetchScope::new(package)?);
-        Ok(())
-    }
-
-    fn fetch(&mut self, req_json: &str) -> Result<String, String> {
-        let req: FetchRequest =
-            serde_json::from_str(req_json).map_err(|e| format!("parse fetch request: {e}"))?;
-        let (response, network_ms) = self.fetch_response(&req)?;
-        let HttpResponse {
-            status,
-            status_text,
-            url: final_url,
-            headers,
-            body,
-            progress,
-        } = response;
-
-        let body_text = String::from_utf8_lossy(&body).into_owned();
-        let method_label = req.method.to_ascii_uppercase();
+    fn log_fetch(&self, metric: &FetchMetric) {
+        let status = metric.status;
+        let headers = &metric.headers;
+        let method_label = metric.method.to_ascii_uppercase();
+        let network_ms = metric.network_ms;
         let logic_ms = 0u64;
         if self.json_mode {
             let mut data = json!({
                 "type": "fetch",
                 "method": method_label,
-                "url": req.url,
+                "url": metric.request_url,
                 "status": status,
                 "totalTime": format_go_duration_ms(network_ms),
                 "totalMs": network_ms,
@@ -2198,356 +2078,18 @@ impl HostState {
                 "{} {} {} -> {} (b={}ms, network={}ms)",
                 tag("FETCH", &[C_BLUE, C_BOLD]),
                 method_label,
-                color(req.url, &[C_CYAN]),
+                color(&metric.request_url, &[C_CYAN]),
                 color(status.to_string(), &[status_color, C_BOLD]),
                 logic_ms,
                 network_ms
             );
         }
-        serde_json::to_string(&FetchResponse {
-            status,
-            status_text,
-            url: final_url,
-            headers,
-            body_text,
-            body_base64: general_purpose::STANDARD.encode(&body),
-            progress,
-        })
-        .map_err(|e| format!("encode fetch response: {e}"))
     }
-
-    fn fetch_response(&mut self, req: &FetchRequest) -> Result<(HttpResponse, u64), String> {
-        let mut url = Url::parse(&req.url).map_err(|e| format!("invalid fetch url: {e}"))?;
-        let scope = self
-            .fetch_scope
-            .as_ref()
-            .ok_or("network scope is not initialized")?;
-        let mut cookies = RedirectCookies::default();
-        let mut network_ms = 0;
-        for _ in 0..10 {
-            if self.fetch_cancellation.is_cancelled() {
-                return Err("context canceled".into());
-            }
-            scope.check(&url)?;
-            let response = if let Some(file) = self.fetch_overrides.get(url.as_str()) {
-                let body = fs::read(file).map_err(|e| format!("read override file {file}: {e}"))?;
-                if body.len() > MAX_BODY_BYTES {
-                    return Err(format!(
-                        "fetch response exceeds {MAX_BODY_BYTES} bytes: {url}"
-                    ));
-                }
-                let size = body.len() as i64;
-                HttpResponse {
-                    status: 200,
-                    status_text: "200 OK".into(),
-                    url: url.to_string(),
-                    headers: vec![(
-                        "content-type".into(),
-                        mime_guess::from_path(file)
-                            .first_or_text_plain()
-                            .to_string(),
-                    )],
-                    body,
-                    progress: if req.progress {
-                        vec![(size, size)]
-                    } else {
-                        Vec::new()
-                    },
-                }
-            } else {
-                let started = Instant::now();
-                let mut headers = req.headers.clone();
-                if !headers
-                    .iter()
-                    .any(|(name, _)| name.eq_ignore_ascii_case("user-agent"))
-                {
-                    let ua = scope
-                        .bypass
-                        .as_deref()
-                        .and_then(user_agent_from_bypass)
-                        .unwrap_or("Go-http-client/1.1");
-                    headers.insert(0, ("User-Agent".into(), ua.into()));
-                }
-                if !headers
-                    .iter()
-                    .any(|(name, _)| name.eq_ignore_ascii_case("cookie"))
-                {
-                    if let Some(value) = cookies.header(&url) {
-                        headers.push(("Cookie".into(), value));
-                    }
-                }
-                if self.transport.is_none() {
-                    self.transport = Some(HttpTransport::new()?);
-                }
-                let response = self.transport.as_mut().unwrap().fetch(
-                    url.as_str(),
-                    req,
-                    &headers,
-                    TransportSettings {
-                        bypass: scope.bypass.as_deref(),
-                        timeout_ms: self.timeout_ms,
-                        proxy: &self.fetch_proxy,
-                        cancellation: &self.fetch_cancellation,
-                    },
-                )?;
-                network_ms += started.elapsed().as_millis() as u64;
-                response
-            };
-            if (300..400).contains(&response.status) {
-                cookies.collect(&url, &response.headers);
-                if let Some((_, location)) = response
-                    .headers
-                    .iter()
-                    .find(|(name, _)| name.eq_ignore_ascii_case("location"))
-                {
-                    url = url
-                        .join(location)
-                        .map_err(|e| format!("invalid redirect URL: {e}"))?;
-                    scope.check(&url)?;
-                    continue;
-                }
-            }
-            return Ok((response, network_ms));
-        }
-        Err("stopped after 10 redirects".into())
-    }
-
-    fn dom_parse(&mut self, html: &str) -> i64 {
-        let doc_id = self.next_doc_id;
-        self.next_doc_id += 1;
-        self.doms
-            .insert(doc_id, DomDoc::new(kuchiki::parse_html().one(html)));
-        doc_id
-    }
-
-    fn dom_query(&mut self, doc_id: i64, node_id: i64, selector: &str) -> Vec<i64> {
-        if selector.contains(',') || selector_has_unsupported_attr_operator(selector) {
-            return Vec::new();
-        }
-        let Some(doc) = self.doms.get_mut(&doc_id) else {
-            return Vec::new();
-        };
-        let Some(node) = doc.nodes.get(&node_id).cloned() else {
-            return Vec::new();
-        };
-        let mut out = Vec::new();
-        let mut seen = HashSet::new();
-        if node_matches(&node, selector) {
-            let id = doc.intern(node.clone());
-            seen.insert(id);
-            out.push(id);
-        }
-        let Ok(matches) = node.select(selector) else {
-            return out;
-        };
-        for matched in matches {
-            let id = doc.intern(matched.as_node().clone());
-            if seen.insert(id) {
-                out.push(id);
-            }
-        }
-        out
-    }
-
-    fn dom_children(&mut self, doc_id: i64, node_id: i64) -> Vec<i64> {
-        let Some(doc) = self.doms.get_mut(&doc_id) else {
-            return Vec::new();
-        };
-        let Some(node) = doc.nodes.get(&node_id).cloned() else {
-            return Vec::new();
-        };
-        node.children()
-            .filter(|child| child.as_element().is_some() || child.as_text().is_some())
-            .map(|child| doc.intern(child))
-            .collect()
-    }
-
-    fn dom_sibling(&mut self, doc_id: i64, node_id: i64, next: bool) -> i64 {
-        let Some(doc) = self.doms.get_mut(&doc_id) else {
-            return -1;
-        };
-        let Some(node) = doc.nodes.get(&node_id).cloned() else {
-            return -1;
-        };
-        let mut sibling = if next {
-            node.next_sibling()
-        } else {
-            node.previous_sibling()
-        };
-        while let Some(candidate) = sibling {
-            if candidate.as_element().is_some() || candidate.as_text().is_some() {
-                return doc.intern(candidate);
-            }
-            sibling = if next {
-                candidate.next_sibling()
-            } else {
-                candidate.previous_sibling()
-            };
-        }
-        -1
-    }
-
-    fn dom_text(&self, doc_id: i64, node_id: i64) -> String {
-        self.doms
-            .get(&doc_id)
-            .and_then(|doc| doc.nodes.get(&node_id))
-            .map(NodeRef::text_contents)
-            .unwrap_or_default()
-    }
-
-    fn dom_tag(&self, doc_id: i64, node_id: i64) -> String {
-        self.doms
-            .get(&doc_id)
-            .and_then(|doc| doc.nodes.get(&node_id))
-            .and_then(|node| {
-                node.as_element()
-                    .map(|el| el.name.local.to_string().to_uppercase())
-            })
-            .unwrap_or_default()
-    }
-
-    fn dom_attr(&self, doc_id: i64, node_id: i64, name: &str) -> Option<String> {
-        self.doms
-            .get(&doc_id)
-            .and_then(|doc| doc.nodes.get(&node_id))
-            .and_then(|node| node.as_element())
-            .and_then(|el| el.attributes.borrow().get(name).map(ToString::to_string))
-    }
-
-    fn dom_set_attr(&mut self, doc_id: i64, node_id: i64, name: &str, value: &str) {
-        if let Some(el) = self
-            .doms
-            .get(&doc_id)
-            .and_then(|doc| doc.nodes.get(&node_id))
-            .and_then(|node| node.as_element())
-        {
-            el.attributes.borrow_mut().insert(name, value.to_string());
-        }
-    }
-
-    fn dom_remove_attr(&mut self, doc_id: i64, node_id: i64, name: &str) {
-        if let Some(el) = self
-            .doms
-            .get(&doc_id)
-            .and_then(|doc| doc.nodes.get(&node_id))
-            .and_then(|node| node.as_element())
-        {
-            el.attributes.borrow_mut().remove(name);
-        }
-    }
-
-    fn dom_remove(&mut self, doc_id: i64, node_id: i64) {
-        if let Some(node) = self
-            .doms
-            .get(&doc_id)
-            .and_then(|doc| doc.nodes.get(&node_id))
-            .cloned()
-        {
-            node.detach();
-        }
-    }
-
-    fn dom_clone(&mut self, doc_id: i64, node_id: i64) -> i64 {
-        let Some(doc) = self.doms.get_mut(&doc_id) else {
-            return 0;
-        };
-        let Some(node) = doc.nodes.get(&node_id).cloned() else {
-            return 0;
-        };
-        doc.intern(clone_node_deep(&node))
-    }
-}
-
-fn clone_node_deep(node: &NodeRef) -> NodeRef {
-    let cloned = match node.data() {
-        NodeData::Text(text) => NodeRef::new_text(text.borrow().clone()),
-        NodeData::Comment(comment) => NodeRef::new_comment(comment.borrow().clone()),
-        NodeData::Element(element) => NodeRef::new_element(
-            element.name.clone(),
-            element.attributes.borrow().map.clone(),
-        ),
-        NodeData::ProcessingInstruction(value) => {
-            let value = value.borrow();
-            NodeRef::new_processing_instruction(value.0.clone(), value.1.clone())
-        }
-        NodeData::Doctype(value) => NodeRef::new_doctype(
-            value.name.clone(),
-            value.public_id.clone(),
-            value.system_id.clone(),
-        ),
-        NodeData::Document(_) => NodeRef::new_document(),
-        NodeData::DocumentFragment => NodeRef::new(NodeData::DocumentFragment),
-    };
-    for child in node.children() {
-        cloned.append(clone_node_deep(&child));
-    }
-    cloned
-}
-
-struct DomDoc {
-    nodes: HashMap<i64, NodeRef>,
-    node_ids: HashMap<usize, i64>,
-    next_node_id: i64,
-}
-
-impl DomDoc {
-    fn new(root: NodeRef) -> Self {
-        let key = node_key(&root);
-        let mut nodes = HashMap::new();
-        nodes.insert(0, root);
-        let mut node_ids = HashMap::new();
-        node_ids.insert(key, 0);
-        Self {
-            nodes,
-            node_ids,
-            next_node_id: 1,
-        }
-    }
-
-    fn intern(&mut self, node: NodeRef) -> i64 {
-        let key = node_key(&node);
-        if let Some(id) = self.node_ids.get(&key) {
-            return *id;
-        }
-        let id = self.next_node_id;
-        self.next_node_id += 1;
-        self.node_ids.insert(key, id);
-        self.nodes.insert(id, node);
-        id
-    }
-}
-
-fn node_key(node: &NodeRef) -> usize {
-    Rc::as_ptr(&node.0) as usize
-}
-
-#[derive(Deserialize)]
-struct FetchRequest {
-    url: String,
-    method: String,
-    #[serde(default)]
-    headers: Vec<(String, String)>,
-    body: String,
-    progress: bool,
-}
-
-#[derive(Serialize)]
-struct FetchResponse {
-    status: u16,
-    #[serde(rename = "statusText")]
-    status_text: String,
-    url: String,
-    headers: Vec<(String, String)>,
-    #[serde(rename = "bodyText")]
-    body_text: String,
-    #[serde(rename = "bodyBase64")]
-    body_base64: String,
-    progress: Vec<(i64, i64)>,
 }
 
 const BOOTSTRAP: &str = r#"
 (function() {
-  const state = { views: [], callbacks: {}, nextViewId: 1, localStorage: {}, sessionStorage: {}, locale: "en-US", timeoutMs: 10000, currentCallbackViewId: null };
+  const state = { views: [], callbacks: {}, nextViewId: 1, localStorage: {}, sessionStorage: {}, locale: "en-US", timeoutMs: 10000, currentCallbackViewId: null, navigation: null, callbackErrors: [] };
   const clone = (value) => value == null ? value : JSON.parse(JSON.stringify(value));
   const asObject = (value) => value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const modelWrapper = (value) => value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).every((key) => ["code","message","details","value"].includes(key));
@@ -2618,17 +2160,29 @@ const BOOTSTRAP: &str = r#"
     if (typeof SYNURA !== "undefined") return SYNURA;
     return undefined;
   }
-  function dispatch(view, event) {
+  function dispatch(view, event, trackAsync) {
     const callback = state.callbacks[view.id];
     if (typeof callback !== "function") return;
     const previous = state.currentCallbackViewId;
     state.currentCallbackViewId = view.id;
     try {
-      callback(event);
+      const result = callback(event);
+      if (trackAsync && result && typeof result.then === "function") {
+        Promise.resolve(result).catch(error => { state.callbackErrors.push(error); });
+      }
+      return result;
     } finally {
       state.currentCallbackViewId = previous;
     }
   }
+  globalThis.__synurart_finish_callbacks = function finishCallbacks() {
+    state.navigation = null;
+    if (state.callbackErrors.length) {
+      const error = state.callbackErrors[0];
+      state.callbackErrors.length = 0;
+      throw error;
+    }
+  };
   function dropForwardViews(viewId) {
     const idx = state.views.findIndex((view) => view.id === viewId);
     if (idx >= 0 && idx < state.views.length - 1) {
@@ -2669,8 +2223,27 @@ const BOOTSTRAP: &str = r#"
       loggedData.cookies = "[REDACTED]";
     }
     logRuntime("event", { viewId: view.id, eventId, data: loggedData });
-    dispatch(view, { viewId: view.id, eventId, context: clone(view.data.context || {}), data: clone(data || {}) });
-    return JSON.stringify({ ok: true });
+    // CLI interactions run one at a time. Preserve their navigation source
+    // across awaits, without leaving a callback's synchronous stack frame live.
+    // LOAD callbacks are background work: they do not own this source, and an
+    // async LOAD opening a view follows the current interaction's branch (or
+    // appends to the active branch when no interaction is running).
+    const navigation = { sourceViewId: view.id };
+    state.navigation = navigation;
+    function finishNavigation() {
+      if (state.navigation === navigation) state.navigation = null;
+    }
+    try {
+      const result = dispatch(view, { viewId: view.id, eventId, context: clone(view.data.context || {}), data: clone(data || {}) });
+      if (result && typeof result.then === "function") {
+        return Promise.resolve(result).then(() => JSON.stringify({ ok: true })).finally(finishNavigation);
+      }
+      finishNavigation();
+      return JSON.stringify({ ok: true });
+    } catch (error) {
+      finishNavigation();
+      throw error;
+    }
   };
   globalThis.__synurart_close = function(id) {
     const idx = state.views.findIndex((view) => view.id === Number(id));
@@ -2685,7 +2258,7 @@ const BOOTSTRAP: &str = r#"
     if (!pkg) throw new Error("SYNURA is not defined");
     const main = pkg.main;
     if (!main || typeof main[name] !== "function") throw new Error("SYNURA.main." + name + " is not a function");
-    main[name].apply(main, args || []);
+    return main[name].apply(main, args || []);
   };
   globalThis.__synurart_storage_snapshot = function() {
     return JSON.stringify({ local: clone(state.localStorage), session: clone(state.sessionStorage) });
@@ -2699,7 +2272,8 @@ const BOOTSTRAP: &str = r#"
   };
   globalThis.__synurart_eval = function(code) {
     const result = (0, eval)(code);
-    return JSON.stringify({ type: "eval", result: result === undefined ? null : result });
+    const encode = value => JSON.stringify({ type: "eval", result: value === undefined ? null : value });
+    return result && typeof result.then === "function" ? Promise.resolve(result).then(encode) : encode(result);
   };
   globalThis.console = {
     log: (...args) => __host_log("log", JSON.stringify(args.map(String))),
@@ -2733,7 +2307,14 @@ const BOOTSTRAP: &str = r#"
       }
       const path = options.view || options.viewName;
       if (!path) return { success: false, error: "view is required" };
-      if (state.currentCallbackViewId != null) dropForwardViews(state.currentCallbackViewId);
+      const sourceViewId = state.currentCallbackViewId != null
+        ? state.currentCallbackViewId
+        : state.navigation && state.navigation.sourceViewId;
+      if (sourceViewId != null) dropForwardViews(sourceViewId);
+      // Branch only on the first async open in an interaction. Subsequent and
+      // nested asynchronous opens continue from the newly opened active view.
+      // Synchronous nested callbacks still use their own stack frame above.
+      if (state.navigation) state.navigation.sourceViewId = null;
       const id = state.nextViewId++;
       const data = clone(options);
       data.models = processModels(data.models || {});
@@ -2743,7 +2324,7 @@ const BOOTSTRAP: &str = r#"
       state.views.push(view);
       if (typeof callback === "function") state.callbacks[id] = callback;
       logRuntime("open", { viewId: id, path });
-      if (typeof callback === "function") dispatch(view, { viewId: id, eventId: "LOAD", context: clone(data.context), data: {} });
+      if (typeof callback === "function") dispatch(view, { viewId: id, eventId: "LOAD", context: clone(data.context), data: {} }, true);
       return { success: true, viewId: id, id, viewName: String(path).split("/").pop() };
     },
     update(viewId, diff) {
@@ -2780,48 +2361,13 @@ const BOOTSTRAP: &str = r#"
       }
       if (context != null) view.data.context = asObject(context);
       if (typeof callback === "function") state.callbacks[view.id] = callback;
-      if (typeof state.callbacks[view.id] === "function") dispatch(view, { viewId: view.id, eventId: "LOAD", context: clone(view.data.context || {}), data: {} });
+      if (typeof state.callbacks[view.id] === "function") dispatch(view, { viewId: view.id, eventId: "LOAD", context: clone(view.data.context || {}), data: {} }, true);
       return { success: true, viewId: view.id, id: view.id };
     },
     close(viewId) { return JSON.parse(__synurart_close(Number(viewId))); },
     parse(_type, element) { return domDetails(element); }
   };
   globalThis.view = globalThis.synura;
-  function b64ToBytes(input) {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    const bytes = [];
-    let buffer = 0, bits = 0;
-    for (const ch of String(input).replace(/=+$/, "")) {
-      const value = chars.indexOf(ch);
-      if (value < 0) continue;
-      buffer = (buffer << 6) | value;
-      bits += 6;
-      if (bits >= 8) {
-        bits -= 8;
-        bytes.push((buffer >> bits) & 255);
-      }
-    }
-    return new Uint8Array(bytes);
-  }
-  function bytesToB64(bytes) {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let out = "";
-    for (let i = 0; i < bytes.length; i += 3) {
-      const a = bytes[i], b = i + 1 < bytes.length ? bytes[i + 1] : 0, c = i + 2 < bytes.length ? bytes[i + 2] : 0;
-      const n = (a << 16) | (b << 8) | c;
-      out += chars[(n >> 18) & 63] + chars[(n >> 12) & 63] + (i + 1 < bytes.length ? chars[(n >> 6) & 63] : "=") + (i + 2 < bytes.length ? chars[n & 63] : "=");
-    }
-    return out;
-  }
-  function dataName(prop) {
-    return "data-" + String(prop).replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
-  }
-  function attrMap(node) {
-    const out = {};
-    if (!node || !node.__attrs) return out;
-    for (const key of Object.keys(node.__attrs)) out[key] = node.__attrs[key];
-    return out;
-  }
   function domDetails(node) {
     const details = [];
     const visit = (current) => {
@@ -2862,322 +2408,14 @@ const BOOTSTRAP: &str = r#"
     visit(node);
     return details;
   }
-  const domNodeCache = {};
-  function domNode(docId, nodeId) {
-    const key = docId + ":" + nodeId;
-    if (!domNodeCache[key]) domNodeCache[key] = new SynuraDomNode(docId, nodeId);
-    return domNodeCache[key];
-  }
-  class SynuraDomNode {
-    constructor(docId, nodeId) { this.__docId = docId; this.__nodeId = nodeId; }
-    get textContent() { return __host_dom_text(this.__docId, this.__nodeId); }
-    get innerText() { return this.textContent; }
-    get tagName() { return __host_dom_tag(this.__docId, this.__nodeId); }
-    get nodeType() { return this.tagName ? 1 : 3; }
-    get id() { return this.getAttribute("id") || ""; }
-    get className() { return this.getAttribute("class") || ""; }
-    get childNodes() { return JSON.parse(__host_dom_children(this.__docId, this.__nodeId)).map((id) => domNode(this.__docId, id)); }
-    get children() { return this.childNodes.filter((node) => node.tagName); }
-    get firstChild() { return this.childNodes[0] || null; }
-    get lastChild() { const children = this.childNodes; return children[children.length - 1] || null; }
-    get nextSibling() { const id = __host_dom_next_sibling(this.__docId, this.__nodeId); return id >= 0 ? domNode(this.__docId, id) : null; }
-    get previousSibling() { const id = __host_dom_previous_sibling(this.__docId, this.__nodeId); return id >= 0 ? domNode(this.__docId, id) : null; }
-    get classList() {
-      const owner = this;
-      return {
-        contains(name) { return String(owner.className).split(/\s+/).includes(String(name)); },
-        add(name) { const set = new Set(String(owner.className).split(/\s+/).filter(Boolean)); set.add(String(name)); owner.setAttribute("class", Array.from(set).join(" ")); },
-        remove(name) { const set = new Set(String(owner.className).split(/\s+/).filter(Boolean)); set.delete(String(name)); owner.setAttribute("class", Array.from(set).join(" ")); },
-        toggle(name) { const set = new Set(String(owner.className).split(/\s+/).filter(Boolean)); const key = String(name); const had = set.has(key); had ? set.delete(key) : set.add(key); owner.setAttribute("class", Array.from(set).join(" ")); return !had; }
-      };
-    }
-    get dataset() {
-      const owner = this;
-      return new Proxy({}, {
-        get(_, prop) { return owner.getAttribute(dataName(prop)) || undefined; },
-        set(_, prop, value) { owner.setAttribute(dataName(prop), String(value)); return true; },
-        deleteProperty(_, prop) { owner.removeAttribute(dataName(prop)); return true; },
-        ownKeys() { return Object.keys(attrMap(owner)).filter((key) => key.startsWith("data-")).map((key) => key.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())); },
-        getOwnPropertyDescriptor(_, prop) { return { enumerable: true, configurable: true, value: owner.getAttribute(dataName(prop)) || undefined }; }
-      });
-    }
-    get __attrs() {
-      const attrs = {};
-      for (const name of ["id", "class", "href", "src", "data-src", "alt", "aria-label", "title", "poster", "width"]) {
-        if (this.hasAttribute(name)) attrs[name] = this.getAttribute(name) || "";
-      }
-      return attrs;
-    }
-    getAttribute(name) { const value = __host_dom_attr(this.__docId, this.__nodeId, String(name)); return value === "" && !this.hasAttribute(name) ? null : value; }
-    hasAttribute(name) { return __host_dom_has_attr(this.__docId, this.__nodeId, String(name)); }
-    setAttribute(name, value) { __host_dom_set_attr(this.__docId, this.__nodeId, String(name), String(value)); }
-    removeAttribute(name) { __host_dom_remove_attr(this.__docId, this.__nodeId, String(name)); }
-    remove() { __host_dom_remove(this.__docId, this.__nodeId); }
-    matches(selector) { const found = this.querySelector(selector); return !!found && found.__docId === this.__docId && found.__nodeId === this.__nodeId; }
-    querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
-    querySelectorAll(selector) { return JSON.parse(__host_dom_query(this.__docId, this.__nodeId, String(selector))).map((id) => domNode(this.__docId, id)); }
-    cloneNode() { return domNode(this.__docId, __host_dom_clone(this.__docId, this.__nodeId)); }
-  }
-  globalThis.DOMParser = class { parseFromString(html) { return domNode(__host_dom_parse(String(html)), 0); } };
-  globalThis.URLSearchParams = class {
-    constructor(init) {
-      this._pairs = [];
-      if (init == null) return;
-      if (typeof init === "string") {
-        const decode = (part) => {
-          const text = part.replace(/\+/g, " ");
-          try { return decodeURIComponent(text); } catch (_) { return text; }
-        };
-        const text = init.charAt(0) === "?" ? init.slice(1) : init;
-        if (!text) return;
-        for (const part of text.split("&")) {
-          if (part === "") continue;
-          const index = part.indexOf("=");
-          const key = index < 0 ? part : part.slice(0, index);
-          const value = index < 0 ? "" : part.slice(index + 1);
-          this.append(decode(key), decode(value));
-        }
-      } else if (typeof init[Symbol.iterator] === "function") {
-        for (const pair of init) this.append(pair[0], pair[1]);
-      } else if (typeof init === "object") {
-        for (const key of Object.keys(init)) this.append(key, init[key]);
-      }
-    }
-    append(key, value) { this._pairs.push([String(key), String(value)]); }
-    delete(key) { key = String(key); this._pairs = this._pairs.filter((pair) => pair[0] !== key); }
-    get(key) { key = String(key); const pair = this._pairs.find((pair) => pair[0] === key); return pair ? pair[1] : null; }
-    getAll(key) { key = String(key); return this._pairs.filter((pair) => pair[0] === key).map((pair) => pair[1]); }
-    has(key) { key = String(key); return this._pairs.some((pair) => pair[0] === key); }
-    set(key, value) {
-      key = String(key);
-      const first = this._pairs.findIndex((pair) => pair[0] === key);
-      if (first < 0) { this.append(key, value); return; }
-      this._pairs[first][1] = String(value);
-      this._pairs = this._pairs.filter((pair, index) => pair[0] !== key || index === first);
-    }
-    keys() { return this._pairs.map((pair) => pair[0])[Symbol.iterator](); }
-    values() { return this._pairs.map((pair) => pair[1])[Symbol.iterator](); }
-    entries() { return this._pairs.map((pair) => pair.slice())[Symbol.iterator](); }
-    [Symbol.iterator]() { return this.entries(); }
-    toString() {
-      const enc = (value) => encodeURIComponent(String(value)).replace(/%20/g, "+");
-      return this._pairs.map((pair) => enc(pair[0]) + "=" + enc(pair[1])).join("&");
-    }
-  };
-  function makeResponse(res) {
-    const pairs = Array.isArray(res.headers) ? res.headers : Object.entries(res.headers || {});
-    const headers = {};
-    function allHeaders(name) {
-      if (!arguments.length) throw new TypeError("header name is required");
-      const lower = String(name).toLowerCase();
-      return pairs.filter(pair => pair[0].toLowerCase() === lower).map(pair => pair[1]);
-    }
-    function header(name) {
-      if (!arguments.length) throw new TypeError("header name is required");
-      const values = allHeaders(name);
-      return values.length ? values.join(String(name).toLowerCase() === "set-cookie" ? "\n" : ", ") : undefined;
-    }
-    for (const [name] of pairs) headers[name] = header(name);
-    headers.get = header;
-    headers.getAll = allHeaders;
-    headers.entries = () => pairs.map(pair => pair.slice());
-    const text = res.bodyText;
-    return {
-      status: res.status,
-      statusText: res.statusText,
-      ok: res.status >= 200 && res.status < 300,
-      url: res.url,
-      headers,
-      text() { return text; },
-      json() { return JSON.parse(text); },
-      arrayBuffer() { return b64ToBytes(res.bodyBase64 || "").buffer; },
-      dom(mimeType = "text/html") {
-        if (String(mimeType).toLowerCase() !== "text/html") throw new TypeError("Unsupported mimeType for dom(): " + mimeType);
-        return new DOMParser().parseFromString(text, "text/html");
-      }
-    };
-  }
   globalThis.__synurart_network_package = function() {
     const pkg = synuraPackage() || {};
     const domain = pkg.domain;
     const permissions = pkg.host_permissions;
     return JSON.stringify({domain: typeof domain === "string" ? domain : "", host_permissions: permissions == null ? [] : permissions, bypass: pkg.bypass});
   };
-  globalThis.fetch = function(url, options) {
-    if (!arguments.length) throw new TypeError("fetch URL is required");
-    url = String(url);
-    const progress = options && typeof options.onProgress === "function" ? options.onProgress : null;
-    if (arguments.length >= 2) {
-      const serialized = JSON.stringify(options);
-      if (serialized === undefined) throw new TypeError("expected a JSON-serializable value");
-      options = asObject(JSON.parse(serialized));
-    } else {
-      options = {};
-    }
-    let headers = [];
-    if (Object.prototype.hasOwnProperty.call(options, "headers")) {
-      const source = options.headers;
-      if (!source || typeof source !== "object" || Array.isArray(source)) throw new TypeError("fetch headers must be an object");
-      headers = Object.keys(source).sort().map(name => {
-        if (typeof source[name] !== "string") throw new TypeError("fetch headers values must be strings");
-        return [name, source[name]];
-      });
-    }
-    function bodyJson(value) {
-      if (Array.isArray(value)) return "[" + value.map(bodyJson).join(",") + "]";
-      if (value && typeof value === "object") return "{" + Object.keys(value).sort().map(key => JSON.stringify(key) + ":" + bodyJson(value[key])).join(",") + "}";
-      return JSON.stringify(value);
-    }
-    const req = {
-      url,
-      method: typeof options.method === "string" && options.method.trim() ? options.method : "GET",
-      headers,
-      body: options.body == null ? "" : typeof options.body === "string" ? options.body : bodyJson(options.body),
-      progress: !!progress
-    };
-    const response = JSON.parse(__host_fetch(JSON.stringify(req)));
-    if (progress) {
-      for (const [current, total] of response.progress) {
-        try { progress(current, total); } catch (_) {}
-      }
-    }
-    return makeResponse(response);
-  };
-  globalThis.TextEncoder = class {
-    constructor() { this.encoding = "utf-8"; }
-    encode(input) { return new Uint8Array(Array.from(unescape(encodeURIComponent(String(input))), (ch) => ch.charCodeAt(0))); }
-    encodeInto(input, destination) {
-      const out = destination || new Uint8Array();
-      const len = out.length || 0;
-      let read = 0, written = 0;
-      for (const ch of String(input)) {
-        const encoded = this.encode(ch);
-        if (written + encoded.length > len) break;
-        for (let i = 0; i < encoded.length; i++) out[written + i] = encoded[i];
-        written += encoded.length;
-        read += ch.length;
-      }
-      return { read, written };
-    }
-  };
-  globalThis.TextDecoder = class {
-    constructor(label) { this.encoding = String(label || "utf-8").trim().toLowerCase(); this.fatal = false; this.ignoreBOM = false; }
-    decode(input) {
-      const bytes = input ? (input.buffer ? new Uint8Array(input.buffer, input.byteOffset || 0, input.byteLength) : new Uint8Array(input)) : new Uint8Array();
-      return __host_decode(this.encoding, bytesToB64(bytes));
-    }
-  };
 })();
 "#;
-
-fn selector_has_unsupported_attr_operator(selector: &str) -> bool {
-    let bytes = selector.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] != b'[' {
-            i += 1;
-            continue;
-        }
-        let start = i + 1;
-        let Some(end_offset) = selector[start..].find(']') else {
-            return false;
-        };
-        let end = start + end_offset;
-        let attr = selector[start..end].trim();
-        if let Some(eq) = attr.find('=') {
-            let before = attr[..eq].trim_end();
-            if before.ends_with('^')
-                || before.ends_with('$')
-                || before.ends_with('*')
-                || before.ends_with('~')
-                || before.ends_with('|')
-            {
-                return true;
-            }
-        }
-        i = end + 1;
-    }
-    false
-}
-
-fn node_matches(node: &NodeRef, selector: &str) -> bool {
-    let Some(parent) = node.parent() else {
-        return false;
-    };
-    let Ok(mut matches) = parent.select(selector) else {
-        return false;
-    };
-    matches.any(|matched| matched.as_node() == node)
-}
-
-fn decode_text(label: &str, body_base64: &str) -> Result<String, String> {
-    let bytes = general_purpose::STANDARD
-        .decode(body_base64)
-        .map_err(|e| format!("decode base64 text body: {e}"))?;
-    let encoding = Encoding::for_label(label.as_bytes()).unwrap_or(UTF_8);
-    let (text, _, _) = encoding.decode(&bytes);
-    Ok(text.into_owned())
-}
-
-fn user_agent_from_bypass(bypass: &str) -> Option<&'static str> {
-    let mut parts = bypass.trim().to_ascii_lowercase();
-    if parts.is_empty() || parts == "-" {
-        return None;
-    }
-    parts = parts.replace('_', "-");
-    let mut split = parts.split('/');
-    let browser = split.next().filter(|s| !s.is_empty()).unwrap_or("chrome");
-    let os_name = split.next().filter(|s| !s.is_empty()).unwrap_or("windows");
-    let ua = match browser {
-        "firefox" => match os_name {
-            "linux" => "Mozilla/5.0 (X11; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0",
-            "macos" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:144.0) Gecko/20100101 Firefox/144.0",
-            "android" => "Mozilla/5.0 (Android 16; Mobile; rv:144.0) Gecko/144.0 Firefox/144.0",
-            "ios" => "Mozilla/5.0 (iPhone; CPU iPhone OS 18_2_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/144.0 Mobile/15E148 Safari/605.1.15",
-            _ => "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0) Gecko/20100101 Firefox/144.0",
-        },
-        "tor" => match os_name {
-            "linux" => "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
-            "macos" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:128.0) Gecko/20100101 Firefox/128.0",
-            "android" => "Mozilla/5.0 (Android 10; Mobile; rv:128.0) Gecko/134.0 Firefox/128.0",
-            "ios" => "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/128.3 Mobile/15E148 Safari/605.1.15",
-            _ => "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0",
-        },
-        _ => match os_name {
-            "linux" => "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-            "macos" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-            "android" => "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36",
-            "ios" => "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/142.0.7444.77 Mobile/15E148 Safari/604.1",
-            _ => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-        },
-    };
-    Some(ua)
-}
-
-fn wildcard_match(pattern: &str, value: &str) -> bool {
-    let (pattern, value) = (pattern.as_bytes(), value.as_bytes());
-    let (mut p, mut v, mut star, mut retry) = (0, 0, None, 0);
-    while v < value.len() {
-        if p < pattern.len() && pattern[p] == b'*' {
-            star = Some(p);
-            p += 1;
-            retry = v;
-        } else if p < pattern.len() && pattern[p] == value[v] {
-            p += 1;
-            v += 1;
-        } else if let Some(previous) = star {
-            retry += 1;
-            v = retry;
-            p = previous + 1;
-        } else {
-            return false;
-        }
-    }
-    while p < pattern.len() && pattern[p] == b'*' {
-        p += 1;
-    }
-    p == pattern.len()
-}
 
 fn normalize_url(value: &str) -> Result<String, String> {
     Url::parse(value)
@@ -5075,7 +4313,7 @@ mod tests {
     }
 
     #[test]
-    fn url_search_params_matches_app_iteration_and_mutation_contract() {
+    fn url_search_params_supports_standard_iteration_and_mutation() {
         let rt = runtime();
         let out = result(
             &rt,
@@ -5096,7 +4334,7 @@ mod tests {
             out,
             json!({"query":"a=9&b=2", "copy":"a=9&b=2&c=x+y",
             "pairs":[["a","9"],["b","2"]], "keys":["a","b"], "values":["9","2"],
-            "map":"q=test", "malformed":"%ZZ", "plus":"a b", "forEach":"undefined", "sort":"undefined"})
+            "map":"q=test", "malformed":"%ZZ", "plus":"a b", "forEach":"function", "sort":"function"})
         );
     }
 
@@ -5213,7 +4451,7 @@ mod tests {
     }
 
     #[test]
-    fn fetch_override_uses_the_bound_domain_and_throws_for_other_hosts() {
+    fn fetch_override_uses_the_bound_domain_and_rejects_for_other_hosts() {
         let dir = temp_dir();
         let fixture = dir.join("saved.html");
         fs::write(
@@ -5229,17 +4467,19 @@ mod tests {
         .unwrap();
         rt.set_fetch_override("https://saved.example/path", &fixture)
             .unwrap();
+        rt.bind_network(serde_json::from_value(json!({"domain":"saved.example"})).unwrap())
+            .unwrap();
         let out = result(
             &rt,
             r#"
-(() => {
+(async () => {
   globalThis.SYNURA = { domain: "saved.example" };
-  const ok = fetch("https://saved.example/path");
-  const doc = ok.dom();
+  const ok = await fetch("https://saved.example/path");
+  const doc = await ok.dom();
   SYNURA.domain = "allowed.example";
-  const pinned = fetch("https://saved.example/path");
+  const pinned = await fetch("https://saved.example/path");
   let blockedError;
-  try { fetch("https://allowed.example/path"); } catch (error) { blockedError = error.message; }
+  try { await fetch("https://allowed.example/path"); } catch (error) { blockedError = error.message; }
   return {
     status: ok.status,
     url: ok.url,

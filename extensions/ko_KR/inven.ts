@@ -357,40 +357,42 @@ SITE.loadDynamicBoards = function (options) {
         "설정": true
     };
     if (!allowNetwork) return Array.isArray(cached) ? cached : [];
-    try {
-        var doc = fetchDocument(SITE.browserHomeUrl);
-        var links = allNodes(doc, [
-            "a[href*='powerbbs.php?come_idx=']",
-            "a[href*='/board/webzine/']"
-        ]);
-        var items = [];
-        var seen = {};
-        for (var i = 0; i < links.length; i++) {
-            var href = ensureAbsoluteUrl(attrOf(links[i], "href"), SITE.browserHomeUrl);
-            var info = parseAbsoluteUrl(href);
-            if (!info) continue;
-            var comeIdx = invenComeIdxFromUrlInfo(info);
-            if (!comeIdx || seen[comeIdx]) continue;
-            var title = normalizeWhitespace(textOf(links[i]));
-            if (!title || skip[title]) continue;
-            seen[comeIdx] = true;
-            items.push({
-                id: "come_" + comeIdx,
-                title: title,
-                url: invenBoardUrlFromComeIdx(comeIdx),
-                description: title,
-                group: inferBoardGroupFromContext(links[i]),
-                dynamic: true
-            });
+    return (async function () {
+        try {
+            var doc = (await fetchDocument(SITE.browserHomeUrl));
+            var links = allNodes(doc, [
+                "a[href*='powerbbs.php?come_idx=']",
+                "a[href*='/board/webzine/']"
+            ]);
+            var items = [];
+            var seen = {};
+            for (var i = 0; i < links.length; i++) {
+                var href = ensureAbsoluteUrl(attrOf(links[i], "href"), SITE.browserHomeUrl);
+                var info = parseAbsoluteUrl(href);
+                if (!info) continue;
+                var comeIdx = invenComeIdxFromUrlInfo(info);
+                if (!comeIdx || seen[comeIdx]) continue;
+                var title = normalizeWhitespace(textOf(links[i]));
+                if (!title || skip[title]) continue;
+                seen[comeIdx] = true;
+                items.push({
+                    id: "come_" + comeIdx,
+                    title: title,
+                    url: invenBoardUrlFromComeIdx(comeIdx),
+                    description: title,
+                    group: inferBoardGroupFromContext(links[i]),
+                    dynamic: true
+                });
+            }
+            if (items.length > 0) {
+                writeStoredJson(cacheKey, items);
+                localStorage.setItem(cacheTsKey, String(Date.now()));
+                return items;
+            }
+        } catch (e) {
         }
-        if (items.length > 0) {
-            writeStoredJson(cacheKey, items);
-            localStorage.setItem(cacheTsKey, String(Date.now()));
-            return items;
-        }
-    } catch (e) {
-    }
-    return Array.isArray(cached) ? cached : [];
+        return Array.isArray(cached) ? cached : [];
+    })();
 };
 SITE.prepareBoardContext = function (context, items, match, url) {
     return context;
@@ -430,7 +432,7 @@ function invenNormalizeLazyMediaMarkup(html) {
     });
 }
 SITE.filterPostContent = function (content, url, doc, page) {
-    var html = page && page.response ? page.response.text() : "";
+    var html = page && page.html ? page.html : "";
     if (html) {
         var normalized = invenNormalizeLazyMediaMarkup(html);
         if (normalized !== html) doc = new DOMParser().parseFromString(normalized, "text/html");
@@ -495,9 +497,9 @@ function invenParseComments(doc, postUrl) {
 SITE.parseComments = function (doc, postUrl) {
     return invenParseComments(doc, postUrl);
 };
-SITE.fetchPostComments = function (match, url, doc, page, comments) {
+SITE.fetchPostComments = async function (match, url, doc, page, comments) {
     function invenExtractSettingValue(name) {
-        var html = page && page.response ? page.response.text() : "";
+        var html = page && page.html ? page.html : "";
         if (!html) return "";
         var quoted = new RegExp(name + "\\s*:\\s*'([^']*)'", "i");
         var quotedMatch = html.match(quoted);
@@ -576,10 +578,10 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         return options;
     }
 
-    function invenFetchCommentPayload(titles) {
-        var response = fetchWithLogging("https://www.inven.co.kr/common/board/comment.json.php", invenBuildCommentRequestOptions(titles));
+    async function invenFetchCommentPayload(titles) {
+        var response = (await fetchWithLogging("https://www.inven.co.kr/common/board/comment.json.php", invenBuildCommentRequestOptions(titles)));
         if (!response || !response.ok) return null;
-        var rawText = response.text();
+        var rawText = (await response.text());
         if (!rawText) return null;
         var parsedData = null;
         try {
@@ -736,10 +738,10 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         return out;
     }
 
-    function invenParseCommentHtml(html) {
+    async function invenParseCommentHtml(html) {
         var parser = new DOMParser();
         var doc = parser.parseFromString("<div id='synura-inven-comment'>" + String(html || "") + "</div>", "text/html");
-        var parsed = parseComments(doc, url);
+        var parsed = (await parseComments(doc, url));
         if (parsed && parsed.length > 0) return parsed;
 
         var rows = doc.querySelectorAll(".cmtOne");
@@ -826,10 +828,10 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
         return out;
     }
 
-    function invenFetchAllCommentPayloads() {
+    async function invenFetchAllCommentPayloads() {
         var payloads = [];
         var fetchedTitles = {};
-        var initialPayload = invenFetchCommentPayload("");
+        var initialPayload = (await invenFetchCommentPayload(""));
         if (!initialPayload) return payloads;
 
         payloads.push(initialPayload);
@@ -841,7 +843,7 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
             for (var i = 0; i < pendingTitles.length; i++) {
                 fetchedTitles[pendingTitles[i]] = true;
             }
-            var nextPayload = invenFetchCommentPayload(pendingTitles.join("|"));
+            var nextPayload = (await invenFetchCommentPayload(pendingTitles.join("|")));
             if (!nextPayload) break;
             payloads.push(nextPayload);
             if (!nextPayload.data) break;
@@ -856,7 +858,7 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
     var iskin = invenExtractSettingValue("iskin") || "webzine";
     if (!comeIdx || !articleCode || !customNum) return comments;
 
-    var payloads = invenFetchAllCommentPayloads();
+    var payloads = (await invenFetchAllCommentPayloads());
     if (!payloads || payloads.length === 0) return comments;
 
     var parsedComments = [];
@@ -879,7 +881,7 @@ SITE.fetchPostComments = function (match, url, doc, page, comments) {
 
     var out = [];
     for (var i = 0; i < htmlCandidates.length; i++) {
-        out = out.concat(invenParseCommentHtml(htmlCandidates[i]));
+        out = out.concat((await invenParseCommentHtml(htmlCandidates[i])));
     }
     out = invenDedupComments(out);
     return out.length > 0 ? out : comments;

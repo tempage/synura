@@ -425,20 +425,20 @@ SITE.parseComments = function (doc, postUrl) {
   return localParseComments(doc, postUrl);
 };
 
-SITE.routePostCustom = function (url, urlInfo, match, force) {
+SITE.routePostCustom = async function (url, urlInfo, match, force) {
   var postId = localPostIdFromUrl(url);
   if (!postId || !/^\d+$/.test(postId)) return null;
   var jsonUrl = "https://forum.lesnumeriques.com/t/" + postId + ".json";
-  var res = fetch(jsonUrl, {
+  var res = (await fetch(jsonUrl, {
     headers: {
       "Accept": "application/json",
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
-  });
+  }));
   if (!res || !res.ok) return null;
   var data = null;
   try {
-    data = JSON.parse(res.text());
+    data = JSON.parse((await res.text()));
   } catch (e) {
     return null;
   }
