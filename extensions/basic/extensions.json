@@ -1,6 +1,14 @@
 {
   "extensions": [
     {
+      "name": "Community Hub",
+      "description": "Clean reader mode for online forums and communities without clutter.",
+      "version": 1.0,
+      "url": "https://tempage.github.io/synura/extensions/basic/mock_community.js",
+      "icon": "emoji:💬",
+      "api": 0
+    },
+    {
       "name": "List View Example",
       "description": "Demonstrates how to use the List View with pagination.",
       "version": 0.2,
