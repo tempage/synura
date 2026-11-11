@@ -2,6 +2,22 @@
 
 > **A new way to experience the web.**
 
+[![GitHub Repository](https://img.shields.io/badge/GitHub-tempage%2Fsynura-181717?style=flat&logo=github)](https://github.com/tempage/synura)
+[![Google Play](https://img.shields.io/badge/Google_Play-Get_it_on_Play_Store-34A853?style=flat&logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=io.tempage.synura)
+[![Extension Repository](https://img.shields.io/badge/Extensions-Repository-blue?style=flat)](https://tempage.github.io/synura/extensions.json)
+
+---
+
+## App Preview
+
+<p align="center">
+  <img src="docs/images/shot1_feed.png" width="300" alt="Clean Feed">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/images/shot2_reading.png" width="300" alt="Distraction-Free Reading">
+</p>
+
+---
+
 ## What is Synura?
 Synura is a versatile application that lets you browse content from various sources using powerful mini-apps called "extensions". Think of it as a browser, but instead of websites, you use extensions to get content in a clean, native-app format.
 
@@ -12,6 +28,10 @@ Synura is a versatile application that lets you browse content from various sour
 The workspace separates the shared VM in `runtime/` from the CLI host in
 `synurart/`. Run the CLI with `./synurart.sh` or `make synurart`.
 
+<p align="center">
+  <img src="docs/images/synurart_cli.png" width="850" alt="synurart — Extension CLI Runner & Test Harness">
+</p>
+
 ```sh
 cargo test --workspace
 cargo run -p synura-runtime --example multi_vm
@@ -21,7 +41,8 @@ The [embedding guide](runtime/README.md) covers host-approved network permission
 
 ## Downloads
 
-- [Synura Android app](https://play.google.com/store/apps/details?id=io.tempage.synura)
+- [Synura on Google Play](https://play.google.com/store/apps/details?id=io.tempage.synura) (Official Android App)
+- [GitHub Repository & Source](https://github.com/tempage/synura)
 
 ## Extension Repositories
 
